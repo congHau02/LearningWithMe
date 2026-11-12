@@ -10,12 +10,25 @@ export const DEFAULT_GUEST_NICKNAME = 'Bạn học mới';
 export const DEFAULT_AVATAR_ID = 'default_student';
 export const DEFAULT_STUDY_GOAL = 'Tập trung ôn tập 45 phút';
 
+export interface NormalizedAuthSession {
+  userId: string;
+  nickname: string;
+  avatarSpriteId: string;
+  studyGoal: string;
+  authProvider: AuthProvider;
+  email: string | null;
+  totalStudyMinutes: number;
+  token: string;
+}
+
 export interface PersistedAuthSession {
   userId: string;
   nickname: string;
   avatarSpriteId: string;
   studyGoal: string;
   authProvider: AuthProvider;
+  email?: string | null;
+  totalStudyMinutes?: number;
   token: string;
 }
 
@@ -94,7 +107,7 @@ export function saveBareAuthToken(token: string): void {
   storage.removeItem(SESSION_STORAGE_KEY);
 }
 
-export function loadPersistedAuthSession(): PersistedAuthSession | null {
+export function loadPersistedAuthSession(): NormalizedAuthSession | null {
   const storage = getStorage();
   if (!storage) {
     return null;
@@ -121,6 +134,11 @@ export function loadPersistedAuthSession(): PersistedAuthSession | null {
           avatarSpriteId: parsed.avatarSpriteId ?? DEFAULT_AVATAR_ID,
           studyGoal: parsed.studyGoal ?? '',
           authProvider: parsed.authProvider ?? 'GUEST',
+          email: parsed.email ?? null,
+          totalStudyMinutes:
+            typeof parsed.totalStudyMinutes === 'number'
+              ? parsed.totalStudyMinutes
+              : 0,
           token: parsed.token,
         };
       }
@@ -148,8 +166,15 @@ export function loadPersistedAuthSession(): PersistedAuthSession | null {
     return null;
   }
 
+  const claimProvider = jwtPayload.authProvider;
   const authProvider: AuthProvider =
-    jwtPayload.role === 'REGISTERED' ? 'LOCAL' : 'GUEST';
+    claimProvider === 'GOOGLE' ||
+    claimProvider === 'LOCAL' ||
+    claimProvider === 'GUEST'
+      ? claimProvider
+      : jwtPayload.role === 'REGISTERED'
+        ? 'LOCAL'
+        : 'GUEST';
   return {
     userId: jwtPayload.sub,
     nickname:
@@ -163,6 +188,8 @@ export function loadPersistedAuthSession(): PersistedAuthSession | null {
     studyGoal:
       typeof jwtPayload.studyGoal === 'string' ? jwtPayload.studyGoal : '',
     authProvider,
+    email: typeof jwtPayload.email === 'string' ? jwtPayload.email : null,
+    totalStudyMinutes: 0,
     token: bareToken,
   };
 }

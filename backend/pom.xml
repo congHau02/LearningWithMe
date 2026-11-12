@@ -99,6 +99,7 @@
                 <configuration>
                     <systemPropertyVariables>
                         <api.version>1.44</api.version>
+                        <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

@@ -21,13 +21,46 @@ export interface GuestAuthResponse {
 export interface AuthenticatedUserResponse {
   userId: string;
   role: AuthRole;
+  authProvider?: AuthProvider;
+  email?: string | null;
   nickname: string;
   avatarId: string;
   studyGoal: string;
+  totalStudyMinutes?: number;
+}
+
+export type UpgradeAccountRequest =
+  | {
+      provider: 'LOCAL';
+      email: string;
+      password: string;
+    }
+  | {
+      provider: 'GOOGLE';
+      googleIdToken: string;
+    };
+
+export interface UpgradeAccountResponse {
+  userId: string;
+  accessToken: string;
+  role: AuthRole;
+  authProvider: Exclude<AuthProvider, 'GUEST'>;
+  email: string | null;
+  nickname: string;
+  avatarId: string;
+  studyGoal: string;
+  totalStudyMinutes: number;
+  mergedSessionCount: number;
 }
 
 export function roleToAuthProvider(role: AuthRole): AuthProvider {
   return role === 'GUEST' ? 'GUEST' : 'LOCAL';
+}
+
+export function resolveAuthProvider(
+  user: Pick<AuthenticatedUserResponse, 'role' | 'authProvider'>,
+): AuthProvider {
+  return user.authProvider ?? roleToAuthProvider(user.role);
 }
 
 export async function createGuestSession(
@@ -36,6 +69,15 @@ export async function createGuestSession(
   return apiRequest<GuestAuthResponse>('/api/v1/auth/guest', {
     method: 'POST',
     skipAuth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function upgradeAccountSession(
+  payload: UpgradeAccountRequest,
+): Promise<UpgradeAccountResponse> {
+  return apiRequest<UpgradeAccountResponse>('/api/v1/auth/upgrade', {
+    method: 'POST',
     body: JSON.stringify(payload),
   });
 }

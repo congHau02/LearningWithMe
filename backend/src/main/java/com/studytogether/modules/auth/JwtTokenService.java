@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 public class JwtTokenService {
 
     public static final Duration GUEST_TOKEN_TTL = Duration.ofDays(7);
+    public static final Duration REGISTERED_TOKEN_TTL = Duration.ofDays(7);
 
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder jwtDecoder;
@@ -41,21 +42,33 @@ public class JwtTokenService {
     }
 
     public String issueGuestToken(AuthPrincipal principal) {
-        Instant now = Instant.now();
-        Instant expiresAt = now.plus(GUEST_TOKEN_TTL);
+        return issueToken(principal, GUEST_TOKEN_TTL);
+    }
 
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+    public String issueRegisteredToken(AuthPrincipal principal) {
+        return issueToken(principal, REGISTERED_TOKEN_TTL);
+    }
+
+    private String issueToken(AuthPrincipal principal, Duration ttl) {
+        Instant now = Instant.now();
+        Instant expiresAt = now.plus(ttl);
+
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .subject(principal.userId())
                 .issuedAt(now)
                 .expiresAt(expiresAt)
                 .claim("role", principal.role().name())
+                .claim("authProvider", principal.authProvider().name())
                 .claim("nickname", principal.nickname())
                 .claim("avatarId", principal.avatarId())
-                .claim("studyGoal", principal.studyGoal())
-                .build();
+                .claim("studyGoal", principal.studyGoal());
+
+        if (principal.email() != null && !principal.email().isBlank()) {
+            claims.claim("email", principal.email());
+        }
 
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims.build())).getTokenValue();
     }
 
     public Optional<AuthPrincipal> parseToken(String token) {
@@ -70,11 +83,24 @@ public class JwtTokenService {
                 return Optional.empty();
             }
             AuthRole role = AuthRole.valueOf(roleClaim);
+            String providerClaim = jwt.getClaimAsString("authProvider");
+            AuthProvider authProvider = providerClaim != null
+                    ? AuthProvider.valueOf(providerClaim)
+                    : (role == AuthRole.GUEST ? AuthProvider.GUEST : AuthProvider.LOCAL);
+            String email = jwt.getClaimAsString("email");
             String nickname = Optional.ofNullable(jwt.getClaimAsString("nickname")).orElse("");
             String avatarId = Optional.ofNullable(jwt.getClaimAsString("avatarId"))
                     .orElse(GuestAuthService.DEFAULT_AVATAR_ID);
             String studyGoal = Optional.ofNullable(jwt.getClaimAsString("studyGoal")).orElse("");
-            return Optional.of(new AuthPrincipal(userId, role, nickname, avatarId, studyGoal));
+            return Optional.of(new AuthPrincipal(
+                    userId,
+                    role,
+                    authProvider,
+                    email,
+                    nickname,
+                    avatarId,
+                    studyGoal
+            ));
         } catch (JwtException | IllegalArgumentException ex) {
             return Optional.empty();
         }

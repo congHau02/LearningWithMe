@@ -13,9 +13,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final GuestAuthService guestAuthService;
+    private final AccountUpgradeService accountUpgradeService;
+    private final AuthSessionService authSessionService;
 
-    public AuthController(GuestAuthService guestAuthService) {
+    public AuthController(
+            GuestAuthService guestAuthService,
+            AccountUpgradeService accountUpgradeService,
+            AuthSessionService authSessionService
+    ) {
         this.guestAuthService = guestAuthService;
+        this.accountUpgradeService = accountUpgradeService;
+        this.authSessionService = authSessionService;
     }
 
     @PostMapping("/guest")
@@ -23,8 +31,16 @@ public class AuthController {
         return guestAuthService.createGuestSession(request);
     }
 
+    @PostMapping("/upgrade")
+    public UpgradeAccountResponse upgradeAccount(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @Valid @RequestBody UpgradeAccountRequest request
+    ) {
+        return accountUpgradeService.upgradeAccount(principal, request);
+    }
+
     @GetMapping("/me")
     public AuthenticatedUserResponse getCurrentSession(@AuthenticationPrincipal AuthPrincipal principal) {
-        return AuthenticatedUserResponse.from(principal);
+        return authSessionService.getCurrentSession(principal);
     }
 }

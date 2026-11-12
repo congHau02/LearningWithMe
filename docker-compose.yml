@@ -53,6 +53,7 @@ services:
       APP_JWT_SECRET: ${APP_JWT_SECRET:-change_me_jwt_secret_at_least_32_bytes_long_for_hmac_sha256}
       APP_STORAGE_HOMEWORK_DIR: ${APP_STORAGE_HOMEWORK_DIR:-/tmp/homework-uploads}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     volumes:
       - homework_uploads:/tmp/homework-uploads
     restart: unless-stopped
@@ -62,10 +63,12 @@ services:
       context: ./frontend
       args:
         VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:8080}"
+        VITE_GOOGLE_CLIENT_ID: "${VITE_GOOGLE_CLIENT_ID:-}"
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     depends_on:
       - backend
     restart: unless-stopped

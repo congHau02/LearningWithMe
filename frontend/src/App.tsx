@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
+import { AccountUpgradeModal } from './components/auth/AccountUpgradeModal';
 import { GuestOnboardingModal } from './components/auth/GuestOnboardingModal';
 import {
   TopBar,
   type BackendConnectionStatus,
 } from './components/hud/TopBar';
 import { ApiError, fetchBackendHealth } from './services/apiClient';
-import { fetchCurrentSession, roleToAuthProvider } from './services/authApi';
+import {
+  fetchCurrentSession,
+  resolveAuthProvider,
+  type UpgradeAccountResponse,
+} from './services/authApi';
 import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
 import { useTableStore } from './stores/useTableStore';
@@ -23,6 +28,7 @@ export function App() {
   const avatarSpriteId = useAuthStore((s) => s.avatarSpriteId);
   const authProvider = useAuthStore((s) => s.authProvider);
   const studyGoal = useAuthStore((s) => s.studyGoal);
+  const totalStudyMinutes = useAuthStore((s) => s.totalStudyMinutes);
   const token = useAuthStore((s) => s.token);
 
   const sosBanner = useTableStore((s) => s.sosBanner);
@@ -30,6 +36,7 @@ export function App() {
 
   const [backendStatus, setBackendStatus] =
     useState<BackendConnectionStatus>('CHECKING');
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   useEffect(() => {
     const store = useAuthStore.getState();
@@ -44,7 +51,7 @@ export function App() {
     let isMounted = true;
     fetchCurrentSession()
       .then((me) => {
-        if (!isMounted) {
+        if (!isMounted || useAuthStore.getState().token !== restoredToken) {
           return;
         }
         useAuthStore.getState().setSession({
@@ -52,12 +59,19 @@ export function App() {
           nickname: me.nickname,
           avatarSpriteId: me.avatarId,
           studyGoal: me.studyGoal,
-          authProvider: roleToAuthProvider(me.role),
+          authProvider: resolveAuthProvider(me),
+          email: me.email ?? null,
+          totalStudyMinutes: me.totalStudyMinutes ?? 0,
           token: restoredToken,
         });
       })
       .catch((error) => {
-        if (isMounted && error instanceof ApiError && error.status === 401) {
+        if (
+          isMounted &&
+          useAuthStore.getState().token === restoredToken &&
+          error instanceof ApiError &&
+          error.status === 401
+        ) {
           useAuthStore.getState().clearSession();
         }
       });
@@ -92,6 +106,20 @@ export function App() {
     leaveTable();
   };
 
+  const handleAccountUpgraded = (response: UpgradeAccountResponse) => {
+    useAuthStore.getState().upgradeAccount({
+      userId: response.userId,
+      authProvider: response.authProvider,
+      token: response.accessToken,
+      nickname: response.nickname,
+      avatarSpriteId: response.avatarId,
+      studyGoal: response.studyGoal,
+      email: response.email,
+      totalStudyMinutes: response.totalStudyMinutes,
+    });
+    setIsUpgradeModalOpen(false);
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <TopBar
@@ -101,9 +129,15 @@ export function App() {
         avatarSpriteId={avatarSpriteId}
         authProvider={authProvider}
         studyGoal={studyGoal}
+        totalStudyMinutes={totalStudyMinutes}
         backendStatus={backendStatus}
         currentTableId={currentTableId}
         onLeaveSeat={handleLeaveSeat}
+        onOpenUpgrade={
+          token && authProvider === 'GUEST'
+            ? () => setIsUpgradeModalOpen(true)
+            : undefined
+        }
       />
 
       <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-6">
@@ -147,6 +181,12 @@ export function App() {
       </main>
 
       {!token ? <GuestOnboardingModal /> : null}
+      {token && authProvider === 'GUEST' && isUpgradeModalOpen ? (
+        <AccountUpgradeModal
+          onClose={() => setIsUpgradeModalOpen(false)}
+          onUpgraded={handleAccountUpgraded}
+        />
+      ) : null}
     </div>
   );
 }

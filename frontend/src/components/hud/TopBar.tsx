@@ -14,9 +14,11 @@ export interface TopBarProps {
   avatarSpriteId?: string;
   authProvider: AuthProvider;
   studyGoal: string;
+  totalStudyMinutes?: number;
   backendStatus: BackendConnectionStatus;
   currentTableId: string | null;
   onLeaveSeat?: () => void;
+  onOpenUpgrade?: () => void;
 }
 
 const STATE_LABELS: Record<CharacterState, string> = {
@@ -38,9 +40,11 @@ export function TopBar({
   avatarSpriteId = DEFAULT_AVATAR_ID,
   authProvider,
   studyGoal,
+  totalStudyMinutes = 0,
   backendStatus,
   currentTableId,
   onLeaveSeat,
+  onOpenUpgrade,
 }: TopBarProps) {
   return (
     <header
@@ -97,10 +101,32 @@ export function TopBar({
         <div className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/70 px-2 py-1">
           <StarterAvatarPortrait avatarId={avatarSpriteId} size={22} />
           <span className="font-medium text-foreground">{nickname}</span>
-          <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
+          <span
+            data-testid="auth-provider-badge"
+            className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground"
+          >
             {authProvider}
           </span>
         </div>
+
+        {authProvider === 'GUEST' && onOpenUpgrade ? (
+          <button
+            type="button"
+            onClick={onOpenUpgrade}
+            className="min-h-8 rounded-md border border-primary/50 bg-primary/15 px-3 py-1 font-semibold text-primary transition hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Nâng cấp tài khoản
+          </button>
+        ) : null}
+
+        {authProvider !== 'GUEST' ? (
+          <span
+            data-testid="study-minutes-badge"
+            className="rounded-md border border-border bg-secondary px-2.5 py-1 font-mono font-medium text-foreground"
+          >
+            {totalStudyMinutes} phút
+          </span>
+        ) : null}
 
         <span
           data-testid="backend-status-badge"

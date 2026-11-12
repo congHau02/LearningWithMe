@@ -34,6 +34,23 @@ export class ApiError extends Error {
   }
 }
 
+export function formatApiError(
+  error: unknown,
+  fallbackMessage: string,
+  includeErrorMessage = false,
+): string {
+  if (error instanceof ApiError) {
+    const fieldSummary = error.errors
+      ? Object.values(error.errors).join(', ')
+      : '';
+    return fieldSummary || error.detail;
+  }
+  if (includeErrorMessage && error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallbackMessage;
+}
+
 export function getStoredAuthToken(): string | null {
   if (typeof window === 'undefined' || !window.localStorage) {
     return null;

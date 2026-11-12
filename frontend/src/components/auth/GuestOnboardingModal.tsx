@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { ApiError } from '../../services/apiClient';
+import { formatApiError } from '../../services/apiClient';
 import { createGuestSession } from '../../services/authApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { AvatarPickerField } from './AvatarPickerField';
@@ -50,14 +50,9 @@ export function GuestOnboardingModal() {
         token: response.guestToken,
       });
     } catch (error) {
-      if (error instanceof ApiError) {
-        const fieldSummary = error.errors
-          ? Object.values(error.errors).join(', ')
-          : '';
-        setSubmitError(fieldSummary || error.detail);
-      } else {
-        setSubmitError('Không thể khởi tạo phiên học. Vui lòng thử lại.');
-      }
+      setSubmitError(
+        formatApiError(error, 'Không thể khởi tạo phiên học. Vui lòng thử lại.'),
+      );
     }
   };
 

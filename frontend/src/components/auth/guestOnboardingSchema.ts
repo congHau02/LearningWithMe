@@ -1,5 +1,5 @@
-import type { FieldErrors, Resolver } from 'react-hook-form';
 import { z } from 'zod';
+import { createZodResolver } from './zodResolver';
 
 export const NICKNAME_MAX_LENGTH = 20;
 export const STUDY_GOAL_MAX_LENGTH = 60;
@@ -19,23 +19,5 @@ export const guestOnboardingSchema = z.object({
 
 export type GuestOnboardingFormValues = z.infer<typeof guestOnboardingSchema>;
 
-export const guestOnboardingResolver: Resolver<GuestOnboardingFormValues> = async (
-  values,
-) => {
-  const result = guestOnboardingSchema.safeParse(values);
-  if (result.success) {
-    return { values: result.data, errors: {} };
-  }
-
-  const errors: FieldErrors<GuestOnboardingFormValues> = {};
-  for (const issue of result.error.issues) {
-    const field = issue.path[0] as keyof GuestOnboardingFormValues | undefined;
-    if (field && !errors[field]) {
-      errors[field] = {
-        type: issue.code,
-        message: issue.message,
-      };
-    }
-  }
-  return { values: {}, errors };
-};
+export const guestOnboardingResolver =
+  createZodResolver<GuestOnboardingFormValues>(guestOnboardingSchema);
