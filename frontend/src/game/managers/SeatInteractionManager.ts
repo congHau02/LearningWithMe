@@ -1,10 +1,10 @@
 import { useGameStore } from '../../stores/useGameStore';
 import { GridPathfinder } from '../pathfinding/GridPathfinder';
 import {
+  MAIN_LIBRARY_TOPOLOGY,
   findSeatAtTile,
   getSeatById,
   getTableById,
-  MAIN_LIBRARY_TOPOLOGY,
   type FacingDirection,
   type RoomTopology,
   type SeatMetadata,
@@ -19,19 +19,18 @@ export function resolveDirectionBetweenTiles(
 ): FacingDirection {
   const dx = to.tileX - from.tileX;
   const dy = to.tileY - from.tileY;
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    if (dx > 0) return 'RIGHT';
-    if (dx < 0) return 'LEFT';
+  if (Math.abs(dx) >= Math.abs(dy) && dx !== 0) {
+    return dx > 0 ? 'RIGHT' : 'LEFT';
   }
-  if (dy > 0) return 'DOWN';
-  if (dy < 0) return 'UP';
+  if (dy !== 0) {
+    return dy > 0 ? 'DOWN' : 'UP';
+  }
   return fallback;
 }
 
 export class SeatInteractionManager {
   private readonly topology: RoomTopology;
   private readonly pathfinder: GridPathfinder;
-  private occupiedSeats: Record<string, string> = {};
 
   constructor(
     topology: RoomTopology = MAIN_LIBRARY_TOPOLOGY,
@@ -53,14 +52,6 @@ export class SeatInteractionManager {
     return getTableById(this.topology, tableId);
   }
 
-  public setOccupiedSeats(occupiedSeats: Record<string, string>): void {
-    this.occupiedSeats = { ...occupiedSeats };
-  }
-
-  public isSeatOccupied(seatId: string): boolean {
-    return Boolean(this.occupiedSeats[seatId]);
-  }
-
   /**
    * Handles clicking/tapping a tile that may contain an empty Seat.
    * Transitions FREE_ROAM -> WALKING_TO_SEAT (or directly to SEATED if already standing on the seat tile).
@@ -79,7 +70,7 @@ export class SeatInteractionManager {
     }
 
     const seat = this.getSeatAtTile(tileX, tileY);
-    if (!seat || this.isSeatOccupied(seat.seatId)) {
+    if (!seat) {
       return { handled: false, seat: null, path: [] };
     }
 

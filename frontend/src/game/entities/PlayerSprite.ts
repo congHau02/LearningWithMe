@@ -4,77 +4,34 @@ import type {
 } from '../topology/roomTopology';
 import type { CharacterState } from '../../stores/useGameStore';
 
-export type CharacterPosture = 'IDLE' | 'WALKING' | 'SEATED';
+export type CharacterPosture = 'STANDING' | 'STEPPING' | 'SEATED';
 
-export interface AvatarPalette {
-  id: string;
-  shirtColor: number;
-  hairColor: number;
-  skinColor: number;
-  accentColor: number;
-}
+export type StarterAvatarKey =
+  | 'default_student'
+  | 'student_glasses'
+  | 'student_hoodie'
+  | 'student_sprout';
 
-export const AVATAR_PALETTES: Readonly<Record<string, AvatarPalette>> = {
-  default_student: {
-    id: 'default_student',
-    shirtColor: 0x38bdf8,
-    hairColor: 0x1e293b,
-    skinColor: 0xf6d2b5,
-    accentColor: 0x0284c7,
-  },
-  student_default_01: {
-    id: 'student_default_01',
-    shirtColor: 0x38bdf8,
-    hairColor: 0x1e293b,
-    skinColor: 0xf6d2b5,
-    accentColor: 0x0284c7,
-  },
-  student_glasses: {
-    id: 'student_glasses',
-    shirtColor: 0x34d399,
-    hairColor: 0x3f2e21,
-    skinColor: 0xf4c7a1,
-    accentColor: 0xe2e8f0,
-  },
-  student_default_02: {
-    id: 'student_default_02',
-    shirtColor: 0x34d399,
-    hairColor: 0x3f2e21,
-    skinColor: 0xf4c7a1,
-    accentColor: 0xe2e8f0,
-  },
-  student_hoodie: {
-    id: 'student_hoodie',
-    shirtColor: 0xf59e0b,
-    hairColor: 0x0f172a,
-    skinColor: 0xeab892,
-    accentColor: 0x38bdf8,
-  },
-  student_default_03: {
-    id: 'student_default_03',
-    shirtColor: 0xf59e0b,
-    hairColor: 0x0f172a,
-    skinColor: 0xeab892,
-    accentColor: 0x38bdf8,
-  },
-  student_sprout: {
-    id: 'student_sprout',
-    shirtColor: 0x2dd4bf,
-    hairColor: 0x4a3525,
-    skinColor: 0xf7d5ba,
-    accentColor: 0x4ade80,
-  },
-  student_default_04: {
-    id: 'student_default_04',
-    shirtColor: 0x2dd4bf,
-    hairColor: 0x4a3525,
-    skinColor: 0xf7d5ba,
-    accentColor: 0x4ade80,
-  },
+export const STARTER_AVATAR_KEYS: readonly StarterAvatarKey[] = [
+  'default_student',
+  'student_glasses',
+  'student_hoodie',
+  'student_sprout',
+];
+
+const LEGACY_AVATAR_ALIASES: Readonly<Record<string, StarterAvatarKey>> = {
+  default_student: 'default_student',
+  student_default_01: 'default_student',
+  student_glasses: 'student_glasses',
+  student_default_02: 'student_glasses',
+  student_hoodie: 'student_hoodie',
+  student_default_03: 'student_hoodie',
+  student_sprout: 'student_sprout',
+  student_default_04: 'student_sprout',
 };
 
-export function resolveAvatarPalette(avatarId: string): AvatarPalette {
-  return AVATAR_PALETTES[avatarId] ?? AVATAR_PALETTES.default_student;
+export function resolveAvatarTextureKey(avatarId: string): StarterAvatarKey {
+  return LEGACY_AVATAR_ALIASES[avatarId] ?? 'default_student';
 }
 
 export function tileToWorldCenter(
@@ -97,8 +54,7 @@ export class PlayerSprite {
   private facingDir: FacingDirection;
   private posture: CharacterPosture;
   private nickname: string;
-  private avatarId: string;
-  private walkFrame = 0;
+  private avatarId: StarterAvatarKey;
 
   constructor(options: {
     tileX: number;
@@ -115,9 +71,9 @@ export class PlayerSprite {
     this.pixelX = center.x;
     this.pixelY = center.y;
     this.facingDir = options.facingDir ?? 'DOWN';
-    this.posture = 'IDLE';
+    this.posture = 'STANDING';
     this.nickname = options.nickname ?? 'Khách học';
-    this.avatarId = options.avatarId ?? 'default_student';
+    this.avatarId = resolveAvatarTextureKey(options.avatarId ?? 'default_student');
   }
 
   public syncFromStore(state: {
@@ -136,7 +92,7 @@ export class PlayerSprite {
       this.nickname = state.nickname;
     }
     if (state.avatarId !== undefined) {
-      this.avatarId = state.avatarId;
+      this.avatarId = resolveAvatarTextureKey(state.avatarId);
     }
 
     if (state.characterState === 'SEATED') {
@@ -144,13 +100,10 @@ export class PlayerSprite {
       const center = tileToWorldCenter(this.tileX, this.tileY, this.tileSize);
       this.pixelX = center.x;
       this.pixelY = center.y;
-      this.walkFrame = 0;
     } else if (state.isMoving) {
-      this.posture = 'WALKING';
-      this.walkFrame = (this.walkFrame + 1) % 4;
+      this.posture = 'STEPPING';
     } else {
-      this.posture = 'IDLE';
-      this.walkFrame = 0;
+      this.posture = 'STANDING';
     }
   }
 
@@ -192,11 +145,7 @@ export class PlayerSprite {
     return this.nickname;
   }
 
-  public getAvatarId(): string {
+  public getAvatarId(): StarterAvatarKey {
     return this.avatarId;
-  }
-
-  public getWalkFrame(): number {
-    return this.walkFrame;
   }
 }

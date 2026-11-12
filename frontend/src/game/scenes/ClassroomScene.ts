@@ -11,31 +11,26 @@ import {
   type RoomTopology,
 } from '../topology/roomTopology';
 import {
+  buildClassroomTilemap,
   drawDynamicOverlay,
-  drawStaticClassroomMap,
+  preloadClassroomAssets,
+  registerCharacterAnimations,
 } from './classroomMapRenderer';
 
 export class ClassroomScene extends Phaser.Scene {
   private readonly topology: RoomTopology;
   private readonly inputController: InputController;
   private readonly playerSprite: PlayerSprite;
-  private readonly attachWindowKeyboard: boolean;
   private dynamicGraphics?: Phaser.GameObjects.Graphics;
+  private actorSprite?: Phaser.GameObjects.Sprite;
   private nicknameLabel?: Phaser.GameObjects.Text;
   private hoveredSeatId: string | null = null;
-  private keyDownHandler?: (event: KeyboardEvent) => void;
-  private keyUpHandler?: () => void;
+  private currentAnimKey = '';
 
-  constructor(
-    topology: RoomTopology = MAIN_LIBRARY_TOPOLOGY,
-    inputController?: InputController,
-    attachWindowKeyboard = false,
-  ) {
+  constructor(topology: RoomTopology = MAIN_LIBRARY_TOPOLOGY) {
     super({ key: 'ClassroomScene' });
     this.topology = topology;
-    this.inputController =
-      inputController ?? new InputController({ topology: this.topology });
-    this.attachWindowKeyboard = attachWindowKeyboard;
+    this.inputController = new InputController({ topology: this.topology });
 
     const initialGame = useGameStore.getState();
     const initialAuth = useAuthStore.getState();
@@ -49,28 +44,32 @@ export class ClassroomScene extends Phaser.Scene {
     });
   }
 
-  public getInputController(): InputController {
-    return this.inputController;
-  }
-
-  public getPlayerSprite(): PlayerSprite {
-    return this.playerSprite;
+  public preload(): void {
+    preloadClassroomAssets(this);
   }
 
   public create(): void {
-    drawStaticClassroomMap(this, this.topology);
-    this.dynamicGraphics = this.add.graphics();
+    buildClassroomTilemap(this, this.topology);
+    registerCharacterAnimations(this);
 
+    this.dynamicGraphics = this.add.graphics();
     const pos = this.playerSprite.getPixelPosition();
+    this.actorSprite = this.add
+      .sprite(pos.x, pos.y, this.playerSprite.getAvatarId(), 0)
+      .setDepth(10);
+    this.currentAnimKey = this.playerSprite.getAnimationKey();
+    this.actorSprite.play(this.currentAnimKey, true);
+
     this.nicknameLabel = this.add
-      .text(pos.x, pos.y - 22, this.playerSprite.getNickname(), {
+      .text(pos.x, pos.y - 20, this.playerSprite.getNickname(), {
         fontFamily: 'sans-serif',
         fontSize: '11px',
         color: '#f8fafc',
         backgroundColor: '#0f172acc',
         padding: { x: 4, y: 2 },
       })
-      .setOrigin(0.5, 1);
+      .setOrigin(0.5, 1)
+      .setDepth(11);
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       const tileX = Math.floor(pointer.worldX / this.topology.tileSize);
@@ -82,41 +81,33 @@ export class ClassroomScene extends Phaser.Scene {
     });
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (isTypingInFormElement()) {
-        return;
-      }
+      if (isTypingInFormElement()) return;
       const tileX = Math.floor(pointer.worldX / this.topology.tileSize);
       const tileY = Math.floor(pointer.worldY / this.topology.tileSize);
       this.inputController.handleTileClick(tileX, tileY);
     });
 
-    if (this.attachWindowKeyboard) {
-      this.keyDownHandler = (event: KeyboardEvent) => {
-        if (isTypingInFormElement()) {
-          return;
-        }
-        const handled = this.inputController.handleKeyDown(event.key);
-        if (handled) {
-          event.preventDefault();
-        }
-      };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isTypingInFormElement()) return;
+      if (this.inputController.handleKeyDown(event.key, event.repeat)) {
+        event.preventDefault();
+      }
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      this.inputController.handleKeyUp(event.key);
+    };
+    const onBlur = () => {
+      this.inputController.handleKeyUp();
+    };
 
-      this.keyUpHandler = () => {
-        this.inputController.handleKeyUp();
-      };
-
-      window.addEventListener('keydown', this.keyDownHandler);
-      window.addEventListener('keyup', this.keyUpHandler);
-
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-        if (this.keyDownHandler) {
-          window.removeEventListener('keydown', this.keyDownHandler);
-        }
-        if (this.keyUpHandler) {
-          window.removeEventListener('keyup', this.keyUpHandler);
-        }
-      });
-    }
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    });
   }
 
   public update(_time: number, delta: number): void {
@@ -135,22 +126,28 @@ export class ClassroomScene extends Phaser.Scene {
     });
 
     const pos = this.playerSprite.interpolatePosition(0.35);
+    const animKey = this.playerSprite.getAnimationKey();
+    if (this.actorSprite) {
+      this.actorSprite.setPosition(pos.x, pos.y);
+      if (animKey !== this.currentAnimKey) {
+        this.currentAnimKey = animKey;
+        this.actorSprite.play(animKey, true);
+      }
+    }
 
     if (this.nicknameLabel) {
-      const badgeSuffix =
-        game.characterState === 'SEATED' ? ' • Đang học' : '';
+      const badgeSuffix = game.characterState === 'SEATED' ? ' • Đang học' : '';
       this.nicknameLabel.setText(`${auth.nickname}${badgeSuffix}`);
-      this.nicknameLabel.setPosition(pos.x, pos.y - 18);
+      this.nicknameLabel.setPosition(pos.x, pos.y - 20);
     }
 
     if (this.dynamicGraphics) {
       drawDynamicOverlay(this.dynamicGraphics, {
-        topology: this.topology,
+        tileSize: this.topology.tileSize,
         seats: this.topology.seats,
         activeSeatId: game.currentSeatId,
         hoveredSeatId: this.hoveredSeatId,
         pathQueue: game.pathQueue,
-        player: this.playerSprite,
       });
     }
   }

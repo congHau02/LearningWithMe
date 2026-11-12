@@ -10,58 +10,21 @@ import {
   type RoomTopology,
   type TileCoordinate,
 } from '../topology/roomTopology';
+import {
+  DIRECTION_DELTAS,
+  isTypingInFormElement,
+  mapKeyToDirection,
+} from './keyboardMapping';
 
-const DIRECTION_DELTAS: Readonly<
-  Record<FacingDirection, { dx: number; dy: number }>
-> = {
-  UP: { dx: 0, dy: -1 },
-  DOWN: { dx: 0, dy: 1 },
-  LEFT: { dx: -1, dy: 0 },
-  RIGHT: { dx: 1, dy: 0 },
-};
-
-const KEY_TO_DIRECTION: Readonly<Record<string, FacingDirection>> = {
-  w: 'UP',
-  W: 'UP',
-  KeyW: 'UP',
-  ArrowUp: 'UP',
-  s: 'DOWN',
-  S: 'DOWN',
-  KeyS: 'DOWN',
-  ArrowDown: 'DOWN',
-  a: 'LEFT',
-  A: 'LEFT',
-  KeyA: 'LEFT',
-  ArrowLeft: 'LEFT',
-  d: 'RIGHT',
-  D: 'RIGHT',
-  KeyD: 'RIGHT',
-  ArrowRight: 'RIGHT',
-};
-
-export function mapKeyToDirection(key: string): FacingDirection | null {
-  return KEY_TO_DIRECTION[key] ?? null;
-}
-
-export function isTypingInFormElement(): boolean {
-  if (typeof document === 'undefined' || !document.activeElement) {
-    return false;
-  }
-  const active = document.activeElement as HTMLElement;
-  const tagName = active.tagName.toLowerCase();
-  return (
-    tagName === 'input' ||
-    tagName === 'textarea' ||
-    tagName === 'select' ||
-    active.isContentEditable
-  );
-}
+export { isTypingInFormElement, mapKeyToDirection };
 
 export class InputController {
   private readonly pathfinder: GridPathfinder;
   private readonly seatManager: SeatInteractionManager;
   private readonly stepIntervalMs: number;
   private stepAccumulatorMs = 0;
+  private holdAccumulatorMs = 0;
+  private heldDirections: FacingDirection[] = [];
 
   constructor(options?: {
     topology?: RoomTopology;
@@ -90,9 +53,10 @@ export class InputController {
     useGameStore.getState().clearPath();
   }
 
-  public handleKeyDown(key: string): boolean {
+  public handleKeyDown(key: string, isRepeat = false): boolean {
     const store = useGameStore.getState();
     if (store.characterState === 'SEATED') {
+      this.heldDirections = [];
       if (key === 'Escape' || key === 'Esc') {
         return this.seatManager.requestLeaveConfirmation();
       }
@@ -100,12 +64,42 @@ export class InputController {
     }
 
     const direction = mapKeyToDirection(key);
-    return direction ? this.moveByDirection(direction) : false;
+    if (!direction) {
+      return false;
+    }
+
+    this.heldDirections = [
+      ...this.heldDirections.filter((d) => d !== direction),
+      direction,
+    ];
+
+    if (isRepeat) {
+      return true;
+    }
+
+    this.holdAccumulatorMs = 0;
+    return this.moveByDirection(direction);
   }
 
-  public handleKeyUp(): void {
+  public handleKeyUp(key?: string): void {
+    if (key) {
+      const direction = mapKeyToDirection(key);
+      if (direction) {
+        this.heldDirections = this.heldDirections.filter(
+          (d) => d !== direction,
+        );
+      }
+    } else {
+      this.heldDirections = [];
+    }
+
     const store = useGameStore.getState();
-    if (store.characterState !== 'SEATED' && store.pathQueue.length === 0) {
+    if (
+      store.characterState !== 'SEATED' &&
+      store.pathQueue.length === 0 &&
+      this.heldDirections.length === 0
+    ) {
+      this.holdAccumulatorMs = 0;
       store.setIsMoving(false);
     }
   }
@@ -155,22 +149,22 @@ export class InputController {
       return { moved: true, path: seatInteraction.path };
     }
 
+    const start: TileCoordinate = {
+      tileX: store.position.x,
+      tileY: store.position.y,
+    };
+    const path = this.pathfinder.findPath(start, { tileX, tileY });
+
+    // Spec #13 AC2: clicking an obstacle/wall leaves any existing valid path intact
+    if (path.length === 0) {
+      return { moved: false, path: [] };
+    }
+
     if (store.characterState === 'WALKING_TO_SEAT') {
       this.clearPath();
     }
 
     const latestStore = useGameStore.getState();
-    const start: TileCoordinate = {
-      tileX: latestStore.position.x,
-      tileY: latestStore.position.y,
-    };
-    const path = this.pathfinder.findPath(start, { tileX, tileY });
-
-    if (path.length === 0) {
-      this.clearPath();
-      return { moved: false, path: [] };
-    }
-
     const initialDir = resolveDirectionBetweenTiles(
       start,
       path[0],
@@ -219,24 +213,25 @@ export class InputController {
 
   public update(deltaMs: number, heldDirection?: FacingDirection | null): void {
     const store = useGameStore.getState();
-    if (store.characterState === 'SEATED') {
+    if (store.characterState === 'SEATED' || isTypingInFormElement()) {
+      this.heldDirections = [];
       return;
     }
 
-    if (heldDirection) {
-      this.moveByDirection(heldDirection);
+    const activeDir = heldDirection ?? this.heldDirections.at(-1) ?? null;
+    if (activeDir) {
+      this.holdAccumulatorMs += deltaMs;
+      while (this.holdAccumulatorMs >= this.stepIntervalMs) {
+        this.holdAccumulatorMs -= this.stepIntervalMs;
+        this.moveByDirection(activeDir);
+      }
       return;
     }
 
-    if (store.pathQueue.length === 0) {
-      return;
-    }
+    if (store.pathQueue.length === 0) return;
 
     this.stepAccumulatorMs += deltaMs;
-    while (
-      this.stepAccumulatorMs >= this.stepIntervalMs &&
-      useGameStore.getState().pathQueue.length > 0
-    ) {
+    while (this.stepAccumulatorMs >= this.stepIntervalMs && useGameStore.getState().pathQueue.length > 0) {
       this.stepAccumulatorMs -= this.stepIntervalMs;
       this.stepPath();
     }

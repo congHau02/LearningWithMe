@@ -15,18 +15,16 @@ import org.springframework.http.HttpStatus;
 class RoomTopologyServiceTest {
 
     private ObjectMapper objectMapper;
-    private RoomTopologyRegistry registry;
     private RoomTopologyService service;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        registry = new RoomTopologyRegistry(objectMapper);
-        service = new RoomTopologyService(registry);
+        service = new RoomTopologyService(objectMapper);
     }
 
     @Test
-    void loadsAndValidatesMainLibraryDimensionsLayersAndSpawnTile() {
+    void loadsAndValidatesSharedTiledMainLibraryDimensionsLayersAndSpawnTile() {
         RoomTopology topology = service.getRoomTopology("main-library");
 
         assertThat(topology.roomId()).isEqualTo("main-library");
@@ -76,17 +74,17 @@ class RoomTopologyServiceTest {
         TableMetadata table1 = service.getTable("main-library", "table_01");
         assertThat(table1.label()).isEqualTo("Bàn Đôi Tập Trung");
         assertThat(table1.obstacleTiles())
-                .containsExactly(new TileCoordinate(4, 4), new TileCoordinate(5, 4));
+                .containsExactlyInAnyOrder(new TileCoordinate(4, 4), new TileCoordinate(5, 4));
 
         TableMetadata table2 = service.getTable("main-library", "table_02");
         assertThat(table2.label()).isEqualTo("Bàn Nhóm 4 Người");
         assertThat(table2.obstacleTiles())
-                .containsExactly(new TileCoordinate(11, 4), new TileCoordinate(12, 4));
+                .containsExactlyInAnyOrder(new TileCoordinate(11, 4), new TileCoordinate(12, 4));
 
         TableMetadata table3 = service.getTable("main-library", "table_03");
         assertThat(table3.label()).isEqualTo("Bàn Thảo Luận 6 Người");
         assertThat(table3.obstacleTiles())
-                .containsExactly(
+                .containsExactlyInAnyOrder(
                         new TileCoordinate(17, 7),
                         new TileCoordinate(18, 7),
                         new TileCoordinate(19, 7)
@@ -97,20 +95,16 @@ class RoomTopologyServiceTest {
 
     @Test
     void verifiesSeatCoordinatesFacingDirectionsAndTableSeatPairing() {
-        SeatMetadata t1s1 = service.getSeat("main-library", "T1_S1");
-        assertThat(t1s1).isEqualTo(new SeatMetadata("T1_S1", "table_01", 3, 4, FacingDirection.RIGHT));
-
-        SeatMetadata t1s2 = service.getSeat("main-library", "T1_S2");
-        assertThat(t1s2).isEqualTo(new SeatMetadata("T1_S2", "table_01", 6, 4, FacingDirection.LEFT));
-
-        SeatMetadata t2s1 = service.getSeat("main-library", "T2_S1");
-        assertThat(t2s1).isEqualTo(new SeatMetadata("T2_S1", "table_02", 11, 3, FacingDirection.DOWN));
-
-        SeatMetadata t2s3 = service.getSeat("main-library", "T2_S3");
-        assertThat(t2s3).isEqualTo(new SeatMetadata("T2_S3", "table_02", 11, 5, FacingDirection.UP));
-
-        SeatMetadata t3s6 = service.getSeat("main-library", "T3_S6");
-        assertThat(t3s6).isEqualTo(new SeatMetadata("T3_S6", "table_03", 19, 8, FacingDirection.UP));
+        assertThat(service.getSeat("main-library", "T1_S1"))
+                .isEqualTo(new SeatMetadata("T1_S1", "table_01", 3, 4, FacingDirection.RIGHT));
+        assertThat(service.getSeat("main-library", "T1_S2"))
+                .isEqualTo(new SeatMetadata("T1_S2", "table_01", 6, 4, FacingDirection.LEFT));
+        assertThat(service.getSeat("main-library", "T2_S1"))
+                .isEqualTo(new SeatMetadata("T2_S1", "table_02", 11, 3, FacingDirection.DOWN));
+        assertThat(service.getSeat("main-library", "T2_S3"))
+                .isEqualTo(new SeatMetadata("T2_S3", "table_02", 11, 5, FacingDirection.UP));
+        assertThat(service.getSeat("main-library", "T3_S6"))
+                .isEqualTo(new SeatMetadata("T3_S6", "table_03", 19, 8, FacingDirection.UP));
 
         SeatMetadata validated = service.validateTableSeat("main-library", "table_02", "T2_S4");
         assertThat(validated.tileX()).isEqualTo(12);
@@ -131,14 +125,12 @@ class RoomTopologyServiceTest {
     }
 
     @Test
-    void enforcesWalkabilityForFloorAfkAndSeatsWhileBlockingWallsFurnitureAndOutOfBounds() {
-        // Out of bounds
+    void enforcesWalkabilityForFloorAfkAndSeatsWhileBlockingWallsBookshelvesTablesPlantsAndOutOfBounds() {
         assertThat(service.isWalkable("main-library", -1, 5)).isFalse();
         assertThat(service.isWalkable("main-library", 5, -1)).isFalse();
         assertThat(service.isWalkable("main-library", 24, 5)).isFalse();
         assertThat(service.isWalkable("main-library", 5, 16)).isFalse();
 
-        // Perimeter walls
         for (int x = 0; x < 24; x++) {
             assertThat(service.isWalkable("main-library", x, 0)).isFalse();
             assertThat(service.isWalkable("main-library", x, 15)).isFalse();
@@ -148,27 +140,28 @@ class RoomTopologyServiceTest {
             assertThat(service.isWalkable("main-library", 23, y)).isFalse();
         }
 
-        // Furniture: bookshelves and table bodies
-        assertThat(service.isWalkable("main-library", 2, 1)).isFalse();
-        assertThat(service.isWalkable("main-library", 3, 1)).isFalse();
-        assertThat(service.isWalkable("main-library", 20, 1)).isFalse();
-        assertThat(service.isWalkable("main-library", 21, 1)).isFalse();
-        assertThat(service.isWalkable("main-library", 4, 4)).isFalse();
-        assertThat(service.isWalkable("main-library", 5, 4)).isFalse();
-        assertThat(service.isWalkable("main-library", 11, 4)).isFalse();
-        assertThat(service.isWalkable("main-library", 12, 4)).isFalse();
-        assertThat(service.isWalkable("main-library", 17, 7)).isFalse();
-        assertThat(service.isWalkable("main-library", 18, 7)).isFalse();
-        assertThat(service.isWalkable("main-library", 19, 7)).isFalse();
+        // Bookshelves, table bodies, and potted plants
+        for (TileCoordinate blocked : List.of(
+                new TileCoordinate(2, 1), new TileCoordinate(3, 1),
+                new TileCoordinate(20, 1), new TileCoordinate(21, 1),
+                new TileCoordinate(4, 4), new TileCoordinate(5, 4),
+                new TileCoordinate(11, 4), new TileCoordinate(12, 4),
+                new TileCoordinate(17, 7), new TileCoordinate(18, 7), new TileCoordinate(19, 7),
+                new TileCoordinate(1, 1), new TileCoordinate(22, 1),
+                new TileCoordinate(1, 14), new TileCoordinate(22, 14),
+                new TileCoordinate(8, 4), new TileCoordinate(15, 7)
+        )) {
+            assertThat(service.isWalkable("main-library", blocked.tileX(), blocked.tileY()))
+                    .as("Obstacle tile (%d,%d) must be blocked", blocked.tileX(), blocked.tileY())
+                    .isFalse();
+        }
 
-        // All 12 seat tiles must be walkable
         for (SeatMetadata seat : service.getRoomTopology("main-library").seats()) {
             assertThat(service.isWalkable("main-library", seat.tileX(), seat.tileY()))
                     .as("Seat %s at (%d,%d) should be walkable", seat.seatId(), seat.tileX(), seat.tileY())
                     .isTrue();
         }
 
-        // AFK lounge tiles must be walkable and recognized as AFK zone
         for (int x = 2; x <= 5; x++) {
             for (int y = 11; y <= 13; y++) {
                 assertThat(service.isWalkable("main-library", x, y)).isTrue();
@@ -179,37 +172,49 @@ class RoomTopologyServiceTest {
     }
 
     @Test
-    void rejectsCorruptedMapWithSeatOnObstacleTileDuringValidation() {
-        String invalidJson = """
+    void rejectsCorruptedTiledMapWithSeatOnObstacleTileDuringValidation() {
+        String invalidTiledJson = """
                 {
-                  "roomId": "main-library",
-                  "tileSize": 32,
-                  "width": 24,
-                  "height": 16,
-                  "spawnTile": { "tileX": 12, "tileY": 13 },
-                  "layers": ["Floor", "Walls", "Furniture", "AFK", "Seats"],
-                  "walls": [{ "tileX": 0, "tileY": 0 }],
-                  "furniture": [{ "tileX": 4, "tileY": 4 }],
-                  "afkZone": [],
-                  "tables": [
+                  "width": 6,
+                  "height": 6,
+                  "tilewidth": 32,
+                  "tileheight": 32,
+                  "properties": [
+                    { "name": "roomId", "type": "string", "value": "main-library" },
+                    { "name": "spawnX", "type": "int", "value": 1 },
+                    { "name": "spawnY", "type": "int", "value": 1 }
+                  ],
+                  "layers": [
+                    { "name": "Floor", "type": "tilelayer", "width": 6, "height": 6, "data": [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1] },
+                    { "name": "Walls", "type": "tilelayer", "width": 6, "height": 6, "data": [3,3,3,3,3,3,3,0,0,0,0,3,3,0,0,0,0,3,3,0,0,0,0,3,3,0,0,0,0,3,3,3,3,3,3,3] },
+                    { "name": "Furniture", "type": "tilelayer", "width": 6, "height": 6, "data": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+                    { "name": "AFK", "type": "tilelayer", "width": 6, "height": 6, "data": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
                     {
-                      "tableId": "table_01",
-                      "label": "Broken Table",
-                      "capacity": 1,
-                      "obstacleTiles": [{ "tileX": 4, "tileY": 4 }],
-                      "seats": [
-                        { "seatId": "T1_S1", "tableId": "table_01", "tileX": 4, "tileY": 4, "facingDir": "RIGHT" }
+                      "name": "Seats",
+                      "type": "objectgroup",
+                      "objects": [
+                        {
+                          "name": "T1_S1",
+                          "x": 64,
+                          "y": 64,
+                          "width": 32,
+                          "height": 32,
+                          "properties": [
+                            { "name": "seatId", "type": "string", "value": "T1_S1" },
+                            { "name": "tableId", "type": "string", "value": "table_01" },
+                            { "name": "tableLabel", "type": "string", "value": "Broken Table" },
+                            { "name": "tableCapacity", "type": "int", "value": 1 },
+                            { "name": "facingDir", "type": "string", "value": "RIGHT" }
+                          ]
+                        }
                       ]
                     }
-                  ],
-                  "seats": [
-                    { "seatId": "T1_S1", "tableId": "table_01", "tileX": 4, "tileY": 4, "facingDir": "RIGHT" }
                   ]
                 }
                 """;
 
-        ByteArrayResource resource = new ByteArrayResource(invalidJson.getBytes(StandardCharsets.UTF_8));
-        assertThatThrownBy(() -> new RoomTopologyRegistry(objectMapper, resource))
+        ByteArrayResource resource = new ByteArrayResource(invalidTiledJson.getBytes(StandardCharsets.UTF_8));
+        assertThatThrownBy(() -> new RoomTopologyService(objectMapper, resource))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("T1_S1");
     }

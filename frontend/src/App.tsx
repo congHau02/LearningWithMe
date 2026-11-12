@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AccountUpgradeModal } from './components/auth/AccountUpgradeModal';
 import { GuestOnboardingModal } from './components/auth/GuestOnboardingModal';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
@@ -17,8 +17,28 @@ export function App() {
   const currentTableId = useGameStore((s) => s.currentTableId);
   const currentSeatId = useGameStore((s) => s.currentSeatId);
   const isLeaveConfirmOpen = useGameStore((s) => s.isLeaveConfirmOpen);
+  const openLeaveConfirm = useGameStore((s) => s.openLeaveConfirm);
   const closeLeaveConfirm = useGameStore((s) => s.closeLeaveConfirm);
   const leaveSeat = useGameStore((s) => s.leaveSeat);
+
+  useEffect(() => {
+    if (characterState !== 'SEATED') return;
+    const onEscape = (event: KeyboardEvent) => {
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName;
+      const isFormField =
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        Boolean(active?.isContentEditable);
+      if ((event.key === 'Escape' || event.key === 'Esc') && !isFormField) {
+        event.preventDefault();
+        openLeaveConfirm();
+      }
+    };
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, [characterState, openLeaveConfirm]);
 
   const nickname = useAuthStore((s) => s.nickname);
   const avatarSpriteId = useAuthStore((s) => s.avatarSpriteId);

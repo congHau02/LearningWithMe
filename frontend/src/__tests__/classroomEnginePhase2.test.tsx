@@ -5,6 +5,7 @@ import { InputController } from '../game/controllers/InputController';
 import { PlayerSprite } from '../game/entities/PlayerSprite';
 import { GridPathfinder } from '../game/pathfinding/GridPathfinder';
 import {
+  MAIN_LIBRARY_RAW_MAP,
   MAIN_LIBRARY_TOPOLOGY,
   findSeatAtTile,
   getSeatById,
@@ -28,7 +29,7 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
 
   describe('P2-T1 (#12): Shared Topology, Collision Grid & FREE_ROAM Keyboard Movement', () => {
     it('validates main-library.json topology with 3 tables (capacities 2, 4, 6) and 12 walkable seats', () => {
-      const topology = validateRoomTopology(MAIN_LIBRARY_TOPOLOGY);
+      const topology = validateRoomTopology(MAIN_LIBRARY_RAW_MAP);
       expect(topology.roomId).toBe('main-library');
       expect(topology.tileSize).toBe(32);
       expect(topology.width).toBe(24);
@@ -73,12 +74,15 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
       expect(isTileWalkable(topology, -1, 5)).toBe(false);
       expect(isTileWalkable(topology, 24, 5)).toBe(false);
 
-      // Table bodies & bookshelves in Furniture blocked
+      // Table bodies, bookshelves & potted plants in Furniture blocked
       expect(isTileWalkable(topology, 4, 4)).toBe(false);
       expect(isTileWalkable(topology, 5, 4)).toBe(false);
       expect(isTileWalkable(topology, 11, 4)).toBe(false);
       expect(isTileWalkable(topology, 18, 7)).toBe(false);
       expect(isTileWalkable(topology, 2, 1)).toBe(false);
+      expect(isTileWalkable(topology, 1, 1)).toBe(false);
+      expect(isTileWalkable(topology, 8, 4)).toBe(false);
+      expect(isTileWalkable(topology, 15, 7)).toBe(false);
     });
 
     it('moves character in 4 directions with WASD/Arrows in FREE_ROAM and blocks collisions with walls and tables', () => {
@@ -131,8 +135,8 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
         avatarId: 'student_default_02',
       });
 
-      expect(sprite.getPosture()).toBe('IDLE');
-      expect(sprite.getAnimationKey()).toBe('student_default_02:idle:down');
+      expect(sprite.getPosture()).toBe('STANDING');
+      expect(sprite.getAnimationKey()).toBe('student_glasses:standing:down');
 
       sprite.syncFromStore({
         tileX: 12,
@@ -141,11 +145,38 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
         characterState: 'FREE_ROAM',
         isMoving: true,
       });
-      expect(sprite.getPosture()).toBe('WALKING');
-      expect(sprite.getAnimationKey()).toBe('student_default_02:walking:up');
+      expect(sprite.getPosture()).toBe('STEPPING');
+      expect(sprite.getAnimationKey()).toBe('student_glasses:stepping:up');
 
       const interpolated = sprite.interpolatePosition(1);
       expect(interpolated).toEqual({ x: 12 * 32 + 16, y: 12 * 32 + 16 });
+    });
+
+    it('advances smoothly while keys are held and keeps moving if another directional key remains held on keyup', () => {
+      const controller = new InputController({ stepIntervalMs: 100 });
+      useGameStore.getState().setPosition({ x: 8, y: 10 }, 'DOWN', false);
+
+      expect(controller.handleKeyDown('d')).toBe(true);
+      expect(useGameStore.getState().position).toEqual({ x: 9, y: 10 });
+
+      // OS repeat keydown does not double-step; update(deltaMs) drives smooth stepping
+      expect(controller.handleKeyDown('d', true)).toBe(true);
+      expect(useGameStore.getState().position).toEqual({ x: 9, y: 10 });
+
+      controller.update(100);
+      expect(useGameStore.getState().position).toEqual({ x: 10, y: 10 });
+
+      // Press 'w' while 'd' is still held, then release 'd' -> must keep moving UP
+      expect(controller.handleKeyDown('w')).toBe(true);
+      expect(useGameStore.getState().position).toEqual({ x: 10, y: 9 });
+      controller.handleKeyUp('d');
+      expect(useGameStore.getState().isMoving).toBe(true);
+
+      controller.update(100);
+      expect(useGameStore.getState().position).toEqual({ x: 10, y: 8 });
+
+      controller.handleKeyUp('w');
+      expect(useGameStore.getState().isMoving).toBe(false);
     });
   });
 
@@ -183,6 +214,22 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
       expect(
         pathfinder.findPath({ tileX: 8, tileY: 10 }, { tileX: 99, tileY: 99 }),
       ).toEqual([]);
+
+      // Enclosed walkable floor tile surrounded by furniture returns [] safely
+      const enclosedTopology = {
+        ...MAIN_LIBRARY_TOPOLOGY,
+        furniture: [
+          ...MAIN_LIBRARY_TOPOLOGY.furniture,
+          { tileX: 9, tileY: 10 },
+          { tileX: 11, tileY: 10 },
+          { tileX: 10, tileY: 9 },
+          { tileX: 10, tileY: 11 },
+        ],
+      };
+      const enclosedPathfinder = new GridPathfinder(enclosedTopology);
+      expect(
+        enclosedPathfinder.findPath({ tileX: 8, tileY: 10 }, { tileX: 10, tileY: 10 }),
+      ).toEqual([]);
     });
 
     it('immediately calls clearPath() in the exact same frame when WASD is pressed during A* path following', () => {
@@ -211,9 +258,27 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
       expect(useGameStore.getState().position).toEqual({ x: 10, y: 9 });
       expect(useGameStore.getState().facingDir).toBe('UP');
 
-      // Subsequent timer ticks must NOT advance along the old cancelled path
+      // Release 'w', then subsequent timer ticks must NOT advance along the old cancelled path
+      controller.handleKeyUp('w');
       controller.update(500);
       expect(useGameStore.getState().position).toEqual({ x: 10, y: 9 });
+    });
+
+    it('preserves active pathQueue and WALKING_TO_SEAT state when clicking an obstacle tile', () => {
+      const controller = new InputController();
+      useGameStore.getState().setPosition({ x: 8, y: 10 }, 'DOWN', false);
+
+      const seatClick = controller.handleTileClick(6, 4);
+      expect(seatClick.moved).toBe(true);
+      const originalQueue = [...useGameStore.getState().pathQueue];
+      expect(useGameStore.getState().characterState).toBe('WALKING_TO_SEAT');
+
+      // Clicking wall (0, 0) or table obstacle (4, 4) must NOT cancel the active walk
+      expect(controller.handleTileClick(0, 0)).toEqual({ moved: false, path: [] });
+      expect(controller.handleTileClick(4, 4)).toEqual({ moved: false, path: [] });
+      expect(useGameStore.getState().characterState).toBe('WALKING_TO_SEAT');
+      expect(useGameStore.getState().currentSeatId).toBe('T1_S2');
+      expect(useGameStore.getState().pathQueue).toEqual(originalQueue);
     });
 
     it('cancels WALKING_TO_SEAT immediately in the same frame when a directional key is pressed', () => {
@@ -364,17 +429,21 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
         );
       });
 
-      // Place player right on T1_S1 (3, 4) and click seat button to enter SEATED
+      // Transition to SEATED via Zustand bridge (Phaser ClassroomScene -> useGameStore)
       act(() => {
-        useGameStore.getState().setPosition({ x: 3, y: 4 }, 'DOWN', false);
+        useGameStore
+          .getState()
+          .sitAtSeat('table_01', 'T1_S1', { x: 3, y: 4 }, 'RIGHT');
       });
-      fireEvent.click(screen.getByTestId('seat-tile-T1_S1'));
 
       expect(useGameStore.getState().characterState).toBe('SEATED');
       expect(useGameStore.getState().currentTableId).toBe('table_01');
       expect(useGameStore.getState().currentSeatId).toBe('T1_S1');
       expect(screen.getByTestId('character-state-badge')).toHaveTextContent(
         'SEATED',
+      );
+      expect(screen.getByTestId('active-seat-readout')).toHaveTextContent(
+        'table_01 / T1_S1',
       );
 
       // Pressing WASD on window while SEATED does not move the player
@@ -404,7 +473,11 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
       expect(useGameStore.getState().currentSeatId).toBeNull();
 
       // Re-sit and leave directly via HUD "Đứng dậy rời bàn" button
-      fireEvent.click(screen.getByTestId('seat-tile-T1_S1'));
+      act(() => {
+        useGameStore
+          .getState()
+          .sitAtSeat('table_01', 'T1_S1', { x: 3, y: 4 }, 'RIGHT');
+      });
       expect(useGameStore.getState().characterState).toBe('SEATED');
       fireEvent.click(screen.getByTestId('leave-seat-btn'));
       expect(useGameStore.getState().characterState).toBe('FREE_ROAM');
