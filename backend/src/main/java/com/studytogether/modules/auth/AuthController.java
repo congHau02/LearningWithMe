@@ -14,21 +14,29 @@ public class AuthController {
 
     private final GuestAuthService guestAuthService;
     private final AccountUpgradeService accountUpgradeService;
+    private final AuthLoginService authLoginService;
     private final AuthSessionService authSessionService;
 
     public AuthController(
             GuestAuthService guestAuthService,
             AccountUpgradeService accountUpgradeService,
+            AuthLoginService authLoginService,
             AuthSessionService authSessionService
     ) {
         this.guestAuthService = guestAuthService;
         this.accountUpgradeService = accountUpgradeService;
+        this.authLoginService = authLoginService;
         this.authSessionService = authSessionService;
     }
 
     @PostMapping("/guest")
     public GuestAuthResponse createGuestSession(@Valid @RequestBody GuestAuthRequest request) {
         return guestAuthService.createGuestSession(request);
+    }
+
+    @PostMapping("/login")
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+        return authLoginService.login(request);
     }
 
     @PostMapping("/upgrade")

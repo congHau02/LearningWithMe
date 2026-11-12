@@ -3,8 +3,8 @@ package com.studytogether.modules.auth;
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.stats.GuestStudySessionStagingService;
 import com.studytogether.modules.stats.StagedGuestStudySession;
-import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,31 +14,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AccountUpgradeService {
 
-    private static final URI ALREADY_REGISTERED_TYPE =
-            URI.create("https://studytogether.com/problems/already-registered");
-    private static final URI EMAIL_CONFLICT_TYPE =
-            URI.create("https://studytogether.com/problems/email-already-registered");
-    private static final URI INVALID_GUEST_TOKEN_TYPE =
-            URI.create("https://studytogether.com/problems/invalid-guest-token");
-
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
     private final GoogleTokenVerifier googleTokenVerifier;
     private final GuestStudySessionStagingService guestSessionStagingService;
+    private final RedisIdentitySwapService redisIdentitySwapService;
 
     public AccountUpgradeService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenService jwtTokenService,
             GoogleTokenVerifier googleTokenVerifier,
-            GuestStudySessionStagingService guestSessionStagingService
+            GuestStudySessionStagingService guestSessionStagingService,
+            RedisIdentitySwapService redisIdentitySwapService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
         this.googleTokenVerifier = googleTokenVerifier;
         this.guestSessionStagingService = guestSessionStagingService;
+        this.redisIdentitySwapService = redisIdentitySwapService;
     }
 
     @Transactional
@@ -47,67 +43,124 @@ public class AccountUpgradeService {
 
         AuthProvider targetProvider = request.provider();
         if (targetProvider == null || targetProvider == AuthProvider.GUEST) {
-            throw new BusinessException(
-                    HttpStatus.BAD_REQUEST,
-                    "Validation Error",
-                    "Upgrade provider must be LOCAL or GOOGLE"
-            );
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Validation Error", "Upgrade provider must be LOCAL or GOOGLE");
         }
 
         String guestId = principal.userId();
         if (userRepository.existsById(guestId)) {
-            throw alreadyRegisteredException();
+            throw AuthExceptions.alreadyRegistered();
         }
 
         ResolvedCredentials credentials = resolveCredentials(targetProvider, request);
-        if (userRepository.findByEmail(credentials.email()).isPresent()) {
-            throw emailAlreadyRegisteredException();
-        }
-
         List<StagedGuestStudySession> stagedSessions = guestSessionStagingService.readStagedSessions(guestId);
-        long mergedMinutes = stagedSessions.stream()
-                .mapToLong(StagedGuestStudySession::durationMinutes)
-                .sum();
+        long mergedMinutes = stagedSessions.stream().mapToLong(StagedGuestStudySession::durationMinutes).sum();
+        String effectiveStudyGoal = principal.studyGoal() != null ? principal.studyGoal() : "";
+        boolean explicitExistingMode = Boolean.TRUE.equals(request.existingAccount());
 
+        Optional<UserEntity> existingUserOpt = userRepository.findByEmail(credentials.email());
+        if (existingUserOpt.isPresent()) {
+            return mergeIntoExistingAccount(
+                    existingUserOpt.get(), guestId, targetProvider, request.password(),
+                    stagedSessions, mergedMinutes, effectiveStudyGoal, explicitExistingMode
+            );
+        }
+        if (explicitExistingMode) {
+            throw AuthExceptions.invalidCredentials("Invalid email or password");
+        }
+        return createNewRegisteredAccount(
+                guestId, targetProvider, credentials, principal, stagedSessions, mergedMinutes, effectiveStudyGoal
+        );
+    }
+
+    private UpgradeAccountResponse createNewRegisteredAccount(
+            String guestId,
+            AuthProvider targetProvider,
+            ResolvedCredentials credentials,
+            AuthPrincipal principal,
+            List<StagedGuestStudySession> stagedSessions,
+            long mergedMinutes,
+            String effectiveStudyGoal
+    ) {
         UserEntity user = buildNewUserEntity(guestId, targetProvider, credentials, mergedMinutes, principal);
         try {
             userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException ex) {
             if (userRepository.existsById(guestId)) {
-                throw alreadyRegisteredException();
+                throw AuthExceptions.alreadyRegistered();
             }
-            throw emailAlreadyRegisteredException();
+            throw AuthExceptions.emailConflict("An account with this email already exists.");
         }
 
         int mergedSessionCount = guestSessionStagingService.persistAndScheduleRedisCleanup(
-                guestId,
-                user.getId(),
-                stagedSessions
+                guestId, user.getId(), stagedSessions);
+        return issueUpgradeResponse(user, effectiveStudyGoal, mergedSessionCount);
+    }
+
+    private UpgradeAccountResponse mergeIntoExistingAccount(
+            UserEntity existingUser,
+            String guestId,
+            AuthProvider targetProvider,
+            String rawPassword,
+            List<StagedGuestStudySession> stagedSessions,
+            long mergedMinutes,
+            String effectiveStudyGoal,
+            boolean explicitExistingMode
+    ) {
+        verifyExistingAccountCredentials(existingUser, targetProvider, rawPassword, explicitExistingMode);
+
+        existingUser.setTotalStudyMinutes(existingUser.getTotalStudyMinutes() + mergedMinutes);
+        userRepository.saveAndFlush(existingUser);
+
+        int mergedSessionCount = guestSessionStagingService.persistAndScheduleRedisCleanup(
+                guestId, existingUser.getId(), stagedSessions);
+
+        // Execute live Redis swap after MySQL flushes so @Transactional rolls back MySQL if Redis fails.
+        redisIdentitySwapService.swapIdentity(
+                guestId, existingUser.getId(), existingUser.getNickname(), existingUser.getAvatarSpriteId()
         );
 
-        String effectiveStudyGoal = principal.studyGoal() != null ? principal.studyGoal() : "";
+        return issueUpgradeResponse(existingUser, effectiveStudyGoal, mergedSessionCount);
+    }
+
+    private void verifyExistingAccountCredentials(
+            UserEntity existingUser,
+            AuthProvider targetProvider,
+            String rawPassword,
+            boolean explicitExistingMode
+    ) {
+        if (targetProvider == AuthProvider.LOCAL) {
+            boolean matches = existingUser.getAuthProvider() == AuthProvider.LOCAL
+                    && existingUser.getPasswordHash() != null
+                    && rawPassword != null
+                    && passwordEncoder.matches(rawPassword, existingUser.getPasswordHash());
+            if (!matches) {
+                throw explicitExistingMode
+                        ? AuthExceptions.invalidCredentials("Invalid email or password")
+                        : AuthExceptions.emailConflict("An account with this email already exists. Provide its password to merge, or sign in.");
+            }
+            return;
+        }
+        if (existingUser.getAuthProvider() != AuthProvider.GOOGLE) {
+            throw AuthExceptions.emailConflict(
+                    "An account with this email is already registered with Email & Password. Please sign in with your password."
+            );
+        }
+    }
+
+    private UpgradeAccountResponse issueUpgradeResponse(
+            UserEntity user,
+            String effectiveStudyGoal,
+            int mergedSessionCount
+    ) {
         AuthPrincipal registeredPrincipal = new AuthPrincipal(
-                user.getId(),
-                AuthRole.REGISTERED,
-                targetProvider,
-                user.getEmail(),
-                user.getNickname(),
-                user.getAvatarSpriteId(),
-                effectiveStudyGoal
+                user.getId(), AuthRole.REGISTERED, user.getAuthProvider(),
+                user.getEmail(), user.getNickname(), user.getAvatarSpriteId(), effectiveStudyGoal
         );
         String accessToken = jwtTokenService.issueRegisteredToken(registeredPrincipal);
-
         return new UpgradeAccountResponse(
-                user.getId(),
-                accessToken,
-                AuthRole.REGISTERED,
-                targetProvider,
-                user.getEmail(),
-                user.getNickname(),
-                user.getAvatarSpriteId(),
-                effectiveStudyGoal,
-                user.getTotalStudyMinutes(),
-                mergedSessionCount
+                user.getId(), accessToken, AuthRole.REGISTERED, user.getAuthProvider(),
+                user.getEmail(), user.getNickname(), user.getAvatarSpriteId(),
+                effectiveStudyGoal, user.getTotalStudyMinutes(), mergedSessionCount
         );
     }
 
@@ -116,62 +169,33 @@ public class AccountUpgradeService {
             GoogleUserClaims claims = googleTokenVerifier.verify(request.googleIdToken());
             return new ResolvedCredentials(claims.email(), null, claims.name());
         }
-        return new ResolvedCredentials(request.email(), passwordEncoder.encode(request.password()), null);
+        String hashedPassword = Boolean.TRUE.equals(request.existingAccount())
+                ? null
+                : passwordEncoder.encode(request.password());
+        return new ResolvedCredentials(request.email(), hashedPassword, null);
     }
 
     private void validateCallerIsActiveGuest(AuthPrincipal principal, String optionalBodyGuestToken) {
         if (principal == null) {
-            throw new BusinessException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Unauthorized",
-                    "Valid Bearer guestToken is required"
-            );
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Unauthorized", "Valid Bearer guestToken is required");
         }
         if (principal.role() != AuthRole.GUEST) {
-            throw alreadyRegisteredException();
+            throw AuthExceptions.alreadyRegistered();
         }
         if (optionalBodyGuestToken != null) {
             jwtTokenService.parseToken(optionalBodyGuestToken)
-                    .filter(tokenPrincipal -> tokenPrincipal.role() == AuthRole.GUEST)
-                    .filter(tokenPrincipal -> tokenPrincipal.userId().equals(principal.userId()))
-                    .orElseThrow(() -> new BusinessException(
-                            HttpStatus.UNAUTHORIZED,
-                            "Invalid Guest Token",
-                            "Provided guestToken is invalid or does not match the current session",
-                            INVALID_GUEST_TOKEN_TYPE
-                    ));
+                    .filter(tp -> tp.role() == AuthRole.GUEST && tp.userId().equals(principal.userId()))
+                    .orElseThrow(AuthExceptions::invalidGuestToken);
         }
     }
 
-    private static BusinessException alreadyRegisteredException() {
-        return new BusinessException(
-                HttpStatus.CONFLICT,
-                "Account Already Registered",
-                "Guest session has already been upgraded",
-                ALREADY_REGISTERED_TYPE
-        );
-    }
-
-    private static BusinessException emailAlreadyRegisteredException() {
-        return new BusinessException(
-                HttpStatus.CONFLICT,
-                "Email Already Registered",
-                "An account with this email already exists. Please sign in instead.",
-                EMAIL_CONFLICT_TYPE
-        );
-    }
-
     private static UserEntity buildNewUserEntity(
-            String guestId,
-            AuthProvider targetProvider,
-            ResolvedCredentials credentials,
-            long mergedMinutes,
-            AuthPrincipal principal
+            String guestId, AuthProvider targetProvider, ResolvedCredentials credentials,
+            long mergedMinutes, AuthPrincipal principal
     ) {
         String effectiveNickname = resolveNickname(principal.nickname(), credentials.fallbackName());
         String effectiveAvatarId = principal.avatarId() != null && !principal.avatarId().isBlank()
-                ? principal.avatarId()
-                : GuestAuthService.DEFAULT_AVATAR_ID;
+                ? principal.avatarId() : GuestAuthService.DEFAULT_AVATAR_ID;
         UserEntity user = new UserEntity(guestId, effectiveNickname, effectiveAvatarId, targetProvider);
         user.setEmail(credentials.email());
         user.setPasswordHash(credentials.passwordHash());

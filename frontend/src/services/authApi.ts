@@ -34,11 +34,35 @@ export type UpgradeAccountRequest =
       provider: 'LOCAL';
       email: string;
       password: string;
+      existingAccount?: boolean;
     }
   | {
       provider: 'GOOGLE';
       googleIdToken: string;
     };
+
+export type LoginRequest =
+  | {
+      provider: 'LOCAL';
+      email: string;
+      password: string;
+    }
+  | {
+      provider: 'GOOGLE';
+      googleIdToken: string;
+    };
+
+export interface LoginResponse {
+  userId: string;
+  accessToken: string;
+  role: AuthRole;
+  authProvider: Exclude<AuthProvider, 'GUEST'>;
+  email: string | null;
+  nickname: string;
+  avatarId: string;
+  studyGoal: string;
+  totalStudyMinutes: number;
+}
 
 export interface UpgradeAccountResponse {
   userId: string;
@@ -67,6 +91,16 @@ export async function createGuestSession(
   payload: CreateGuestSessionRequest,
 ): Promise<GuestAuthResponse> {
   return apiRequest<GuestAuthResponse>('/api/v1/auth/guest', {
+    method: 'POST',
+    skipAuth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function loginRegisteredUser(
+  payload: LoginRequest,
+): Promise<LoginResponse> {
+  return apiRequest<LoginResponse>('/api/v1/auth/login', {
     method: 'POST',
     skipAuth: true,
     body: JSON.stringify(payload),

@@ -22,6 +22,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
@@ -459,5 +461,253 @@ class AccountUpgradeIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void existingLocalAccountUpgradeMergesSessionsAndAtomicallySwapsLiveRedisState() throws Exception {
+        String registeredUserId = UUID.randomUUID().toString();
+        UserEntity existingUser = new UserEntity(
+                registeredUserId,
+                "Thành Viên Cũ",
+                "skin_hoodie_blue",
+                AuthProvider.LOCAL
+        );
+        existingUser.setEmail("veteran@example.com");
+        existingUser.setPasswordHash(passwordEncoder.encode("ExistingPass123!"));
+        existingUser.setTotalStudyMinutes(120L);
+        userRepository.saveAndFlush(existingUser);
+
+        studySessionRepository.saveAndFlush(new StudySessionEntity(
+                registeredUserId,
+                "main-library",
+                "table_01",
+                "Phiên cũ",
+                Instant.parse("2026-11-10T01:00:00Z"),
+                Instant.parse("2026-11-10T03:00:00Z"),
+                120
+        ));
+
+        MvcResult guestResult = mockMvc.perform(post("/api/v1/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nickname": "Khách Đang Ngồi",
+                                  "avatarId": "default_student",
+                                  "studyGoal": "Ôn thi Thuật toán"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode guestBody = objectMapper.readTree(guestResult.getResponse().getContentAsString());
+        String guestId = guestBody.get("guestId").asText();
+        String guestToken = guestBody.get("guestToken").asText();
+
+        String stagingKey = "guest:" + guestId + ":sessions";
+        redisTemplate.opsForList().rightPushAll(
+                stagingKey,
+                """
+                {"roomId":"main-library","tableId":"table_01","studyGoal":"Thuật toán 1","startedAt":"2026-11-12T07:00:00Z","endedAt":"2026-11-12T07:25:00Z","durationMinutes":25}
+                """.trim(),
+                """
+                {"roomId":"main-library","tableId":"table_01","studyGoal":"Thuật toán 2","startedAt":"2026-11-12T08:00:00Z","endedAt":"2026-11-12T08:15:00Z","durationMinutes":15}
+                """.trim()
+        );
+
+        String otherUserId = UUID.randomUUID().toString();
+        String otherHostId = UUID.randomUUID().toString();
+        String playersKey = "room:main-library:players";
+        String seatsKey = "room:main-library:seats";
+        String table1Key = "table:table_01:state";
+        String table2Key = "table:table_02:state";
+
+        redisTemplate.opsForHash().put(playersKey, guestId, """
+                {"userId":"%s","nickname":"Khách Đang Ngồi","avatarId":"default_student","x":12,"y":14,"dir":"UP","state":"SEATED","tableId":"table_01","seatId":"T1_S1","studyGoal":"Ôn thi Thuật toán","sitStartTime":1762900000000}
+                """.formatted(guestId).trim());
+        redisTemplate.opsForHash().put(playersKey, otherUserId, """
+                {"userId":"%s","nickname":"Bạn Cùng Bàn","avatarId":"student_glasses","x":13,"y":14,"dir":"UP","state":"SEATED","tableId":"table_01","seatId":"T1_S2","studyGoal":"Đọc sách","sitStartTime":1762900005000}
+                """.formatted(otherUserId).trim());
+
+        redisTemplate.opsForHash().put(seatsKey, "T1_S1", guestId);
+        redisTemplate.opsForHash().put(seatsKey, "T1_S2", otherUserId);
+
+        redisTemplate.opsForValue().set(table1Key, """
+                {"tableId":"table_01","hostUserId":"%s","coHostUserIds":["%s"],"isFreeCollab":false,"sosBanner":"Cần giải bài","homeworkSlides":[{"slideId":"s1","uploadedBy":"%s","strokes":[]}]}
+                """.formatted(guestId, otherUserId, guestId).trim(), Duration.ofHours(6));
+        redisTemplate.opsForValue().set(table2Key, """
+                {"tableId":"table_02","hostUserId":"%s","coHostUserIds":["%s","%s"],"isFreeCollab":true}
+                """.formatted(otherHostId, otherUserId, guestId).trim());
+
+        MvcResult upgradeResult = mockMvc.perform(post("/api/v1/auth/upgrade")
+                        .header("Authorization", "Bearer " + guestToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "LOCAL",
+                                  "email": "VETERAN@example.com",
+                                  "password": "ExistingPass123!"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(registeredUserId))
+                .andExpect(jsonPath("$.role").value("REGISTERED"))
+                .andExpect(jsonPath("$.authProvider").value("LOCAL"))
+                .andExpect(jsonPath("$.email").value("veteran@example.com"))
+                .andExpect(jsonPath("$.nickname").value("Thành Viên Cũ"))
+                .andExpect(jsonPath("$.avatarId").value("skin_hoodie_blue"))
+                .andExpect(jsonPath("$.totalStudyMinutes").value(160))
+                .andExpect(jsonPath("$.mergedSessionCount").value(2))
+                .andReturn();
+
+        String accessToken = objectMapper.readTree(upgradeResult.getResponse().getContentAsString())
+                .get("accessToken").asText();
+        SecretKey key = new SecretKeySpec(appProperties.jwt().secret().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        Jwt jwt = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build().decode(accessToken);
+        assertThat(jwt.getSubject()).isEqualTo(registeredUserId);
+        assertThat(jwt.getClaimAsString("role")).isEqualTo("REGISTERED");
+
+        // Verify MySQL state
+        assertThat(userRepository.findById(guestId)).isEmpty();
+        UserEntity updatedUser = userRepository.findById(registeredUserId).orElseThrow();
+        assertThat(updatedUser.getTotalStudyMinutes()).isEqualTo(160L);
+        List<StudySessionEntity> sessions = studySessionRepository.findByUserIdOrderByStartedAtDesc(registeredUserId);
+        assertThat(sessions).hasSize(3);
+
+        // Verify Redis staging cleanup & live identity swap
+        assertThat(redisTemplate.hasKey(stagingKey)).isFalse();
+        assertThat(redisTemplate.opsForHash().hasKey(playersKey, guestId)).isFalse();
+        String swappedPlayerRaw = (String) redisTemplate.opsForHash().get(playersKey, registeredUserId);
+        assertThat(swappedPlayerRaw).isNotNull();
+        JsonNode swappedPlayer = objectMapper.readTree(swappedPlayerRaw);
+        assertThat(swappedPlayer.get("userId").asText()).isEqualTo(registeredUserId);
+        assertThat(swappedPlayer.get("nickname").asText()).isEqualTo("Thành Viên Cũ");
+        assertThat(swappedPlayer.get("avatarId").asText()).isEqualTo("skin_hoodie_blue");
+        assertThat(swappedPlayer.get("state").asText()).isEqualTo("SEATED");
+        assertThat(swappedPlayer.get("tableId").asText()).isEqualTo("table_01");
+        assertThat(swappedPlayer.get("seatId").asText()).isEqualTo("T1_S1");
+        assertThat(swappedPlayer.get("x").asInt()).isEqualTo(12);
+        assertThat(swappedPlayer.get("y").asInt()).isEqualTo(14);
+        assertThat(redisTemplate.opsForHash().hasKey(playersKey, otherUserId)).isTrue();
+
+        assertThat(redisTemplate.opsForHash().get(seatsKey, "T1_S1")).isEqualTo(registeredUserId);
+        assertThat(redisTemplate.opsForHash().get(seatsKey, "T1_S2")).isEqualTo(otherUserId);
+
+        JsonNode table1State = objectMapper.readTree(redisTemplate.opsForValue().get(table1Key));
+        assertThat(table1State.get("hostUserId").asText()).isEqualTo(registeredUserId);
+        assertThat(table1State.get("coHostUserIds")).hasSize(1);
+        assertThat(table1State.get("coHostUserIds").get(0).asText()).isEqualTo(otherUserId);
+        assertThat(table1State.get("homeworkSlides").get(0).get("uploadedBy").asText()).isEqualTo(registeredUserId);
+        assertThat(table1State.get("homeworkSlides").get(0).get("strokes").isArray()).isTrue();
+        assertThat(redisTemplate.getExpire(table1Key, TimeUnit.SECONDS)).isGreaterThan(0L);
+
+        JsonNode table2State = objectMapper.readTree(redisTemplate.opsForValue().get(table2Key));
+        assertThat(table2State.get("hostUserId").asText()).isEqualTo(otherHostId);
+        assertThat(table2State.get("coHostUserIds").get(0).asText()).isEqualTo(otherUserId);
+        assertThat(table2State.get("coHostUserIds").get(1).asText()).isEqualTo(registeredUserId);
+    }
+
+    @Test
+    void existingGoogleAccountUpgradePreservesEmptyArraysInTableStateAndSwapsIdentity() throws Exception {
+        String registeredUserId = UUID.randomUUID().toString();
+        UserEntity existingGoogle = new UserEntity(
+                registeredUserId,
+                "Google Veteran",
+                "student_sprout",
+                AuthProvider.GOOGLE
+        );
+        existingGoogle.setEmail("google.vet@gmail.com");
+        existingGoogle.setTotalStudyMinutes(50L);
+        userRepository.saveAndFlush(existingGoogle);
+
+        MvcResult guestResult = mockMvc.perform(post("/api/v1/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nickname": "Guest G",
+                                  "avatarId": "default_student",
+                                  "studyGoal": "Toán cao cấp"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode guestBody = objectMapper.readTree(guestResult.getResponse().getContentAsString());
+        String guestId = guestBody.get("guestId").asText();
+        String guestToken = guestBody.get("guestToken").asText();
+
+        String stagingKey = "guest:" + guestId + ":sessions";
+        redisTemplate.opsForList().rightPush(
+                stagingKey,
+                """
+                {"roomId":"main-library","tableId":"table_03","studyGoal":"Tích phân","startedAt":"2026-11-12T09:00:00Z","endedAt":"2026-11-12T09:30:00Z","durationMinutes":30}
+                """.trim()
+        );
+        String table3Key = "table:table_03:state";
+        redisTemplate.opsForValue().set(table3Key, """
+                {"tableId":"table_03","hostUserId":"%s","coHostUserIds":[],"homeworkSlides":[],"isFreeCollab":false}
+                """.formatted(guestId).trim());
+
+        when(googleTokenVerifier.verify("google-existing-token"))
+                .thenReturn(new GoogleUserClaims("sub-vet", "google.vet@gmail.com", true, "Google Veteran"));
+
+        mockMvc.perform(post("/api/v1/auth/upgrade")
+                        .header("Authorization", "Bearer " + guestToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "GOOGLE",
+                                  "googleIdToken": "google-existing-token"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(registeredUserId))
+                .andExpect(jsonPath("$.totalStudyMinutes").value(80))
+                .andExpect(jsonPath("$.mergedSessionCount").value(1));
+
+        JsonNode table3State = objectMapper.readTree(redisTemplate.opsForValue().get(table3Key));
+        assertThat(table3State.get("hostUserId").asText()).isEqualTo(registeredUserId);
+        assertThat(table3State.get("coHostUserIds").isArray()).isTrue();
+        assertThat(table3State.get("coHostUserIds")).isEmpty();
+        assertThat(table3State.get("homeworkSlides").isArray()).isTrue();
+        assertThat(table3State.get("homeworkSlides")).isEmpty();
+        assertThat(redisTemplate.hasKey(stagingKey)).isFalse();
+    }
+
+    @Test
+    void directLoginRestoresRegisteredProfileAndRejectsBadPasswordWith401() throws Exception {
+        String userId = UUID.randomUUID().toString();
+        UserEntity user = new UserEntity(userId, "Đăng Nhập", "student_glasses", AuthProvider.LOCAL);
+        user.setEmail("login.it@example.com");
+        user.setPasswordHash(passwordEncoder.encode("SecretPass123!"));
+        user.setTotalStudyMinutes(310L);
+        userRepository.saveAndFlush(user);
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "LOCAL",
+                                  "email": "LOGIN.IT@example.com",
+                                  "password": "SecretPass123!"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(userId))
+                .andExpect(jsonPath("$.role").value("REGISTERED"))
+                .andExpect(jsonPath("$.totalStudyMinutes").value(310))
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "LOCAL",
+                                  "email": "login.it@example.com",
+                                  "password": "WrongPassword!"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401));
     }
 }

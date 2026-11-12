@@ -27,7 +27,7 @@ public class UpgradeAccountRequestValidator
         boolean valid = true;
         if (provider == AuthProvider.LOCAL) {
             valid &= validateEmail(request.email(), context);
-            valid &= validatePassword(request.password(), context);
+            valid &= validatePassword(request.password(), Boolean.TRUE.equals(request.existingAccount()), context);
         } else if (provider == AuthProvider.GOOGLE) {
             if (request.googleIdToken() == null || request.googleIdToken().isBlank()) {
                 addViolation(context, "googleIdToken", "googleIdToken must not be blank for GOOGLE upgrade");
@@ -49,12 +49,23 @@ public class UpgradeAccountRequestValidator
         return true;
     }
 
-    private boolean validatePassword(String password, ConstraintValidatorContext context) {
+    private boolean validatePassword(
+            String password,
+            boolean existingAccount,
+            ConstraintValidatorContext context
+    ) {
         if (password == null || password.isBlank()) {
             addViolation(context, "password", "password must not be blank for LOCAL upgrade");
             return false;
         }
         int utf8Bytes = password.getBytes(StandardCharsets.UTF_8).length;
+        if (existingAccount) {
+            if (utf8Bytes > MAX_BCRYPT_PASSWORD_BYTES) {
+                addViolation(context, "password", "password must be at most 72 UTF-8 bytes");
+                return false;
+            }
+            return true;
+        }
         if (password.length() < MIN_PASSWORD_LENGTH || utf8Bytes > MAX_BCRYPT_PASSWORD_BYTES) {
             addViolation(context, "password", "password must be at least 8 characters and at most 72 UTF-8 bytes");
             return false;

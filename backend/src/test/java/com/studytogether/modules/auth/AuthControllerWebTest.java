@@ -27,6 +27,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -43,6 +44,7 @@ import org.springframework.test.web.servlet.MvcResult;
     JwtTokenService.class,
     GuestAuthService.class,
     AuthSessionService.class,
+    AuthLoginService.class,
     JwtAuthenticationFilter.class,
     ProblemDetailAuthenticationEntryPoint.class
 })
@@ -64,11 +66,17 @@ class AuthControllerWebTest {
     @Autowired
     private JwtTokenService jwtTokenService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @MockitoBean
     private AccountUpgradeService accountUpgradeService;
 
     @MockitoBean
     private UserRepository userRepository;
+
+    @MockitoBean
+    private GoogleTokenVerifier googleTokenVerifier;
 
     @Test
     void postGuestCreatesStatelessUuidAndSevenDayHs256Jwt() throws Exception {
@@ -406,5 +414,122 @@ class AuthControllerWebTest {
                 .andExpect(jsonPath("$.authProvider").value("GOOGLE"))
                 .andExpect(jsonPath("$.email").value("hocvien@gmail.com"))
                 .andExpect(jsonPath("$.totalStudyMinutes").value(125));
+    }
+
+    @Test
+    void postLoginWithValidLocalCredentialsReturnsRegisteredJwtAndRestoresProfile() throws Exception {
+        String userId = UUID.randomUUID().toString();
+        UserEntity existing = new UserEntity(userId, "Minh Hậu", "student_glasses", AuthProvider.LOCAL);
+        existing.setEmail("student@example.com");
+        existing.setPasswordHash(passwordEncoder.encode("StrongPassword123!"));
+        existing.setTotalStudyMinutes(180L);
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(existing));
+
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "LOCAL",
+                                  "email": "  Student@Example.com  ",
+                                  "password": "StrongPassword123!"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(userId))
+                .andExpect(jsonPath("$.role").value("REGISTERED"))
+                .andExpect(jsonPath("$.authProvider").value("LOCAL"))
+                .andExpect(jsonPath("$.email").value("student@example.com"))
+                .andExpect(jsonPath("$.nickname").value("Minh Hậu"))
+                .andExpect(jsonPath("$.avatarId").value("student_glasses"))
+                .andExpect(jsonPath("$.totalStudyMinutes").value(180))
+                .andReturn();
+
+        String accessToken = objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("accessToken").asText();
+        SecretKey key = new SecretKeySpec(TEST_JWT_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        Jwt jwt = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build().decode(accessToken);
+        assertThat(jwt.getSubject()).isEqualTo(userId);
+        assertThat(jwt.getClaimAsString("role")).isEqualTo("REGISTERED");
+        assertThat(jwt.getClaimAsString("authProvider")).isEqualTo("LOCAL");
+    }
+
+    @Test
+    void postLoginWithValidGoogleTokenReturnsRegisteredJwtAndRestoresProfile() throws Exception {
+        String userId = UUID.randomUUID().toString();
+        UserEntity existing = new UserEntity(userId, "Gia Bảo", "student_hoodie", AuthProvider.GOOGLE);
+        existing.setEmail("giabao@gmail.com");
+        existing.setTotalStudyMinutes(240L);
+        when(googleTokenVerifier.verify("google-id-token-login"))
+                .thenReturn(new GoogleUserClaims("sub-1", "giabao@gmail.com", true, "Gia Bảo"));
+        when(userRepository.findByEmail("giabao@gmail.com")).thenReturn(Optional.of(existing));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "GOOGLE",
+                                  "googleIdToken": "google-id-token-login"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(userId))
+                .andExpect(jsonPath("$.role").value("REGISTERED"))
+                .andExpect(jsonPath("$.authProvider").value("GOOGLE"))
+                .andExpect(jsonPath("$.email").value("giabao@gmail.com"))
+                .andExpect(jsonPath("$.totalStudyMinutes").value(240));
+    }
+
+    @Test
+    void postLoginWithUnknownEmailOrWrongPasswordReturns401ProblemDetail() throws Exception {
+        when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "LOCAL",
+                                  "email": "missing@example.com",
+                                  "password": "AnyPassword123!"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401));
+
+        UserEntity existing = new UserEntity(UUID.randomUUID().toString(), "An", "default_student", AuthProvider.LOCAL);
+        existing.setEmail("an@example.com");
+        existing.setPasswordHash(passwordEncoder.encode("CorrectPassword123!"));
+        when(userRepository.findByEmail("an@example.com")).thenReturn(Optional.of(existing));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "LOCAL",
+                                  "email": "an@example.com",
+                                  "password": "WrongPassword999!"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    void postLoginRejectsMalformedPayloadWith400ProblemDetail() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "LOCAL",
+                                  "email": "bad-email",
+                                  "password": ""
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errors.email").exists())
+                .andExpect(jsonPath("$.errors.password").exists());
     }
 }

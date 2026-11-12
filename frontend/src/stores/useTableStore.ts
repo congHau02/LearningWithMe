@@ -26,6 +26,7 @@ export interface TableWorkspaceState {
   setSosBanner: (sosBanner: string | null) => void;
   setFreeCollab: (isFreeCollab: boolean) => void;
   grantCoHost: (userId: string) => void;
+  swapParticipantIdentity: (oldUserId: string, newUserId: string) => void;
   leaveTable: () => void;
 }
 
@@ -86,6 +87,25 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
         ? state.coHostUserIds
         : [...state.coHostUserIds, userId],
     })),
+
+  swapParticipantIdentity: (oldUserId, newUserId) =>
+    set((state) => {
+      if (!oldUserId || !newUserId || oldUserId === newUserId) {
+        return state;
+      }
+      const nextHostUserId =
+        state.hostUserId === oldUserId ? newUserId : state.hostUserId;
+      const mappedCoHosts = state.coHostUserIds.map((id) =>
+        id === oldUserId ? newUserId : id,
+      );
+      const nextCoHostUserIds = Array.from(new Set(mappedCoHosts)).filter(
+        (id) => id !== nextHostUserId,
+      );
+      return {
+        hostUserId: nextHostUserId,
+        coHostUserIds: nextCoHostUserIds,
+      };
+    }),
 
   leaveTable: () => set({ ...INITIAL_TABLE_STATE }),
 }));

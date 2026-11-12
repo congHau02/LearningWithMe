@@ -1,16 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AccountUpgradeModal } from './components/auth/AccountUpgradeModal';
 import { GuestOnboardingModal } from './components/auth/GuestOnboardingModal';
-import {
-  TopBar,
-  type BackendConnectionStatus,
-} from './components/hud/TopBar';
-import { ApiError, fetchBackendHealth } from './services/apiClient';
-import {
-  fetchCurrentSession,
-  resolveAuthProvider,
-  type UpgradeAccountResponse,
-} from './services/authApi';
+import { TopBar } from './components/hud/TopBar';
+import { useAppBootstrap } from './hooks/useAppBootstrap';
+import type { UpgradeAccountResponse } from './services/authApi';
 import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
 import { useTableStore } from './stores/useTableStore';
@@ -34,72 +27,8 @@ export function App() {
   const sosBanner = useTableStore((s) => s.sosBanner);
   const leaveTable = useTableStore((s) => s.leaveTable);
 
-  const [backendStatus, setBackendStatus] =
-    useState<BackendConnectionStatus>('CHECKING');
+  const backendStatus = useAppBootstrap();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-
-  useEffect(() => {
-    const store = useAuthStore.getState();
-    if (!store.token) {
-      store.hydrateSession();
-    }
-    const restoredToken = useAuthStore.getState().token;
-    if (!restoredToken) {
-      return;
-    }
-
-    let isMounted = true;
-    fetchCurrentSession()
-      .then((me) => {
-        if (!isMounted || useAuthStore.getState().token !== restoredToken) {
-          return;
-        }
-        useAuthStore.getState().setSession({
-          userId: me.userId,
-          nickname: me.nickname,
-          avatarSpriteId: me.avatarId,
-          studyGoal: me.studyGoal,
-          authProvider: resolveAuthProvider(me),
-          email: me.email ?? null,
-          totalStudyMinutes: me.totalStudyMinutes ?? 0,
-          token: restoredToken,
-        });
-      })
-      .catch((error) => {
-        if (
-          isMounted &&
-          useAuthStore.getState().token === restoredToken &&
-          error instanceof ApiError &&
-          error.status === 401
-        ) {
-          useAuthStore.getState().clearSession();
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    fetchBackendHealth()
-      .then((res) => {
-        if (isMounted) {
-          setBackendStatus(res.status === 'UP' ? 'UP' : 'OFFLINE');
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setBackendStatus('OFFLINE');
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const handleLeaveSeat = () => {
     leaveSeat();
@@ -107,6 +36,7 @@ export function App() {
   };
 
   const handleAccountUpgraded = (response: UpgradeAccountResponse) => {
+    const previousUserId = useAuthStore.getState().userId;
     useAuthStore.getState().upgradeAccount({
       userId: response.userId,
       authProvider: response.authProvider,
@@ -117,6 +47,11 @@ export function App() {
       email: response.email,
       totalStudyMinutes: response.totalStudyMinutes,
     });
+    if (previousUserId && previousUserId !== response.userId) {
+      useTableStore
+        .getState()
+        .swapParticipantIdentity(previousUserId, response.userId);
+    }
     setIsUpgradeModalOpen(false);
   };
 
