@@ -17,6 +17,7 @@ export interface TopBarProps {
   totalStudyMinutes?: number;
   backendStatus: BackendConnectionStatus;
   currentTableId: string | null;
+  currentSeatId?: string | null;
   onLeaveSeat?: () => void;
   onOpenUpgrade?: () => void;
 }
@@ -43,6 +44,7 @@ export function TopBar({
   totalStudyMinutes = 0,
   backendStatus,
   currentTableId,
+  currentSeatId,
   onLeaveSeat,
   onOpenUpgrade,
 }: TopBarProps) {
@@ -83,12 +85,17 @@ export function TopBar({
 
         {characterState === 'SEATED' && currentTableId ? (
           <div className="flex items-center gap-2">
-            <span className="rounded-md bg-primary/20 px-2.5 py-1 font-mono text-primary">
+            <span
+              data-testid="seated-table-badge"
+              className="rounded-md bg-primary/20 px-2.5 py-1 font-mono text-primary"
+            >
               Bàn: {currentTableId}
+              {currentSeatId ? ` (${currentSeatId})` : ''}
             </span>
             {onLeaveSeat ? (
               <button
                 type="button"
+                data-testid="leave-seat-btn"
                 onClick={onLeaveSeat}
                 className="rounded-md border border-destructive/50 bg-destructive/20 px-2.5 py-1 font-medium text-destructive-foreground transition hover:bg-destructive/30"
               >

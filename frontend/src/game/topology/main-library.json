@@ -1,0 +1,110 @@
+{
+  "roomId": "main-library",
+  "tileSize": 32,
+  "width": 24,
+  "height": 16,
+  "spawnTile": { "tileX": 12, "tileY": 13 },
+  "layers": ["Floor", "Walls", "Furniture", "AFK", "Seats"],
+  "walls": [
+    { "tileX": 0, "tileY": 0 }, { "tileX": 1, "tileY": 0 }, { "tileX": 2, "tileY": 0 }, { "tileX": 3, "tileY": 0 },
+    { "tileX": 4, "tileY": 0 }, { "tileX": 5, "tileY": 0 }, { "tileX": 6, "tileY": 0 }, { "tileX": 7, "tileY": 0 },
+    { "tileX": 8, "tileY": 0 }, { "tileX": 9, "tileY": 0 }, { "tileX": 10, "tileY": 0 }, { "tileX": 11, "tileY": 0 },
+    { "tileX": 12, "tileY": 0 }, { "tileX": 13, "tileY": 0 }, { "tileX": 14, "tileY": 0 }, { "tileX": 15, "tileY": 0 },
+    { "tileX": 16, "tileY": 0 }, { "tileX": 17, "tileY": 0 }, { "tileX": 18, "tileY": 0 }, { "tileX": 19, "tileY": 0 },
+    { "tileX": 20, "tileY": 0 }, { "tileX": 21, "tileY": 0 }, { "tileX": 22, "tileY": 0 }, { "tileX": 23, "tileY": 0 },
+    { "tileX": 0, "tileY": 15 }, { "tileX": 1, "tileY": 15 }, { "tileX": 2, "tileY": 15 }, { "tileX": 3, "tileY": 15 },
+    { "tileX": 4, "tileY": 15 }, { "tileX": 5, "tileY": 15 }, { "tileX": 6, "tileY": 15 }, { "tileX": 7, "tileY": 15 },
+    { "tileX": 8, "tileY": 15 }, { "tileX": 9, "tileY": 15 }, { "tileX": 10, "tileY": 15 }, { "tileX": 11, "tileY": 15 },
+    { "tileX": 12, "tileY": 15 }, { "tileX": 13, "tileY": 15 }, { "tileX": 14, "tileY": 15 }, { "tileX": 15, "tileY": 15 },
+    { "tileX": 16, "tileY": 15 }, { "tileX": 17, "tileY": 15 }, { "tileX": 18, "tileY": 15 }, { "tileX": 19, "tileY": 15 },
+    { "tileX": 20, "tileY": 15 }, { "tileX": 21, "tileY": 15 }, { "tileX": 22, "tileY": 15 }, { "tileX": 23, "tileY": 15 },
+    { "tileX": 0, "tileY": 1 }, { "tileX": 0, "tileY": 2 }, { "tileX": 0, "tileY": 3 }, { "tileX": 0, "tileY": 4 },
+    { "tileX": 0, "tileY": 5 }, { "tileX": 0, "tileY": 6 }, { "tileX": 0, "tileY": 7 }, { "tileX": 0, "tileY": 8 },
+    { "tileX": 0, "tileY": 9 }, { "tileX": 0, "tileY": 10 }, { "tileX": 0, "tileY": 11 }, { "tileX": 0, "tileY": 12 },
+    { "tileX": 0, "tileY": 13 }, { "tileX": 0, "tileY": 14 },
+    { "tileX": 23, "tileY": 1 }, { "tileX": 23, "tileY": 2 }, { "tileX": 23, "tileY": 3 }, { "tileX": 23, "tileY": 4 },
+    { "tileX": 23, "tileY": 5 }, { "tileX": 23, "tileY": 6 }, { "tileX": 23, "tileY": 7 }, { "tileX": 23, "tileY": 8 },
+    { "tileX": 23, "tileY": 9 }, { "tileX": 23, "tileY": 10 }, { "tileX": 23, "tileY": 11 }, { "tileX": 23, "tileY": 12 },
+    { "tileX": 23, "tileY": 13 }, { "tileX": 23, "tileY": 14 }
+  ],
+  "furniture": [
+    { "tileX": 2, "tileY": 1 },
+    { "tileX": 3, "tileY": 1 },
+    { "tileX": 20, "tileY": 1 },
+    { "tileX": 21, "tileY": 1 },
+    { "tileX": 4, "tileY": 4 },
+    { "tileX": 5, "tileY": 4 },
+    { "tileX": 11, "tileY": 4 },
+    { "tileX": 12, "tileY": 4 },
+    { "tileX": 17, "tileY": 7 },
+    { "tileX": 18, "tileY": 7 },
+    { "tileX": 19, "tileY": 7 }
+  ],
+  "afkZone": [
+    { "tileX": 2, "tileY": 11 }, { "tileX": 3, "tileY": 11 }, { "tileX": 4, "tileY": 11 }, { "tileX": 5, "tileY": 11 },
+    { "tileX": 2, "tileY": 12 }, { "tileX": 3, "tileY": 12 }, { "tileX": 4, "tileY": 12 }, { "tileX": 5, "tileY": 12 },
+    { "tileX": 2, "tileY": 13 }, { "tileX": 3, "tileY": 13 }, { "tileX": 4, "tileY": 13 }, { "tileX": 5, "tileY": 13 }
+  ],
+  "tables": [
+    {
+      "tableId": "table_01",
+      "label": "Bàn Đôi Tập Trung",
+      "capacity": 2,
+      "obstacleTiles": [
+        { "tileX": 4, "tileY": 4 },
+        { "tileX": 5, "tileY": 4 }
+      ],
+      "seats": [
+        { "seatId": "T1_S1", "tableId": "table_01", "tileX": 3, "tileY": 4, "facingDir": "RIGHT" },
+        { "seatId": "T1_S2", "tableId": "table_01", "tileX": 6, "tileY": 4, "facingDir": "LEFT" }
+      ]
+    },
+    {
+      "tableId": "table_02",
+      "label": "Bàn Nhóm 4 Người",
+      "capacity": 4,
+      "obstacleTiles": [
+        { "tileX": 11, "tileY": 4 },
+        { "tileX": 12, "tileY": 4 }
+      ],
+      "seats": [
+        { "seatId": "T2_S1", "tableId": "table_02", "tileX": 11, "tileY": 3, "facingDir": "DOWN" },
+        { "seatId": "T2_S2", "tableId": "table_02", "tileX": 12, "tileY": 3, "facingDir": "DOWN" },
+        { "seatId": "T2_S3", "tableId": "table_02", "tileX": 11, "tileY": 5, "facingDir": "UP" },
+        { "seatId": "T2_S4", "tableId": "table_02", "tileX": 12, "tileY": 5, "facingDir": "UP" }
+      ]
+    },
+    {
+      "tableId": "table_03",
+      "label": "Bàn Thảo Luận 6 Người",
+      "capacity": 6,
+      "obstacleTiles": [
+        { "tileX": 17, "tileY": 7 },
+        { "tileX": 18, "tileY": 7 },
+        { "tileX": 19, "tileY": 7 }
+      ],
+      "seats": [
+        { "seatId": "T3_S1", "tableId": "table_03", "tileX": 17, "tileY": 6, "facingDir": "DOWN" },
+        { "seatId": "T3_S2", "tableId": "table_03", "tileX": 18, "tileY": 6, "facingDir": "DOWN" },
+        { "seatId": "T3_S3", "tableId": "table_03", "tileX": 19, "tileY": 6, "facingDir": "DOWN" },
+        { "seatId": "T3_S4", "tableId": "table_03", "tileX": 17, "tileY": 8, "facingDir": "UP" },
+        { "seatId": "T3_S5", "tableId": "table_03", "tileX": 18, "tileY": 8, "facingDir": "UP" },
+        { "seatId": "T3_S6", "tableId": "table_03", "tileX": 19, "tileY": 8, "facingDir": "UP" }
+      ]
+    }
+  ],
+  "seats": [
+    { "seatId": "T1_S1", "tableId": "table_01", "tileX": 3, "tileY": 4, "facingDir": "RIGHT" },
+    { "seatId": "T1_S2", "tableId": "table_01", "tileX": 6, "tileY": 4, "facingDir": "LEFT" },
+    { "seatId": "T2_S1", "tableId": "table_02", "tileX": 11, "tileY": 3, "facingDir": "DOWN" },
+    { "seatId": "T2_S2", "tableId": "table_02", "tileX": 12, "tileY": 3, "facingDir": "DOWN" },
+    { "seatId": "T2_S3", "tableId": "table_02", "tileX": 11, "tileY": 5, "facingDir": "UP" },
+    { "seatId": "T2_S4", "tableId": "table_02", "tileX": 12, "tileY": 5, "facingDir": "UP" },
+    { "seatId": "T3_S1", "tableId": "table_03", "tileX": 17, "tileY": 6, "facingDir": "DOWN" },
+    { "seatId": "T3_S2", "tableId": "table_03", "tileX": 18, "tileY": 6, "facingDir": "DOWN" },
+    { "seatId": "T3_S3", "tableId": "table_03", "tileX": 19, "tileY": 6, "facingDir": "DOWN" },
+    { "seatId": "T3_S4", "tableId": "table_03", "tileX": 17, "tileY": 8, "facingDir": "UP" },
+    { "seatId": "T3_S5", "tableId": "table_03", "tileX": 18, "tileY": 8, "facingDir": "UP" },
+    { "seatId": "T3_S6", "tableId": "table_03", "tileX": 19, "tileY": 8, "facingDir": "UP" }
+  ]
+}
