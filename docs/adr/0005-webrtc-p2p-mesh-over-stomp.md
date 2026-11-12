@@ -1,0 +1,3 @@
+# Sử dụng WebRTC P2P Mesh qua kênh STOMP cho Voice Chat tại Bàn học
+
+Vì mỗi Table trong Room được giới hạn sức chứa nhỏ (tối đa 2 đến 6 ghế), việc triển khai thêm cụm máy chủ Media Server (như LiveKit SFU hay Mediasoup) trong `docker-compose.yml` tạo ra chi phí vận hành và cấu hình mạng (UDP ports, TURN/SFU orchestration) vượt quá nhu cầu thực tế. Chúng tôi quyết định sử dụng mô hình **WebRTC P2P Mesh** kết nối trực tiếp giữa các trình duyệt của những người đang `SEATED` cùng một Table, tận dụng ngay kênh WebSocket STOMP sẵn có (`/app/table/{tableId}/voice.signal`) để trao đổi `SDP Offer/Answer` và `ICE Candidate`. Khi quy mô một Table trong tương lai vượt quá 8 người ngồi, lớp Adapter kết nối âm thanh mới cần nâng cấp lên LiveKit SFU.

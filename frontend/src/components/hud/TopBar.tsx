@@ -1,0 +1,108 @@
+import type { CharacterState } from '../../stores/useGameStore';
+import type { AuthProvider } from '../../stores/useAuthStore';
+
+export type BackendConnectionStatus = 'CHECKING' | 'UP' | 'OFFLINE';
+
+export interface TopBarProps {
+  roomId: string;
+  characterState: CharacterState;
+  nickname: string;
+  authProvider: AuthProvider;
+  studyGoal: string;
+  backendStatus: BackendConnectionStatus;
+  currentTableId: string | null;
+  onLeaveSeat?: () => void;
+}
+
+const STATE_LABELS: Record<CharacterState, string> = {
+  FREE_ROAM: 'FREE_ROAM • Đi lại tự do',
+  WALKING_TO_SEAT: 'WALKING_TO_SEAT • Đang tiến vào ghế',
+  SEATED: 'SEATED • Đang ngồi bàn học',
+};
+
+const BACKEND_BADGE_STYLES: Record<BackendConnectionStatus, string> = {
+  UP: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300',
+  CHECKING: 'border-amber-500/40 bg-amber-500/15 text-amber-300',
+  OFFLINE: 'border-rose-500/40 bg-rose-500/15 text-rose-300',
+};
+
+export function TopBar({
+  roomId,
+  characterState,
+  nickname,
+  authProvider,
+  studyGoal,
+  backendStatus,
+  currentTableId,
+  onLeaveSeat,
+}: TopBarProps) {
+  return (
+    <header
+      className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card/90 px-4 py-3 backdrop-blur-md"
+      aria-label="Thanh trạng thái phòng học"
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 text-sm font-bold text-primary">
+          2D
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-base font-semibold tracking-tight text-foreground">
+              Cùng Nhau Học Bài
+            </h1>
+            <span
+              data-testid="room-badge"
+              className="rounded-md border border-border bg-secondary px-2 py-0.5 font-mono text-xs text-secondary-foreground"
+            >
+              {roomId}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {studyGoal || 'Chưa đặt mục tiêu học tập hôm nay'}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2.5 text-xs">
+        <span
+          data-testid="character-state-badge"
+          className="rounded-md border border-border bg-muted px-2.5 py-1 font-medium text-foreground"
+        >
+          {STATE_LABELS[characterState]}
+        </span>
+
+        {characterState === 'SEATED' && currentTableId ? (
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-primary/20 px-2.5 py-1 font-mono text-primary">
+              Bàn: {currentTableId}
+            </span>
+            {onLeaveSeat ? (
+              <button
+                type="button"
+                onClick={onLeaveSeat}
+                className="rounded-md border border-destructive/50 bg-destructive/20 px-2.5 py-1 font-medium text-destructive-foreground transition hover:bg-destructive/30"
+              >
+                Đứng dậy rời bàn
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/70 px-2.5 py-1">
+          <span className="font-medium text-foreground">{nickname}</span>
+          <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
+            {authProvider}
+          </span>
+        </div>
+
+        <span
+          data-testid="backend-status-badge"
+          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono font-semibold ${BACKEND_BADGE_STYLES[backendStatus]}`}
+        >
+          <span className="h-2 w-2 rounded-full bg-current" />
+          Backend: {backendStatus}
+        </span>
+      </div>
+    </header>
+  );
+}
