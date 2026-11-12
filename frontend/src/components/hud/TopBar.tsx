@@ -1,5 +1,9 @@
 import type { CharacterState } from '../../stores/useGameStore';
 import type { AuthProvider } from '../../stores/useAuthStore';
+import {
+  DEFAULT_AVATAR_ID,
+  StarterAvatarPortrait,
+} from '../auth/starterAvatars';
 
 export type BackendConnectionStatus = 'CHECKING' | 'UP' | 'OFFLINE';
 
@@ -7,6 +11,7 @@ export interface TopBarProps {
   roomId: string;
   characterState: CharacterState;
   nickname: string;
+  avatarSpriteId?: string;
   authProvider: AuthProvider;
   studyGoal: string;
   backendStatus: BackendConnectionStatus;
@@ -30,6 +35,7 @@ export function TopBar({
   roomId,
   characterState,
   nickname,
+  avatarSpriteId = DEFAULT_AVATAR_ID,
   authProvider,
   studyGoal,
   backendStatus,
@@ -88,7 +94,8 @@ export function TopBar({
           </div>
         ) : null}
 
-        <div className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/70 px-2.5 py-1">
+        <div className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/70 px-2 py-1">
+          <StarterAvatarPortrait avatarId={avatarSpriteId} size={22} />
           <span className="font-medium text-foreground">{nickname}</span>
           <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
             {authProvider}

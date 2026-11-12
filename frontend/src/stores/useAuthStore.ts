@@ -1,5 +1,13 @@
 import { create } from 'zustand';
-import { AUTH_TOKEN_STORAGE_KEY } from '../services/apiClient';
+import {
+  clearPersistedAuthSession,
+  DEFAULT_AVATAR_ID,
+  DEFAULT_GUEST_NICKNAME,
+  DEFAULT_STUDY_GOAL,
+  loadPersistedAuthSession,
+  saveBareAuthToken,
+  savePersistedAuthSession,
+} from '../services/authStorage';
 
 export type AuthProvider = 'GUEST' | 'LOCAL' | 'GOOGLE';
 
@@ -28,69 +36,97 @@ export interface AuthState {
     token: string;
     nickname?: string;
   }) => void;
+  hydrateSession: () => boolean;
   clearSession: () => void;
 }
 
 const DEFAULT_AUTH_STATE = {
   userId: null,
-  nickname: 'Bạn học mới',
-  avatarSpriteId: 'student_default_01',
-  studyGoal: 'Tập trung ôn tập 45 phút',
+  nickname: DEFAULT_GUEST_NICKNAME,
+  avatarSpriteId: DEFAULT_AVATAR_ID,
+  studyGoal: DEFAULT_STUDY_GOAL,
   authProvider: 'GUEST' as AuthProvider,
   token: null,
 };
 
-function persistToken(token: string | null): void {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return;
-  }
-  if (token) {
-    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
-  } else {
-    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-  }
+function createInitialAuthState() {
+  return loadPersistedAuthSession() ?? DEFAULT_AUTH_STATE;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  ...DEFAULT_AUTH_STATE,
+export const useAuthStore = create<AuthState>((set, get) => ({
+  ...createInitialAuthState(),
 
   setSession: ({
     userId,
     nickname,
-    avatarSpriteId = 'student_default_01',
+    avatarSpriteId = DEFAULT_AVATAR_ID,
     studyGoal = '',
     authProvider = 'GUEST',
     token,
   }) => {
-    persistToken(token);
-    set({
+    const session = {
       userId,
       nickname,
       avatarSpriteId,
       studyGoal,
       authProvider,
       token,
-    });
+    };
+    savePersistedAuthSession(session);
+    set(session);
   },
 
   updateProfile: (payload) =>
-    set((state) => ({
-      nickname: payload.nickname ?? state.nickname,
-      avatarSpriteId: payload.avatarSpriteId ?? state.avatarSpriteId,
-      studyGoal: payload.studyGoal ?? state.studyGoal,
-    })),
+    set((state) => {
+      const next = {
+        nickname: payload.nickname ?? state.nickname,
+        avatarSpriteId: payload.avatarSpriteId ?? state.avatarSpriteId,
+        studyGoal: payload.studyGoal ?? state.studyGoal,
+      };
+      if (state.userId && state.token) {
+        savePersistedAuthSession({
+          userId: state.userId,
+          authProvider: state.authProvider,
+          token: state.token,
+          ...next,
+        });
+      }
+      return next;
+    }),
 
   upgradeAccount: ({ authProvider, token, nickname }) => {
-    persistToken(token);
-    set((state) => ({
+    const state = get();
+    const nextNickname = nickname ?? state.nickname;
+    if (state.userId) {
+      savePersistedAuthSession({
+        userId: state.userId,
+        nickname: nextNickname,
+        avatarSpriteId: state.avatarSpriteId,
+        studyGoal: state.studyGoal,
+        authProvider,
+        token,
+      });
+    } else {
+      saveBareAuthToken(token);
+    }
+    set({
       authProvider,
       token,
-      nickname: nickname ?? state.nickname,
-    }));
+      nickname: nextNickname,
+    });
+  },
+
+  hydrateSession: () => {
+    const restored = loadPersistedAuthSession();
+    if (!restored) {
+      return false;
+    }
+    set(restored);
+    return true;
   },
 
   clearSession: () => {
-    persistToken(null);
+    clearPersistedAuthSession();
     set({ ...DEFAULT_AUTH_STATE });
   },
 }));

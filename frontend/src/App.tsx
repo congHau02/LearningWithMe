@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { GuestOnboardingModal } from './components/auth/GuestOnboardingModal';
 import {
   TopBar,
   type BackendConnectionStatus,
 } from './components/hud/TopBar';
-import { fetchBackendHealth } from './services/apiClient';
+import { ApiError, fetchBackendHealth } from './services/apiClient';
+import { fetchCurrentSession, roleToAuthProvider } from './services/authApi';
 import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
 import { useTableStore } from './stores/useTableStore';
@@ -18,14 +20,52 @@ export function App() {
   const leaveSeat = useGameStore((s) => s.leaveSeat);
 
   const nickname = useAuthStore((s) => s.nickname);
+  const avatarSpriteId = useAuthStore((s) => s.avatarSpriteId);
   const authProvider = useAuthStore((s) => s.authProvider);
   const studyGoal = useAuthStore((s) => s.studyGoal);
+  const token = useAuthStore((s) => s.token);
 
   const sosBanner = useTableStore((s) => s.sosBanner);
   const leaveTable = useTableStore((s) => s.leaveTable);
 
   const [backendStatus, setBackendStatus] =
     useState<BackendConnectionStatus>('CHECKING');
+
+  useEffect(() => {
+    const store = useAuthStore.getState();
+    if (!store.token) {
+      store.hydrateSession();
+    }
+    const restoredToken = useAuthStore.getState().token;
+    if (!restoredToken) {
+      return;
+    }
+
+    let isMounted = true;
+    fetchCurrentSession()
+      .then((me) => {
+        if (!isMounted) {
+          return;
+        }
+        useAuthStore.getState().setSession({
+          userId: me.userId,
+          nickname: me.nickname,
+          avatarSpriteId: me.avatarId,
+          studyGoal: me.studyGoal,
+          authProvider: roleToAuthProvider(me.role),
+          token: restoredToken,
+        });
+      })
+      .catch((error) => {
+        if (isMounted && error instanceof ApiError && error.status === 401) {
+          useAuthStore.getState().clearSession();
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -58,6 +98,7 @@ export function App() {
         roomId={roomId}
         characterState={characterState}
         nickname={nickname}
+        avatarSpriteId={avatarSpriteId}
         authProvider={authProvider}
         studyGoal={studyGoal}
         backendStatus={backendStatus}
@@ -104,6 +145,8 @@ export function App() {
           </div>
         </section>
       </main>
+
+      {!token ? <GuestOnboardingModal /> : null}
     </div>
   );
 }

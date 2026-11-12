@@ -10,6 +10,7 @@ export interface ProblemDetail {
   status: number;
   detail: string;
   instance?: string;
+  errors?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -19,6 +20,7 @@ export class ApiError extends Error {
   public readonly status: number;
   public readonly detail: string;
   public readonly instance?: string;
+  public readonly errors?: Record<string, string>;
 
   constructor(problem: ProblemDetail) {
     super(problem.detail || problem.title || `HTTP Error ${problem.status}`);
@@ -28,6 +30,7 @@ export class ApiError extends Error {
     this.status = problem.status;
     this.detail = problem.detail || this.title;
     this.instance = problem.instance;
+    this.errors = problem.errors;
   }
 }
 
@@ -57,6 +60,10 @@ async function parseErrorResponse(response: Response): Promise<ApiError> {
           ? body.detail
           : `Request failed with status ${response.status}`,
       instance: typeof body.instance === 'string' ? body.instance : undefined,
+      errors:
+        body.errors && typeof body.errors === 'object'
+          ? (body.errors as Record<string, string>)
+          : undefined,
     });
   } catch {
     return new ApiError({
@@ -68,32 +75,37 @@ async function parseErrorResponse(response: Response): Promise<ApiError> {
   }
 }
 
+export interface ApiRequestOptions extends RequestInit {
+  skipAuth?: boolean;
+}
+
 export async function apiRequest<T>(
   path: string,
-  options: RequestInit = {},
+  options: ApiRequestOptions = {},
 ): Promise<T> {
+  const { skipAuth = false, ...fetchOptions } = options;
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const url = `${API_BASE_URL}${normalizedPath}`;
 
-  const headers = new Headers(options.headers);
+  const headers = new Headers(fetchOptions.headers);
   if (!headers.has('Accept')) {
     headers.set('Accept', 'application/json, application/problem+json');
   }
   if (
-    options.body &&
-    !(options.body instanceof FormData) &&
+    fetchOptions.body &&
+    !(fetchOptions.body instanceof FormData) &&
     !headers.has('Content-Type')
   ) {
     headers.set('Content-Type', 'application/json');
   }
 
-  const token = getStoredAuthToken();
+  const token = skipAuth ? null : getStoredAuthToken();
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
   const response = await fetch(url, {
-    ...options,
+    ...fetchOptions,
     headers,
   });
 
