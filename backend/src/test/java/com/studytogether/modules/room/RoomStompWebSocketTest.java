@@ -353,6 +353,63 @@ class RoomStompWebSocketTest {
         observer.disconnect();
     }
 
+    @Test
+    void movePlayerBroadcastsPlayerMovedAndRejectsInvalidMoves() throws Exception {
+        String roomId = "main-library";
+        AuthPrincipal user = new AuthPrincipal(
+                "mover-1", AuthRole.GUEST, AuthProvider.GUEST, null, "Runner", "student_hoodie", "Physics"
+        );
+        String jwt = jwtTokenService.issueGuestToken(user);
+
+        BlockingQueue<JsonNode> roomEvents = new LinkedBlockingQueue<>();
+        BlockingQueue<JsonNode> userErrors = new LinkedBlockingQueue<>();
+        StompSession session = connectAuthenticated(jwt, new AtomicBoolean(false));
+        session.subscribe("/topic/room/" + roomId + "/events", queueHandler(roomEvents));
+        session.subscribe("/user/queue/errors", queueHandler(userErrors));
+        Thread.sleep(100);
+
+        session.send("/app/room/" + roomId + "/join", "");
+        pollUntilType(roomEvents, "PLAYER_JOINED");
+
+        // 1. Valid move within 10Hz limit
+        session.send("/app/room/" + roomId + "/move", new com.studytogether.modules.room.model.PlayerMoveRequest(12, 12, "UP", true));
+        JsonNode moveEvent = pollUntilType(roomEvents, "PLAYER_MOVED");
+        assertThat(moveEvent.get("player").get("x").asInt()).isEqualTo(12);
+        assertThat(moveEvent.get("player").get("y").asInt()).isEqualTo(12);
+        assertThat(moveEvent.get("player").get("isMoving").asBoolean()).isTrue();
+
+        // 2. Invalid move exceeding teleport distance (> 4 tiles)
+        session.send("/app/room/" + roomId + "/move", new com.studytogether.modules.room.model.PlayerMoveRequest(12, 1, "UP", true));
+        JsonNode teleportErr = pollJson(userErrors);
+        assertThat(teleportErr.get("code").asText()).isEqualTo("INVALID_MOVE");
+        assertThat(teleportErr.get("message").asText()).contains("exceeds maximum allowed threshold of 4 tiles");
+
+        // 3. Move into obstacle/wall tile (12, 15) is rejected
+        session.send("/app/room/" + roomId + "/move", new com.studytogether.modules.room.model.PlayerMoveRequest(12, 15, "DOWN", true));
+        JsonNode obstacleErr = pollJson(userErrors);
+        assertThat(obstacleErr.get("code").asText()).isEqualTo("INVALID_MOVE");
+        assertThat(obstacleErr.get("message").asText()).contains("is not walkable");
+
+        // 4. Jitter burst (< 90ms) is silently dropped without error spam
+        Thread.sleep(120); // wait past rate-limit interval
+        session.send("/app/room/" + roomId + "/move", new com.studytogether.modules.room.model.PlayerMoveRequest(12, 11, "UP", true));
+        JsonNode jitterFirst = pollUntilType(roomEvents, "PLAYER_MOVED");
+        assertThat(jitterFirst.get("player").get("y").asInt()).isEqualTo(11);
+        // Immediate second moving packet (< 90ms)
+        session.send("/app/room/" + roomId + "/move", new com.studytogether.modules.room.model.PlayerMoveRequest(12, 10, "UP", true));
+        // Verify no error is pushed for silent jitter drop
+        assertThat(userErrors.poll(300, TimeUnit.MILLISECONDS)).isNull();
+
+        // 5. Stop packet is processed immediately (bypasses throttle)
+        session.send("/app/room/" + roomId + "/move", new com.studytogether.modules.room.model.PlayerMoveRequest(12, 11, "UP", false));
+        JsonNode stopEvent = pollUntilType(roomEvents, "PLAYER_MOVED");
+        assertThat(stopEvent.get("player").get("isMoving").asBoolean()).isFalse();
+        assertThat(stopEvent.get("player").get("x").asInt()).isEqualTo(12);
+        assertThat(stopEvent.get("player").get("y").asInt()).isEqualTo(11);
+
+        session.disconnect();
+    }
+
     private WebSocketStompClient createStompClient() {
         MappingJackson2MessageConverter jsonConverter = new MappingJackson2MessageConverter();
         jsonConverter.setObjectMapper(objectMapper);

@@ -21,13 +21,16 @@ public class RoomStompController {
     private static final Logger log = LoggerFactory.getLogger(RoomStompController.class);
 
     private final RoomPresenceService roomPresenceService;
+    private final RoomMovementService roomMovementService;
     private final StompErrorDispatcher errorDispatcher;
 
     public RoomStompController(
             RoomPresenceService roomPresenceService,
+            RoomMovementService roomMovementService,
             StompErrorDispatcher errorDispatcher
     ) {
         this.roomPresenceService = roomPresenceService;
+        this.roomMovementService = roomMovementService;
         this.errorDispatcher = errorDispatcher;
     }
 
@@ -41,6 +44,17 @@ public class RoomStompController {
         roomPresenceService.registerStompJoin(principal, roomId, wsSessionId);
     }
 
+    @MessageMapping("/room/{roomId}/move")
+    public void movePlayer(
+            @DestinationVariable String roomId,
+            @org.springframework.messaging.handler.annotation.Payload com.studytogether.modules.room.model.PlayerMoveRequest request,
+            Principal user,
+            @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER) String wsSessionId
+    ) {
+        AuthPrincipal principal = extractPrincipal(user);
+        roomMovementService.handleMove(principal, roomId, request, wsSessionId);
+    }
+
     @MessageExceptionHandler(BusinessException.class)
     public void handleBusinessException(
             BusinessException ex,
@@ -51,6 +65,7 @@ public class RoomStompController {
             case NOT_FOUND -> "ROOM_NOT_FOUND";
             case CONFLICT -> "ROOM_FULL";
             case UNAUTHORIZED -> "UNAUTHORIZED";
+            case BAD_REQUEST -> "INVALID_MOVE";
             default -> "STOMP_BUSINESS_ERROR";
         };
         if (user != null) {

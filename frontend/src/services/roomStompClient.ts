@@ -4,6 +4,7 @@ import {
   fetchRoomSnapshot,
   joinRoomShard,
   resolveWebSocketUrl,
+  type PlayerMoveRequest,
   type RoomConnectionStatus,
   type RoomEvent,
   type RoomJoinResponse,
@@ -155,6 +156,12 @@ export class RoomStompSession {
     }
     await this.teardownTransport();
     await this.start(nextToken);
+  }
+
+  sendMove(roomId: string, move: PlayerMoveRequest): void {
+    if (this.transport && !this.stopped && !this.replaced) {
+      this.transport.publish(`/app/room/${roomId}/move`, JSON.stringify(move));
+    }
   }
 
   async stop(): Promise<void> {

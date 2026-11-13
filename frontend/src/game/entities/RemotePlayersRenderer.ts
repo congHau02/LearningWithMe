@@ -63,7 +63,7 @@ export class RemotePlayersRenderer {
           tileY: player.y,
           facingDir: player.facingDir,
           characterState: player.state,
-          isMoving: false,
+          isMoving: (player.isMoving ?? false) && player.state !== 'SEATED',
           nickname: player.nickname,
           avatarId: player.avatarId,
         });
@@ -104,7 +104,9 @@ export class RemotePlayersRenderer {
           tileY: player.y,
           facingDir: player.facingDir,
           characterState: player.state,
-          isMoving: movedTile && player.state !== 'SEATED',
+          isMoving:
+            (player.isMoving !== undefined ? player.isMoving : movedTile) &&
+            player.state !== 'SEATED',
           nickname: player.nickname,
           avatarId: player.avatarId,
         });

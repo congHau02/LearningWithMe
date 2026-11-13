@@ -19,6 +19,14 @@ export interface RoomPlayerDto {
   tableId: string | null;
   seatId: string | null;
   connected: boolean;
+  isMoving?: boolean;
+}
+
+export interface PlayerMoveRequest {
+  x: number;
+  y: number;
+  facingDir: string;
+  isMoving: boolean;
 }
 
 export interface RoomTableSummary {

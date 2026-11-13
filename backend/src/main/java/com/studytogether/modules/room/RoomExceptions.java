@@ -14,6 +14,8 @@ public final class RoomExceptions {
             URI.create("https://studytogether.com/problems/seat-table-mismatch");
     private static final URI ROOM_FULL_TYPE =
             URI.create("https://studytogether.com/problems/room-full");
+    private static final URI INVALID_MOVE_TYPE =
+            URI.create("https://studytogether.com/problems/invalid-move");
 
     private RoomExceptions() {}
 
@@ -54,6 +56,15 @@ public final class RoomExceptions {
                 "Room Shard Full",
                 "Room '%s' has reached capacity limit of %d learners".formatted(roomId, capacityLimit),
                 ROOM_FULL_TYPE
+        );
+    }
+
+    public static BusinessException invalidMove(String reason) {
+        return new BusinessException(
+                HttpStatus.BAD_REQUEST,
+                "Invalid Movement",
+                reason,
+                INVALID_MOVE_TYPE
         );
     }
 }
