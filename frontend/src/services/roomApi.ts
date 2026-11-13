@@ -66,7 +66,8 @@ export type RoomEventType =
   | 'PLAYER_DISCONNECTED_GRACE'
   | 'PLAYER_LEFT'
   | 'SEAT_LOCKED'
-  | 'SEAT_RELEASED';
+  | 'SEAT_RELEASED'
+  | 'ROOM_CHAT';
 
 export interface RoomEvent {
   seq: number;
@@ -79,6 +80,7 @@ export interface RoomEvent {
   tableId?: string | null;
   seatId?: string | null;
   hostUserId?: string | null;
+  message?: RoomChatMessage | null;
 }
 
 export interface StompErrorPayload {

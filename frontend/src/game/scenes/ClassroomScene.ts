@@ -6,6 +6,7 @@ import {
   InputController,
   isTypingInFormElement,
 } from '../controllers/InputController';
+import { ChatBubble } from '../entities/ChatBubble';
 import { PlayerSprite } from '../entities/PlayerSprite';
 import { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
 import {
@@ -27,6 +28,8 @@ export class ClassroomScene extends Phaser.Scene {
   private dynamicGraphics?: Phaser.GameObjects.Graphics;
   private actorSprite?: Phaser.GameObjects.Sprite;
   private nicknameLabel?: Phaser.GameObjects.Text;
+  private selfChatBubble?: ChatBubble;
+  private storeUnsub?: () => void;
   private hoveredSeatId: string | null = null;
   private currentAnimKey = '';
 
@@ -78,6 +81,23 @@ export class ClassroomScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setDepth(11);
 
+    this.selfChatBubble = new ChatBubble({ scene: this });
+
+    let lastChatId = useGameStore.getState().recentMessages.at(-1)?.id;
+    this.storeUnsub = useGameStore.subscribe((state) => {
+      const latest = state.recentMessages.at(-1);
+      if (latest && latest.id !== lastChatId) {
+        lastChatId = latest.id;
+        const selfId = useAuthStore.getState().userId;
+        const now = latest.createdAtEpoch || Date.now();
+        if (latest.userId === selfId) {
+          this.selfChatBubble?.show(latest.content, now);
+        } else {
+          this.remotePlayersRenderer?.showChatBubble(latest.userId, latest.content, now);
+        }
+      }
+    });
+
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       const tileX = Math.floor(pointer.worldX / this.topology.tileSize);
       const tileY = Math.floor(pointer.worldY / this.topology.tileSize);
@@ -115,6 +135,8 @@ export class ClassroomScene extends Phaser.Scene {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
+      this.storeUnsub?.();
+      this.selfChatBubble?.destroy();
       this.remotePlayersRenderer?.destroy();
     });
   }
@@ -135,9 +157,10 @@ export class ClassroomScene extends Phaser.Scene {
     });
 
     this.remotePlayersRenderer?.syncPlayers(game.remotePlayers);
-    this.remotePlayersRenderer?.update(0.28);
+    this.remotePlayersRenderer?.update(0.28, Date.now());
 
     const pos = this.playerSprite.interpolatePosition(0.35);
+    this.selfChatBubble?.update(Date.now(), pos.x, pos.y - 42);
     const animKey = this.playerSprite.getAnimationKey();
     if (this.actorSprite) {
       this.actorSprite.setPosition(pos.x, pos.y);

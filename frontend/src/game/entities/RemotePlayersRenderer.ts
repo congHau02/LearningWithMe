@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { RoomPlayerDto } from '../../services/roomApi';
 import { useGameStore } from '../../stores/useGameStore';
+import { ChatBubble } from './ChatBubble';
 import {
   PlayerSprite,
   type StarterAvatarKey,
@@ -11,6 +12,7 @@ interface RemotePlayerEntry {
   data: RoomPlayerDto;
   model: PlayerSprite;
   animKey: string;
+  chatBubble: ChatBubble;
   lastLabel?: string;
   sprite?: Phaser.GameObjects.Sprite;
   label?: Phaser.GameObjects.Text;
@@ -44,6 +46,7 @@ export class RemotePlayersRenderer {
       if (!remotePlayers[userId]) {
         entry.sprite?.destroy();
         entry.label?.destroy();
+        entry.chatBubble.destroy();
         this.entries.delete(userId);
       }
     }
@@ -69,10 +72,12 @@ export class RemotePlayersRenderer {
           avatarId: player.avatarId,
         });
 
+        const chatBubble = new ChatBubble({ scene: this.scene });
         const entry: RemotePlayerEntry = {
           data: player,
           model,
           animKey: model.getAnimationKey(),
+          chatBubble,
         };
 
         if (this.scene) {
@@ -116,7 +121,7 @@ export class RemotePlayersRenderer {
     }
   }
 
-  public update(lerpFactor = 0.28): void {
+  public update(lerpFactor = 0.28, now = Date.now()): void {
     for (const entry of this.entries.values()) {
       const pos = entry.model.interpolatePosition(lerpFactor);
       const nextAnim = entry.model.getAnimationKey();
@@ -141,7 +146,21 @@ export class RemotePlayersRenderer {
         entry.label.setPosition(pos.x, pos.y - 20);
         entry.label.setAlpha(alpha);
       }
+
+      entry.chatBubble.update(now, pos.x, pos.y - 42);
     }
+  }
+
+  public showChatBubble(userId: string, text: string, now = Date.now()): void {
+    const entry = this.entries.get(userId);
+    if (entry) {
+      entry.chatBubble.show(text, now);
+    }
+  }
+
+  public getChatBubbleText(userId: string): string | null {
+    const entry = this.entries.get(userId);
+    return (entry && entry.chatBubble.isActive()) ? entry.chatBubble.getText() : null;
   }
 
   public getRenderedUserIds(): string[] {
@@ -171,6 +190,7 @@ export class RemotePlayersRenderer {
     for (const entry of this.entries.values()) {
       entry.sprite?.destroy();
       entry.label?.destroy();
+      entry.chatBubble.destroy();
     }
     this.entries.clear();
   }

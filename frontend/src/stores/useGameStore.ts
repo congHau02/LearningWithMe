@@ -113,8 +113,16 @@ export const useGameStore = create<GameState>((set) => ({
     set((s) => reduceSnapshotState(snapshot, selfUserId, s.characterState)),
   applyIncomingRoomEvent: (event, selfUserId) =>
     set((s) => {
-      const { nextPlayers, nextSeats, nextTables, nextSeq } = applyRoomEvent({ currentPlayers: s.remotePlayers, currentSeats: s.occupiedSeats, currentTables: s.roomTables, currentSeq: s.roomEventSeq, selfUserId, event });
-      return { remotePlayers: nextPlayers, occupiedSeats: nextSeats, roomTables: nextTables, roomEventSeq: nextSeq };
+      const { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq } = applyRoomEvent({
+        currentPlayers: s.remotePlayers,
+        currentSeats: s.occupiedSeats,
+        currentTables: s.roomTables,
+        currentRecentMessages: s.recentMessages,
+        currentSeq: s.roomEventSeq,
+        selfUserId,
+        event,
+      });
+      return { remotePlayers: nextPlayers, occupiedSeats: nextSeats, roomTables: nextTables, recentMessages: nextRecentMessages, roomEventSeq: nextSeq };
     }),
   pruneRemotePlayer: (userId) =>
     set((s) => {

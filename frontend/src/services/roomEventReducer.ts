@@ -1,5 +1,5 @@
 import type { FacingDirection } from '../game/topology/roomTopology';
-import type { RoomEvent, RoomPlayerDto, RoomSnapshotResponse, RoomTableSummary } from './roomApi';
+import type { RoomChatMessage, RoomEvent, RoomPlayerDto, RoomSnapshotResponse, RoomTableSummary } from './roomApi';
 
 export function applySnapshotToPlayers(players: RoomPlayerDto[], selfUserId: string | null): Record<string, RoomPlayerDto> {
   const next: Record<string, RoomPlayerDto> = {};
@@ -29,6 +29,7 @@ export function applyRoomEvent(params: {
   currentPlayers: Record<string, RoomPlayerDto>;
   currentSeats?: Record<string, string>;
   currentTables?: RoomTableSummary[];
+  currentRecentMessages?: RoomChatMessage[];
   currentSeq: number;
   selfUserId: string | null;
   event: RoomEvent;
@@ -36,17 +37,27 @@ export function applyRoomEvent(params: {
   nextPlayers: Record<string, RoomPlayerDto>;
   nextSeats: Record<string, string>;
   nextTables: RoomTableSummary[];
+  nextRecentMessages: RoomChatMessage[];
   nextSeq: number;
 } {
-  const { currentPlayers, currentSeats = {}, currentTables = [], currentSeq, selfUserId, event } = params;
+  const { currentPlayers, currentSeats = {}, currentTables = [], currentRecentMessages = [], currentSeq, selfUserId, event } = params;
   const nextSeats = { ...currentSeats };
   const nextTables = currentTables.map((t) => ({ ...t }));
+  let nextRecentMessages = [...currentRecentMessages];
+
   if (event.seq > 0 && event.seq <= currentSeq) {
-    return { nextPlayers: currentPlayers, nextSeats, nextTables, nextSeq: currentSeq };
+    return { nextPlayers: currentPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq: currentSeq };
   }
 
   const nextSeq = event.seq > currentSeq ? event.seq : currentSeq;
   const nextPlayers = { ...currentPlayers };
+
+  if (event.type === 'ROOM_CHAT') {
+    if (event.message) {
+      nextRecentMessages = [...nextRecentMessages, event.message].slice(-30);
+    }
+    return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };
+  }
 
   if (event.previousUserId && event.previousUserId !== event.userId) {
     delete nextPlayers[event.previousUserId];
@@ -56,7 +67,7 @@ export function applyRoomEvent(params: {
   if (event.type === 'PLAYER_LEFT') {
     delete nextPlayers[event.userId];
     for (const [s, uid] of Object.entries(nextSeats)) if (uid === event.userId) delete nextSeats[s];
-    return { nextPlayers, nextSeats, nextTables, nextSeq };
+    return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };
   }
 
   if (event.type === 'SEAT_LOCKED') {
@@ -73,9 +84,9 @@ export function applyRoomEvent(params: {
     }
   }
 
-  if (selfUserId && event.userId === selfUserId) return { nextPlayers, nextSeats, nextTables, nextSeq };
+  if (selfUserId && event.userId === selfUserId) return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };
   if (event.player) nextPlayers[event.userId] = event.player;
-  return { nextPlayers, nextSeats, nextTables, nextSeq };
+  return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };
 }
 
 export function reduceSnapshotState(
