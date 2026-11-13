@@ -8,6 +8,14 @@ Không gian học tập trực tuyến 2D góc nhìn 3/4 Top-Down, nơi người
 Một không gian bản đồ 2D độc lập chứa các bàn học, ghế ngồi và những người học đang hiện diện cùng lúc.
 _Avoid_: Channel, Server, World, Lobby
 
+**Room Shard (Phân mảnh phòng học)**:
+Một bản sao vận hành độc lập của Room mặc định được tự động mở thêm khi chạm ngưỡng sức chứa tối đa (50 người học) để giữ không gian bản đồ thông thoáng.
+_Avoid_: Sub-room, Instance, Lobby Shard
+
+**Room Snapshot (Ảnh chụp trạng thái phòng)**:
+Bản tổng hợp tức thời toàn bộ người học đang hiện diện, các Seat đã có chủ, thông tin Table Host và các SOS Banner đang bật tại thời điểm bước vào Room.
+_Avoid_: Initial State, Room Dump, Bootstrap Payload
+
 **Table (Bàn học)**:
 Một cụm các ghế ngồi được nhóm chung trong một Room, chia sẻ cùng một không gian làm việc (video đồng bộ, bảng bài tập, kênh trò chuyện nội bộ và tín hiệu cầu cứu).
 _Avoid_: Desk, Group, Pod, Booth
@@ -91,3 +99,11 @@ _Avoid_: Help Ticket, Alert, Question Flag
 **Study Session (Phiên ngồi học)**:
 Một khoảng thời gian liên tục được ghi nhận từ lúc người học chuyển sang trạng thái `SEATED` tại một Table cho đến khi họ rời ghế (đạt ngưỡng thời lượng tối thiểu).
 _Avoid_: Study Log, Pomodoro, Attendance
+
+**Room Chat (Trò chuyện toàn phòng)**:
+Kênh nhắn tin công khai và thả biểu cảm dành cho mọi người học đang hiện diện trong cùng một Room Shard, tách biệt với trò chuyện nội bộ của từng Table.
+_Avoid_: Global Chat, World Chat, Public Chat, Lobby Chat
+
+**Chat Bubble (Bong bóng hội thoại)**:
+Khung thông điệp tạm thời nổi lên phía trên nhân vật trên bản đồ 2D trong thời gian ngắn (4 giây) mỗi khi người học gửi tin nhắn hoặc biểu cảm qua Room Chat.
+_Avoid_: Toast Chat, Speech Popover, Overhead Label

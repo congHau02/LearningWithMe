@@ -1,0 +1,3 @@
+# Định danh khóa trạng thái Table trên Redis theo cặp Room Shard và Table
+
+Trong đặc tả ban đầu, trạng thái dùng chung của mỗi Table được mô tả bằng khóa `table:{tableId}:state`. Tuy nhiên, mô hình Room mặc định dùng chung bản đồ tĩnh (ADR-0003) tự động mở thêm các Room Shard (`main-library`, `main-library-2`, ...) đều dùng chung bộ định danh `table_01..table_03`, nên khóa phẳng chỉ chứa `tableId` sẽ khiến các Room Shard ghi đè dữ liệu của nhau. Chúng tôi quyết định phân vùng khóa trạng thái bàn học thành `table:{roomId}:{tableId}:state`: cấu trúc này cô lập hoàn toàn dữ liệu bàn giữa các Room Shard mà vẫn tương thích trực tiếp với mẫu quét `table:*:state` trong Lua script hoán đổi định danh khi Account Upgrade không gián đoạn (ADR-0004).
