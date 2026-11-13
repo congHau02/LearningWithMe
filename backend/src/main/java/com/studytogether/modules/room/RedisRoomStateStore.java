@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomPlayerState;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -181,6 +182,16 @@ public class RedisRoomStateStore implements RoomStateStore {
             if (raw != null) deserialize(raw, RoomChatMessage.class).ifPresent(messages::add);
         }
         return messages;
+    }
+
+    @Override
+    public void appendChatMessage(String roomId, RoomChatMessage message, int maxBuffer) {
+        String key = chatKey(roomId);
+        redisTemplate.opsForList().rightPush(key, serialize(message));
+        if (maxBuffer > 0) {
+            redisTemplate.opsForList().trim(key, -maxBuffer, -1);
+        }
+        redisTemplate.expire(key, Duration.ofHours(24));
     }
 
     private boolean userExistsInShard(String shardId, String userId) {

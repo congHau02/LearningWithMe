@@ -22,6 +22,10 @@ public final class RoomExceptions {
             URI.create("https://studytogether.com/problems/already-seated");
     public static final URI NOT_SEATED_TYPE =
             URI.create("https://studytogether.com/problems/not-seated");
+    public static final URI INVALID_CHAT_MESSAGE_TYPE =
+            URI.create("https://studytogether.com/problems/invalid-chat-message");
+    public static final URI CHAT_RATE_LIMIT_EXCEEDED_TYPE =
+            URI.create("https://studytogether.com/problems/chat-rate-limit-exceeded");
 
     private RoomExceptions() {}
 
@@ -98,6 +102,24 @@ public final class RoomExceptions {
                 "Not Seated",
                 "Learner is not seated at any table in room '%s'".formatted(roomId),
                 NOT_SEATED_TYPE
+        );
+    }
+
+    public static BusinessException invalidChatMessage(String reason) {
+        return new BusinessException(
+                HttpStatus.BAD_REQUEST,
+                "Invalid Chat Message",
+                reason,
+                INVALID_CHAT_MESSAGE_TYPE
+        );
+    }
+
+    public static BusinessException chatRateLimitExceeded(String userId) {
+        return new BusinessException(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "Chat Rate Limit Exceeded",
+                "Learner '%s' exceeded chat rate limit of 5 messages in 5 seconds".formatted(userId),
+                CHAT_RATE_LIMIT_EXCEEDED_TYPE
         );
     }
 }

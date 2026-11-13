@@ -47,4 +47,6 @@ public interface RoomStateStore {
     boolean deleteTableState(String roomId, String tableId);
 
     List<RoomChatMessage> getRecentMessages(String roomId, int limit);
+
+    void appendChatMessage(String roomId, RoomChatMessage message, int maxBuffer);
 }

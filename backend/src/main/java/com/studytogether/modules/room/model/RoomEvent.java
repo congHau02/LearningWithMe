@@ -10,7 +10,8 @@ public record RoomEvent(
         long timestampEpoch,
         String tableId,
         String seatId,
-        String hostUserId
+        String hostUserId,
+        RoomChatMessage message
 ) {
     public RoomEvent(
             long seq,
@@ -21,6 +22,43 @@ public record RoomEvent(
             RoomPlayerDto player,
             long timestampEpoch
     ) {
-        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, null, null, null);
+        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, null, null, null, null);
+    }
+
+    public RoomEvent(
+            long seq,
+            String type,
+            String roomId,
+            String userId,
+            String previousUserId,
+            RoomPlayerDto player,
+            long timestampEpoch,
+            String tableId,
+            String seatId,
+            String hostUserId
+    ) {
+        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, tableId, seatId, hostUserId, null);
+    }
+
+    public static RoomEvent chat(
+            long seq,
+            String roomId,
+            String userId,
+            RoomChatMessage message,
+            long timestampEpoch
+    ) {
+        return new RoomEvent(
+                seq,
+                "ROOM_CHAT",
+                roomId,
+                userId,
+                null,
+                null,
+                timestampEpoch,
+                null,
+                null,
+                null,
+                message
+        );
     }
 }

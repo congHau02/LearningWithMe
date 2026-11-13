@@ -309,6 +309,15 @@ class RoomPresenceServiceTest {
             return list.size() <= limit ? List.copyOf(list) : List.copyOf(list.subList(list.size() - limit, list.size()));
         }
 
+        @Override
+        public void appendChatMessage(String roomId, RoomChatMessage message, int maxBuffer) {
+            List<RoomChatMessage> list = chatByRoom.computeIfAbsent(roomId, k -> new CopyOnWriteArrayList<>());
+            list.add(message);
+            while (maxBuffer > 0 && list.size() > maxBuffer) {
+                list.remove(0);
+            }
+        }
+
         void putSeat(String roomId, String seatId, String userId) {
             seatsByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>()).put(seatId, userId);
         }
