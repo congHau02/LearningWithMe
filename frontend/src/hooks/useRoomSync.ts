@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { MovementThrottler } from '../services/movementThrottler';
 import {
   createRoomStompSession,
+  setActiveRoomStompSession,
   type RoomStompSession,
 } from '../services/roomStompClient';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -82,6 +83,7 @@ export function useRoomSync(): void {
       throttlerRef.current = null;
       void sessionRef.current?.stop();
       sessionRef.current = null;
+      setActiveRoomStompSession(null);
       prevTokenRef.current = null;
     };
   }, []);
@@ -90,6 +92,7 @@ export function useRoomSync(): void {
     if (!token) {
       void sessionRef.current?.stop();
       sessionRef.current = null;
+      setActiveRoomStompSession(null);
       prevTokenRef.current = null;
       return;
     }
@@ -147,6 +150,7 @@ export function useRoomSync(): void {
         },
       });
       sessionRef.current = session;
+      setActiveRoomStompSession(session);
       prevTokenRef.current = token;
       void session.start(token);
       return;

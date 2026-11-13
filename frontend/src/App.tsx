@@ -3,6 +3,7 @@ import { AccountUpgradeModal } from './components/auth/AccountUpgradeModal';
 import { GuestOnboardingModal } from './components/auth/GuestOnboardingModal';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
 import { LeaveTableConfirmModal } from './components/hud/LeaveTableConfirmModal';
+import { RoomChatBox } from './components/hud/RoomChatBox';
 import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
 import { TopBar } from './components/hud/TopBar';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
@@ -147,6 +148,8 @@ export function App() {
           onUpgraded={handleAccountUpgraded}
         />
       ) : null}
+
+      {token ? <RoomChatBox /> : null}
     </div>
   );
 }

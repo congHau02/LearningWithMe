@@ -176,6 +176,12 @@ export class RoomStompSession {
     }
   }
 
+  sendChat(roomId: string, content: string): void {
+    if (this.transport && !this.stopped && !this.replaced) {
+      this.transport.publish(`/app/room/${roomId}/chat`, JSON.stringify({ content }));
+    }
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.generation += 1;
@@ -305,4 +311,18 @@ export function createRoomStompSession(
   options: RoomStompSessionOptions = {},
 ): RoomStompSession {
   return new RoomStompSession(options);
+}
+
+let activeRoomSession: RoomStompSession | null = null;
+
+export function setActiveRoomStompSession(session: RoomStompSession | null): void {
+  activeRoomSession = session;
+}
+
+export function sendRoomChatMessage(roomId: string, content: string): boolean {
+  if (activeRoomSession) {
+    activeRoomSession.sendChat(roomId, content);
+    return true;
+  }
+  return false;
 }
