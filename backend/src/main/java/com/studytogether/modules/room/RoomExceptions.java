@@ -12,6 +12,8 @@ public final class RoomExceptions {
             URI.create("https://studytogether.com/problems/seat-not-found");
     private static final URI SEAT_TABLE_MISMATCH_TYPE =
             URI.create("https://studytogether.com/problems/seat-table-mismatch");
+    private static final URI ROOM_FULL_TYPE =
+            URI.create("https://studytogether.com/problems/room-full");
 
     private RoomExceptions() {}
 
@@ -43,6 +45,15 @@ public final class RoomExceptions {
                 "Seat Table Mismatch",
                 "Seat '%s' does not belong to table '%s' in room '%s'".formatted(seatId, tableId, roomId),
                 SEAT_TABLE_MISMATCH_TYPE
+        );
+    }
+
+    public static BusinessException roomFull(String roomId, int capacityLimit) {
+        return new BusinessException(
+                HttpStatus.CONFLICT,
+                "Room Shard Full",
+                "Room '%s' has reached capacity limit of %d learners".formatted(roomId, capacityLimit),
+                ROOM_FULL_TYPE
         );
     }
 }

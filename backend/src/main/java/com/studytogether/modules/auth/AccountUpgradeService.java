@@ -5,6 +5,8 @@ import com.studytogether.modules.stats.GuestStudySessionStagingService;
 import com.studytogether.modules.stats.StagedGuestStudySession;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +22,7 @@ public class AccountUpgradeService {
     private final GoogleTokenVerifier googleTokenVerifier;
     private final GuestStudySessionStagingService guestSessionStagingService;
     private final RedisIdentitySwapService redisIdentitySwapService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AccountUpgradeService(
             UserRepository userRepository,
@@ -29,12 +32,34 @@ public class AccountUpgradeService {
             GuestStudySessionStagingService guestSessionStagingService,
             RedisIdentitySwapService redisIdentitySwapService
     ) {
+        this(
+                userRepository,
+                passwordEncoder,
+                jwtTokenService,
+                googleTokenVerifier,
+                guestSessionStagingService,
+                redisIdentitySwapService,
+                event -> {}
+        );
+    }
+
+    @Autowired
+    public AccountUpgradeService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtTokenService jwtTokenService,
+            GoogleTokenVerifier googleTokenVerifier,
+            GuestStudySessionStagingService guestSessionStagingService,
+            RedisIdentitySwapService redisIdentitySwapService,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
         this.googleTokenVerifier = googleTokenVerifier;
         this.guestSessionStagingService = guestSessionStagingService;
         this.redisIdentitySwapService = redisIdentitySwapService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -93,7 +118,7 @@ public class AccountUpgradeService {
 
         int mergedSessionCount = guestSessionStagingService.persistAndScheduleRedisCleanup(
                 guestId, user.getId(), stagedSessions);
-        return issueUpgradeResponse(user, effectiveStudyGoal, mergedSessionCount);
+        return issueUpgradeResponse(guestId, user, effectiveStudyGoal, mergedSessionCount);
     }
 
     private UpgradeAccountResponse mergeIntoExistingAccount(
@@ -119,7 +144,7 @@ public class AccountUpgradeService {
                 guestId, existingUser.getId(), existingUser.getNickname(), existingUser.getAvatarSpriteId()
         );
 
-        return issueUpgradeResponse(existingUser, effectiveStudyGoal, mergedSessionCount);
+        return issueUpgradeResponse(guestId, existingUser, effectiveStudyGoal, mergedSessionCount);
     }
 
     private void verifyExistingAccountCredentials(
@@ -148,10 +173,13 @@ public class AccountUpgradeService {
     }
 
     private UpgradeAccountResponse issueUpgradeResponse(
+            String previousGuestId,
             UserEntity user,
             String effectiveStudyGoal,
             int mergedSessionCount
     ) {
+        eventPublisher.publishEvent(new AccountIdentityUpgradedEvent(
+                previousGuestId, user.getId(), user.getNickname(), user.getAvatarSpriteId(), effectiveStudyGoal));
         AuthPrincipal registeredPrincipal = new AuthPrincipal(
                 user.getId(), AuthRole.REGISTERED, user.getAuthProvider(),
                 user.getEmail(), user.getNickname(), user.getAvatarSpriteId(), effectiveStudyGoal

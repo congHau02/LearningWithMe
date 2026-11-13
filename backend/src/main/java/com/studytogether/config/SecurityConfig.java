@@ -49,7 +49,9 @@ public class SecurityConfig {
                                 "/api/v1/health/**",
                                 "/api/v1/auth/guest",
                                 "/api/v1/auth/login",
-                                "/actuator/health"
+                                "/actuator/health",
+                                "/ws",
+                                "/ws/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

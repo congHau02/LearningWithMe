@@ -6,6 +6,7 @@ import {
   isTypingInFormElement,
 } from '../controllers/InputController';
 import { PlayerSprite } from '../entities/PlayerSprite';
+import { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
 import {
   MAIN_LIBRARY_TOPOLOGY,
   type RoomTopology,
@@ -21,6 +22,7 @@ export class ClassroomScene extends Phaser.Scene {
   private readonly topology: RoomTopology;
   private readonly inputController: InputController;
   private readonly playerSprite: PlayerSprite;
+  private remotePlayersRenderer?: RemotePlayersRenderer;
   private dynamicGraphics?: Phaser.GameObjects.Graphics;
   private actorSprite?: Phaser.GameObjects.Sprite;
   private nicknameLabel?: Phaser.GameObjects.Text;
@@ -53,6 +55,10 @@ export class ClassroomScene extends Phaser.Scene {
     registerCharacterAnimations(this);
 
     this.dynamicGraphics = this.add.graphics();
+    this.remotePlayersRenderer = new RemotePlayersRenderer({
+      scene: this,
+      tileSize: this.topology.tileSize,
+    });
     const pos = this.playerSprite.getPixelPosition();
     this.actorSprite = this.add
       .sprite(pos.x, pos.y, this.playerSprite.getAvatarId(), 0)
@@ -107,6 +113,7 @@ export class ClassroomScene extends Phaser.Scene {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
+      this.remotePlayersRenderer?.destroy();
     });
   }
 
@@ -124,6 +131,9 @@ export class ClassroomScene extends Phaser.Scene {
       nickname: auth.nickname,
       avatarId: auth.avatarSpriteId,
     });
+
+    this.remotePlayersRenderer?.syncPlayers(game.remotePlayers);
+    this.remotePlayersRenderer?.update(0.28);
 
     const pos = this.playerSprite.interpolatePosition(0.35);
     const animKey = this.playerSprite.getAnimationKey();

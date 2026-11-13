@@ -3,8 +3,10 @@ import { AccountUpgradeModal } from './components/auth/AccountUpgradeModal';
 import { GuestOnboardingModal } from './components/auth/GuestOnboardingModal';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
 import { LeaveTableConfirmModal } from './components/hud/LeaveTableConfirmModal';
+import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
 import { TopBar } from './components/hud/TopBar';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
+import { useRoomSync } from './hooks/useRoomSync';
 import type { UpgradeAccountResponse } from './services/authApi';
 import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
@@ -13,6 +15,7 @@ import { useTableStore } from './stores/useTableStore';
 export function App() {
   // Atomic Zustand selectors per AGENTS.md 2.1 to avoid full HUD re-renders
   const roomId = useGameStore((s) => s.roomId);
+  const connectionStatus = useGameStore((s) => s.connectionStatus);
   const characterState = useGameStore((s) => s.characterState);
   const currentTableId = useGameStore((s) => s.currentTableId);
   const currentSeatId = useGameStore((s) => s.currentSeatId);
@@ -50,6 +53,7 @@ export function App() {
   const leaveTable = useTableStore((s) => s.leaveTable);
 
   const backendStatus = useAppBootstrap();
+  useRoomSync();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const handleLeaveSeat = () => {
@@ -97,6 +101,8 @@ export function App() {
             : undefined
         }
       />
+
+      {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
 
       <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-6">
         <ClassroomCanvas />

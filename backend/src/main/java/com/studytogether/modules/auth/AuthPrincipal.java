@@ -1,5 +1,7 @@
 package com.studytogether.modules.auth;
 
+import java.security.Principal;
+
 public record AuthPrincipal(
         String userId,
         AuthRole role,
@@ -8,7 +10,12 @@ public record AuthPrincipal(
         String nickname,
         String avatarId,
         String studyGoal
-) {
+) implements Principal {
+
+    @Override
+    public String getName() {
+        return userId;
+    }
     public AuthPrincipal(
             String userId,
             AuthRole role,
