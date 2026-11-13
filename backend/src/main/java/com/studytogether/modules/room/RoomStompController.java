@@ -3,6 +3,7 @@ package com.studytogether.modules.room;
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.room.model.PlayerMoveRequest;
+import com.studytogether.modules.room.model.RoomChatSendRequest;
 import com.studytogether.modules.room.model.SeatSitRequest;
 import java.security.Principal;
 import java.util.Map;
@@ -26,17 +27,20 @@ public class RoomStompController {
     private final RoomPresenceService roomPresenceService;
     private final RoomMovementService roomMovementService;
     private final RoomSeatService roomSeatService;
+    private final RoomChatService roomChatService;
     private final StompErrorDispatcher errorDispatcher;
 
     public RoomStompController(
             RoomPresenceService roomPresenceService,
             RoomMovementService roomMovementService,
             RoomSeatService roomSeatService,
+            RoomChatService roomChatService,
             StompErrorDispatcher errorDispatcher
     ) {
         this.roomPresenceService = roomPresenceService;
         this.roomMovementService = roomMovementService;
         this.roomSeatService = roomSeatService;
+        this.roomChatService = roomChatService;
         this.errorDispatcher = errorDispatcher;
     }
 
@@ -78,6 +82,15 @@ public class RoomStompController {
         roomSeatService.handleLeave(extractPrincipal(user), roomId, wsSessionId);
     }
 
+    @MessageMapping("/room/{roomId}/chat")
+    public void sendChat(
+            @DestinationVariable String roomId,
+            @Payload RoomChatSendRequest request,
+            Principal user
+    ) {
+        roomChatService.sendChatMessage(extractPrincipal(user), roomId, request);
+    }
+
     @MessageExceptionHandler(BusinessException.class)
     public void handleBusinessException(
             BusinessException ex,
@@ -108,6 +121,8 @@ public class RoomStompController {
         if (RoomExceptions.NOT_SEATED_TYPE.equals(ex.getType())) return "NOT_SEATED";
         if (RoomExceptions.ROOM_FULL_TYPE.equals(ex.getType())) return "ROOM_FULL";
         if (RoomExceptions.INVALID_MOVE_TYPE.equals(ex.getType())) return "INVALID_MOVE";
+        if (RoomExceptions.INVALID_CHAT_MESSAGE_TYPE.equals(ex.getType())) return "INVALID_CHAT_MESSAGE";
+        if (RoomExceptions.CHAT_RATE_LIMIT_EXCEEDED_TYPE.equals(ex.getType())) return "RATE_LIMIT_EXCEEDED";
         return switch (ex.getStatus()) {
             case NOT_FOUND -> "ROOM_NOT_FOUND";
             case CONFLICT -> "ROOM_FULL";
