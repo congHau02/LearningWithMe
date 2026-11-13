@@ -90,10 +90,12 @@ export class ClassroomScene extends Phaser.Scene {
         lastChatId = latest.id;
         const selfId = useAuthStore.getState().userId;
         const now = latest.createdAtEpoch || Date.now();
-        if (latest.userId === selfId) {
-          this.selfChatBubble?.show(latest.content, now);
-        } else {
-          this.remotePlayersRenderer?.showChatBubble(latest.userId, latest.content, now);
+        if (Date.now() - now < 4000) {
+          if (latest.userId === selfId) {
+            this.selfChatBubble?.show(latest.content, now);
+          } else {
+            this.remotePlayersRenderer?.showChatBubble(latest.userId, latest.content, now);
+          }
         }
       }
     });

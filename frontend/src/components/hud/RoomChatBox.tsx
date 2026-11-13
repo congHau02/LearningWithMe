@@ -133,6 +133,12 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
                 value={text}
                 maxLength={200}
                 onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.stopPropagation();
+                    setIsOpen(false);
+                  }
+                }}
                 placeholder="Nhập tin nhắn (tối đa 200 ký tự)..."
                 className="flex-1 bg-slate-900 text-slate-100 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-sky-500 placeholder:text-slate-500"
               />
