@@ -3,6 +3,7 @@ package com.studytogether.modules.room;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -35,6 +36,7 @@ class RoomPresenceServiceTest {
     private InMemoryRoomStateStore stateStore;
     private StompSessionRegistry sessionRegistry;
     private SimpMessagingTemplate messagingTemplate;
+    private SeatDisconnectWatchdog watchdog;
     private RoomPresenceService service;
 
     @BeforeEach
@@ -42,13 +44,15 @@ class RoomPresenceServiceTest {
         stateStore = new InMemoryRoomStateStore();
         sessionRegistry = new StompSessionRegistry();
         messagingTemplate = mock(SimpMessagingTemplate.class);
+        watchdog = mock(SeatDisconnectWatchdog.class);
         RoomTopologyService topologyService = new RoomTopologyService(new ObjectMapper());
         service = new RoomPresenceService(
                 new RoomConfig(3),
                 stateStore,
                 topologyService,
                 sessionRegistry,
-                messagingTemplate
+                messagingTemplate,
+                watchdog
         );
     }
 
@@ -144,6 +148,28 @@ class RoomPresenceServiceTest {
                     assertThat(p.connected()).isFalse();
                 });
         assertThat(stateStore.hasDisconnectRecord("main-library", "u-bob")).isTrue();
+        verify(watchdog).scheduleGraceCheck(eq("main-library"), eq("u-bob"), eq("T1_S1"), eq("table_01"), anyLong());
+
+        // Reconnect cancels watchdog
+        service.registerStompJoin(guest("u-bob", "Bob"), "main-library", "ws-bob-2");
+        verify(watchdog).cancelGraceCheck("main-library", "u-bob");
+    }
+
+    @Test
+    void staleSocketDisconnectFromOldSessionDoesNotTriggerGracePeriod() {
+        stateStore.savePlayer("main-library", playerState("u-seated", "Learner", "SEATED", 3, 4, "table_01", "T1_S1", "ws-active", true));
+        sessionRegistry.registerConnectedSession("u-seated", "ws-active");
+        sessionRegistry.attachRoom("ws-active", "main-library");
+
+        // Old socket closes
+        service.handleDisconnect("u-seated", "main-library", "ws-stale-old");
+
+        // Player must remain connected and seated
+        RoomPlayerState player = stateStore.getPlayer("main-library", "u-seated").orElseThrow();
+        assertThat(player.connected()).isTrue();
+        assertThat(player.activeWsSessionId()).isEqualTo("ws-active");
+        assertThat(stateStore.hasDisconnectRecord("main-library", "u-seated")).isFalse();
+        verify(watchdog, never()).scheduleGraceCheck(any(), any(), any(), any(), anyLong());
     }
 
     @Test
@@ -265,6 +291,13 @@ class RoomPresenceServiceTest {
         }
 
         @Override
+        public Optional<Long> getDisconnectTime(String roomId, String userId) {
+            Map<String, Long> disconnects = disconnectsByRoom.get(roomId);
+            if (disconnects == null) return Optional.empty();
+            return Optional.ofNullable(disconnects.get(userId));
+        }
+
+        @Override
         public Map<String, String> getSeats(String roomId) {
             return Map.copyOf(seatsByRoom.getOrDefault(roomId, Map.of()));
         }
@@ -316,6 +349,15 @@ class RoomPresenceServiceTest {
             while (maxBuffer > 0 && list.size() > maxBuffer) {
                 list.remove(0);
             }
+        }
+
+        void clearAll() {
+            playersByRoom.clear();
+            seatsByRoom.clear();
+            disconnectsByRoom.clear();
+            tablesByRoom.clear();
+            chatByRoom.clear();
+            seqByRoom.clear();
         }
 
         void putSeat(String roomId, String seatId, String userId) {

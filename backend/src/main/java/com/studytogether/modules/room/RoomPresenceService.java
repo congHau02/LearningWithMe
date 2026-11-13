@@ -28,19 +28,22 @@ public class RoomPresenceService {
     private final RoomTopologyService topologyService;
     private final StompSessionRegistry sessionRegistry;
     private final SimpMessagingTemplate messagingTemplate;
+    private final SeatDisconnectWatchdog watchdog;
 
     public RoomPresenceService(
             RoomConfig roomConfig,
             RoomStateStore stateStore,
             RoomTopologyService topologyService,
             StompSessionRegistry sessionRegistry,
-            SimpMessagingTemplate messagingTemplate
+            SimpMessagingTemplate messagingTemplate,
+            SeatDisconnectWatchdog watchdog
     ) {
         this.roomConfig = roomConfig;
         this.stateStore = stateStore;
         this.topologyService = topologyService;
         this.sessionRegistry = sessionRegistry;
         this.messagingTemplate = messagingTemplate;
+        this.watchdog = watchdog;
     }
 
     public static String shardIdForIndex(int index) {
@@ -102,6 +105,7 @@ public class RoomPresenceService {
 
         sessionRegistry.attachRoom(wsSessionId, roomId);
         stateStore.removeDisconnect(roomId, principal.userId());
+        watchdog.cancelGraceCheck(roomId, principal.userId());
 
         String nickname = nonBlankOrDefault(principal.nickname(), "Learner");
         String avatarId = nonBlankOrDefault(principal.avatarId(), "default_student");
@@ -150,22 +154,21 @@ public class RoomPresenceService {
         }
 
         RoomPlayerState player = playerOpt.get();
-        if (player.activeWsSessionId() != null
-                && !player.activeWsSessionId().equals(wsSessionId)
-                && sessionRegistry.getActiveSessionId(userId) != null) {
+        if (player.activeWsSessionId() != null && !player.activeWsSessionId().equals(wsSessionId)) {
             return;
         }
 
         long now = System.currentTimeMillis();
         if ("SEATED".equals(player.state())) {
-            // shortcut: 30s SeatDisconnectWatchdog eviction & auto-host succession added in P4 (#16)
             RoomPlayerState disconnected = player.withDisconnectedGrace(now);
             stateStore.savePlayer(roomId, disconnected);
             stateStore.recordDisconnect(roomId, userId, now);
             broadcastRoomEvent(roomId, "PLAYER_DISCONNECTED_GRACE", userId, null, disconnected.toDto(), now);
+            watchdog.scheduleGraceCheck(roomId, userId, player.seatId(), player.tableId(), now);
             return;
         }
 
+        watchdog.cancelGraceCheck(roomId, userId);
         stateStore.deletePlayer(roomId, userId);
         stateStore.removeDisconnect(roomId, userId);
         RoomPlayerDto departedDto = player.withDisconnectedGrace(now).toDto();
@@ -210,30 +213,17 @@ public class RoomPresenceService {
     }
 
     private RoomTableSummary toTableSummary(String roomId, TableMetadata table, Map<String, String> seats) {
-        RedisTableState tableState = stateStore.getTableState(roomId, table.tableId())
-                .orElseGet(RedisTableState::empty);
-        int occupiedSeats = (int) table.seats().stream()
-                .filter(seat -> seats.containsKey(seat.seatId()))
-                .count();
+        RedisTableState tableState = stateStore.getTableState(roomId, table.tableId()).orElseGet(RedisTableState::empty);
+        int occupiedSeats = (int) table.seats().stream().filter(seat -> seats.containsKey(seat.seatId())).count();
         return new RoomTableSummary(
-                table.tableId(),
-                table.label(),
-                table.capacity(),
-                tableState.hostUserId(),
-                tableState.coHostUserIds(),
-                tableState.isFreeCollab(),
-                tableState.sosBanner(),
-                occupiedSeats
+                table.tableId(), table.label(), table.capacity(), tableState.hostUserId(),
+                tableState.coHostUserIds(), tableState.isFreeCollab(), tableState.sosBanner(), occupiedSeats
         );
     }
 
     private RoomEvent broadcastRoomEvent(
-            String roomId,
-            String type,
-            String userId,
-            String previousUserId,
-            RoomPlayerDto player,
-            long timestampEpoch
+            String roomId, String type, String userId, String previousUserId,
+            RoomPlayerDto player, long timestampEpoch
     ) {
         long seq = stateStore.incrementEventSeq(roomId);
         RoomEvent event = new RoomEvent(seq, type, roomId, userId, previousUserId, player, timestampEpoch);

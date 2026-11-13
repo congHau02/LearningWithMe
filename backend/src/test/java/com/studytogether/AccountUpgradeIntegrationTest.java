@@ -49,7 +49,7 @@ import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class AccountUpgradeIntegrationTest {
 
     @Container

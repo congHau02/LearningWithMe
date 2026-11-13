@@ -115,40 +115,7 @@ public class RoomSeatService {
 
         eventPublisher.publishEvent(new SeatReleasedEvent(roomId, tableId, seatId, principal.userId(), sitStart, now));
 
-        TableMetadata table = topologyService.getTable(roomId, tableId);
-        Map<String, String> allSeats = stateStore.getSeats(roomId);
-        List<RoomPlayerState> remainingSeated = new ArrayList<>();
-        for (SeatMetadata s : table.seats()) {
-            String occupantId = allSeats.get(s.seatId());
-            if (occupantId != null && !occupantId.equals(principal.userId())) {
-                stateStore.getPlayer(roomId, occupantId).ifPresent(remainingSeated::add);
-            }
-        }
-
-        String newHostUserId = null;
-        if (remainingSeated.isEmpty()) {
-            stateStore.deleteTableState(roomId, tableId);
-        } else {
-            RedisTableState currentTable = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-            if (!principal.userId().equals(currentTable.hostUserId())) {
-                newHostUserId = currentTable.hostUserId();
-                List<String> nextCoHosts = currentTable.coHostUserIds().stream()
-                        .filter(id -> !id.equals(principal.userId()))
-                        .toList();
-                stateStore.saveTableState(roomId, tableId, new RedisTableState(
-                        newHostUserId, nextCoHosts, currentTable.isFreeCollab(), currentTable.sosBanner()
-                ));
-            } else {
-                newHostUserId = electSuccessor(remainingSeated, currentTable.coHostUserIds());
-                final String electedHost = newHostUserId;
-                List<String> nextCoHosts = currentTable.coHostUserIds().stream()
-                        .filter(id -> !id.equals(electedHost) && !id.equals(principal.userId()))
-                        .toList();
-                stateStore.saveTableState(roomId, tableId, new RedisTableState(
-                        newHostUserId, nextCoHosts, currentTable.isFreeCollab(), currentTable.sosBanner()
-                ));
-            }
-        }
+        String newHostUserId = updateTableOnLeave(roomId, tableId, principal.userId());
 
         long seq = stateStore.incrementEventSeq(roomId);
         RoomEvent event = new RoomEvent(
@@ -159,19 +126,92 @@ public class RoomSeatService {
         return event;
     }
 
-    private String electSuccessor(List<RoomPlayerState> remainingSeated, List<String> coHostUserIds) {
-        Set<String> coHostSet = new HashSet<>(coHostUserIds);
-        List<RoomPlayerState> coHosts = remainingSeated.stream()
-                .filter(p -> coHostSet.contains(p.userId()))
-                .sorted(Comparator.comparingLong(RoomPlayerState::sitStartTimeEpoch).thenComparing(RoomPlayerState::userId))
-                .toList();
+    public void evictGracePeriodSeat(String roomId, String userId, String seatId) {
+        Optional<RoomPlayerState> playerOpt = stateStore.getPlayer(roomId, userId);
+        if (playerOpt.isEmpty() || playerOpt.get().connected()) {
+            return;
+        }
+        RoomPlayerState player = playerOpt.get();
+        String tableId = player.tableId() != null
+                ? player.tableId()
+                : topologyService.getSeat(roomId, seatId).tableId();
+        long sitStart = player.sitStartTimeEpoch();
+        long now = System.currentTimeMillis();
 
-        if (!coHosts.isEmpty()) {
-            return coHosts.get(0).userId();
+        stateStore.releaseSeat(roomId, seatId);
+        stateStore.deletePlayer(roomId, userId);
+        stateStore.removeDisconnect(roomId, userId);
+        eventPublisher.publishEvent(new SeatReleasedEvent(roomId, tableId, seatId, userId, sitStart, now));
+
+        String newHostUserId = updateTableOnLeave(roomId, tableId, userId);
+
+        long seq = stateStore.incrementEventSeq(roomId);
+        RoomEvent seatEvent = new RoomEvent(
+                seq, "SEAT_RELEASED", roomId, userId, null, null, now,
+                tableId, seatId, newHostUserId
+        );
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", seatEvent);
+
+        long leftSeq = stateStore.incrementEventSeq(roomId);
+        RoomEvent leftEvent = new RoomEvent(
+                leftSeq, "PLAYER_LEFT", roomId, userId, null, player.toDto(), now
+        );
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", leftEvent);
+    }
+
+    private String updateTableOnLeave(String roomId, String tableId, String leavingUserId) {
+        TableMetadata table = topologyService.getTable(roomId, tableId);
+        Map<String, String> allSeats = stateStore.getSeats(roomId);
+        List<RoomPlayerState> remainingSeated = new ArrayList<>();
+        for (SeatMetadata s : table.seats()) {
+            String occupantId = allSeats.get(s.seatId());
+            if (occupantId != null && !occupantId.equals(leavingUserId)) {
+                stateStore.getPlayer(roomId, occupantId).ifPresent(remainingSeated::add);
+            }
         }
 
+        if (remainingSeated.isEmpty()) {
+            stateStore.deleteTableState(roomId, tableId);
+            return null;
+        }
+
+        RedisTableState currentTable = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
+        String newHostUserId;
+        if (!leavingUserId.equals(currentTable.hostUserId())) {
+            newHostUserId = currentTable.hostUserId();
+        } else {
+            newHostUserId = electSuccessor(remainingSeated, currentTable.coHostUserIds());
+        }
+
+        final String electedHost = newHostUserId;
+        List<String> nextCoHosts = currentTable.coHostUserIds().stream()
+                .filter(id -> !id.equals(electedHost) && !id.equals(leavingUserId))
+                .toList();
+        stateStore.saveTableState(roomId, tableId, new RedisTableState(
+                newHostUserId, nextCoHosts, currentTable.isFreeCollab(), currentTable.sosBanner()
+        ));
+        return newHostUserId;
+    }
+
+    public String electSuccessor(List<RoomPlayerState> remainingSeated, List<String> coHostUserIds) {
+        if (remainingSeated == null || remainingSeated.isEmpty()) {
+            return null;
+        }
+        Set<String> coHostSet = new HashSet<>(coHostUserIds != null ? coHostUserIds : List.of());
+        Comparator<RoomPlayerState> comparator = Comparator
+                .comparingInt((RoomPlayerState p) -> {
+                    boolean online = p.connected();
+                    boolean isCoHost = coHostSet.contains(p.userId());
+                    if (online && isCoHost) return 0;
+                    if (online && !isCoHost) return 1;
+                    if (!online && isCoHost) return 2;
+                    return 3;
+                })
+                .thenComparingLong(RoomPlayerState::sitStartTimeEpoch)
+                .thenComparing(RoomPlayerState::userId);
+
         return remainingSeated.stream()
-                .sorted(Comparator.comparingLong(RoomPlayerState::sitStartTimeEpoch).thenComparing(RoomPlayerState::userId))
+                .sorted(comparator)
                 .map(RoomPlayerState::userId)
                 .findFirst()
                 .orElse(null);

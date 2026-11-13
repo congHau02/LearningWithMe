@@ -126,6 +126,17 @@ public class RedisRoomStateStore implements RoomStateStore {
     }
 
     @Override
+    public Optional<Long> getDisconnectTime(String roomId, String userId) {
+        Object raw = redisTemplate.opsForHash().get(disconnectsKey(roomId), userId);
+        if (raw == null) return Optional.empty();
+        try {
+            return Optional.of(Long.parseLong(raw.toString().trim()));
+        } catch (NumberFormatException ex) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public Map<String, String> getSeats(String roomId) {
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(seatsKey(roomId));
         if (entries == null || entries.isEmpty()) return Map.of();

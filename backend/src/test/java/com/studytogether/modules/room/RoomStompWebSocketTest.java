@@ -67,7 +67,8 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
             + "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,"
             + "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration,"
             + "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,"
-            + "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration"
+            + "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration",
+        "app.room.seat-grace-ms=300"
     }
 )
 class RoomStompWebSocketTest {
@@ -112,9 +113,7 @@ class RoomStompWebSocketTest {
 
     @BeforeEach
     void resetState() {
-        for (String roomId : List.of("main-library", "main-library-2")) {
-            stateStore.getAllPlayers(roomId).forEach(p -> stateStore.deletePlayer(roomId, p.userId()));
-        }
+        stateStore.clearAll();
     }
 
     @Test
@@ -474,6 +473,90 @@ class RoomStompWebSocketTest {
         session2.disconnect();
     }
 
+    @Test
+    void stompGracePeriodWatchdogF5RestorationAndAutoHostSuccession() throws Exception {
+        String roomId = "main-library";
+        AuthPrincipal uObs = new AuthPrincipal("u-obs", AuthRole.GUEST, AuthProvider.GUEST, null, "Observer", "avatar_01", "Study");
+        AuthPrincipal uHost = new AuthPrincipal("u-host-grace", AuthRole.GUEST, AuthProvider.GUEST, null, "Host", "avatar_02", "Study");
+        AuthPrincipal uMember = new AuthPrincipal("u-member-grace", AuthRole.GUEST, AuthProvider.GUEST, null, "Member", "avatar_03", "Study");
+
+        String obsToken = jwtTokenService.issueGuestToken(uObs);
+        String hostToken = jwtTokenService.issueGuestToken(uHost);
+        String memberToken = jwtTokenService.issueGuestToken(uMember);
+
+        BlockingQueue<JsonNode> roomEvents = new LinkedBlockingQueue<>();
+        StompSession observer = connectAuthenticated(obsToken, new AtomicBoolean(false));
+        observer.subscribe("/topic/room/" + roomId + "/events", queueHandler(roomEvents));
+
+        StompSession hostSession1 = connectAuthenticated(hostToken, new AtomicBoolean(false));
+        hostSession1.send("/app/room/" + roomId + "/join", "");
+        pollUntilType(roomEvents, "PLAYER_JOINED");
+
+        StompSession memberSession1 = connectAuthenticated(memberToken, new AtomicBoolean(false));
+        memberSession1.send("/app/room/" + roomId + "/join", "");
+        pollUntilType(roomEvents, "PLAYER_JOINED");
+
+        // Host sits at T1_S1 -> Host assigned
+        hostSession1.send("/app/room/" + roomId + "/seat.sit", new com.studytogether.modules.room.model.SeatSitRequest("table_01", "T1_S1"));
+        JsonNode hostSit = pollUntilType(roomEvents, "SEAT_LOCKED");
+        assertThat(hostSit.get("hostUserId").asText()).isEqualTo("u-host-grace");
+
+        // Member sits at T1_S2
+        memberSession1.send("/app/room/" + roomId + "/seat.sit", new com.studytogether.modules.room.model.SeatSitRequest("table_01", "T1_S2"));
+        JsonNode memberSit = pollUntilType(roomEvents, "SEAT_LOCKED");
+        assertThat(memberSit.get("hostUserId").asText()).isEqualTo("u-host-grace");
+
+        // 1. Host disconnects (F5 start) -> PLAYER_DISCONNECTED_GRACE
+        hostSession1.disconnect();
+        JsonNode grace1 = pollUntilType(roomEvents, "PLAYER_DISCONNECTED_GRACE");
+        assertThat(grace1.get("userId").asText()).isEqualTo("u-host-grace");
+        assertThat(stateStore.getSeats(roomId)).containsEntry("T1_S1", "u-host-grace");
+
+        // 2. Host reconnects within 300ms grace period
+        StompSession hostSession2 = connectAuthenticated(hostToken, new AtomicBoolean(false));
+        hostSession2.send("/app/room/" + roomId + "/join", "");
+        JsonNode reconnected = pollUntilType(roomEvents, "PLAYER_RECONNECTED");
+        assertThat(reconnected.get("userId").asText()).isEqualTo("u-host-grace");
+
+        // Wait beyond 300ms to verify watchdog was cancelled
+        Thread.sleep(350);
+        assertThat(stateStore.getSeats(roomId)).containsEntry("T1_S1", "u-host-grace");
+        assertThat(stateStore.getTableState(roomId, "table_01").orElseThrow().hostUserId()).isEqualTo("u-host-grace");
+
+        // 3. Host disconnects permanently -> after 300ms, watchdog evicts seat & succeeds to Member
+        hostSession2.disconnect();
+        pollUntilType(roomEvents, "PLAYER_DISCONNECTED_GRACE");
+
+        JsonNode seatReleased = pollUntilType(roomEvents, "SEAT_RELEASED");
+        assertThat(seatReleased.get("seatId").asText()).isEqualTo("T1_S1");
+        assertThat(seatReleased.get("hostUserId").asText()).isEqualTo("u-member-grace");
+
+        JsonNode hostLeft = pollUntilType(roomEvents, "PLAYER_LEFT");
+        assertThat(hostLeft.get("userId").asText()).isEqualTo("u-host-grace");
+
+        assertThat(stateStore.getSeats(roomId)).doesNotContainKey("T1_S1");
+        assertThat(stateStore.getTableState(roomId, "table_01").orElseThrow().hostUserId()).isEqualTo("u-member-grace");
+
+        // 4. Stale socket immunity: Member opens second session, old session closes without losing seat
+        StompSession memberSession2 = connectAuthenticated(memberToken, new AtomicBoolean(false));
+        memberSession2.send("/app/room/" + roomId + "/join", "");
+        pollUntilType(roomEvents, "PLAYER_UPDATED");
+        memberSession1.disconnect();
+        Thread.sleep(100);
+        assertThat(stateStore.getSeats(roomId)).containsEntry("T1_S2", "u-member-grace");
+
+        // 5. Final member disconnects permanently -> Table state cleared after watchdog eviction
+        memberSession2.disconnect();
+        pollUntilType(roomEvents, "PLAYER_DISCONNECTED_GRACE");
+        JsonNode finalSeat = pollUntilType(roomEvents, "SEAT_RELEASED");
+        assertThat(finalSeat.get("seatId").asText()).isEqualTo("T1_S2");
+        assertThat(finalSeat.get("hostUserId").isNull()).isTrue();
+
+        awaitCondition(() -> stateStore.getTableState(roomId, "table_01").isEmpty(), 2000);
+
+        observer.disconnect();
+    }
+
     private WebSocketStompClient createStompClient() {
         MappingJackson2MessageConverter jsonConverter = new MappingJackson2MessageConverter();
         jsonConverter.setObjectMapper(objectMapper);
@@ -525,12 +608,18 @@ class RoomStompWebSocketTest {
 
     private static JsonNode pollUntilType(BlockingQueue<JsonNode> queue, String type) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 3000;
+        java.util.List<JsonNode> unhandled = new java.util.ArrayList<>();
         while (System.currentTimeMillis() < deadline) {
             JsonNode next = queue.poll(300, TimeUnit.MILLISECONDS);
-            if (next != null && type.equals(next.get("type").asText())) {
-                return next;
+            if (next != null) {
+                if (type.equals(next.get("type").asText())) {
+                    queue.addAll(unhandled);
+                    return next;
+                }
+                unhandled.add(next);
             }
         }
+        queue.addAll(unhandled);
         throw new AssertionError("Expected event type " + type + " within timeout");
     }
 

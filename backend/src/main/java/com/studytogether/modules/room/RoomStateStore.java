@@ -34,6 +34,8 @@ public interface RoomStateStore {
 
     void removeDisconnect(String roomId, String userId);
 
+    Optional<Long> getDisconnectTime(String roomId, String userId);
+
     Map<String, String> getSeats(String roomId);
 
     SeatLockResult lockSeat(String roomId, String seatId, String userId);

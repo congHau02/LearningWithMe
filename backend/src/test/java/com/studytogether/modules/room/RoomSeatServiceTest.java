@@ -176,6 +176,110 @@ class RoomSeatServiceTest {
     }
 
     @Test
+    void leaveSeatAutoHostSuccessionPrefersOnlineMemberOverDisconnectedCoHostInGrace() {
+        String roomId = "main-library";
+        AuthPrincipal host = guest("u-host", "Host");
+        stateStore.savePlayer(roomId, playerState("u-host", "Host", "SEATED", 11, 3, "table_02", "T2_S1", 500L));
+        stateStore.putSeat(roomId, "T2_S1", "u-host");
+
+        // Co-Host sat earlier at 1000L BUT disconnected (in Grace Period)
+        stateStore.savePlayer(roomId, playerState("u-cohost", "CoHost", "SEATED", 11, 5, "table_02", "T2_S3", 1000L, false));
+        stateStore.putSeat(roomId, "T2_S3", "u-cohost");
+
+        // Member sat later at 2000L BUT is online (connected = true)
+        stateStore.savePlayer(roomId, playerState("u-member", "Member", "SEATED", 12, 3, "table_02", "T2_S2", 2000L, true));
+        stateStore.putSeat(roomId, "T2_S2", "u-member");
+
+        stateStore.saveTableState(roomId, "table_02", new RedisTableState("u-host", List.of("u-cohost"), false, null));
+
+        RoomEvent event = seatService.handleLeave(host, roomId, "ws-1");
+
+        // Online member must win over disconnected Co-Host in Grace Period
+        assertThat(event.hostUserId()).isEqualTo("u-member");
+        RedisTableState nextTable = stateStore.getTableState(roomId, "table_02").orElseThrow();
+        assertThat(nextTable.hostUserId()).isEqualTo("u-member");
+    }
+
+    @Test
+    void leaveSeatAutoHostSuccessionFallsBackToGraceCoHostWhenNoOneOnline() {
+        String roomId = "main-library";
+        AuthPrincipal host = guest("u-host", "Host");
+        stateStore.savePlayer(roomId, playerState("u-host", "Host", "SEATED", 11, 3, "table_02", "T2_S1", 500L));
+        stateStore.putSeat(roomId, "T2_S1", "u-host");
+
+        // Both are disconnected (in Grace Period)
+        stateStore.savePlayer(roomId, playerState("u-member", "Member", "SEATED", 12, 3, "table_02", "T2_S2", 1000L, false));
+        stateStore.putSeat(roomId, "T2_S2", "u-member");
+
+        stateStore.savePlayer(roomId, playerState("u-cohost", "CoHost", "SEATED", 11, 5, "table_02", "T2_S3", 2000L, false));
+        stateStore.putSeat(roomId, "T2_S3", "u-cohost");
+
+        stateStore.saveTableState(roomId, "table_02", new RedisTableState("u-host", List.of("u-cohost"), false, null));
+
+        RoomEvent event = seatService.handleLeave(host, roomId, "ws-1");
+
+        // Fallback: disconnected Co-Host in Grace wins over disconnected Member in Grace
+        assertThat(event.hostUserId()).isEqualTo("u-cohost");
+        RedisTableState nextTable = stateStore.getTableState(roomId, "table_02").orElseThrow();
+        assertThat(nextTable.hostUserId()).isEqualTo("u-cohost");
+    }
+
+    @Test
+    void evictGracePeriodSeatReleasesSeatPublishesEventAndElectsSuccessor() {
+        String roomId = "main-library";
+        // Host disconnected in Grace Period
+        stateStore.savePlayer(roomId, playerState("u-host", "Host", "SEATED", 11, 3, "table_02", "T2_S1", 500L, false));
+        stateStore.putSeat(roomId, "T2_S1", "u-host");
+        stateStore.recordDisconnect(roomId, "u-host", 1_700_000_000_000L);
+
+        // Member is online
+        stateStore.savePlayer(roomId, playerState("u-member", "Member", "SEATED", 12, 3, "table_02", "T2_S2", 1000L, true));
+        stateStore.putSeat(roomId, "T2_S2", "u-member");
+
+        stateStore.saveTableState(roomId, "table_02", new RedisTableState("u-host", List.of(), false, null));
+
+        seatService.evictGracePeriodSeat(roomId, "u-host", "T2_S1");
+
+        // Seat and player removed
+        assertThat(stateStore.getSeats(roomId)).doesNotContainKey("T2_S1");
+        assertThat(stateStore.getPlayer(roomId, "u-host")).isEmpty();
+        assertThat(stateStore.hasDisconnectRecord(roomId, "u-host")).isFalse();
+
+        // Succession to u-member
+        RedisTableState nextTable = stateStore.getTableState(roomId, "table_02").orElseThrow();
+        assertThat(nextTable.hostUserId()).isEqualTo("u-member");
+
+        // Spring ApplicationEvent published
+        ArgumentCaptor<SeatReleasedEvent> captor = ArgumentCaptor.forClass(SeatReleasedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        SeatReleasedEvent released = captor.getValue();
+        assertThat(released.seatId()).isEqualTo("T2_S1");
+        assertThat(released.userId()).isEqualTo("u-host");
+
+        // STOMP events broadcasted: SEAT_RELEASED and PLAYER_LEFT
+        ArgumentCaptor<RoomEvent> eventCaptor = ArgumentCaptor.forClass(RoomEvent.class);
+        verify(messagingTemplate, org.mockito.Mockito.atLeast(2)).convertAndSend(eq("/topic/room/main-library/events"), eventCaptor.capture());
+        List<RoomEvent> captured = eventCaptor.getAllValues();
+        assertThat(captured.stream().anyMatch(e -> "SEAT_RELEASED".equals(e.type()) && "u-member".equals(e.hostUserId()))).isTrue();
+        assertThat(captured.stream().anyMatch(e -> "PLAYER_LEFT".equals(e.type()) && "u-host".equals(e.userId()))).isTrue();
+    }
+
+    @Test
+    void evictGracePeriodSeatOnLastMemberDeletesTableState() {
+        String roomId = "main-library";
+        stateStore.savePlayer(roomId, playerState("u-lone", "Lone", "SEATED", 3, 4, "table_01", "T1_S1", 1000L, false));
+        stateStore.putSeat(roomId, "T1_S1", "u-lone");
+        stateStore.recordDisconnect(roomId, "u-lone", 1_700_000_000_000L);
+        stateStore.saveTableState(roomId, "table_01", new RedisTableState("u-lone", List.of(), false, null));
+
+        seatService.evictGracePeriodSeat(roomId, "u-lone", "T1_S1");
+
+        assertThat(stateStore.getSeats(roomId)).doesNotContainKey("T1_S1");
+        assertThat(stateStore.getPlayer(roomId, "u-lone")).isEmpty();
+        assertThat(stateStore.getTableState(roomId, "table_01")).isEmpty();
+    }
+
+    @Test
     void concurrentSitRequestsOnlyOneSucceedsOthersFailWithSeatOccupied() throws InterruptedException {
         String roomId = "main-library";
         int threadCount = 10;
@@ -219,9 +323,16 @@ class RoomSeatServiceTest {
             String userId, String nickname, String state, int x, int y,
             String tableId, String seatId, long sitStartTime
     ) {
+        return playerState(userId, nickname, state, x, y, tableId, seatId, sitStartTime, true);
+    }
+
+    private static RoomPlayerState playerState(
+            String userId, String nickname, String state, int x, int y,
+            String tableId, String seatId, long sitStartTime, boolean connected
+    ) {
         return new RoomPlayerState(
                 userId, nickname, "default_student", "GUEST", state,
-                x, y, "DOWN", tableId, seatId, "ws-" + userId, true,
+                x, y, "DOWN", tableId, seatId, "ws-" + userId, connected,
                 1_700_000_000_000L, false, sitStartTime
         );
     }

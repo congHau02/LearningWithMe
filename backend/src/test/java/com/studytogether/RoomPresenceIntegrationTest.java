@@ -55,7 +55,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class RoomPresenceIntegrationTest {
 
     @Container
@@ -75,6 +75,7 @@ class RoomPresenceIntegrationTest {
         registry.add("spring.datasource.password", MYSQL::getPassword);
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
+        registry.add("app.room.seat-grace-ms", () -> "400");
     }
 
     @LocalServerPort
@@ -267,6 +268,119 @@ class RoomPresenceIntegrationTest {
         awaitCondition(() -> !Boolean.TRUE.equals(
                 redisTemplate.opsForHash().hasKey(RedisRoomStateStore.playersKey(roomId), registeredId)
         ), 2000);
+        observer.disconnect();
+    }
+
+    @Test
+    void thirtySecondGracePeriodWatchdogF5RestorationAndAutoHostSuccession() throws Exception {
+        String roomId = "main-library";
+        JsonNode observerAuth = createGuestSession("Observer", "avatar_01");
+        JsonNode hostAuth = createGuestSession("HostLearner", "avatar_02");
+        JsonNode memberAuth = createGuestSession("MemberLearner", "avatar_03");
+
+        String hostId = hostAuth.get("guestId").asText();
+        String hostJwt = hostAuth.get("guestToken").asText();
+        String memberId = memberAuth.get("guestId").asText();
+        String memberJwt = memberAuth.get("guestToken").asText();
+
+        postJoinShard(hostJwt);
+        postJoinShard(memberJwt);
+
+        BlockingQueue<JsonNode> roomEvents = new LinkedBlockingQueue<>();
+        StompSession observer = connectStomp(observerAuth.get("guestToken").asText(), new AtomicBoolean(false));
+        observer.subscribe("/topic/room/" + roomId + "/events", jsonHandler(roomEvents));
+
+        StompSession hostTab1 = connectStomp(hostJwt, new AtomicBoolean(false));
+        hostTab1.send("/app/room/" + roomId + "/join", "");
+        pollUntilType(roomEvents, "PLAYER_JOINED");
+
+        StompSession memberTab = connectStomp(memberJwt, new AtomicBoolean(false));
+        memberTab.send("/app/room/" + roomId + "/join", "");
+        pollUntilType(roomEvents, "PLAYER_JOINED");
+
+        // Host sits at T1_S1 -> becomes host
+        hostTab1.send("/app/room/" + roomId + "/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
+        JsonNode hostSit = pollUntilType(roomEvents, "SEAT_LOCKED");
+        assertThat(hostSit.get("hostUserId").asText()).isEqualTo(hostId);
+
+        // Member sits at T1_S2 -> host unchanged
+        memberTab.send("/app/room/" + roomId + "/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
+        JsonNode memberSit = pollUntilType(roomEvents, "SEAT_LOCKED");
+        assertThat(memberSit.get("hostUserId").asText()).isEqualTo(hostId);
+
+        // 1. Host disconnects (F5 start) -> Grace Period entered
+        hostTab1.disconnect();
+        JsonNode graceEvent = pollUntilType(roomEvents, "PLAYER_DISCONNECTED_GRACE");
+        assertThat(graceEvent.get("userId").asText()).isEqualTo(hostId);
+
+        // Verify Redis holds seat and disconnect record during grace period
+        assertThat(redisTemplate.opsForHash().hasKey(RedisRoomStateStore.disconnectsKey(roomId), hostId)).isTrue();
+        assertThat(redisTemplate.opsForHash().get(RedisRoomStateStore.seatsKey(roomId), "T1_S1")).isEqualTo(hostId);
+
+        // 2. F5 reconnect within grace period (within 400ms)
+        StompSession hostTab2 = connectStomp(hostJwt, new AtomicBoolean(false));
+        hostTab2.send("/app/room/" + roomId + "/join", "");
+        JsonNode reconnectEvent = pollUntilType(roomEvents, "PLAYER_RECONNECTED");
+        assertThat(reconnectEvent.get("userId").asText()).isEqualTo(hostId);
+
+        // Disconnect record cleared
+        assertThat(redisTemplate.opsForHash().hasKey(RedisRoomStateStore.disconnectsKey(roomId), hostId)).isFalse();
+
+        // Check snapshot: Host is still SEATED at T1_S1 and table host is still hostId
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(hostJwt);
+        ResponseEntity<JsonNode> snapshotRes = restTemplate.exchange(
+                "/api/v1/rooms/" + roomId + "/state",
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                JsonNode.class
+        );
+        assertThat(snapshotRes.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode snapBody = snapshotRes.getBody();
+        assertThat(snapBody.get("seats").get("T1_S1").asText()).isEqualTo(hostId);
+        assertThat(snapBody.get("tables").get(0).get("hostUserId").asText()).isEqualTo(hostId);
+
+        // Wait beyond 400ms to ensure watchdog was cancelled and did not evict
+        Thread.sleep(500);
+        assertThat(redisTemplate.opsForHash().get(RedisRoomStateStore.seatsKey(roomId), "T1_S1")).isEqualTo(hostId);
+
+        // 3. Host disconnects permanently -> Watchdog evicts after 400ms and triggers Auto-Host Succession
+        hostTab2.disconnect();
+        pollUntilType(roomEvents, "PLAYER_DISCONNECTED_GRACE");
+
+        // Wait for watchdog expiry (400ms)
+        JsonNode seatReleased = pollUntilType(roomEvents, "SEAT_RELEASED");
+        assertThat(seatReleased.get("seatId").asText()).isEqualTo("T1_S1");
+        assertThat(seatReleased.get("hostUserId").asText()).isEqualTo(memberId); // Succession to online member!
+
+        JsonNode hostLeft = pollUntilType(roomEvents, "PLAYER_LEFT");
+        assertThat(hostLeft.get("userId").asText()).isEqualTo(hostId);
+
+        // Redis assertions: Host removed, seat freed, new table host stored
+        assertThat(redisTemplate.opsForHash().hasKey(RedisRoomStateStore.seatsKey(roomId), "T1_S1")).isFalse();
+        assertThat(redisTemplate.opsForHash().hasKey(RedisRoomStateStore.playersKey(roomId), hostId)).isFalse();
+        String tableJson = redisTemplate.opsForValue().get(RedisRoomStateStore.tableStateKey(roomId, "table_01"));
+        assertThat(tableJson).contains(memberId);
+
+        // 4. Stale socket immunity: Member opens new tab, old tab disconnect does not evict member
+        StompSession memberTab2 = connectStomp(memberJwt, new AtomicBoolean(false));
+        memberTab2.send("/app/room/" + roomId + "/join", "");
+        pollUntilType(roomEvents, "PLAYER_UPDATED");
+        memberTab.disconnect(); // Old tab closes
+        Thread.sleep(100);
+        assertThat(redisTemplate.opsForHash().get(RedisRoomStateStore.seatsKey(roomId), "T1_S2")).isEqualTo(memberId);
+
+        // 5. Final member disconnects permanently -> Table state deleted when last seat released
+        memberTab2.disconnect();
+        pollUntilType(roomEvents, "PLAYER_DISCONNECTED_GRACE");
+        JsonNode finalSeatReleased = pollUntilType(roomEvents, "SEAT_RELEASED");
+        assertThat(finalSeatReleased.get("seatId").asText()).isEqualTo("T1_S2");
+        assertThat(finalSeatReleased.get("hostUserId").isNull() || finalSeatReleased.get("hostUserId").asText().equals("null")).isTrue();
+
+        awaitCondition(() -> !Boolean.TRUE.equals(
+                redisTemplate.hasKey(RedisRoomStateStore.tableStateKey(roomId, "table_01"))
+        ), 2000);
+
         observer.disconnect();
     }
 

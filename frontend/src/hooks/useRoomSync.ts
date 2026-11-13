@@ -101,10 +101,23 @@ export function useRoomSync(): void {
       const session = createRoomStompSession({
         onStatusChange: (status, err) =>
           useGameStore.getState().setConnectionStatus(status, err),
-        onSnapshot: (snapshot) =>
-          useGameStore
-            .getState()
-            .applyRoomSnapshot(snapshot, useAuthStore.getState().userId),
+        onSnapshot: (snapshot) => {
+          const selfUserId = useAuthStore.getState().userId;
+          useGameStore.getState().applyRoomSnapshot(snapshot, selfUserId);
+          const selfPlayer = snapshot.players.find((p) => p.userId === selfUserId);
+          if (selfPlayer && selfPlayer.state === 'SEATED' && selfPlayer.tableId) {
+            const table = snapshot.tables.find((t) => t.tableId === selfPlayer.tableId);
+            useTableStore.getState().setTableState({
+              tableId: selfPlayer.tableId,
+              hostUserId: table?.hostUserId ?? null,
+              coHostUserIds: table?.coHostUserIds ?? [],
+              isFreeCollab: table?.isFreeCollab ?? false,
+              sosBanner: table?.sosBanner ?? null,
+            });
+          } else {
+            useTableStore.getState().leaveTable();
+          }
+        },
         onEvent: (event) => {
           const selfUserId = useAuthStore.getState().userId;
           useGameStore.getState().applyIncomingRoomEvent(event, selfUserId);

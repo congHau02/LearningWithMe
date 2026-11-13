@@ -198,7 +198,11 @@ export class RemotePlayersRenderer {
 
 function formatRemoteLabel(player: RoomPlayerDto, isHost = false): string {
   const crown = isHost ? '👑 ' : '';
-  if (!player.connected) return `${crown}${player.nickname} (Mất kết nối)`;
+  if (!player.connected) {
+    return player.state === 'SEATED'
+      ? `${crown}${player.nickname} (Đang giữ chỗ)`
+      : `${crown}${player.nickname} (Mất kết nối)`;
+  }
   return player.state === 'SEATED' ? `${crown}${player.nickname} • Đang học` : `${crown}${player.nickname}`;
 }
 
