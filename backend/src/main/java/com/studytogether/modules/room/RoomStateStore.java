@@ -36,7 +36,15 @@ public interface RoomStateStore {
 
     Map<String, String> getSeats(String roomId);
 
+    SeatLockResult lockSeat(String roomId, String seatId, String userId);
+
+    boolean releaseSeat(String roomId, String seatId);
+
     Optional<RedisTableState> getTableState(String roomId, String tableId);
+
+    void saveTableState(String roomId, String tableId, RedisTableState state);
+
+    boolean deleteTableState(String roomId, String tableId);
 
     List<RoomChatMessage> getRecentMessages(String roomId, int limit);
 }

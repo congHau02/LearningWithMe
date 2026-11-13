@@ -345,8 +345,13 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
       expect(useGameStore.getState().characterState).toBe('WALKING_TO_SEAT');
       expect(useGameStore.getState().position).toEqual({ x: 11, y: 6 });
 
-      // Step 2: arrives at (11, 5) -> automatically transitions to SEATED facing UP
+      // Step 2: arrives at (11, 5) -> awaits server confirmation (WALKING_TO_SEAT with pending flag per P3-T3)
       controller.stepPath();
+      expect(useGameStore.getState().isPendingSeatConfirmation).toBe(true);
+      expect(useGameStore.getState().characterState).toBe('WALKING_TO_SEAT');
+
+      // Server confirms SEAT_LOCKED -> transitions to SEATED facing UP
+      useGameStore.getState().confirmSeat('table_02', 'T2_S3', { x: 11, y: 5 }, 'UP');
       expect(useGameStore.getState().characterState).toBe('SEATED');
       expect(useGameStore.getState().position).toEqual({ x: 11, y: 5 });
       expect(useGameStore.getState().facingDir).toBe('UP');

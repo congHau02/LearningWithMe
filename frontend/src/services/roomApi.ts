@@ -64,7 +64,9 @@ export type RoomEventType =
   | 'PLAYER_RECONNECTED'
   | 'PLAYER_UPDATED'
   | 'PLAYER_DISCONNECTED_GRACE'
-  | 'PLAYER_LEFT';
+  | 'PLAYER_LEFT'
+  | 'SEAT_LOCKED'
+  | 'SEAT_RELEASED';
 
 export interface RoomEvent {
   seq: number;
@@ -74,6 +76,9 @@ export interface RoomEvent {
   previousUserId: string | null;
   player: RoomPlayerDto | null;
   timestampEpoch: number;
+  tableId?: string | null;
+  seatId?: string | null;
+  hostUserId?: string | null;
 }
 
 export interface StompErrorPayload {

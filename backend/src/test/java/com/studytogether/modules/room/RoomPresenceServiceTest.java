@@ -270,8 +270,37 @@ class RoomPresenceServiceTest {
         }
 
         @Override
+        public synchronized SeatLockResult lockSeat(String roomId, String seatId, String userId) {
+            Map<String, String> seats = seatsByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+            if (seats.containsValue(userId)) {
+                return SeatLockResult.ALREADY_SEATED;
+            }
+            if (seats.putIfAbsent(seatId, userId) != null) {
+                return SeatLockResult.SEAT_OCCUPIED;
+            }
+            return SeatLockResult.SUCCESS;
+        }
+
+        @Override
+        public boolean releaseSeat(String roomId, String seatId) {
+            Map<String, String> seats = seatsByRoom.get(roomId);
+            return seats != null && seats.remove(seatId) != null;
+        }
+
+        @Override
         public Optional<RedisTableState> getTableState(String roomId, String tableId) {
             return Optional.ofNullable(tablesByRoom.getOrDefault(roomId, Map.of()).get(tableId));
+        }
+
+        @Override
+        public void saveTableState(String roomId, String tableId, RedisTableState state) {
+            tablesByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>()).put(tableId, state);
+        }
+
+        @Override
+        public boolean deleteTableState(String roomId, String tableId) {
+            Map<String, RedisTableState> tables = tablesByRoom.get(roomId);
+            return tables != null && tables.remove(tableId) != null;
         }
 
         @Override

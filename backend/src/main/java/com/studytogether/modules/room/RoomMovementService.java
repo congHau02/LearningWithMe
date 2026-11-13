@@ -17,16 +17,28 @@ public class RoomMovementService {
     private final RoomTopologyService topologyService;
     private final RoomStateStore stateStore;
     private final SimpMessagingTemplate messagingTemplate;
+    private final java.time.Clock clock;
     private final ConcurrentHashMap<String, Long> lastMoveEpochByUserId = new ConcurrentHashMap<>();
 
+    @org.springframework.beans.factory.annotation.Autowired
     public RoomMovementService(
             RoomTopologyService topologyService,
             RoomStateStore stateStore,
             SimpMessagingTemplate messagingTemplate
     ) {
+        this(topologyService, stateStore, messagingTemplate, java.time.Clock.systemUTC());
+    }
+
+    public RoomMovementService(
+            RoomTopologyService topologyService,
+            RoomStateStore stateStore,
+            SimpMessagingTemplate messagingTemplate,
+            java.time.Clock clock
+    ) {
         this.topologyService = topologyService;
         this.stateStore = stateStore;
         this.messagingTemplate = messagingTemplate;
+        this.clock = clock != null ? clock : java.time.Clock.systemUTC();
     }
 
     public RoomEvent handleMove(
@@ -64,7 +76,7 @@ public class RoomMovementService {
             );
         }
 
-        long now = System.currentTimeMillis();
+        long now = clock.millis();
         boolean isMoving = request.moving();
 
         // shortcut: memory-based 10Hz burst throttle per pod; upgrade to Redis sliding token bucket if multi-pod clustered

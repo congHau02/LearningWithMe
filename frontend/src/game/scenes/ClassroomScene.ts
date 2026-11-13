@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
+import { useTableStore } from '../../stores/useTableStore';
 import {
   InputController,
   isTypingInFormElement,
@@ -83,7 +84,8 @@ export class ClassroomScene extends Phaser.Scene {
       const seat = this.inputController
         .getSeatManager()
         .getSeatAtTile(tileX, tileY);
-      this.hoveredSeatId = seat?.seatId ?? null;
+      const isOccupied = seat?.seatId ? Boolean(useGameStore.getState().occupiedSeats[seat.seatId]) : false;
+      this.hoveredSeatId = (seat && !isOccupied) ? seat.seatId : null;
     });
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -146,8 +148,10 @@ export class ClassroomScene extends Phaser.Scene {
     }
 
     if (this.nicknameLabel) {
+      const isHost = game.characterState === 'SEATED' && Boolean(game.currentTableId && useTableStore.getState().hostUserId === auth.userId);
+      const crownPrefix = isHost ? '👑 ' : '';
       const badgeSuffix = game.characterState === 'SEATED' ? ' • Đang học' : '';
-      this.nicknameLabel.setText(`${auth.nickname}${badgeSuffix}`);
+      this.nicknameLabel.setText(`${crownPrefix}${auth.nickname}${badgeSuffix}`);
       this.nicknameLabel.setPosition(pos.x, pos.y - 20);
     }
 
@@ -155,6 +159,7 @@ export class ClassroomScene extends Phaser.Scene {
       drawDynamicOverlay(this.dynamicGraphics, {
         tileSize: this.topology.tileSize,
         seats: this.topology.seats,
+        occupiedSeats: game.occupiedSeats,
         activeSeatId: game.currentSeatId,
         hoveredSeatId: this.hoveredSeatId,
         pathQueue: game.pathQueue,

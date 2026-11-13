@@ -140,13 +140,17 @@ export class InputController {
       return { moved: false, path: [] };
     }
 
-    const seatInteraction = this.seatManager.tryInteractWithSeatAtTile(
-      tileX,
-      tileY,
-    );
-    if (seatInteraction.handled) {
-      this.stepAccumulatorMs = 0;
-      return { moved: true, path: seatInteraction.path };
+    const targetSeat = this.seatManager.getSeatAtTile(tileX, tileY);
+    if (targetSeat) {
+      if (store.occupiedSeats[targetSeat.seatId]) {
+        return { moved: false, path: [] };
+      }
+      const seatInteraction = this.seatManager.tryInteractWithSeatAtTile(tileX, tileY);
+      if (seatInteraction.handled) {
+        this.stepAccumulatorMs = 0;
+        return { moved: true, path: seatInteraction.path };
+      }
+      return { moved: false, path: [] };
     }
 
     const start: TileCoordinate = {

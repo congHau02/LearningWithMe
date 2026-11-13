@@ -28,6 +28,7 @@ class RoomMovementServiceTest {
     private SimpMessagingTemplate messagingTemplate;
     private RoomTopologyService topologyService;
     private RoomMovementService service;
+    private final java.util.concurrent.atomic.AtomicLong testNow = new java.util.concurrent.atomic.AtomicLong(1_700_000_000_000L);
 
     private static final String ROOM_ID = "main-library";
     private static final AuthPrincipal PRINCIPAL = new AuthPrincipal(
@@ -43,7 +44,13 @@ class RoomMovementServiceTest {
         stateStore = new RoomPresenceServiceTest.InMemoryRoomStateStore();
         messagingTemplate = mock(SimpMessagingTemplate.class);
         topologyService = new RoomTopologyService(new ObjectMapper());
-        service = new RoomMovementService(topologyService, stateStore, messagingTemplate);
+        java.time.Clock testClock = new java.time.Clock() {
+            @Override public java.time.ZoneId getZone() { return java.time.ZoneOffset.UTC; }
+            @Override public java.time.Clock withZone(java.time.ZoneId zone) { return this; }
+            @Override public java.time.Instant instant() { return java.time.Instant.ofEpochMilli(testNow.get()); }
+            @Override public long millis() { return testNow.get(); }
+        };
+        service = new RoomMovementService(topologyService, stateStore, messagingTemplate, testClock);
 
         // Spawn player at (12, 13) in FREE_ROAM
         RoomPlayerState player = new RoomPlayerState(
@@ -183,7 +190,8 @@ class RoomMovementServiceTest {
         assertThat(event1.player().y()).isEqualTo(12);
         assertThat(event1.player().isMoving()).isTrue();
 
-        // 2nd moving packet arrives almost immediately (e.g. 10ms later) due to network jitter
+        // 2nd moving packet arrives almost immediately (10ms later) due to network jitter
+        testNow.addAndGet(10L);
         PlayerMoveRequest move2 = new PlayerMoveRequest(12, 11, "UP", true);
         RoomEvent event2 = service.handleMove(PRINCIPAL, ROOM_ID, move2, "ws-1");
 

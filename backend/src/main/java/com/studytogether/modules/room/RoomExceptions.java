@@ -6,16 +6,22 @@ import org.springframework.http.HttpStatus;
 
 public final class RoomExceptions {
 
-    private static final URI TABLE_NOT_FOUND_TYPE =
+    public static final URI TABLE_NOT_FOUND_TYPE =
             URI.create("https://studytogether.com/problems/table-not-found");
-    private static final URI SEAT_NOT_FOUND_TYPE =
+    public static final URI SEAT_NOT_FOUND_TYPE =
             URI.create("https://studytogether.com/problems/seat-not-found");
-    private static final URI SEAT_TABLE_MISMATCH_TYPE =
+    public static final URI SEAT_TABLE_MISMATCH_TYPE =
             URI.create("https://studytogether.com/problems/seat-table-mismatch");
-    private static final URI ROOM_FULL_TYPE =
+    public static final URI ROOM_FULL_TYPE =
             URI.create("https://studytogether.com/problems/room-full");
-    private static final URI INVALID_MOVE_TYPE =
+    public static final URI INVALID_MOVE_TYPE =
             URI.create("https://studytogether.com/problems/invalid-move");
+    public static final URI SEAT_OCCUPIED_TYPE =
+            URI.create("https://studytogether.com/problems/seat-occupied");
+    public static final URI ALREADY_SEATED_TYPE =
+            URI.create("https://studytogether.com/problems/already-seated");
+    public static final URI NOT_SEATED_TYPE =
+            URI.create("https://studytogether.com/problems/not-seated");
 
     private RoomExceptions() {}
 
@@ -65,6 +71,33 @@ public final class RoomExceptions {
                 "Invalid Movement",
                 reason,
                 INVALID_MOVE_TYPE
+        );
+    }
+
+    public static BusinessException seatOccupied(String roomId, String seatId) {
+        return new BusinessException(
+                HttpStatus.CONFLICT,
+                "Seat Occupied",
+                "Seat '%s' is already occupied in room '%s'".formatted(seatId, roomId),
+                SEAT_OCCUPIED_TYPE
+        );
+    }
+
+    public static BusinessException alreadySeated(String roomId, String seatId) {
+        return new BusinessException(
+                HttpStatus.BAD_REQUEST,
+                "Already Seated",
+                "Learner is already seated in seat '%s' in room '%s'".formatted(seatId != null ? seatId : "unknown", roomId),
+                ALREADY_SEATED_TYPE
+        );
+    }
+
+    public static BusinessException notSeated(String roomId) {
+        return new BusinessException(
+                HttpStatus.BAD_REQUEST,
+                "Not Seated",
+                "Learner is not seated at any table in room '%s'".formatted(roomId),
+                NOT_SEATED_TYPE
         );
     }
 }

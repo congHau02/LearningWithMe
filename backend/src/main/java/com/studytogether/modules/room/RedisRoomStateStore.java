@@ -8,11 +8,14 @@ import com.studytogether.modules.room.model.RoomPlayerState;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -22,42 +25,33 @@ public class RedisRoomStateStore implements RoomStateStore {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final DefaultRedisScript<Long> seatSitScript;
 
     public RedisRoomStateStore(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+        this.seatSitScript = new DefaultRedisScript<>();
+        this.seatSitScript.setLocation(new ClassPathResource("redis/atomic_seat_sit.lua"));
+        this.seatSitScript.setResultType(Long.class);
     }
 
     @Override
     public Optional<String> findUserShard(String userId) {
-        if (userId == null || userId.isBlank()) {
-            return Optional.empty();
-        }
-        // shortcut: scans sequential shards via Redis HLEN/HEXISTS; add a reverse userId->roomId index key if active shards > 50
-        Set<String> checked = new java.util.HashSet<>();
+        if (userId == null || userId.isBlank()) return Optional.empty();
+        Set<String> checked = new HashSet<>();
         int index = 1;
         while (true) {
             String shardId = RoomPresenceService.shardIdForIndex(index);
             checked.add(shardId);
-            if (userExistsInShard(shardId, userId)) {
-                return Optional.of(shardId);
-            }
-            if (index > 1 && !isShardKnownOrActive(shardId)) {
-                break;
-            }
+            if (userExistsInShard(shardId, userId)) return Optional.of(shardId);
+            if (index > 1 && !isShardKnownOrActive(shardId)) break;
             index++;
         }
-
         Set<String> extraShards = redisTemplate.opsForSet().members(SHARDS_KEY);
         if (extraShards != null) {
-            List<String> sortedExtras = extraShards.stream()
-                    .filter(s -> !checked.contains(s))
-                    .sorted()
-                    .toList();
+            List<String> sortedExtras = extraShards.stream().filter(s -> !checked.contains(s)).sorted().toList();
             for (String shardId : sortedExtras) {
-                if (userExistsInShard(shardId, userId)) {
-                    return Optional.of(shardId);
-                }
+                if (userExistsInShard(shardId, userId)) return Optional.of(shardId);
             }
         }
         return Optional.empty();
@@ -71,13 +65,9 @@ public class RedisRoomStateStore implements RoomStateStore {
 
     @Override
     public boolean isShardKnownOrActive(String roomId) {
-        if (countPlayers(roomId) > 0) {
-            return true;
-        }
+        if (countPlayers(roomId) > 0) return true;
         Long seatsSize = redisTemplate.opsForHash().size(seatsKey(roomId));
-        if (seatsSize != null && seatsSize > 0) {
-            return true;
-        }
+        if (seatsSize != null && seatsSize > 0) return true;
         return Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(SHARDS_KEY, roomId));
     }
 
@@ -90,36 +80,23 @@ public class RedisRoomStateStore implements RoomStateStore {
     @Override
     public long currentEventSeq(String roomId) {
         String raw = redisTemplate.opsForValue().get(seqKey(roomId));
-        if (raw == null || raw.isBlank()) {
-            return 0L;
-        }
-        try {
-            return Long.parseLong(raw.trim());
-        } catch (NumberFormatException ex) {
-            return 0L;
-        }
+        if (raw == null || raw.isBlank()) return 0L;
+        try { return Long.parseLong(raw.trim()); } catch (NumberFormatException ex) { return 0L; }
     }
 
     @Override
     public Optional<RoomPlayerState> getPlayer(String roomId, String userId) {
         Object raw = redisTemplate.opsForHash().get(playersKey(roomId), userId);
-        if (raw == null) {
-            return Optional.empty();
-        }
-        return deserialize(raw.toString(), RoomPlayerState.class);
+        return raw == null ? Optional.empty() : deserialize(raw.toString(), RoomPlayerState.class);
     }
 
     @Override
     public List<RoomPlayerState> getAllPlayers(String roomId) {
         List<Object> values = redisTemplate.opsForHash().values(playersKey(roomId));
-        if (values == null || values.isEmpty()) {
-            return List.of();
-        }
+        if (values == null || values.isEmpty()) return List.of();
         List<RoomPlayerState> result = new ArrayList<>(values.size());
         for (Object value : values) {
-            if (value != null) {
-                deserialize(value.toString(), RoomPlayerState.class).ifPresent(result::add);
-            }
+            if (value != null) deserialize(value.toString(), RoomPlayerState.class).ifPresent(result::add);
         }
         result.sort(Comparator.comparing(RoomPlayerState::userId));
         return result;
@@ -150,9 +127,7 @@ public class RedisRoomStateStore implements RoomStateStore {
     @Override
     public Map<String, String> getSeats(String roomId) {
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(seatsKey(roomId));
-        if (entries == null || entries.isEmpty()) {
-            return Map.of();
-        }
+        if (entries == null || entries.isEmpty()) return Map.of();
         Map<String, String> seats = new HashMap<>(entries.size());
         for (Map.Entry<Object, Object> entry : entries.entrySet()) {
             if (entry.getKey() != null && entry.getValue() != null) {
@@ -163,28 +138,47 @@ public class RedisRoomStateStore implements RoomStateStore {
     }
 
     @Override
+    public SeatLockResult lockSeat(String roomId, String seatId, String userId) {
+        Long result = redisTemplate.execute(seatSitScript, List.of(seatsKey(roomId)), seatId, userId);
+        if (result == null || result == 0L) {
+            return SeatLockResult.SEAT_OCCUPIED;
+        }
+        if (result == -1L) {
+            return SeatLockResult.ALREADY_SEATED;
+        }
+        return SeatLockResult.SUCCESS;
+    }
+
+    @Override
+    public boolean releaseSeat(String roomId, String seatId) {
+        Long removed = redisTemplate.opsForHash().delete(seatsKey(roomId), seatId);
+        return removed != null && removed > 0;
+    }
+
+    @Override
     public Optional<RedisTableState> getTableState(String roomId, String tableId) {
         String raw = redisTemplate.opsForValue().get(tableStateKey(roomId, tableId));
-        if (raw == null || raw.isBlank()) {
-            return Optional.empty();
-        }
-        return deserialize(raw, RedisTableState.class);
+        return (raw == null || raw.isBlank()) ? Optional.empty() : deserialize(raw, RedisTableState.class);
+    }
+
+    @Override
+    public void saveTableState(String roomId, String tableId, RedisTableState state) {
+        redisTemplate.opsForValue().set(tableStateKey(roomId, tableId), serialize(state));
+    }
+
+    @Override
+    public boolean deleteTableState(String roomId, String tableId) {
+        return Boolean.TRUE.equals(redisTemplate.delete(tableStateKey(roomId, tableId)));
     }
 
     @Override
     public List<RoomChatMessage> getRecentMessages(String roomId, int limit) {
-        if (limit <= 0) {
-            return List.of();
-        }
+        if (limit <= 0) return List.of();
         List<String> rawList = redisTemplate.opsForList().range(chatKey(roomId), -limit, -1);
-        if (rawList == null || rawList.isEmpty()) {
-            return List.of();
-        }
+        if (rawList == null || rawList.isEmpty()) return List.of();
         List<RoomChatMessage> messages = new ArrayList<>(rawList.size());
         for (String raw : rawList) {
-            if (raw != null) {
-                deserialize(raw, RoomChatMessage.class).ifPresent(messages::add);
-            }
+            if (raw != null) deserialize(raw, RoomChatMessage.class).ifPresent(messages::add);
         }
         return messages;
     }

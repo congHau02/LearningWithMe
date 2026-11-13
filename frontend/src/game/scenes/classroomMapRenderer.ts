@@ -121,28 +121,32 @@ export function drawDynamicOverlay(
   options: {
     tileSize: number;
     seats: SeatMetadata[];
+    occupiedSeats?: Record<string, string>;
     activeSeatId: string | null;
     hoveredSeatId: string | null;
     pathQueue: TileCoordinate[];
   },
 ): void {
-  const { tileSize, seats, activeSeatId, hoveredSeatId, pathQueue } = options;
+  const { tileSize, seats, occupiedSeats, activeSeatId, hoveredSeatId, pathQueue } = options;
   graphics.clear();
 
   for (const seat of seats) {
     const cx = seat.tileX * tileSize + tileSize / 2;
     const cy = seat.tileY * tileSize + tileSize / 2;
     const isSeatedHere = seat.seatId === activeSeatId;
-    const isHovered = seat.seatId === hoveredSeatId;
+    const isOccupied = Boolean(occupiedSeats && occupiedSeats[seat.seatId] && !isSeatedHere);
+    const isHovered = seat.seatId === hoveredSeatId && !isOccupied;
 
     const fillColor = isSeatedHere
       ? 0x10b981
-      : isHovered
-        ? 0x38bdf8
-        : 0x334155;
-    graphics.fillStyle(fillColor, isSeatedHere || isHovered ? 0.85 : 0.65);
+      : isOccupied
+        ? 0x475569
+        : isHovered
+          ? 0x38bdf8
+          : 0x334155;
+    graphics.fillStyle(fillColor, isSeatedHere || isHovered ? 0.85 : isOccupied ? 0.45 : 0.65);
     graphics.fillRoundedRect(cx - 10, cy - 10, 20, 20, 5);
-    graphics.lineStyle(1.5, isSeatedHere ? 0xa7f3d0 : 0x94a3b8, 0.9);
+    graphics.lineStyle(1.5, isSeatedHere ? 0xa7f3d0 : isOccupied ? 0xef4444 : 0x94a3b8, isOccupied ? 0.5 : 0.9);
     graphics.strokeRoundedRect(cx - 10, cy - 10, 20, 20, 5);
   }
 

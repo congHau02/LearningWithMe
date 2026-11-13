@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import type { RoomPlayerDto } from '../../services/roomApi';
+import { useGameStore } from '../../stores/useGameStore';
 import {
   PlayerSprite,
   type StarterAvatarKey,
@@ -80,7 +81,8 @@ export class RemotePlayersRenderer {
             .sprite(pos.x, pos.y, model.getAvatarId(), 0)
             .setDepth(9);
           entry.sprite.play(entry.animKey, true);
-          const initialLabel = formatRemoteLabel(player);
+          const isHost = isPlayerTableHost(player);
+          const initialLabel = formatRemoteLabel(player, isHost);
           entry.lastLabel = initialLabel;
           entry.label = this.scene.add
             .text(pos.x, pos.y - 20, initialLabel, {
@@ -130,7 +132,8 @@ export class RemotePlayersRenderer {
       }
 
       if (entry.label) {
-        const nextLabel = formatRemoteLabel(entry.data);
+        const isHost = isPlayerTableHost(entry.data);
+        const nextLabel = formatRemoteLabel(entry.data, isHost);
         if (nextLabel !== entry.lastLabel) {
           entry.lastLabel = nextLabel;
           entry.label.setText(nextLabel);
@@ -173,7 +176,14 @@ export class RemotePlayersRenderer {
   }
 }
 
-function formatRemoteLabel(player: RoomPlayerDto): string {
-  if (!player.connected) return `${player.nickname} (Mất kết nối)`;
-  return player.state === 'SEATED' ? `${player.nickname} • Đang học` : player.nickname;
+function formatRemoteLabel(player: RoomPlayerDto, isHost = false): string {
+  const crown = isHost ? '👑 ' : '';
+  if (!player.connected) return `${crown}${player.nickname} (Mất kết nối)`;
+  return player.state === 'SEATED' ? `${crown}${player.nickname} • Đang học` : `${crown}${player.nickname}`;
+}
+
+function isPlayerTableHost(player: RoomPlayerDto): boolean {
+  if (player.state !== 'SEATED' || !player.tableId) return false;
+  const table = useGameStore.getState().roomTables.find((t) => t.tableId === player.tableId);
+  return Boolean(table && table.hostUserId === player.userId);
 }

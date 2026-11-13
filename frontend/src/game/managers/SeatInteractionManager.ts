@@ -70,7 +70,7 @@ export class SeatInteractionManager {
     }
 
     const seat = this.getSeatAtTile(tileX, tileY);
-    if (!seat) {
+    if (!seat || store.occupiedSeats[seat.seatId]) {
       return { handled: false, seat: null, path: [] };
     }
 
@@ -80,12 +80,7 @@ export class SeatInteractionManager {
     };
 
     if (start.tileX === seat.tileX && start.tileY === seat.tileY) {
-      store.sitAtSeat(
-        seat.tableId,
-        seat.seatId,
-        { x: seat.tileX, y: seat.tileY },
-        seat.facingDir,
-      );
+      store.requestSeatConfirmation(seat.tableId, seat.seatId);
       return { handled: true, seat, path: [] };
     }
 
@@ -124,12 +119,7 @@ export class SeatInteractionManager {
       return null;
     }
 
-    store.sitAtSeat(
-      seat.tableId,
-      seat.seatId,
-      { x: seat.tileX, y: seat.tileY },
-      seat.facingDir,
-    );
+    store.requestSeatConfirmation(seat.tableId, seat.seatId);
     return seat;
   }
 

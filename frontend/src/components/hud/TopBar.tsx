@@ -18,6 +18,7 @@ export interface TopBarProps {
   backendStatus: BackendConnectionStatus;
   currentTableId: string | null;
   currentSeatId?: string | null;
+  isTableHost?: boolean;
   onLeaveSeat?: () => void;
   onOpenUpgrade?: () => void;
 }
@@ -45,6 +46,7 @@ export function TopBar({
   backendStatus,
   currentTableId,
   currentSeatId,
+  isTableHost,
   onLeaveSeat,
   onOpenUpgrade,
 }: TopBarProps) {
@@ -107,6 +109,15 @@ export function TopBar({
 
         <div className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/70 px-2 py-1">
           <StarterAvatarPortrait avatarId={avatarSpriteId} size={22} />
+          {isTableHost ? (
+            <span
+              data-testid="table-host-crown"
+              className="text-amber-400 font-bold"
+              title="Trưởng bàn"
+            >
+              👑
+            </span>
+          ) : null}
           <span className="font-medium text-foreground">{nickname}</span>
           <span
             data-testid="auth-provider-badge"

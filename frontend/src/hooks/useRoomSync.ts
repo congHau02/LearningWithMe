@@ -6,6 +6,7 @@ import {
 } from '../services/roomStompClient';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useGameStore } from '../stores/useGameStore';
+import { useTableStore } from '../stores/useTableStore';
 
 export function useRoomSync(): void {
   const token = useAuthStore((s) => s.token);
@@ -13,6 +14,7 @@ export function useRoomSync(): void {
   const sessionRef = useRef<RoomStompSession | null>(null);
   const prevTokenRef = useRef<string | null>(null);
   const throttlerRef = useRef<MovementThrottler | null>(null);
+  const lastSentSeatRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -40,6 +42,22 @@ export function useRoomSync(): void {
     let prevMoving = useGameStore.getState().isMoving;
 
     const unsub = useGameStore.subscribe((state) => {
+      if (state.isPendingSeatConfirmation && state.targetTableId && state.targetSeatId) {
+        if (lastSentSeatRef.current !== state.targetSeatId) {
+          lastSentSeatRef.current = state.targetSeatId;
+          sessionRef.current?.sendSit(state.roomId, state.targetTableId, state.targetSeatId);
+        }
+      } else {
+        lastSentSeatRef.current = null;
+      }
+
+      if (state.isPendingSeatLeave) {
+        sessionRef.current?.sendLeave(state.roomId);
+        useGameStore.getState().leaveSeat();
+        useTableStore.getState().leaveTable();
+        return;
+      }
+
       if (state.characterState === 'SEATED') {
         throttler.destroy();
         prevMoving = false;
@@ -49,22 +67,12 @@ export function useRoomSync(): void {
       const dir = state.facingDir;
       const moving = state.isMoving;
 
-      if (
-        pos.x !== prevX ||
-        pos.y !== prevY ||
-        dir !== prevDir ||
-        moving !== prevMoving
-      ) {
+      if (pos.x !== prevX || pos.y !== prevY || dir !== prevDir || moving !== prevMoving) {
         prevX = pos.x;
         prevY = pos.y;
         prevDir = dir;
         prevMoving = moving;
-        throttler.push({
-          x: pos.x,
-          y: pos.y,
-          facingDir: dir,
-          isMoving: moving,
-        });
+        throttler.push({ x: pos.x, y: pos.y, facingDir: dir, isMoving: moving });
       }
     });
 
@@ -94,11 +102,49 @@ export function useRoomSync(): void {
           useGameStore
             .getState()
             .applyRoomSnapshot(snapshot, useAuthStore.getState().userId),
-        onEvent: (event) =>
-          useGameStore
-            .getState()
-            .applyIncomingRoomEvent(event, useAuthStore.getState().userId),
-        onError: (err) => useGameStore.getState().handleStompError(err),
+        onEvent: (event) => {
+          const selfUserId = useAuthStore.getState().userId;
+          useGameStore.getState().applyIncomingRoomEvent(event, selfUserId);
+          if (event.type === 'SEAT_LOCKED') {
+            if (event.userId === selfUserId) {
+              useGameStore.getState().confirmSeat(
+                event.tableId!,
+                event.seatId!,
+                event.player ? { x: event.player.x, y: event.player.y } : undefined,
+                event.player?.facingDir,
+              );
+              useTableStore.getState().setTableState({
+                tableId: event.tableId!,
+                hostUserId: event.hostUserId ?? null,
+              });
+            } else {
+              const current = useGameStore.getState();
+              if (
+                current.characterState === 'WALKING_TO_SEAT' &&
+                (current.currentSeatId === event.seatId || current.targetSeatId === event.seatId)
+              ) {
+                current.abortSeatWalk('Ghế vừa có người ngồi!');
+              }
+            }
+          } else if (event.type === 'SEAT_RELEASED') {
+            const currentTableId = useTableStore.getState().tableId;
+            if (event.tableId && event.tableId === currentTableId) {
+              useTableStore.getState().setTableState({
+                tableId: event.tableId,
+                hostUserId: event.hostUserId ?? null,
+              });
+            }
+          }
+        },
+        onError: (err) => {
+          useGameStore.getState().handleStompError(err);
+          if (err.code === 'SEAT_OCCUPIED' || err.code === 'ALREADY_SEATED') {
+            const current = useGameStore.getState();
+            if (current.characterState === 'WALKING_TO_SEAT' || current.isPendingSeatConfirmation) {
+              current.abortSeatWalk(err.message || 'Ghế đã có người ngồi!');
+            }
+          }
+        },
       });
       sessionRef.current = session;
       prevTokenRef.current = token;

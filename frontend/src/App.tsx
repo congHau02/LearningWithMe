@@ -22,7 +22,17 @@ export function App() {
   const isLeaveConfirmOpen = useGameStore((s) => s.isLeaveConfirmOpen);
   const openLeaveConfirm = useGameStore((s) => s.openLeaveConfirm);
   const closeLeaveConfirm = useGameStore((s) => s.closeLeaveConfirm);
-  const leaveSeat = useGameStore((s) => s.leaveSeat);
+  const toastMessage = useGameStore((s) => s.toastMessage);
+  const clearToast = useGameStore((s) => s.clearToast);
+  const requestLeaveSeat = useGameStore((s) => s.requestLeaveSeat);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => {
+      clearToast();
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, [toastMessage, clearToast]);
 
   useEffect(() => {
     if (characterState !== 'SEATED') return;
@@ -49,16 +59,17 @@ export function App() {
   const studyGoal = useAuthStore((s) => s.studyGoal);
   const totalStudyMinutes = useAuthStore((s) => s.totalStudyMinutes);
   const token = useAuthStore((s) => s.token);
+  const selfUserId = useAuthStore((s) => s.userId);
 
-  const leaveTable = useTableStore((s) => s.leaveTable);
+  const tableHostUserId = useTableStore((s) => s.hostUserId);
+  const isTableHost = characterState === 'SEATED' && Boolean(tableHostUserId && selfUserId && tableHostUserId === selfUserId);
 
   const backendStatus = useAppBootstrap();
   useRoomSync();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const handleLeaveSeat = () => {
-    leaveSeat();
-    leaveTable();
+    requestLeaveSeat();
   };
 
   const handleAccountUpgraded = (response: UpgradeAccountResponse) => {
@@ -94,6 +105,7 @@ export function App() {
         backendStatus={backendStatus}
         currentTableId={currentTableId}
         currentSeatId={currentSeatId}
+        isTableHost={isTableHost}
         onLeaveSeat={handleLeaveSeat}
         onOpenUpgrade={
           token && authProvider === 'GUEST'
@@ -103,6 +115,17 @@ export function App() {
       />
 
       {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
+
+      {toastMessage ? (
+        <aside
+          role="status"
+          aria-live="polite"
+          data-testid="seat-toast-message"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-amber-500/40 bg-slate-900/95 px-4 py-2 text-xs font-medium text-amber-200 shadow-xl backdrop-blur-md"
+        >
+          {toastMessage}
+        </aside>
+      ) : null}
 
       <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-6">
         <ClassroomCanvas />

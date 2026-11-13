@@ -410,6 +410,70 @@ class RoomStompWebSocketTest {
         session.disconnect();
     }
 
+    @Test
+    void stompAtomicSeatSitAndLeaveWithAutoHostSuccession() throws Exception {
+        String roomId = "main-library";
+        AuthPrincipal u1 = new AuthPrincipal("guest-sit-1", AuthRole.GUEST, AuthProvider.GUEST, null, "User1", "avatar_01", "Math");
+        AuthPrincipal u2 = new AuthPrincipal("guest-sit-2", AuthRole.GUEST, AuthProvider.GUEST, null, "User2", "avatar_02", "Physics");
+
+        String jwt1 = jwtTokenService.issueGuestToken(u1);
+        String jwt2 = jwtTokenService.issueGuestToken(u2);
+
+        BlockingQueue<JsonNode> roomEvents = new LinkedBlockingQueue<>();
+        BlockingQueue<JsonNode> u1Errors = new LinkedBlockingQueue<>();
+        BlockingQueue<JsonNode> u2Errors = new LinkedBlockingQueue<>();
+
+        StompSession session1 = connectAuthenticated(jwt1, new AtomicBoolean(false));
+        session1.subscribe("/topic/room/" + roomId + "/events", queueHandler(roomEvents));
+        session1.subscribe("/user/queue/errors", queueHandler(u1Errors));
+
+        StompSession session2 = connectAuthenticated(jwt2, new AtomicBoolean(false));
+        session2.subscribe("/user/queue/errors", queueHandler(u2Errors));
+
+        session1.send("/app/room/" + roomId + "/join", "");
+        pollUntilType(roomEvents, "PLAYER_JOINED");
+
+        session2.send("/app/room/" + roomId + "/join", "");
+        pollUntilType(roomEvents, "PLAYER_JOINED");
+
+        // 1. User 1 sits at empty table_01 (T1_S1) -> becomes Initial Table Host
+        session1.send("/app/room/" + roomId + "/seat.sit", new com.studytogether.modules.room.model.SeatSitRequest("table_01", "T1_S1"));
+        JsonNode sit1Event = pollUntilType(roomEvents, "SEAT_LOCKED");
+        assertThat(sit1Event.get("userId").asText()).isEqualTo("guest-sit-1");
+        assertThat(sit1Event.get("tableId").asText()).isEqualTo("table_01");
+        assertThat(sit1Event.get("seatId").asText()).isEqualTo("T1_S1");
+        assertThat(sit1Event.get("hostUserId").asText()).isEqualTo("guest-sit-1");
+
+        // 2. User 2 tries to sit at the same occupied seat T1_S1 -> receives structured error SEAT_OCCUPIED
+        session2.send("/app/room/" + roomId + "/seat.sit", new com.studytogether.modules.room.model.SeatSitRequest("table_01", "T1_S1"));
+        JsonNode err = pollJson(u2Errors);
+        assertThat(err.get("code").asText()).isEqualTo("SEAT_OCCUPIED");
+
+        // 3. User 2 sits at T1_S2 -> host remains guest-sit-1
+        session2.send("/app/room/" + roomId + "/seat.sit", new com.studytogether.modules.room.model.SeatSitRequest("table_01", "T1_S2"));
+        JsonNode sit2Event = pollUntilType(roomEvents, "SEAT_LOCKED");
+        assertThat(sit2Event.get("userId").asText()).isEqualTo("guest-sit-2");
+        assertThat(sit2Event.get("seatId").asText()).isEqualTo("T1_S2");
+        assertThat(sit2Event.get("hostUserId").asText()).isEqualTo("guest-sit-1");
+
+        // 4. User 1 (current Table Host) leaves seat -> Auto-Host Succession promotes User 2!
+        session1.send("/app/room/" + roomId + "/seat.leave", "");
+        JsonNode leave1Event = pollUntilType(roomEvents, "SEAT_RELEASED");
+        assertThat(leave1Event.get("userId").asText()).isEqualTo("guest-sit-1");
+        assertThat(leave1Event.get("seatId").asText()).isEqualTo("T1_S1");
+        assertThat(leave1Event.get("hostUserId").asText()).isEqualTo("guest-sit-2");
+
+        // 5. User 2 leaves seat -> table becomes empty, hostUserId is null
+        session2.send("/app/room/" + roomId + "/seat.leave", "");
+        JsonNode leave2Event = pollUntilType(roomEvents, "SEAT_RELEASED");
+        assertThat(leave2Event.get("userId").asText()).isEqualTo("guest-sit-2");
+        assertThat(leave2Event.get("seatId").asText()).isEqualTo("T1_S2");
+        assertThat(leave2Event.get("hostUserId").isNull()).isTrue();
+
+        session1.disconnect();
+        session2.disconnect();
+    }
+
     private WebSocketStompClient createStompClient() {
         MappingJackson2MessageConverter jsonConverter = new MappingJackson2MessageConverter();
         jsonConverter.setObjectMapper(objectMapper);

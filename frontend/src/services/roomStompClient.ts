@@ -164,6 +164,18 @@ export class RoomStompSession {
     }
   }
 
+  sendSit(roomId: string, tableId: string, seatId: string): void {
+    if (this.transport && !this.stopped && !this.replaced) {
+      this.transport.publish(`/app/room/${roomId}/seat.sit`, JSON.stringify({ tableId, seatId }));
+    }
+  }
+
+  sendLeave(roomId: string): void {
+    if (this.transport && !this.stopped && !this.replaced) {
+      this.transport.publish(`/app/room/${roomId}/seat.leave`, '{}');
+    }
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.generation += 1;
