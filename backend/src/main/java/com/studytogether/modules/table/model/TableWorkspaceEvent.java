@@ -1,6 +1,7 @@
 package com.studytogether.modules.table.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.studytogether.modules.room.model.RedisTableState;
 import java.util.List;
 
 public record TableWorkspaceEvent(
@@ -23,37 +24,43 @@ public record TableWorkspaceEvent(
     }
 
     public static TableWorkspaceEvent permissionRequested(
-            String tableId, String requesterUserId, String requesterNickname,
-            String hostUserId, List<String> coHostUserIds, boolean isFreeCollab, long now) {
+            String tableId, String requesterUserId, String requesterNickname, RedisTableState state, long now
+    ) {
         return new TableWorkspaceEvent("PERMISSION_REQUESTED", tableId, requesterUserId, null,
-                requesterNickname, null, hostUserId, coHostUserIds, isFreeCollab, null, null, null, now);
+                requesterNickname, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
+                null, null, null, now);
     }
 
     public static TableWorkspaceEvent permissionUpdated(
             String tableId, PermissionAction action, String actorUserId, String targetUserId,
-            String hostUserId, List<String> coHostUserIds, boolean isFreeCollab, long now) {
+            RedisTableState state, long now
+    ) {
         return new TableWorkspaceEvent("PERMISSION_UPDATED", tableId, actorUserId, targetUserId,
-                null, action, hostUserId, coHostUserIds, isFreeCollab, null, null, null, now);
+                null, action, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
+                null, null, null, now);
     }
 
     public static TableWorkspaceEvent videoSynced(
-            String tableId, String actorUserId, TableVideoState videoState,
-            String hostUserId, List<String> coHostUserIds, boolean isFreeCollab, long now) {
+            String tableId, String actorUserId, TableVideoState videoState, RedisTableState state, long now
+    ) {
         return new TableWorkspaceEvent("VIDEO_SYNCED", tableId, actorUserId, null,
-                null, null, hostUserId, coHostUserIds, isFreeCollab, videoState, null, null, now);
+                null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
+                videoState, null, null, now);
     }
 
     public static TableWorkspaceEvent sosUpdated(
-            String tableId, String actorUserId, String sosBanner,
-            String hostUserId, List<String> coHostUserIds, boolean isFreeCollab, long now) {
+            String tableId, String actorUserId, String sosBanner, RedisTableState state, long now
+    ) {
         return new TableWorkspaceEvent("SOS_UPDATED", tableId, actorUserId, null,
-                null, null, hostUserId, coHostUserIds, isFreeCollab, null, sosBanner, null, now);
+                null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
+                null, sosBanner, null, now);
     }
 
     public static TableWorkspaceEvent tableChat(
-            String tableId, String actorUserId, TableChatMessage chatMessage,
-            String hostUserId, List<String> coHostUserIds, boolean isFreeCollab, long now) {
+            String tableId, String actorUserId, TableChatMessage chatMessage, RedisTableState state, long now
+    ) {
         return new TableWorkspaceEvent("TABLE_CHAT", tableId, actorUserId, null,
-                null, null, hostUserId, coHostUserIds, isFreeCollab, null, null, chatMessage, now);
+                null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
+                null, null, chatMessage, now);
     }
 }

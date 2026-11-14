@@ -98,6 +98,7 @@ class TableWorkspaceIntegrationTest {
 
         BlockingQueue<JsonNode> roomEvents = subscribeJson(hostSession, "/topic/room/main-library/events");
         BlockingQueue<JsonNode> memberErrors = subscribeJson(memberSession, "/user/queue/errors");
+        Thread.sleep(100);
 
         hostSession.send("/app/room/main-library/join", "");
         memberSession.send("/app/room/main-library/join", "");
@@ -110,20 +111,24 @@ class TableWorkspaceIntegrationTest {
         assertThat(notSeatedErr).isNotNull();
         assertThat(notSeatedErr.path("code").asText()).isEqualTo("NOT_SEATED_AT_TABLE");
 
-        // Unseated SUBSCRIBE to /topic/table/table_01/workspace must not receive workspace broadcasts
-        BlockingQueue<JsonNode> unauthorizedTableEvents = subscribeJson(memberSession, "/topic/table/table_01/workspace");
+        // Unseated SUBSCRIBE to /topic/table/table_01/workspace must be rejected and receive nothing
+        StompSession outsiderSession = connectStomp(createGuestToken("OutsiderLearner"));
+        BlockingQueue<JsonNode> unauthorizedTableEvents = subscribeJson(outsiderSession, "/topic/table/table_01/workspace");
 
         // Both sit at table_01
-        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_01"));
+        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
         JsonNode sit1 = roomEvents.poll(5, TimeUnit.SECONDS);
         assertThat(sit1.path("type").asText()).isEqualTo("SEAT_LOCKED");
 
-        // Host broadcasts a workspace event while member is still unseated -> unauthorized subscription receives nothing
+        // Host broadcasts a workspace event while outsider is unseated -> unauthorized subscription receives nothing
         hostSession.send("/app/table/table_01/permission.respond", Map.of("action", "TOGGLE_FREE_COLLAB", "isFreeCollab", true));
         assertThat(unauthorizedTableEvents.poll(400, TimeUnit.MILLISECONDS)).isNull();
         hostSession.send("/app/table/table_01/permission.respond", Map.of("action", "TOGGLE_FREE_COLLAB", "isFreeCollab", false));
+        if (outsiderSession.isConnected()) {
+            outsiderSession.disconnect();
+        }
 
-        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_02"));
+        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
         JsonNode sit2 = roomEvents.poll(5, TimeUnit.SECONDS);
         assertThat(sit2.path("type").asText()).isEqualTo("SEAT_LOCKED");
         String memberUserId = sit2.path("userId").asText();
@@ -197,16 +202,22 @@ class TableWorkspaceIntegrationTest {
         StompSession hostSession = connectStomp(hostToken);
         StompSession memberSession = connectStomp(memberToken);
 
-        BlockingQueue<JsonNode> tableEvents = subscribeJson(hostSession, "/topic/table/table_01/workspace");
+        BlockingQueue<JsonNode> roomEvents = subscribeJson(hostSession, "/topic/room/main-library/events");
         BlockingQueue<JsonNode> memberErrors = subscribeJson(memberSession, "/user/queue/errors");
+        Thread.sleep(150);
 
         hostSession.send("/app/room/main-library/join", "");
+        assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
         memberSession.send("/app/room/main-library/join", "");
-        Thread.sleep(250);
+        assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
 
-        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_01"));
-        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_02"));
-        Thread.sleep(250);
+        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
+        assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
+        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
+        assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
+
+        BlockingQueue<JsonNode> tableEvents = subscribeJson(hostSession, "/topic/table/table_01/workspace");
+        Thread.sleep(150);
 
         memberSession.send("/app/table/table_01/video.sync", Map.of(
                 "action", "CHANGE_URL",
@@ -261,13 +272,15 @@ class TableWorkspaceIntegrationTest {
                 JsonNode.class
         );
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return resp.getBody().path("accessToken").asText();
+        return resp.getBody().path("guestToken").asText();
     }
 
     private StompSession connectStomp(String token) throws Exception {
         WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
+        MappingJackson2MessageConverter jackson = new MappingJackson2MessageConverter();
+        jackson.setObjectMapper(objectMapper);
         client.setMessageConverter(new CompositeMessageConverter(java.util.List.of(
-                new MappingJackson2MessageConverter(),
+                jackson,
                 new StringMessageConverter()
         )));
         StompHeaders connectHeaders = new StompHeaders();
@@ -285,13 +298,13 @@ class TableWorkspaceIntegrationTest {
         session.subscribe(destination, new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
-                return String.class;
+                return byte[].class;
             }
 
             @Override
             public void handleFrame(StompHeaders headers, Object payload) {
                 try {
-                    queue.add(objectMapper.readTree(String.valueOf(payload)));
+                    queue.add(objectMapper.readTree((byte[]) payload));
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }

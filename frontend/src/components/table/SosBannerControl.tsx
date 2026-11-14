@@ -1,7 +1,13 @@
-import { useState, type FormEvent } from 'react';
-import { sendTableSosToggle } from '../../services/roomStompClient';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { sendTableSosToggle } from '../../services/tableStompClient';
+import {
+  MAX_SOS_TOPIC_LENGTH,
+  sosBannerResolver,
+  type SosBannerFormValues,
+} from './tableFormSchemas';
 
-export const MAX_SOS_TOPIC_LENGTH = 80;
+export { MAX_SOS_TOPIC_LENGTH };
 
 interface SosBannerControlProps {
   tableId: string;
@@ -11,28 +17,24 @@ interface SosBannerControlProps {
 
 export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerControlProps) {
   const [isComposing, setIsComposing] = useState(false);
-  const [topicInput, setTopicInput] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<SosBannerFormValues>({
+    resolver: sosBannerResolver,
+    defaultValues: { topic: '' },
+  });
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    const trimmed = topicInput.trim();
-    if (!trimmed) {
-      setError('Vui lòng nhập chủ đề cần hỗ trợ');
-      return;
-    }
-    if (trimmed.length > MAX_SOS_TOPIC_LENGTH) {
-      setError(`Chủ đề tối đa ${MAX_SOS_TOPIC_LENGTH} ký tự`);
-      return;
-    }
-    setError(null);
-    sendTableSosToggle(tableId, { active: true, topic: trimmed });
-    setTopicInput('');
+  const onSubmit = (values: SosBannerFormValues) => {
+    sendTableSosToggle(tableId, { active: true, topic: values.topic });
+    reset();
     setIsComposing(false);
   };
 
   const handleDeactivate = () => {
-    setError(null);
+    reset();
     sendTableSosToggle(tableId, { active: false });
   };
 
@@ -84,18 +86,15 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
       data-testid="sos-compose-form"
       className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/40 bg-slate-900/90 p-2.5 text-xs"
     >
       <input
         type="text"
         data-testid="sos-topic-input"
-        value={topicInput}
-        onChange={(e) => {
-          setTopicInput(e.target.value);
-          if (error) setError(null);
-        }}
+        {...register('topic')}
         maxLength={MAX_SOS_TOPIC_LENGTH}
         placeholder="VD: Cần giúp Tích phân từng phần"
         aria-label="Chủ đề cần hỗ trợ SOS"
@@ -113,15 +112,15 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
         data-testid="sos-cancel-btn"
         onClick={() => {
           setIsComposing(false);
-          setError(null);
+          reset();
         }}
         className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-slate-300 transition hover:bg-slate-800"
       >
         Hủy
       </button>
-      {error ? (
+      {errors.topic?.message ? (
         <p data-testid="sos-topic-error" className="w-full text-[11px] font-medium text-rose-400">
-          {error}
+          {errors.topic.message}
         </p>
       ) : null}
     </form>

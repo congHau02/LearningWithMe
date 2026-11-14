@@ -30,21 +30,4 @@ public record RoomPlayerDto(
     ) {
         this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, connected, false, 0L);
     }
-
-    public RoomPlayerDto(
-            String userId,
-            String nickname,
-            String avatarId,
-            String role,
-            String state,
-            int x,
-            int y,
-            String facingDir,
-            String tableId,
-            String seatId,
-            boolean connected,
-            boolean isMoving
-    ) {
-        this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, connected, isMoving, 0L);
-    }
 }

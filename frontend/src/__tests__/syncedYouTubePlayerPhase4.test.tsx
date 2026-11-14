@@ -47,7 +47,7 @@ describe('SyncedYouTubePlayer component & 2.0s drift recovery', () => {
     delete window.YT;
   });
 
-  it('allows controlling learner to change URL, play/pause, and seek via STOMP', () => {
+  it('allows controlling learner to change URL, play/pause, and seek via STOMP', async () => {
     useTableStore.getState().setTableState({
       tableId: 'table_01',
       hostUserId: 'u-host',
@@ -58,18 +58,20 @@ describe('SyncedYouTubePlayer component & 2.0s drift recovery', () => {
 
     fireEvent.change(screen.getByTestId('yt-url-input'), { target: { value: 'bad-link' } });
     fireEvent.click(screen.getByTestId('yt-change-btn'));
-    expect(screen.getByTestId('yt-url-error')).toBeInTheDocument();
+    expect(await screen.findByTestId('yt-url-error')).toBeInTheDocument();
     expect(sendVideoSync).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByTestId('yt-url-input'), {
       target: { value: 'https://youtu.be/5qap5aO4i9A?si=test' },
     });
     fireEvent.click(screen.getByTestId('yt-change-btn'));
-    expect(sendVideoSync).toHaveBeenCalledWith('table_01', {
-      action: 'CHANGE_URL',
-      videoUrlOrId: '5qap5aO4i9A',
-      currentTime: 0,
-    });
+    await waitFor(() =>
+      expect(sendVideoSync).toHaveBeenCalledWith('table_01', {
+        action: 'CHANGE_URL',
+        videoUrlOrId: '5qap5aO4i9A',
+        currentTime: 0,
+      })
+    );
 
     fireEvent.click(screen.getByTestId('yt-play-pause-btn'));
     expect(sendVideoSync).toHaveBeenCalledWith('table_01', {

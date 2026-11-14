@@ -159,9 +159,11 @@ export function useRoomSync(): void {
           } else if (
             err.code === 'TABLE_PERMISSION_DENIED' ||
             err.code === 'NOT_SEATED_AT_TABLE' ||
+            err.code === 'TARGET_NOT_SEATED_AT_TABLE' ||
+            err.code === 'TABLE_CHAT_RATE_LIMIT_EXCEEDED' ||
             err.code === 'INVALID_TABLE_ACTION'
           ) {
-            useTableStore.getState().setPermissionToast(err.message || 'Không đủ quyền thao tác bàn học');
+            useTableStore.getState().setPermissionToast(err.message || 'Không thể thực hiện thao tác bàn học');
           }
         },
       });

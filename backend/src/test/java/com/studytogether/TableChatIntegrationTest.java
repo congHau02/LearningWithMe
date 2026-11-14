@@ -111,10 +111,10 @@ class TableChatIntegrationTest {
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
 
         // Host sits at table_01, outsider sits at table_02
-        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_01"));
+        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
 
-        outsiderSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "seat_05"));
+        outsiderSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "T2_S1"));
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
 
         BlockingQueue<JsonNode> table1Events = subscribeJson(hostSession, "/topic/table/table_01/workspace");
@@ -169,7 +169,7 @@ class TableChatIntegrationTest {
         assertThat(rateLimitErr.path("code").asText()).isEqualTo("TABLE_CHAT_RATE_LIMIT_EXCEEDED");
 
         // Member sits at table_01 and fetches workspace snapshot -> sees recent messages
-        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_02"));
+        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
 
         HttpHeaders headers = new HttpHeaders();
@@ -200,11 +200,11 @@ class TableChatIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         ResponseEntity<String> res = restTemplate.postForEntity(
                 "/api/v1/auth/guest",
-                new HttpEntity<>(Map.of("nickname", nickname, "avatarSpriteId", "avatar_01"), headers),
+                new HttpEntity<>(Map.of("nickname", nickname, "avatarId", "avatar_01"), headers),
                 String.class
         );
-        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        return objectMapper.readTree(res.getBody()).path("token").asText();
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return objectMapper.readTree(res.getBody()).path("guestToken").asText();
     }
 
     private StompSession connectStomp(String token) throws Exception {

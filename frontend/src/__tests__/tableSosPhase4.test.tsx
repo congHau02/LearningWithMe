@@ -1,7 +1,17 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('phaser', () => ({
+  default: {
+    Scene: class {},
+    Scenes: { Events: { SHUTDOWN: 'shutdown' } },
+    Tilemaps: { Formats: { TILED_JSON: 1 } },
+  },
+}));
+
 import { TableWorkspaceShell } from '../components/table/TableWorkspaceShell';
 import { TableSosOverlay } from '../game/entities/TableSosOverlay';
+import { ClassroomScene } from '../game/scenes/ClassroomScene';
 import { MAIN_LIBRARY_TOPOLOGY } from '../game/topology/roomTopology';
 import {
   setActiveRoomStompSession,
@@ -88,7 +98,7 @@ describe('P4-T3 Table SOS Banner Toggle, Room Broadcast & 2D Map Glowing Indicat
     setActiveRoomStompSession(null);
   });
 
-  it('allows Host/Co-Host/FreeCollab member to toggle SOS with topic validation and hides controls for unauthorized Member', () => {
+  it('allows Host/Co-Host/FreeCollab member to toggle SOS with topic validation and hides controls for unauthorized Member', async () => {
     useGameStore.setState({
       characterState: 'SEATED',
       currentTableId: 'table_01',
@@ -108,17 +118,19 @@ describe('P4-T3 Table SOS Banner Toggle, Room Broadcast & 2D Map Glowing Indicat
     fireEvent.click(screen.getByTestId('sos-open-form-btn'));
     fireEvent.change(screen.getByTestId('sos-topic-input'), { target: { value: '   ' } });
     fireEvent.click(screen.getByTestId('sos-activate-btn'));
-    expect(screen.getByTestId('sos-topic-error')).toBeInTheDocument();
+    expect(await screen.findByTestId('sos-topic-error')).toBeInTheDocument();
     expect(sendSosToggle).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByTestId('sos-topic-input'), {
       target: { value: '  Cần giúp Tích phân từng phần  ' },
     });
     fireEvent.click(screen.getByTestId('sos-activate-btn'));
-    expect(sendSosToggle).toHaveBeenCalledWith('table_01', {
-      active: true,
-      topic: 'Cần giúp Tích phân từng phần',
-    });
+    await waitFor(() =>
+      expect(sendSosToggle).toHaveBeenCalledWith('table_01', {
+        active: true,
+        topic: 'Cần giúp Tích phân từng phần',
+      }),
+    );
 
     // Apply SOS_UPDATED workspace event
     act(() => {
@@ -271,5 +283,63 @@ describe('P4-T3 Table SOS Banner Toggle, Room Broadcast & 2D Map Glowing Indicat
     expect(overlay.getActiveSosTableIds()).toEqual([]);
     expect(createdTexts[0]?.visible).toBe(false);
     overlay.destroy();
+  });
+
+  it('instantiates TableSosOverlay inside ClassroomScene.create() and updates SOS badges on update()', () => {
+    const { scene, createdTexts } = createMockPhaserScene();
+    const classroomScene = new ClassroomScene(MAIN_LIBRARY_TOPOLOGY);
+
+    const noop = () => {};
+    const anims = { exists: vi.fn(() => true), create: vi.fn() };
+    const make = {
+      tilemap: vi.fn(() => ({
+        addTilesetImage: vi.fn(() => null),
+        createLayer: vi.fn(),
+      })),
+    };
+    const sprite = {
+      setDepth: vi.fn().mockReturnThis(),
+      play: vi.fn().mockReturnThis(),
+      setPosition: vi.fn().mockReturnThis(),
+    };
+    Object.assign(classroomScene, {
+      add: {
+        ...scene.add,
+        sprite: vi.fn(() => sprite),
+        container: vi.fn(() => ({
+          setDepth: vi.fn().mockReturnThis(),
+          setVisible: vi.fn().mockReturnThis(),
+          setPosition: vi.fn().mockReturnThis(),
+          destroy: vi.fn(),
+        })),
+      },
+      make,
+      anims,
+      input: { on: vi.fn() },
+      events: { once: vi.fn() },
+    });
+
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener').mockImplementation(noop);
+    classroomScene.create();
+    addEventListenerSpy.mockRestore();
+
+    useGameStore.setState({
+      roomTables: [
+        {
+          tableId: 'table_01',
+          label: 'Bàn 1',
+          capacity: 2,
+          hostUserId: 'u-host',
+          coHostUserIds: [],
+          isFreeCollab: false,
+          sosBanner: 'Cần giúp Đạo hàm',
+          occupiedSeats: 1,
+        },
+      ],
+    });
+
+    classroomScene.update(1000, 16);
+
+    expect(createdTexts.some((entry) => entry.text === '🆘 Cần giúp Đạo hàm' && entry.visible)).toBe(true);
   });
 });

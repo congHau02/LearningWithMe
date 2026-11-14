@@ -63,13 +63,7 @@ public class TableWorkspaceService {
         RedisTableState tableState = stateStore.getTableState(ctx.roomId(), tableId).orElseGet(RedisTableState::empty);
         String requesterName = ctx.player().nickname() != null ? ctx.player().nickname() : principal.nickname();
         TableWorkspaceEvent event = TableWorkspaceEvent.permissionRequested(
-                tableId,
-                principal.userId(),
-                requesterName,
-                tableState.hostUserId(),
-                tableState.coHostUserIds(),
-                tableState.isFreeCollab(),
-                System.currentTimeMillis()
+                tableId, principal.userId(), requesterName, tableState, System.currentTimeMillis()
         );
         messagingTemplate.convertAndSend(workspaceTopic(tableId), event);
         return event;
@@ -104,14 +98,7 @@ public class TableWorkspaceService {
         }
 
         TableWorkspaceEvent event = TableWorkspaceEvent.permissionUpdated(
-                tableId,
-                action,
-                principal.userId(),
-                targetUserId,
-                updated.hostUserId(),
-                updated.coHostUserIds(),
-                updated.isFreeCollab(),
-                now
+                tableId, action, principal.userId(), targetUserId, updated, now
         );
         messagingTemplate.convertAndSend(workspaceTopic(tableId), event);
 

@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
-import com.studytogether.modules.auth.AuthProvider;
 import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.room.RoomPresenceServiceTest;
 import com.studytogether.modules.room.model.RedisTableState;
@@ -28,8 +27,8 @@ class TableVideoServiceTest {
     private SimpMessagingTemplate messagingTemplate;
     private TableVideoService videoService;
 
-    private final AuthPrincipal host = new AuthPrincipal("u-host", AuthRole.GUEST, AuthProvider.GUEST, "Host", "avatar_01");
-    private final AuthPrincipal member = new AuthPrincipal("u-member", AuthRole.GUEST, AuthProvider.GUEST, "Member", "avatar_02");
+    private final AuthPrincipal host = new AuthPrincipal("u-host", AuthRole.GUEST, "Host", "avatar_01", null);
+    private final AuthPrincipal member = new AuthPrincipal("u-member", AuthRole.GUEST, "Member", "avatar_02", null);
 
     @BeforeEach
     void setUp() {

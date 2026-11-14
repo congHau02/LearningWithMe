@@ -50,13 +50,7 @@ public class TableSosService {
 
         long now = System.currentTimeMillis();
         TableWorkspaceEvent workspaceEvent = TableWorkspaceEvent.sosUpdated(
-                tableId,
-                principal.userId(),
-                nextSosBanner,
-                updated.hostUserId(),
-                updated.coHostUserIds(),
-                updated.isFreeCollab(),
-                now
+                tableId, principal.userId(), nextSosBanner, updated, now
         );
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), workspaceEvent);
 

@@ -160,28 +160,26 @@ export class RoomStompSession {
     await this.start(nextToken);
   }
 
-  sendMove(roomId: string, move: PlayerMoveRequest): void {
+  private publishJson(destination: string, payload: unknown): void {
     if (this.transport && !this.stopped && !this.replaced) {
-      this.transport.publish(`/app/room/${roomId}/move`, JSON.stringify(move));
+      this.transport.publish(destination, JSON.stringify(payload));
     }
+  }
+
+  sendMove(roomId: string, move: PlayerMoveRequest): void {
+    this.publishJson(`/app/room/${roomId}/move`, move);
   }
 
   sendSit(roomId: string, tableId: string, seatId: string): void {
-    if (this.transport && !this.stopped && !this.replaced) {
-      this.transport.publish(`/app/room/${roomId}/seat.sit`, JSON.stringify({ tableId, seatId }));
-    }
+    this.publishJson(`/app/room/${roomId}/seat.sit`, { tableId, seatId });
   }
 
   sendLeave(roomId: string): void {
-    if (this.transport && !this.stopped && !this.replaced) {
-      this.transport.publish(`/app/room/${roomId}/seat.leave`, '{}');
-    }
+    this.publishJson(`/app/room/${roomId}/seat.leave`, {});
   }
 
   sendChat(roomId: string, content: string): void {
-    if (this.transport && !this.stopped && !this.replaced) {
-      this.transport.publish(`/app/room/${roomId}/chat`, JSON.stringify({ content }));
-    }
+    this.publishJson(`/app/room/${roomId}/chat`, { content });
   }
 
   subscribeTableWorkspace(tableId: string, onRawMessage: (body: string) => void): void {
@@ -205,42 +203,32 @@ export class RoomStompSession {
   }
 
   sendPermissionRequest(tableId: string, reason?: string): void {
-    if (this.transport && !this.stopped && !this.replaced) {
-      this.transport.publish(`/app/table/${tableId}/permission.request`, JSON.stringify({ reason: reason ?? null }));
-    }
+    this.publishJson(`/app/table/${tableId}/permission.request`, { reason: reason ?? null });
   }
 
   sendPermissionRespond(
     tableId: string,
     payload: { action: string; targetUserId?: string; isFreeCollab?: boolean },
   ): void {
-    if (this.transport && !this.stopped && !this.replaced) {
-      this.transport.publish(`/app/table/${tableId}/permission.respond`, JSON.stringify(payload));
-    }
+    this.publishJson(`/app/table/${tableId}/permission.respond`, payload);
   }
 
   sendVideoSync(
     tableId: string,
     payload: { action: string; videoUrlOrId?: string | null; currentTime?: number | null },
   ): void {
-    if (this.transport && !this.stopped && !this.replaced) {
-      this.transport.publish(`/app/table/${tableId}/video.sync`, JSON.stringify(payload));
-    }
+    this.publishJson(`/app/table/${tableId}/video.sync`, payload);
   }
 
   sendSosToggle(
     tableId: string,
     payload: { active: boolean; topic?: string | null },
   ): void {
-    if (this.transport && !this.stopped && !this.replaced) {
-      this.transport.publish(`/app/table/${tableId}/sos.toggle`, JSON.stringify(payload));
-    }
+    this.publishJson(`/app/table/${tableId}/sos.toggle`, payload);
   }
 
   sendTableChat(tableId: string, content: string): void {
-    if (this.transport && !this.stopped && !this.replaced) {
-      this.transport.publish(`/app/table/${tableId}/chat`, JSON.stringify({ content }));
-    }
+    this.publishJson(`/app/table/${tableId}/chat`, { content });
   }
 
   async stop(): Promise<void> {
@@ -388,55 +376,6 @@ export function getActiveRoomStompSession(): RoomStompSession | null {
 export function sendRoomChatMessage(roomId: string, content: string): boolean {
   if (activeRoomSession) {
     activeRoomSession.sendChat(roomId, content);
-    return true;
-  }
-  return false;
-}
-
-export function sendTablePermissionRequest(tableId: string, reason?: string): boolean {
-  if (activeRoomSession) {
-    activeRoomSession.sendPermissionRequest(tableId, reason);
-    return true;
-  }
-  return false;
-}
-
-export function sendTablePermissionRespond(
-  tableId: string,
-  payload: { action: string; targetUserId?: string; isFreeCollab?: boolean },
-): boolean {
-  if (activeRoomSession) {
-    activeRoomSession.sendPermissionRespond(tableId, payload);
-    return true;
-  }
-  return false;
-}
-
-export function sendTableVideoSync(
-  tableId: string,
-  payload: { action: string; videoUrlOrId?: string | null; currentTime?: number | null },
-): boolean {
-  if (activeRoomSession) {
-    activeRoomSession.sendVideoSync(tableId, payload);
-    return true;
-  }
-  return false;
-}
-
-export function sendTableSosToggle(
-  tableId: string,
-  payload: { active: boolean; topic?: string | null },
-): boolean {
-  if (activeRoomSession) {
-    activeRoomSession.sendSosToggle(tableId, payload);
-    return true;
-  }
-  return false;
-}
-
-export function sendTableChatMessage(tableId: string, content: string): boolean {
-  if (activeRoomSession) {
-    activeRoomSession.sendTableChat(tableId, content);
     return true;
   }
   return false;

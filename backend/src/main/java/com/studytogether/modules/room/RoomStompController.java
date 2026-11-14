@@ -6,9 +6,6 @@ import com.studytogether.modules.room.model.PlayerMoveRequest;
 import com.studytogether.modules.room.model.RoomChatSendRequest;
 import com.studytogether.modules.room.model.SeatSitRequest;
 import java.security.Principal;
-import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
@@ -16,13 +13,10 @@ import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
 @Controller
 public class RoomStompController {
-
-    private static final Logger log = LoggerFactory.getLogger(RoomStompController.class);
 
     private final RoomPresenceService roomPresenceService;
     private final RoomMovementService roomMovementService;
@@ -97,10 +91,7 @@ public class RoomStompController {
             Principal user,
             @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId
     ) {
-        if (user != null) {
-            String code = resolveErrorCode(ex);
-            errorDispatcher.sendToSession(user.getName(), sessionId, code, ex.getMessage(), Map.of("status", ex.getStatus().value()));
-        }
+        errorDispatcher.sendBusinessError(user, sessionId, resolveErrorCode(ex), ex);
     }
 
     @MessageExceptionHandler(Exception.class)
@@ -109,10 +100,7 @@ public class RoomStompController {
             Principal user,
             @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId
     ) {
-        log.error("Unhandled STOMP message error for user={}", user != null ? user.getName() : "anonymous", ex);
-        if (user != null) {
-            errorDispatcher.sendToSession(user.getName(), sessionId, "STOMP_INTERNAL_ERROR", "An unexpected WebSocket error occurred.", Map.of());
-        }
+        errorDispatcher.sendInternalError(user, sessionId, "room", ex);
     }
 
     private static String resolveErrorCode(BusinessException ex) {
@@ -133,8 +121,7 @@ public class RoomStompController {
     }
 
     private static AuthPrincipal extractPrincipal(Principal principal) {
-        if (principal instanceof Authentication auth && auth.getPrincipal() instanceof AuthPrincipal p) return p;
-        if (principal instanceof AuthPrincipal p) return p;
-        throw new BusinessException(HttpStatus.UNAUTHORIZED, "Unauthorized", "Valid STOMP JWT principal is required");
+        return AuthPrincipal.fromPrincipal(principal).orElseThrow(() ->
+                new BusinessException(HttpStatus.UNAUTHORIZED, "Unauthorized", "Valid STOMP JWT principal is required"));
     }
 }

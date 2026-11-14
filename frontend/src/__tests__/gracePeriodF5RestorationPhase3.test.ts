@@ -13,8 +13,8 @@ describe('P3-T4 Grace Period Watchdog, F5 Seat Restoration & Grace-Aware Success
       userId: 'self-host-1',
       token: 'jwt-token-1',
       nickname: 'HeroHost',
-      avatarId: 'avatar_01',
-      role: 'GUEST',
+      avatarSpriteId: 'avatar_01',
+      authProvider: 'GUEST',
     });
   });
 

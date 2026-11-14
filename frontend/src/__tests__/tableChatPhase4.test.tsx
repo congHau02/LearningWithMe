@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TableWorkspaceShell } from '../components/table/TableWorkspaceShell';
 import {
@@ -126,7 +126,7 @@ describe('P4-T4 Scoped Table Chat with Quick Reactions, Rate Limiting & Ephemera
     expect(useGameStore.getState().recentMessages).toHaveLength(0);
   });
 
-  it('sends trimmed text and quick reactions, rejects blank input, and tracks 200-char counter', () => {
+  it('sends trimmed text and quick reactions, rejects blank input, and tracks 200-char counter', async () => {
     useGameStore.setState({
       characterState: 'SEATED',
       currentTableId: 'table_01',
@@ -145,14 +145,16 @@ describe('P4-T4 Scoped Table Chat with Quick Reactions, Rate Limiting & Ephemera
     expect(screen.getByText('0/200')).toBeInTheDocument();
     fireEvent.change(input, { target: { value: '    ' } });
     fireEvent.click(sendBtn);
-    expect(sendTableChat).not.toHaveBeenCalled();
+    await waitFor(() => expect(sendTableChat).not.toHaveBeenCalled());
 
     fireEvent.change(input, { target: { value: '  Giải thích giúp mình bước 2  ' } });
     expect(screen.getByText('31/200')).toBeInTheDocument();
     fireEvent.click(sendBtn);
 
-    expect(sendTableChat).toHaveBeenCalledWith('table_01', 'Giải thích giúp mình bước 2');
-    expect(input.value).toBe('');
+    await waitFor(() =>
+      expect(sendTableChat).toHaveBeenCalledWith('table_01', 'Giải thích giúp mình bước 2')
+    );
+    await waitFor(() => expect(input.value).toBe(''));
 
     fireEvent.click(screen.getByRole('button', { name: 'Table reaction 👍' }));
     expect(sendTableChat).toHaveBeenCalledWith('table_01', '👍');

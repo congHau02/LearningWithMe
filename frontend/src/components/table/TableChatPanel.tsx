@@ -1,7 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { sendTableChatMessage } from '../../services/roomStompClient';
+import React, { useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { sendTableChatMessage } from '../../services/tableStompClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useTableStore } from '../../stores/useTableStore';
+import {
+  MAX_TABLE_CHAT_LENGTH,
+  tableChatResolver,
+  type TableChatFormValues,
+} from './tableFormSchemas';
 
 export interface TableChatPanelProps {
   tableId: string;
@@ -11,11 +17,22 @@ export interface TableChatPanelProps {
 const TABLE_QUICK_EMOJIS = ['👍', '💡', '🔥', '👏', '❓', '☕'] as const;
 
 export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend }) => {
-  const [text, setText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const recentMessages = useTableStore((s) => s.recentMessages);
   const selfUserId = useAuthStore((s) => s.userId);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+  } = useForm<TableChatFormValues>({
+    resolver: tableChatResolver,
+    mode: 'onChange',
+    defaultValues: { content: '' },
+  });
+
+  const currentContent = watch('content') ?? '';
 
   useEffect(() => {
     if (typeof messagesEndRef.current?.scrollIntoView === 'function') {
@@ -23,7 +40,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
     }
   }, [recentMessages]);
 
-  const handleSendMessage = (content: string) => {
+  const dispatchMessage = (content: string) => {
     const trimmed = content.trim();
     if (!trimmed) return;
     if (onSend) {
@@ -31,12 +48,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
     } else {
       sendTableChatMessage(tableId, trimmed);
     }
-    setText('');
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSendMessage(text);
+    reset({ content: '' });
   };
 
   return (
@@ -100,7 +112,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
           <button
             key={emoji}
             type="button"
-            onClick={() => handleSendMessage(emoji)}
+            onClick={() => dispatchMessage(emoji)}
             className="cursor-pointer p-0.5 text-sm transition-transform hover:scale-125"
             aria-label={`Table reaction ${emoji}`}
           >
@@ -110,16 +122,16 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
       </div>
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit((values) => dispatchMessage(values.content))}
+        noValidate
         className="flex flex-col gap-1 border-t border-border/70 bg-slate-800/70 p-2"
       >
         <div className="flex items-center gap-1.5">
           <input
             type="text"
             data-testid="table-chat-input"
-            value={text}
-            maxLength={200}
-            onChange={(e) => setText(e.target.value)}
+            {...register('content')}
+            maxLength={MAX_TABLE_CHAT_LENGTH}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 e.stopPropagation();
@@ -132,13 +144,13 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
           <button
             type="submit"
             data-testid="table-chat-send-btn"
-            disabled={!text.trim()}
+            disabled={!currentContent.trim()}
             className="cursor-pointer rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Gửi
           </button>
         </div>
-        <div className="text-right text-[10px] text-slate-400">{text.length}/200</div>
+        <div className="text-right text-[10px] text-slate-400">{currentContent.length}/200</div>
       </form>
     </div>
   );

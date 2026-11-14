@@ -7,9 +7,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
-import com.studytogether.modules.auth.AuthProvider;
 import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.room.RoomPresenceServiceTest;
 import com.studytogether.modules.room.RoomTopologyService;
@@ -35,14 +35,14 @@ class TableWorkspaceServiceTest {
     private SimpMessagingTemplate messagingTemplate;
     private TableWorkspaceService service;
 
-    private final AuthPrincipal host = new AuthPrincipal("u-host", AuthRole.GUEST, AuthProvider.GUEST, "Host", "avatar_01");
-    private final AuthPrincipal member = new AuthPrincipal("u-member", AuthRole.GUEST, AuthProvider.GUEST, "Member", "avatar_02");
-    private final AuthPrincipal outsider = new AuthPrincipal("u-outsider", AuthRole.GUEST, AuthProvider.GUEST, "Outsider", "avatar_03");
+    private final AuthPrincipal host = new AuthPrincipal("u-host", AuthRole.GUEST, "Host", "avatar_01", null);
+    private final AuthPrincipal member = new AuthPrincipal("u-member", AuthRole.GUEST, "Member", "avatar_02", null);
+    private final AuthPrincipal outsider = new AuthPrincipal("u-outsider", AuthRole.GUEST, "Outsider", "avatar_03", null);
 
     @BeforeEach
     void setUp() {
         stateStore = new RoomPresenceServiceTest.InMemoryRoomStateStore();
-        topologyService = new RoomTopologyService();
+        topologyService = new RoomTopologyService(new ObjectMapper());
         authService = new TableAuthorizationService(stateStore);
         messagingTemplate = mock(SimpMessagingTemplate.class);
         service = new TableWorkspaceService(stateStore, topologyService, authService, messagingTemplate);

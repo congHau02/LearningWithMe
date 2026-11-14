@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
-class RoomPresenceServiceTest {
+public class RoomPresenceServiceTest {
 
     private InMemoryRoomStateStore stateStore;
     private StompSessionRegistry sessionRegistry;
@@ -214,7 +214,7 @@ class RoomPresenceServiceTest {
         );
     }
 
-    static final class InMemoryRoomStateStore implements RoomStateStore {
+    public static final class InMemoryRoomStateStore implements RoomStateStore {
         private final Map<String, Map<String, RoomPlayerState>> playersByRoom = new ConcurrentHashMap<>();
         private final Map<String, Map<String, String>> seatsByRoom = new ConcurrentHashMap<>();
         private final Map<String, Map<String, Long>> disconnectsByRoom = new ConcurrentHashMap<>();

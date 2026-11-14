@@ -1,8 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useSyncedYouTubePlayer } from '../../hooks/useSyncedYouTubePlayer';
-import { sendTableVideoSync } from '../../services/roomStompClient';
+import { sendTableVideoSync } from '../../services/tableStompClient';
 import { useTableStore } from '../../stores/useTableStore';
 import { extractYouTubeVideoId } from '../../utils/youtubeSync';
+import { youtubeUrlResolver, type YouTubeUrlFormValues } from './tableFormSchemas';
 
 interface SyncedYouTubePlayerProps {
   tableId: string;
@@ -11,10 +13,18 @@ interface SyncedYouTubePlayerProps {
 
 export function SyncedYouTubePlayer({ tableId, canControl }: SyncedYouTubePlayerProps) {
   const videoState = useTableStore((s) => s.videoState);
-  const [urlInput, setUrlInput] = useState('');
-  const [urlError, setUrlError] = useState<string | null>(null);
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<YouTubeUrlFormValues>({
+    resolver: youtubeUrlResolver,
+    defaultValues: { url: '' },
+  });
 
   const { containerRef, getCurrentPlaybackSeconds, applyLocalVolume, applyLocalMute } = useSyncedYouTubePlayer(
     videoState,
@@ -22,17 +32,12 @@ export function SyncedYouTubePlayer({ tableId, canControl }: SyncedYouTubePlayer
     isMuted,
   );
 
-  const handleUrlSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const onSubmitUrl = (values: YouTubeUrlFormValues) => {
     if (!canControl) return;
-    const parsedId = extractYouTubeVideoId(urlInput);
-    if (!parsedId) {
-      setUrlError('Link hoặc mã YouTube không hợp lệ (cần URL YouTube hoặc mã 11 ký tự).');
-      return;
-    }
-    setUrlError(null);
+    const parsedId = extractYouTubeVideoId(values.url);
+    if (!parsedId) return;
     sendTableVideoSync(tableId, { action: 'CHANGE_URL', videoUrlOrId: parsedId, currentTime: 0 });
-    setUrlInput('');
+    reset();
   };
 
   const handleTogglePlayPause = () => {
@@ -73,14 +78,13 @@ export function SyncedYouTubePlayer({ tableId, canControl }: SyncedYouTubePlayer
         </span>
       </div>
 
-      <form onSubmit={handleUrlSubmit} className="flex flex-wrap gap-2">
+      <form onSubmit={handleSubmit(onSubmitUrl)} noValidate className="flex flex-wrap gap-2">
         <input
           type="text"
           data-testid="yt-url-input"
-          value={urlInput}
+          {...register('url')}
           disabled={!canControl}
           onKeyDown={(e) => e.stopPropagation()}
-          onChange={(e) => setUrlInput(e.target.value)}
           placeholder={canControl ? 'Dán link YouTube hoặc mã video 11 ký tự...' : 'Chỉ Host/Co-Host được đổi video'}
           className="min-w-0 flex-1 rounded-lg border border-border bg-slate-900/90 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
         />
@@ -93,7 +97,11 @@ export function SyncedYouTubePlayer({ tableId, canControl }: SyncedYouTubePlayer
           Đổi video
         </button>
       </form>
-      {urlError ? <p data-testid="yt-url-error" className="text-xs text-rose-400">{urlError}</p> : null}
+      {errors.url?.message ? (
+        <p data-testid="yt-url-error" className="text-xs text-rose-400">
+          {errors.url.message}
+        </p>
+      ) : null}
 
       <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-slate-950">
         {videoState.videoId ? (

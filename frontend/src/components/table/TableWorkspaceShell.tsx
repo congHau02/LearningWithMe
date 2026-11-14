@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { formatStudyDuration, useStudyTimer } from '../../hooks/useStudyTimer';
-import { sendTablePermissionRequest, sendTablePermissionRespond } from '../../services/roomStompClient';
+import { sendTablePermissionRequest, sendTablePermissionRespond } from '../../services/tableStompClient';
 import type { PermissionAction } from '../../services/tableApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';

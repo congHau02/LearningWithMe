@@ -105,10 +105,10 @@ class TableSosIntegrationTest {
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
 
-        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_01"));
+        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
 
-        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_02"));
+        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
 
         BlockingQueue<JsonNode> tableEvents = subscribeJson(hostSession, "/topic/table/table_01/workspace");
@@ -175,11 +175,11 @@ class TableSosIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         ResponseEntity<String> res = restTemplate.postForEntity(
                 "/api/v1/auth/guest",
-                new HttpEntity<>(Map.of("nickname", nickname, "avatarSpriteId", "avatar_01"), headers),
+                new HttpEntity<>(Map.of("nickname", nickname, "avatarId", "avatar_01"), headers),
                 String.class
         );
-        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        return objectMapper.readTree(res.getBody()).path("token").asText();
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return objectMapper.readTree(res.getBody()).path("guestToken").asText();
     }
 
     private StompSession connectStomp(String token) throws Exception {

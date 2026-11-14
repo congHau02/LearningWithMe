@@ -51,13 +51,7 @@ public class TableVideoService {
         stateStore.saveTableState(roomId, tableId, updated);
 
         TableWorkspaceEvent event = TableWorkspaceEvent.videoSynced(
-                tableId,
-                principal.userId(),
-                nextVideo,
-                updated.hostUserId(),
-                updated.coHostUserIds(),
-                updated.isFreeCollab(),
-                now
+                tableId, principal.userId(), nextVideo, updated, now
         );
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return event;

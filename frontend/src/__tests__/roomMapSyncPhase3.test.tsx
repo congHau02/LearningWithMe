@@ -141,5 +141,26 @@ describe('Phase 3 (#15): App Room Sync Hook & SessionReplaced Banner Integration
     });
 
     expect(await screen.findByRole('status')).toHaveTextContent(/tab mới/i);
+
+    // Table rate limit and target-not-seated errors surface on TableWorkspaceShell toast
+    act(() => {
+      capturedOpts?.onError?.({
+        code: 'TABLE_CHAT_RATE_LIMIT_EXCEEDED',
+        message: 'Bạn gửi tin nhắn bàn quá nhanh',
+        details: {},
+        timestampEpoch: 1700000006000,
+      });
+    });
+    expect(useTableStore.getState().permissionToast).toBe('Bạn gửi tin nhắn bàn quá nhanh');
+
+    act(() => {
+      capturedOpts?.onError?.({
+        code: 'TARGET_NOT_SEATED_AT_TABLE',
+        message: 'Thành viên đã rời bàn học',
+        details: {},
+        timestampEpoch: 1700000007000,
+      });
+    });
+    expect(useTableStore.getState().permissionToast).toBe('Thành viên đã rời bàn học');
   });
 });

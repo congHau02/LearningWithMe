@@ -65,6 +65,7 @@ export class ClassroomScene extends Phaser.Scene {
       scene: this,
       tileSize: this.topology.tileSize,
     });
+    this.tableSosOverlay = new TableSosOverlay(this, this.topology);
     const pos = this.playerSprite.getPixelPosition();
     this.actorSprite = this.add
       .sprite(pos.x, pos.y, this.playerSprite.getAvatarId(), 0)

@@ -1,6 +1,8 @@
 package com.studytogether.modules.auth;
 
 import java.security.Principal;
+import java.util.Optional;
+import org.springframework.security.core.Authentication;
 
 public record AuthPrincipal(
         String userId,
@@ -32,5 +34,15 @@ public record AuthPrincipal(
                 avatarId,
                 studyGoal
         );
+    }
+
+    public static Optional<AuthPrincipal> fromPrincipal(Principal principal) {
+        if (principal instanceof Authentication auth && auth.getPrincipal() instanceof AuthPrincipal p) {
+            return Optional.of(p);
+        }
+        if (principal instanceof AuthPrincipal p) {
+            return Optional.of(p);
+        }
+        return Optional.empty();
     }
 }

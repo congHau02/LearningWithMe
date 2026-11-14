@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
+import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.room.RoomStateStore;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomEvent;
@@ -30,9 +31,9 @@ class TableSosServiceTest {
     private SimpMessagingTemplate messagingTemplate;
     private TableSosService sosService;
 
-    private static final AuthPrincipal HOST = new AuthPrincipal("u-host", "Host", "avatar_01", "GUEST");
-    private static final AuthPrincipal CO_HOST = new AuthPrincipal("u-cohost", "CoHost", "avatar_02", "GUEST");
-    private static final AuthPrincipal MEMBER = new AuthPrincipal("u-member", "Member", "avatar_03", "GUEST");
+    private static final AuthPrincipal HOST = new AuthPrincipal("u-host", AuthRole.GUEST, "Host", "avatar_01", null);
+    private static final AuthPrincipal CO_HOST = new AuthPrincipal("u-cohost", AuthRole.GUEST, "CoHost", "avatar_02", null);
+    private static final AuthPrincipal MEMBER = new AuthPrincipal("u-member", AuthRole.GUEST, "Member", "avatar_03", null);
 
     @BeforeEach
     void setUp() {
@@ -50,7 +51,7 @@ class TableSosServiceTest {
 
     private void mockSeated(String userId, String seatId) {
         when(stateStore.getPlayer("main-library", userId)).thenReturn(Optional.of(
-                new RoomPlayerState(userId, userId, "avatar_01", "GUEST", "SEATED", 5, 5, "DOWN", "table_01", seatId, 1000L, true, 1000L, false)
+                new RoomPlayerState(userId, userId, "avatar_01", "GUEST", "SEATED", 5, 5, "DOWN", "table_01", seatId, "ws-1", true, 1000L, false, 1000L)
         ));
     }
 
