@@ -9,6 +9,7 @@ import {
 import { ChatBubble } from '../entities/ChatBubble';
 import { PlayerSprite } from '../entities/PlayerSprite';
 import { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
+import { TableSosOverlay } from '../entities/TableSosOverlay';
 import {
   MAIN_LIBRARY_TOPOLOGY,
   type RoomTopology,
@@ -25,6 +26,7 @@ export class ClassroomScene extends Phaser.Scene {
   private readonly inputController: InputController;
   private readonly playerSprite: PlayerSprite;
   private remotePlayersRenderer?: RemotePlayersRenderer;
+  private tableSosOverlay?: TableSosOverlay;
   private dynamicGraphics?: Phaser.GameObjects.Graphics;
   private actorSprite?: Phaser.GameObjects.Sprite;
   private nicknameLabel?: Phaser.GameObjects.Text;
@@ -140,10 +142,11 @@ export class ClassroomScene extends Phaser.Scene {
       this.storeUnsub?.();
       this.selfChatBubble?.destroy();
       this.remotePlayersRenderer?.destroy();
+      this.tableSosOverlay?.destroy();
     });
   }
 
-  public update(_time: number, delta: number): void {
+  public update(time: number, delta: number): void {
     this.inputController.update(delta);
 
     const game = useGameStore.getState();
@@ -160,6 +163,7 @@ export class ClassroomScene extends Phaser.Scene {
 
     this.remotePlayersRenderer?.syncPlayers(game.remotePlayers);
     this.remotePlayersRenderer?.update(0.28, Date.now());
+    this.tableSosOverlay?.update(game.roomTables, time);
 
     const pos = this.playerSprite.interpolatePosition(0.35);
     this.selfChatBubble?.update(Date.now(), pos.x, pos.y - 42);

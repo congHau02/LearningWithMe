@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { HostPermissionToast } from './HostPermissionToast';
+import { SosBannerControl } from './SosBannerControl';
 import { SyncedYouTubePlayer } from './SyncedYouTubePlayer';
 import { TableMembersPanel } from './TableMembersPanel';
 
@@ -20,6 +21,7 @@ export function TableWorkspaceShell() {
   const hostUserId = useTableStore((s) => s.hostUserId);
   const coHostUserIds = useTableStore((s) => s.coHostUserIds);
   const isFreeCollab = useTableStore((s) => s.isFreeCollab);
+  const sosBanner = useTableStore((s) => s.sosBanner);
   const sitStartTimeEpoch = useTableStore((s) => s.sitStartTimeEpoch);
   const members = useTableStore((s) => s.members);
   const pendingPermissionRequests = useTableStore((s) => s.pendingPermissionRequests);
@@ -147,6 +149,12 @@ export function TableWorkspaceShell() {
           onRespond={handleToastRespond}
         />
       ) : null}
+
+      <SosBannerControl
+        tableId={activeTableId}
+        sosBanner={sosBanner}
+        canControl={canControl}
+      />
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">

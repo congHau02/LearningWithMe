@@ -69,6 +69,7 @@ export type RoomEventType =
   | 'SEAT_LOCKED'
   | 'SEAT_RELEASED'
   | 'TABLE_HOST_CHANGED'
+  | 'SOS_UPDATED'
   | 'ROOM_CHAT';
 
 export interface RoomEvent {
@@ -83,6 +84,7 @@ export interface RoomEvent {
   seatId?: string | null;
   hostUserId?: string | null;
   message?: RoomChatMessage | null;
+  sosBanner?: string | null;
 }
 
 export interface StompErrorPayload {

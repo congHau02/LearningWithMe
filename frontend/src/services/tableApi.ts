@@ -34,7 +34,7 @@ export interface TableWorkspaceSnapshot {
 }
 
 export interface TableWorkspaceEvent {
-  type: 'PERMISSION_REQUESTED' | 'PERMISSION_UPDATED' | 'VIDEO_SYNCED';
+  type: 'PERMISSION_REQUESTED' | 'PERMISSION_UPDATED' | 'VIDEO_SYNCED' | 'SOS_UPDATED';
   tableId: string;
   actorUserId: string;
   targetUserId: string | null;
@@ -44,6 +44,7 @@ export interface TableWorkspaceEvent {
   coHostUserIds: string[];
   isFreeCollab: boolean;
   videoState?: VideoSyncState | null;
+  sosBanner?: string | null;
   timestampEpoch: number;
 }
 

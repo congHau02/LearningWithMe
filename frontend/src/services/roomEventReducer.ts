@@ -80,12 +80,24 @@ export function applyRoomEvent(params: {
     if (event.seatId) delete nextSeats[event.seatId];
     if (event.tableId) {
       const table = nextTables.find((t) => t.tableId === event.tableId);
-      if (table) table.hostUserId = event.hostUserId ?? null;
+      if (table) {
+        table.hostUserId = event.hostUserId ?? null;
+        if (!event.hostUserId) {
+          table.sosBanner = null;
+          table.occupiedSeats = 0;
+        }
+      }
     }
   } else if (event.type === 'TABLE_HOST_CHANGED') {
     if (event.tableId) {
       const table = nextTables.find((t) => t.tableId === event.tableId);
       if (table) table.hostUserId = event.hostUserId ?? null;
+    }
+    return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };
+  } else if (event.type === 'SOS_UPDATED') {
+    if (event.tableId) {
+      const table = nextTables.find((t) => t.tableId === event.tableId);
+      if (table) table.sosBanner = event.sosBanner ?? null;
     }
     return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };
   }

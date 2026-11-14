@@ -228,6 +228,15 @@ export class RoomStompSession {
     }
   }
 
+  sendSosToggle(
+    tableId: string,
+    payload: { active: boolean; topic?: string | null },
+  ): void {
+    if (this.transport && !this.stopped && !this.replaced) {
+      this.transport.publish(`/app/table/${tableId}/sos.toggle`, JSON.stringify(payload));
+    }
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.generation += 1;
@@ -403,6 +412,17 @@ export function sendTableVideoSync(
 ): boolean {
   if (activeRoomSession) {
     activeRoomSession.sendVideoSync(tableId, payload);
+    return true;
+  }
+  return false;
+}
+
+export function sendTableSosToggle(
+  tableId: string,
+  payload: { active: boolean; topic?: string | null },
+): boolean {
+  if (activeRoomSession) {
+    activeRoomSession.sendSosToggle(tableId, payload);
     return true;
   }
   return false;

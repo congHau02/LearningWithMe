@@ -11,7 +11,8 @@ public record RoomEvent(
         String tableId,
         String seatId,
         String hostUserId,
-        RoomChatMessage message
+        RoomChatMessage message,
+        String sosBanner
 ) {
     public RoomEvent(
             long seq,
@@ -22,7 +23,7 @@ public record RoomEvent(
             RoomPlayerDto player,
             long timestampEpoch
     ) {
-        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, null, null, null, null);
+        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, null, null, null, null, null);
     }
 
     public RoomEvent(
@@ -37,7 +38,23 @@ public record RoomEvent(
             String seatId,
             String hostUserId
     ) {
-        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, tableId, seatId, hostUserId, null);
+        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, tableId, seatId, hostUserId, null, null);
+    }
+
+    public RoomEvent(
+            long seq,
+            String type,
+            String roomId,
+            String userId,
+            String previousUserId,
+            RoomPlayerDto player,
+            long timestampEpoch,
+            String tableId,
+            String seatId,
+            String hostUserId,
+            RoomChatMessage message
+    ) {
+        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, tableId, seatId, hostUserId, message, null);
     }
 
     public static RoomEvent chat(
@@ -58,7 +75,8 @@ public record RoomEvent(
                 null,
                 null,
                 null,
-                message
+                message,
+                null
         );
     }
 
@@ -80,7 +98,32 @@ public record RoomEvent(
                 tableId,
                 null,
                 hostUserId,
+                null,
                 null
+        );
+    }
+
+    public static RoomEvent sosUpdated(
+            long seq,
+            String roomId,
+            String tableId,
+            String actorUserId,
+            String sosBanner,
+            long timestampEpoch
+    ) {
+        return new RoomEvent(
+                seq,
+                "SOS_UPDATED",
+                roomId,
+                actorUserId,
+                null,
+                null,
+                timestampEpoch,
+                tableId,
+                null,
+                null,
+                null,
+                sosBanner
         );
     }
 }

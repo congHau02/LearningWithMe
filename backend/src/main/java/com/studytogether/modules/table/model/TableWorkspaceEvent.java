@@ -14,6 +14,7 @@ public record TableWorkspaceEvent(
         List<String> coHostUserIds,
         @JsonProperty("isFreeCollab") boolean isFreeCollab,
         TableVideoState videoState,
+        String sosBanner,
         long timestampEpoch
 ) {
     public TableWorkspaceEvent {
@@ -40,6 +41,7 @@ public record TableWorkspaceEvent(
                 coHostUserIds,
                 isFreeCollab,
                 null,
+                null,
                 now
         );
     }
@@ -65,6 +67,7 @@ public record TableWorkspaceEvent(
                 coHostUserIds,
                 isFreeCollab,
                 null,
+                null,
                 now
         );
     }
@@ -89,6 +92,32 @@ public record TableWorkspaceEvent(
                 coHostUserIds,
                 isFreeCollab,
                 videoState,
+                null,
+                now
+        );
+    }
+
+    public static TableWorkspaceEvent sosUpdated(
+            String tableId,
+            String actorUserId,
+            String sosBanner,
+            String hostUserId,
+            List<String> coHostUserIds,
+            boolean isFreeCollab,
+            long now
+    ) {
+        return new TableWorkspaceEvent(
+                "SOS_UPDATED",
+                tableId,
+                actorUserId,
+                null,
+                null,
+                null,
+                hostUserId,
+                coHostUserIds,
+                isFreeCollab,
+                null,
+                sosBanner,
                 now
         );
     }

@@ -5,6 +5,7 @@ import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.room.StompErrorDispatcher;
 import com.studytogether.modules.table.model.PermissionRequestPayload;
 import com.studytogether.modules.table.model.PermissionRespondRequest;
+import com.studytogether.modules.table.model.SosToggleRequest;
 import com.studytogether.modules.table.model.VideoSyncRequest;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -28,15 +29,18 @@ public class TableStompController {
 
     private final TableWorkspaceService workspaceService;
     private final TableVideoService videoService;
+    private final TableSosService sosService;
     private final StompErrorDispatcher errorDispatcher;
 
     public TableStompController(
             TableWorkspaceService workspaceService,
             TableVideoService videoService,
+            TableSosService sosService,
             StompErrorDispatcher errorDispatcher
     ) {
         this.workspaceService = workspaceService;
         this.videoService = videoService;
+        this.sosService = sosService;
         this.errorDispatcher = errorDispatcher;
     }
 
@@ -65,6 +69,15 @@ public class TableStompController {
             Principal user
     ) {
         videoService.syncVideo(extractPrincipal(user), tableId, request);
+    }
+
+    @MessageMapping("/table/{tableId}/sos.toggle")
+    public void toggleSos(
+            @DestinationVariable String tableId,
+            @Payload(required = false) SosToggleRequest request,
+            Principal user
+    ) {
+        sosService.toggleSos(extractPrincipal(user), tableId, request);
     }
 
     @MessageExceptionHandler(BusinessException.class)

@@ -72,6 +72,9 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
       if (event.type === 'VIDEO_SYNCED' && event.videoState) {
         return { videoState: event.videoState };
       }
+      if (event.type === 'SOS_UPDATED') {
+        return { sosBanner: event.sosBanner ?? null };
+      }
       if (event.type !== 'PERMISSION_UPDATED') return s;
       const nextMembers = s.members.map((m) => ({ ...m, tableRole: roleOf(m.userId, event.hostUserId, event.coHostUserIds) }));
       const nextRequests = event.targetUserId ? s.pendingPermissionRequests.filter((r) => r.requesterUserId !== event.targetUserId) : s.pendingPermissionRequests;
