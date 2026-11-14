@@ -96,14 +96,16 @@ describe('P5-T1 Homework Slide Upload, Ctrl+V Paste, WebP Compression & Multi-Sl
       expect(quality).toBe(0.85);
       cb(new Blob(['RIFF1234WEBP'], { type: 'image/webp' }));
     });
-    const fakeCanvas = {
-      width: 0,
-      height: 0,
-      getContext: () => ({ drawImage }),
-      toBlob,
-    } as unknown as HTMLCanvasElement;
-
     const origCreateElement = document.createElement.bind(document);
+    const fakeCanvas = origCreateElement('canvas');
+    fakeCanvas.getContext = (() => ({
+      drawImage,
+      clearRect: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
+    })) as unknown as typeof fakeCanvas.getContext;
+    fakeCanvas.toBlob = toBlob as unknown as typeof fakeCanvas.toBlob;
+
     vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
       if (tagName.toLowerCase() === 'canvas') {
         return fakeCanvas;

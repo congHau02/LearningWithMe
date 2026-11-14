@@ -93,6 +93,21 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
           activeSlideId: event.activeSlideId !== undefined ? event.activeSlideId : s.activeSlideId,
         };
       }
+      if (event.type === 'BOARD_DRAW' && event.slideId && event.drawAction) {
+        return {
+          homeworkSlides: s.homeworkSlides.map((slide) => {
+            if (slide.imageId !== event.slideId) return slide;
+            const prev = slide.strokes ?? [];
+            if (event.drawAction === 'ADD_STROKE' && event.stroke) {
+              return prev.some((st) => st.id === event.stroke?.id) ? slide : { ...slide, strokes: [...prev, event.stroke] };
+            }
+            if (event.drawAction === 'ERASE_STROKE' && event.erasedStrokeId) {
+              return { ...slide, strokes: prev.filter((st) => st.id !== event.erasedStrokeId) };
+            }
+            return event.drawAction === 'CLEAR_SLIDE' ? { ...slide, strokes: [] } : slide;
+          }),
+        };
+      }
       if (event.type !== 'PERMISSION_UPDATED') return s;
       const nextMembers = s.members.map((m) => ({ ...m, tableRole: roleOf(m.userId, event.hostUserId, event.coHostUserIds) }));
       const nextRequests = event.targetUserId ? s.pendingPermissionRequests.filter((r) => r.requesterUserId !== event.targetUserId) : s.pendingPermissionRequests;

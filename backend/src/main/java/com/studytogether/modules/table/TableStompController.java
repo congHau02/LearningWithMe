@@ -3,6 +3,7 @@ package com.studytogether.modules.table;
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.room.StompErrorDispatcher;
+import com.studytogether.modules.table.model.BoardDrawRequest;
 import com.studytogether.modules.table.model.HomeworkSlideActionRequest;
 import com.studytogether.modules.table.model.PermissionRequestPayload;
 import com.studytogether.modules.table.model.PermissionRespondRequest;
@@ -29,18 +30,21 @@ public class TableStompController {
     private final TableSosService sosService;
     private final TableChatService tableChatService;
     private final TableHomeworkService homeworkService;
+    private final TableBoardService boardService;
     private final StompErrorDispatcher errorDispatcher;
 
     public TableStompController(
             TableWorkspaceService workspaceService, TableVideoService videoService,
             TableSosService sosService, TableChatService tableChatService,
-            TableHomeworkService homeworkService, StompErrorDispatcher errorDispatcher
+            TableHomeworkService homeworkService, TableBoardService boardService,
+            StompErrorDispatcher errorDispatcher
     ) {
         this.workspaceService = workspaceService;
         this.videoService = videoService;
         this.sosService = sosService;
         this.tableChatService = tableChatService;
         this.homeworkService = homeworkService;
+        this.boardService = boardService;
         this.errorDispatcher = errorDispatcher;
     }
 
@@ -90,41 +94,32 @@ public class TableStompController {
     }
 
     @MessageMapping("/table/{tableId}/board.slide")
-    public void handleHomeworkSlideAction(
-            @DestinationVariable String tableId,
-            @Valid @Payload HomeworkSlideActionRequest request,
-            Principal user
-    ) {
+    public void handleHomeworkSlideAction(@DestinationVariable String tableId, @Valid @Payload HomeworkSlideActionRequest request, Principal user) {
         homeworkService.handleSlideAction(extractPrincipal(user), tableId, request);
     }
 
+    @MessageMapping("/table/{tableId}/board.draw")
+    public void handleBoardDraw(@DestinationVariable String tableId, @Valid @Payload BoardDrawRequest request, Principal user) {
+        boardService.handleDraw(extractPrincipal(user), tableId, request);
+    }
+
     @MessageExceptionHandler(MethodArgumentNotValidException.class)
-    public void handleValidationException(
-            MethodArgumentNotValidException ex,
-            Principal user,
-            @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId
-    ) {
+    public void handleValidationException(MethodArgumentNotValidException ex, Principal user,
+            @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId) {
         String message = (ex.getBindingResult() != null && ex.getBindingResult().getFieldError() != null)
-                ? ex.getBindingResult().getFieldError().getDefaultMessage()
-                : "Invalid table payload";
+                ? ex.getBindingResult().getFieldError().getDefaultMessage() : "Invalid table payload";
         errorDispatcher.sendValidationError(user, sessionId, "INVALID_TABLE_ACTION", message);
     }
 
     @MessageExceptionHandler(BusinessException.class)
-    public void handleBusinessException(
-            BusinessException ex,
-            Principal user,
-            @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId
-    ) {
+    public void handleBusinessException(BusinessException ex, Principal user,
+            @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId) {
         errorDispatcher.sendBusinessError(user, sessionId, resolveErrorCode(ex), ex);
     }
 
     @MessageExceptionHandler(Exception.class)
-    public void handleGenericException(
-            Exception ex,
-            Principal user,
-            @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId
-    ) {
+    public void handleGenericException(Exception ex, Principal user,
+            @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId) {
         errorDispatcher.sendInternalError(user, sessionId, "table", ex);
     }
 

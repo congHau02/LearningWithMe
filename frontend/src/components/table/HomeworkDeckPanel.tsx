@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent } from 'react';
 import { formatApiError } from '../../services/apiClient';
 import { resolveEphemeralFileUrl, uploadHomeworkImage } from '../../services/tableApi';
-import { sendHomeworkSlideAction } from '../../services/tableStompClient';
+import { sendBoardDraw, sendHomeworkSlideAction } from '../../services/tableStompClient';
 import { useTableStore } from '../../stores/useTableStore';
 import { compressImageToWebp } from '../../utils/homeworkImageCompression';
+import type { BoardTool } from '../../utils/homeworkCanvasMath';
+import { HomeworkAnnotationCanvas } from './HomeworkAnnotationCanvas';
+import { HomeworkBoardToolbar } from './HomeworkBoardToolbar';
 
 const MAX_SLIDES = 5;
 
@@ -18,6 +21,9 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [tool, setTool] = useState<BoardTool>('PEN');
+  const [color, setColor] = useState('#ef4444');
+  const [lineWidth, setLineWidth] = useState(3);
 
   const activeSlide = activeSlideId ? (slides.find((s) => s.imageId === activeSlideId) ?? null) : null;
   const isDeckFull = slides.length >= MAX_SLIDES;
@@ -46,13 +52,12 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
     if (file) void processAndUpload(file);
   };
 
-  const extractImageFile = (clipboardData: DataTransfer | null | undefined): File | null => {
-    const items = clipboardData?.items;
+  const extractImageFile = (data: DataTransfer | null | undefined): File | null => {
+    const items = data?.items;
     if (!items) return null;
     for (let i = 0; i < items.length; i += 1) {
-      const item = items[i];
-      if (item && item.type.startsWith('image/')) {
-        const file = item.getAsFile();
+      if (items[i]?.type.startsWith('image/')) {
+        const file = items[i].getAsFile();
         if (file) return file;
       }
     }
@@ -64,10 +69,7 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
     const onWindowPaste = (e: globalThis.ClipboardEvent) => {
       if (e.defaultPrevented) return;
       const file = extractImageFile(e.clipboardData);
-      if (file) {
-        e.preventDefault();
-        void processAndUpload(file);
-      }
+      if (file) { e.preventDefault(); void processAndUpload(file); }
     };
     window.addEventListener('paste', onWindowPaste);
     return () => window.removeEventListener('paste', onWindowPaste);
@@ -76,10 +78,7 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
   const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
     if (!canControl || e.defaultPrevented) return;
     const file = extractImageFile(e.clipboardData);
-    if (file) {
-      e.preventDefault();
-      void processAndUpload(file);
-    }
+    if (file) { e.preventDefault(); void processAndUpload(file); }
   };
 
   return (
@@ -167,12 +166,23 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
       ) : null}
 
       {activeSlide ? (
-        <div className="relative flex min-h-48 items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-950/70 p-2">
-          <img
-            data-testid="homework-active-image"
-            src={resolveEphemeralFileUrl(activeSlide.url)}
-            alt={`Trang bài tập ${activeSlide.fileName}`}
-            className="max-h-96 w-auto rounded object-contain"
+        <div className="flex flex-col gap-2">
+          {canControl ? (
+            <HomeworkBoardToolbar
+              tool={tool}
+              color={color}
+              lineWidth={lineWidth}
+              onToolChange={setTool}
+              onColorChange={setColor}
+              onLineWidthChange={setLineWidth}
+              onClearSlide={() => sendBoardDraw(tableId, { slideId: activeSlide.imageId, action: 'CLEAR_SLIDE' })}
+            />
+          ) : null}
+          <HomeworkAnnotationCanvas
+            tableId={tableId} slideId={activeSlide.imageId}
+            imageUrl={resolveEphemeralFileUrl(activeSlide.url)} fileName={activeSlide.fileName}
+            strokes={activeSlide.strokes ?? []} canControl={canControl}
+            tool={tool} color={color} lineWidth={lineWidth}
           />
         </div>
       ) : (

@@ -238,6 +238,18 @@ export class RoomStompSession {
     this.publishJson(`/app/table/${tableId}/board.slide`, payload);
   }
 
+  sendBoardDraw(
+    tableId: string,
+    payload: {
+      slideId: string;
+      action: import('../utils/homeworkCanvasMath').BoardDrawAction;
+      stroke?: import('../utils/homeworkCanvasMath').BoardStroke;
+      strokeId?: string;
+    },
+  ): void {
+    this.publishJson(`/app/table/${tableId}/board.draw`, payload);
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.generation += 1;

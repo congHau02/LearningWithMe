@@ -1,5 +1,6 @@
 import { API_BASE_URL, apiRequest } from './apiClient';
 import type { VideoSyncState } from '../stores/useTableStore';
+import type { BoardDrawAction, BoardStroke } from '../utils/homeworkCanvasMath';
 
 export type TableRole = 'TABLE_HOST' | 'CO_HOST' | 'MEMBER';
 export type HomeworkSlideAction = 'SELECT' | 'DELETE';
@@ -10,6 +11,7 @@ export interface HomeworkSlide {
   url: string;
   uploadedByUserId: string;
   uploadedAtEpoch: number;
+  strokes?: BoardStroke[];
 }
 
 export type PermissionAction =
@@ -63,7 +65,8 @@ export interface TableWorkspaceEvent {
     | 'TABLE_CHAT'
     | 'HOMEWORK_SLIDE_ADDED'
     | 'HOMEWORK_SLIDE_SELECTED'
-    | 'HOMEWORK_SLIDE_DELETED';
+    | 'HOMEWORK_SLIDE_DELETED'
+    | 'BOARD_DRAW';
   tableId: string;
   actorUserId: string;
   targetUserId: string | null;
@@ -77,6 +80,10 @@ export interface TableWorkspaceEvent {
   chatMessage?: TableChatMessage | null;
   homeworkSlides?: HomeworkSlide[];
   activeSlideId?: string | null;
+  slideId?: string | null;
+  drawAction?: BoardDrawAction | null;
+  stroke?: BoardStroke | null;
+  erasedStrokeId?: string | null;
   timestampEpoch: number;
 }
 

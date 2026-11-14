@@ -1,5 +1,6 @@
 import { getActiveRoomStompSession } from './roomStompClient';
 import type { HomeworkSlideAction } from './tableApi';
+import type { BoardDrawAction, BoardStroke } from '../utils/homeworkCanvasMath';
 
 export function sendTablePermissionRequest(tableId: string, reason?: string): boolean {
   const session = getActiveRoomStompSession();
@@ -52,5 +53,15 @@ export function sendHomeworkSlideAction(
   const session = getActiveRoomStompSession();
   if (!session) return false;
   session.sendHomeworkSlideAction(tableId, payload);
+  return true;
+}
+
+export function sendBoardDraw(
+  tableId: string,
+  payload: { slideId: string; action: BoardDrawAction; stroke?: BoardStroke; strokeId?: string },
+): boolean {
+  const session = getActiveRoomStompSession();
+  if (!session) return false;
+  session.sendBoardDraw(tableId, payload);
   return true;
 }
