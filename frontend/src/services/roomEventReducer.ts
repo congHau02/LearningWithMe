@@ -82,6 +82,12 @@ export function applyRoomEvent(params: {
       const table = nextTables.find((t) => t.tableId === event.tableId);
       if (table) table.hostUserId = event.hostUserId ?? null;
     }
+  } else if (event.type === 'TABLE_HOST_CHANGED') {
+    if (event.tableId) {
+      const table = nextTables.find((t) => t.tableId === event.tableId);
+      if (table) table.hostUserId = event.hostUserId ?? null;
+    }
+    return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };
   }
 
   if (selfUserId && event.userId === selfUserId) return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };

@@ -188,7 +188,7 @@ public class RoomSeatService {
                 .filter(id -> !id.equals(electedHost) && !id.equals(leavingUserId))
                 .toList();
         stateStore.saveTableState(roomId, tableId, new RedisTableState(
-                newHostUserId, nextCoHosts, currentTable.isFreeCollab(), currentTable.sosBanner()
+                newHostUserId, nextCoHosts, currentTable.isFreeCollab(), currentTable.sosBanner(), currentTable.videoState()
         ));
         return newHostUserId;
     }

@@ -61,4 +61,26 @@ public record RoomEvent(
                 message
         );
     }
+
+    public static RoomEvent tableHostChanged(
+            long seq,
+            String roomId,
+            String tableId,
+            String hostUserId,
+            long timestampEpoch
+    ) {
+        return new RoomEvent(
+                seq,
+                "TABLE_HOST_CHANGED",
+                roomId,
+                hostUserId,
+                null,
+                null,
+                timestampEpoch,
+                tableId,
+                null,
+                hostUserId,
+                null
+        );
+    }
 }

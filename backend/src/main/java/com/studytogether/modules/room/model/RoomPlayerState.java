@@ -43,7 +43,7 @@ public record RoomPlayerState(
                 state != null ? state : "FREE_ROAM",
                 x, y,
                 facingDir != null ? facingDir : "DOWN",
-                tableId, seatId, connected, isMoving
+                tableId, seatId, connected, isMoving, sitStartTimeEpoch
         );
     }
 

@@ -6,8 +6,10 @@ import { LeaveTableConfirmModal } from './components/hud/LeaveTableConfirmModal'
 import { RoomChatBox } from './components/hud/RoomChatBox';
 import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
 import { TopBar } from './components/hud/TopBar';
+import { TableWorkspaceShell } from './components/table/TableWorkspaceShell';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { useRoomSync } from './hooks/useRoomSync';
+import { useTableWorkspaceSync } from './hooks/useTableWorkspaceSync';
 import type { UpgradeAccountResponse } from './services/authApi';
 import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
@@ -67,6 +69,7 @@ export function App() {
 
   const backendStatus = useAppBootstrap();
   useRoomSync();
+  useTableWorkspaceSync();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const handleLeaveSeat = () => {
@@ -131,6 +134,8 @@ export function App() {
       <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-6">
         <ClassroomCanvas />
       </main>
+
+      <TableWorkspaceShell />
 
       {characterState === 'SEATED' && isLeaveConfirmOpen ? (
         <LeaveTableConfirmModal

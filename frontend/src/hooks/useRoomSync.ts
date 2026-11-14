@@ -113,6 +113,7 @@ export function useRoomSync(): void {
               coHostUserIds: table?.coHostUserIds ?? [],
               isFreeCollab: table?.isFreeCollab ?? false,
               sosBanner: table?.sosBanner ?? null,
+              sitStartTimeEpoch: selfPlayer.sitStartTimeEpoch ?? Date.now(),
             });
           } else {
             useTableStore.getState().leaveTable();
@@ -132,8 +133,10 @@ export function useRoomSync(): void {
               useTableStore.getState().setTableState({
                 tableId: event.tableId!,
                 hostUserId: event.hostUserId ?? null,
+                sitStartTimeEpoch: event.player?.sitStartTimeEpoch || Date.now(),
               });
             } else {
+              useTableStore.getState().syncFromRoomSeatEvent(event);
               const current = useGameStore.getState();
               if (
                 current.characterState === 'WALKING_TO_SEAT' &&
@@ -142,14 +145,8 @@ export function useRoomSync(): void {
                 current.abortSeatWalk('Ghế vừa có người ngồi!');
               }
             }
-          } else if (event.type === 'SEAT_RELEASED') {
-            const currentTableId = useTableStore.getState().tableId;
-            if (event.tableId && event.tableId === currentTableId) {
-              useTableStore.getState().setTableState({
-                tableId: event.tableId,
-                hostUserId: event.hostUserId ?? null,
-              });
-            }
+          } else if (event.type === 'SEAT_RELEASED' || event.type === 'TABLE_HOST_CHANGED') {
+            useTableStore.getState().syncFromRoomSeatEvent(event);
           }
         },
         onError: (err) => {
@@ -159,6 +156,12 @@ export function useRoomSync(): void {
             if (current.characterState === 'WALKING_TO_SEAT' || current.isPendingSeatConfirmation) {
               current.abortSeatWalk(err.message || 'Ghế đã có người ngồi!');
             }
+          } else if (
+            err.code === 'TABLE_PERMISSION_DENIED' ||
+            err.code === 'NOT_SEATED_AT_TABLE' ||
+            err.code === 'INVALID_TABLE_ACTION'
+          ) {
+            useTableStore.getState().setPermissionToast(err.message || 'Không đủ quyền thao tác bàn học');
           }
         },
       });

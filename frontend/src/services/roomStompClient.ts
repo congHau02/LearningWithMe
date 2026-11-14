@@ -75,6 +75,8 @@ export class RoomStompSession {
 
   private transport: StompTransport | null = null;
   private unsubscribers: Array<() => void> = [];
+  private tableUnsubscriber: (() => void) | null = null;
+  private activeTableId: string | null = null;
   private activeToken: string | null = null;
   private generation = 0;
   private stopped = false;
@@ -182,6 +184,41 @@ export class RoomStompSession {
     }
   }
 
+  subscribeTableWorkspace(tableId: string, onRawMessage: (body: string) => void): void {
+    if (!this.transport || this.stopped || this.replaced) return;
+    if (this.activeTableId === tableId && this.tableUnsubscriber) return;
+    this.unsubscribeTableWorkspace();
+    this.activeTableId = tableId;
+    this.tableUnsubscriber = this.transport.subscribe(`/topic/table/${tableId}/workspace`, onRawMessage);
+  }
+
+  unsubscribeTableWorkspace(): void {
+    if (this.tableUnsubscriber) {
+      try {
+        this.tableUnsubscriber();
+      } catch {
+        // Ignore unsubscribe error
+      }
+      this.tableUnsubscriber = null;
+    }
+    this.activeTableId = null;
+  }
+
+  sendPermissionRequest(tableId: string, reason?: string): void {
+    if (this.transport && !this.stopped && !this.replaced) {
+      this.transport.publish(`/app/table/${tableId}/permission.request`, JSON.stringify({ reason: reason ?? null }));
+    }
+  }
+
+  sendPermissionRespond(
+    tableId: string,
+    payload: { action: string; targetUserId?: string; isFreeCollab?: boolean },
+  ): void {
+    if (this.transport && !this.stopped && !this.replaced) {
+      this.transport.publish(`/app/table/${tableId}/permission.respond`, JSON.stringify(payload));
+    }
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.generation += 1;
@@ -286,6 +323,7 @@ export class RoomStompSession {
   }
 
   private clearSubscriptions(): void {
+    this.unsubscribeTableWorkspace();
     for (const unsub of this.unsubscribers) {
       try {
         unsub();
@@ -319,9 +357,32 @@ export function setActiveRoomStompSession(session: RoomStompSession | null): voi
   activeRoomSession = session;
 }
 
+export function getActiveRoomStompSession(): RoomStompSession | null {
+  return activeRoomSession;
+}
+
 export function sendRoomChatMessage(roomId: string, content: string): boolean {
   if (activeRoomSession) {
     activeRoomSession.sendChat(roomId, content);
+    return true;
+  }
+  return false;
+}
+
+export function sendTablePermissionRequest(tableId: string, reason?: string): boolean {
+  if (activeRoomSession) {
+    activeRoomSession.sendPermissionRequest(tableId, reason);
+    return true;
+  }
+  return false;
+}
+
+export function sendTablePermissionRespond(
+  tableId: string,
+  payload: { action: string; targetUserId?: string; isFreeCollab?: boolean },
+): boolean {
+  if (activeRoomSession) {
+    activeRoomSession.sendPermissionRespond(tableId, payload);
     return true;
   }
   return false;

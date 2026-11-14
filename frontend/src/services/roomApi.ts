@@ -20,6 +20,7 @@ export interface RoomPlayerDto {
   seatId: string | null;
   connected: boolean;
   isMoving?: boolean;
+  sitStartTimeEpoch?: number;
 }
 
 export interface PlayerMoveRequest {
@@ -67,6 +68,7 @@ export type RoomEventType =
   | 'PLAYER_LEFT'
   | 'SEAT_LOCKED'
   | 'SEAT_RELEASED'
+  | 'TABLE_HOST_CHANGED'
   | 'ROOM_CHAT';
 
 export interface RoomEvent {
