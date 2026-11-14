@@ -47,6 +47,11 @@ public final class HomeworkImageValidator {
         return fileName;
     }
 
+    public static String extractImageId(String fileName) {
+        String safeName = validateSafeFileName(fileName);
+        return safeName.substring(0, safeName.length() - ".webp".length());
+    }
+
     private static boolean isJpeg(byte[] b) {
         return b.length >= 3
                 && (b[0] & 0xFF) == 0xFF

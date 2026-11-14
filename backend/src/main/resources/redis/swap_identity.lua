@@ -86,9 +86,14 @@ for _, key in ipairs(KEYS) do
 
                 if type(state.homeworkSlides) == "table" then
                     for _, slide in ipairs(state.homeworkSlides) do
-                        if type(slide) == "table" and slide.uploadedBy == guestId then
-                            slide.uploadedBy = registeredUserId
-                            changed = true
+                        if type(slide) == "table" then
+                            if slide.uploadedByUserId == guestId then
+                                slide.uploadedByUserId = registeredUserId
+                                changed = true
+                            elseif slide.uploadedBy == guestId then
+                                slide.uploadedBy = registeredUserId
+                                changed = true
+                            end
                         end
                     end
                 end

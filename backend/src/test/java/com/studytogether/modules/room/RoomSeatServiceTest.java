@@ -315,6 +315,39 @@ class RoomSeatServiceTest {
         assertThat(stateStore.getSeats(roomId)).containsKey("T1_S1");
     }
 
+    @Test
+    void leaveSeatPublishesTableEmptiedEventWithLastStateWhenLastLearnerLeaves() {
+        String roomId = "main-library";
+        AuthPrincipal host = guest("u-host", "Host");
+        stateStore.savePlayer(roomId, playerState("u-host", "Host", "SEATED", 3, 4, "table_01", "T1_S1", 1000L));
+        stateStore.putSeat(roomId, "T1_S1", "u-host");
+        RedisTableState tableState = new RedisTableState("u-host", List.of(), false, null);
+        stateStore.saveTableState(roomId, "table_01", tableState);
+
+        seatService.handleLeave(host, roomId, "ws-1");
+
+        ArgumentCaptor<TableEmptiedEvent> captor = ArgumentCaptor.forClass(TableEmptiedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().roomId()).isEqualTo(roomId);
+        assertThat(captor.getValue().tableId()).isEqualTo("table_01");
+        assertThat(captor.getValue().lastTableState()).isEqualTo(tableState);
+    }
+
+    @Test
+    void leaveSeatDoesNotPublishTableEmptiedEventWhenAnotherLearnerRemains() {
+        String roomId = "main-library";
+        AuthPrincipal host = guest("u-host", "Host");
+        stateStore.savePlayer(roomId, playerState("u-host", "Host", "SEATED", 3, 4, "table_01", "T1_S1", 1000L));
+        stateStore.savePlayer(roomId, playerState("u-2", "Bob", "SEATED", 4, 4, "table_01", "T1_S2", 2000L));
+        stateStore.putSeat(roomId, "T1_S1", "u-host");
+        stateStore.putSeat(roomId, "T1_S2", "u-2");
+        stateStore.saveTableState(roomId, "table_01", new RedisTableState("u-host", List.of(), false, null));
+
+        seatService.handleLeave(host, roomId, "ws-1");
+
+        verify(eventPublisher, org.mockito.Mockito.never()).publishEvent(any(TableEmptiedEvent.class));
+    }
+
     private static AuthPrincipal guest(String userId, String nickname) {
         return new AuthPrincipal(userId, AuthRole.GUEST, nickname, "default_student", "Study");
     }

@@ -4,6 +4,7 @@ import com.studytogether.config.AppProperties;
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.room.RoomStateStore;
+import com.studytogether.modules.room.TableEmptiedEvent;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.table.TableAuthorizationService.SeatedContext;
 import com.studytogether.modules.table.model.EphemeralImageMetadata;
@@ -18,6 +19,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -69,11 +71,16 @@ public class TableHomeworkService {
         String fileName = imageId + ".webp";
         long now = System.currentTimeMillis();
 
-        writeFileToTempDir(fileName, bytes);
         stateStore.saveEphemeralImage(
                 new EphemeralImageMetadata(imageId, roomId, tableId, fileName, principal.userId(), now),
                 EPHEMERAL_IMAGE_TTL
         );
+        try {
+            writeFileToTempDir(fileName, bytes);
+        } catch (RuntimeException ex) {
+            stateStore.deleteEphemeralImage(imageId);
+            throw ex;
+        }
 
         HomeworkSlide newSlide = new HomeworkSlide(
                 imageId,
@@ -142,7 +149,7 @@ public class TableHomeworkService {
 
     public LoadedEphemeralFile loadEphemeralFile(String fileName) {
         String safeName = HomeworkImageValidator.validateSafeFileName(fileName);
-        String imageId = safeName.substring(0, safeName.length() - ".webp".length());
+        String imageId = HomeworkImageValidator.extractImageId(safeName);
         stateStore.getEphemeralImage(imageId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Ephemeral File Not Found", "Homework file expired or not found"));
         Path resolved = homeworkDir.resolve(safeName).normalize();
@@ -154,6 +161,22 @@ public class TableHomeworkService {
             return new LoadedEphemeralFile(bytes, HomeworkImageValidator.detectImageContentTypeOrDefault(bytes));
         } catch (IOException ex) {
             throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "File Read Error", "Could not read homework file");
+        }
+    }
+
+    @EventListener
+    public void onTableEmptied(TableEmptiedEvent event) {
+        if (event != null) {
+            purgeTableHomework(event.lastTableState());
+        }
+    }
+
+    public void purgeTableHomework(RedisTableState tableState) {
+        if (tableState == null || tableState.homeworkSlides().isEmpty()) {
+            return;
+        }
+        for (HomeworkSlide slide : tableState.homeworkSlides()) {
+            deleteSlideArtifacts(slide);
         }
     }
 
