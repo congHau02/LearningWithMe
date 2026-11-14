@@ -69,6 +69,9 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
         const rest = s.pendingPermissionRequests.filter((r) => r.requesterUserId !== event.actorUserId);
         return { pendingPermissionRequests: [...rest, { requesterUserId: event.actorUserId, requesterNickname: event.requesterNickname || event.actorUserId, timestampEpoch: event.timestampEpoch }] };
       }
+      if (event.type === 'VIDEO_SYNCED' && event.videoState) {
+        return { videoState: event.videoState };
+      }
       if (event.type !== 'PERMISSION_UPDATED') return s;
       const nextMembers = s.members.map((m) => ({ ...m, tableRole: roleOf(m.userId, event.hostUserId, event.coHostUserIds) }));
       const nextRequests = event.targetUserId ? s.pendingPermissionRequests.filter((r) => r.requesterUserId !== event.targetUserId) : s.pendingPermissionRequests;

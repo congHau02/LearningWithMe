@@ -10,6 +10,8 @@ export type PermissionAction =
   | 'TRANSFER_HOST'
   | 'TOGGLE_FREE_COLLAB';
 
+export type VideoSyncAction = 'CHANGE_URL' | 'PLAY' | 'PAUSE' | 'SEEK';
+
 export interface TableMemberDto {
   userId: string;
   nickname: string;
@@ -32,7 +34,7 @@ export interface TableWorkspaceSnapshot {
 }
 
 export interface TableWorkspaceEvent {
-  type: 'PERMISSION_REQUESTED' | 'PERMISSION_UPDATED';
+  type: 'PERMISSION_REQUESTED' | 'PERMISSION_UPDATED' | 'VIDEO_SYNCED';
   tableId: string;
   actorUserId: string;
   targetUserId: string | null;
@@ -41,6 +43,7 @@ export interface TableWorkspaceEvent {
   hostUserId: string | null;
   coHostUserIds: string[];
   isFreeCollab: boolean;
+  videoState?: VideoSyncState | null;
   timestampEpoch: number;
 }
 

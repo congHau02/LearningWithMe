@@ -219,6 +219,15 @@ export class RoomStompSession {
     }
   }
 
+  sendVideoSync(
+    tableId: string,
+    payload: { action: string; videoUrlOrId?: string | null; currentTime?: number | null },
+  ): void {
+    if (this.transport && !this.stopped && !this.replaced) {
+      this.transport.publish(`/app/table/${tableId}/video.sync`, JSON.stringify(payload));
+    }
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.generation += 1;
@@ -383,6 +392,17 @@ export function sendTablePermissionRespond(
 ): boolean {
   if (activeRoomSession) {
     activeRoomSession.sendPermissionRespond(tableId, payload);
+    return true;
+  }
+  return false;
+}
+
+export function sendTableVideoSync(
+  tableId: string,
+  payload: { action: string; videoUrlOrId?: string | null; currentTime?: number | null },
+): boolean {
+  if (activeRoomSession) {
+    activeRoomSession.sendVideoSync(tableId, payload);
     return true;
   }
   return false;

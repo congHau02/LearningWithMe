@@ -189,6 +189,69 @@ class TableWorkspaceIntegrationTest {
         memberSession.disconnect();
     }
 
+    @Test
+    void syncsYouTubeVideoWithRoleAuthorizationAndPreservesAcrossHostSuccession() throws Exception {
+        String hostToken = createGuestToken("VideoHost");
+        String memberToken = createGuestToken("VideoMember");
+
+        StompSession hostSession = connectStomp(hostToken);
+        StompSession memberSession = connectStomp(memberToken);
+
+        BlockingQueue<JsonNode> tableEvents = subscribeJson(hostSession, "/topic/table/table_01/workspace");
+        BlockingQueue<JsonNode> memberErrors = subscribeJson(memberSession, "/user/queue/errors");
+
+        hostSession.send("/app/room/main-library/join", "");
+        memberSession.send("/app/room/main-library/join", "");
+        Thread.sleep(250);
+
+        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_01"));
+        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "seat_02"));
+        Thread.sleep(250);
+
+        memberSession.send("/app/table/table_01/video.sync", Map.of(
+                "action", "CHANGE_URL",
+                "videoUrlOrId", "https://youtu.be/jfKfPfyJRdk"
+        ));
+        JsonNode err = memberErrors.poll(5, TimeUnit.SECONDS);
+        assertThat(err).isNotNull();
+        assertThat(err.path("code").asText()).isEqualTo("TABLE_PERMISSION_DENIED");
+
+        hostSession.send("/app/table/table_01/video.sync", Map.of(
+                "action", "CHANGE_URL",
+                "videoUrlOrId", "https://www.youtube.com/watch?v=jfKfPfyJRdk",
+                "currentTime", 15.0
+        ));
+        JsonNode videoEv = tableEvents.poll(5, TimeUnit.SECONDS);
+        assertThat(videoEv).isNotNull();
+        assertThat(videoEv.path("type").asText()).isEqualTo("VIDEO_SYNCED");
+        assertThat(videoEv.path("videoState").path("videoId").asText()).isEqualTo("jfKfPfyJRdk");
+        assertThat(videoEv.path("videoState").path("isPlaying").asBoolean()).isTrue();
+
+        // Host leaves seat -> Auto-Host Succession must preserve videoState in Redis
+        hostSession.send("/app/room/main-library/seat.leave", Map.of());
+        Thread.sleep(250);
+
+        HttpHeaders memberHeaders = new HttpHeaders();
+        memberHeaders.setBearerAuth(memberToken);
+        ResponseEntity<TableWorkspaceSnapshot> afterSuccession = restTemplate.exchange(
+                "/api/v1/rooms/main-library/tables/table_01/state",
+                HttpMethod.GET,
+                new HttpEntity<>(memberHeaders),
+                TableWorkspaceSnapshot.class
+        );
+        assertThat(afterSuccession.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(afterSuccession.getBody()).isNotNull();
+        assertThat(afterSuccession.getBody().videoState().videoId()).isEqualTo("jfKfPfyJRdk");
+
+        // Last member leaves seat -> table state including videoState is deleted from Redis
+        memberSession.send("/app/room/main-library/seat.leave", Map.of());
+        Thread.sleep(250);
+        assertThat(redisTemplate.opsForValue().get(RedisRoomStateStore.tableStateKey("main-library", "table_01"))).isNull();
+
+        hostSession.disconnect();
+        memberSession.disconnect();
+    }
+
     private String createGuestToken(String nickname) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

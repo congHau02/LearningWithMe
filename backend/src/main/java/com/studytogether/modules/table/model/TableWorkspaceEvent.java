@@ -13,6 +13,7 @@ public record TableWorkspaceEvent(
         String hostUserId,
         List<String> coHostUserIds,
         @JsonProperty("isFreeCollab") boolean isFreeCollab,
+        TableVideoState videoState,
         long timestampEpoch
 ) {
     public TableWorkspaceEvent {
@@ -38,6 +39,7 @@ public record TableWorkspaceEvent(
                 hostUserId,
                 coHostUserIds,
                 isFreeCollab,
+                null,
                 now
         );
     }
@@ -62,6 +64,31 @@ public record TableWorkspaceEvent(
                 hostUserId,
                 coHostUserIds,
                 isFreeCollab,
+                null,
+                now
+        );
+    }
+
+    public static TableWorkspaceEvent videoSynced(
+            String tableId,
+            String actorUserId,
+            TableVideoState videoState,
+            String hostUserId,
+            List<String> coHostUserIds,
+            boolean isFreeCollab,
+            long now
+    ) {
+        return new TableWorkspaceEvent(
+                "VIDEO_SYNCED",
+                tableId,
+                actorUserId,
+                null,
+                null,
+                null,
+                hostUserId,
+                coHostUserIds,
+                isFreeCollab,
+                videoState,
                 now
         );
     }

@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { HostPermissionToast } from './HostPermissionToast';
+import { SyncedYouTubePlayer } from './SyncedYouTubePlayer';
 import { TableMembersPanel } from './TableMembersPanel';
 
 export function TableWorkspaceShell() {
@@ -148,15 +149,8 @@ export function TableWorkspaceShell() {
       ) : null}
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-4 lg:col-span-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Không gian học tập chung
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {canControl
-              ? 'Bạn có quyền điều khiển video đồng bộ và bảng bài tập tại bàn này.'
-              : 'Bạn đang ở chế độ Thành viên. Bấm "Xin quyền điều khiển / Giảng bài" để tương tác cùng Trưởng bàn.'}
-          </p>
+        <div className="lg:col-span-2">
+          <SyncedYouTubePlayer tableId={activeTableId} canControl={canControl} />
         </div>
 
         <TableMembersPanel
