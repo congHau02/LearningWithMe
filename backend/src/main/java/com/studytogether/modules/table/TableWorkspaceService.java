@@ -53,7 +53,8 @@ public class TableWorkspaceService {
                 tableState.isFreeCollab(),
                 tableState.sosBanner(),
                 tableState.videoState(),
-                members
+                members,
+                stateStore.getRecentTableMessages(roomId, tableId, 50)
         );
     }
 

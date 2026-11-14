@@ -14,6 +14,8 @@ public final class TableExceptions {
             URI.create("https://studytogether.com/problems/invalid-table-action");
     public static final URI TARGET_NOT_SEATED_AT_TABLE_TYPE =
             URI.create("https://studytogether.com/problems/target-not-seated-at-table");
+    public static final URI TABLE_CHAT_RATE_LIMIT_EXCEEDED_TYPE =
+            URI.create("https://studytogether.com/problems/table-chat-rate-limit-exceeded");
 
     private TableExceptions() {}
 
@@ -50,6 +52,15 @@ public final class TableExceptions {
                 "Target Not Seated At Table",
                 "Target user '%s' is not seated at table '%s'".formatted(targetUserId, tableId),
                 TARGET_NOT_SEATED_AT_TABLE_TYPE
+        );
+    }
+
+    public static BusinessException chatRateLimitExceeded(String userId) {
+        return new BusinessException(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "Table Chat Rate Limit Exceeded",
+                "User '%s' is sending table chat messages too quickly. Please wait a moment.".formatted(userId),
+                TABLE_CHAT_RATE_LIMIT_EXCEEDED_TYPE
         );
     }
 }

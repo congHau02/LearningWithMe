@@ -3,6 +3,7 @@ package com.studytogether.modules.room;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomPlayerState;
+import com.studytogether.modules.table.model.TableChatMessage;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,4 +52,10 @@ public interface RoomStateStore {
     List<RoomChatMessage> getRecentMessages(String roomId, int limit);
 
     void appendChatMessage(String roomId, RoomChatMessage message, int maxBuffer);
+
+    List<TableChatMessage> getRecentTableMessages(String roomId, String tableId, int limit);
+
+    void appendTableChatMessage(String roomId, String tableId, TableChatMessage message, int maxBuffer);
+
+    boolean deleteTableChatMessages(String roomId, String tableId);
 }

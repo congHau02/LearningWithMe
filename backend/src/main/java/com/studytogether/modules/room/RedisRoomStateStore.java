@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomPlayerState;
+import com.studytogether.modules.table.model.TableChatMessage;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -185,20 +186,42 @@ public class RedisRoomStateStore implements RoomStateStore {
 
     @Override
     public List<RoomChatMessage> getRecentMessages(String roomId, int limit) {
-        if (limit <= 0) return List.of();
-        List<String> rawList = redisTemplate.opsForList().range(chatKey(roomId), -limit, -1);
-        if (rawList == null || rawList.isEmpty()) return List.of();
-        List<RoomChatMessage> messages = new ArrayList<>(rawList.size());
-        for (String raw : rawList) {
-            if (raw != null) deserialize(raw, RoomChatMessage.class).ifPresent(messages::add);
-        }
-        return messages;
+        return getRecentList(chatKey(roomId), RoomChatMessage.class, limit);
     }
 
     @Override
     public void appendChatMessage(String roomId, RoomChatMessage message, int maxBuffer) {
-        String key = chatKey(roomId);
-        redisTemplate.opsForList().rightPush(key, serialize(message));
+        appendToList(chatKey(roomId), message, maxBuffer);
+    }
+
+    @Override
+    public List<TableChatMessage> getRecentTableMessages(String roomId, String tableId, int limit) {
+        return getRecentList(tableChatKey(roomId, tableId), TableChatMessage.class, limit);
+    }
+
+    @Override
+    public void appendTableChatMessage(String roomId, String tableId, TableChatMessage message, int maxBuffer) {
+        appendToList(tableChatKey(roomId, tableId), message, maxBuffer);
+    }
+
+    @Override
+    public boolean deleteTableChatMessages(String roomId, String tableId) {
+        return Boolean.TRUE.equals(redisTemplate.delete(tableChatKey(roomId, tableId)));
+    }
+
+    private <T> List<T> getRecentList(String key, Class<T> type, int limit) {
+        if (limit <= 0) return List.of();
+        List<String> rawList = redisTemplate.opsForList().range(key, -limit, -1);
+        if (rawList == null || rawList.isEmpty()) return List.of();
+        List<T> items = new ArrayList<>(rawList.size());
+        for (String raw : rawList) {
+            if (raw != null) deserialize(raw, type).ifPresent(items::add);
+        }
+        return items;
+    }
+
+    private void appendToList(String key, Object item, int maxBuffer) {
+        redisTemplate.opsForList().rightPush(key, serialize(item));
         if (maxBuffer > 0) {
             redisTemplate.opsForList().trim(key, -maxBuffer, -1);
         }
@@ -251,5 +274,9 @@ public class RedisRoomStateStore implements RoomStateStore {
 
     public static String tableStateKey(String roomId, String tableId) {
         return "table:" + roomId + ":" + tableId + ":state";
+    }
+
+    public static String tableChatKey(String roomId, String tableId) {
+        return "table:" + roomId + ":" + tableId + ":chat";
     }
 }

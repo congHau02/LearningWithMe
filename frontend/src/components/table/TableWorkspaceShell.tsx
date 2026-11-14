@@ -8,6 +8,7 @@ import { useTableStore } from '../../stores/useTableStore';
 import { HostPermissionToast } from './HostPermissionToast';
 import { SosBannerControl } from './SosBannerControl';
 import { SyncedYouTubePlayer } from './SyncedYouTubePlayer';
+import { TableChatPanel } from './TableChatPanel';
 import { TableMembersPanel } from './TableMembersPanel';
 
 export function TableWorkspaceShell() {
@@ -161,12 +162,15 @@ export function TableWorkspaceShell() {
           <SyncedYouTubePlayer tableId={activeTableId} canControl={canControl} />
         </div>
 
-        <TableMembersPanel
-          members={members}
-          selfUserId={selfUserId}
-          isSelfHost={isHost}
-          onAction={(action, targetUserId) => handlePermissionAction(action, targetUserId)}
-        />
+        <div className="flex flex-col gap-4">
+          <TableMembersPanel
+            members={members}
+            selfUserId={selfUserId}
+            isSelfHost={isHost}
+            onAction={(action, targetUserId) => handlePermissionAction(action, targetUserId)}
+          />
+          <TableChatPanel tableId={activeTableId} />
+        </div>
       </div>
     </section>
   );

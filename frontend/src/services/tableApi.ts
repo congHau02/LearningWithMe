@@ -22,6 +22,15 @@ export interface TableMemberDto {
   connected: boolean;
 }
 
+export interface TableChatMessage {
+  id: string;
+  userId: string;
+  nickname: string;
+  avatarId: string;
+  content: string;
+  createdAtEpoch: number;
+}
+
 export interface TableWorkspaceSnapshot {
   roomId: string;
   tableId: string;
@@ -31,10 +40,11 @@ export interface TableWorkspaceSnapshot {
   sosBanner: string | null;
   videoState: VideoSyncState;
   members: TableMemberDto[];
+  recentMessages?: TableChatMessage[];
 }
 
 export interface TableWorkspaceEvent {
-  type: 'PERMISSION_REQUESTED' | 'PERMISSION_UPDATED' | 'VIDEO_SYNCED' | 'SOS_UPDATED';
+  type: 'PERMISSION_REQUESTED' | 'PERMISSION_UPDATED' | 'VIDEO_SYNCED' | 'SOS_UPDATED' | 'TABLE_CHAT';
   tableId: string;
   actorUserId: string;
   targetUserId: string | null;
@@ -45,6 +55,7 @@ export interface TableWorkspaceEvent {
   isFreeCollab: boolean;
   videoState?: VideoSyncState | null;
   sosBanner?: string | null;
+  chatMessage?: TableChatMessage | null;
   timestampEpoch: number;
 }
 

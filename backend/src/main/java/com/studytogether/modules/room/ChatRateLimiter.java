@@ -20,14 +20,23 @@ public class ChatRateLimiter {
     }
 
     public boolean isAllowed(String userId) {
-        return isAllowed(userId, System.currentTimeMillis());
+        return isAllowed(KEY_PREFIX, userId, System.currentTimeMillis());
     }
 
     public boolean isAllowed(String userId, long nowEpoch) {
+        return isAllowed(KEY_PREFIX, userId, nowEpoch);
+    }
+
+    public boolean isAllowedForScope(String keyPrefix, String userId) {
+        return isAllowed(keyPrefix, userId, System.currentTimeMillis());
+    }
+
+    public boolean isAllowed(String keyPrefix, String userId, long nowEpoch) {
         if (userId == null || userId.isBlank()) {
             return false;
         }
-        String key = KEY_PREFIX + userId;
+        String prefix = (keyPrefix == null || keyPrefix.isBlank()) ? KEY_PREFIX : keyPrefix;
+        String key = prefix + userId;
         long windowStart = nowEpoch - WINDOW_MS;
 
         redisTemplate.opsForZSet().removeRangeByScore(key, 0, windowStart);

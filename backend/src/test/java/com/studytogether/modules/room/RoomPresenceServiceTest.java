@@ -18,6 +18,7 @@ import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomEvent;
 import com.studytogether.modules.room.model.RoomJoinResponse;
+import com.studytogether.modules.table.model.TableChatMessage;
 import com.studytogether.modules.room.model.RoomPlayerState;
 import com.studytogether.modules.room.model.RoomSnapshotResponse;
 import java.util.List;
@@ -219,6 +220,7 @@ class RoomPresenceServiceTest {
         private final Map<String, Map<String, Long>> disconnectsByRoom = new ConcurrentHashMap<>();
         private final Map<String, Map<String, RedisTableState>> tablesByRoom = new ConcurrentHashMap<>();
         private final Map<String, List<RoomChatMessage>> chatByRoom = new ConcurrentHashMap<>();
+        private final Map<String, List<TableChatMessage>> tableChatByKey = new ConcurrentHashMap<>();
         private final Map<String, AtomicLong> seqByRoom = new ConcurrentHashMap<>();
 
         @Override
@@ -349,6 +351,27 @@ class RoomPresenceServiceTest {
             while (maxBuffer > 0 && list.size() > maxBuffer) {
                 list.remove(0);
             }
+        }
+
+        @Override
+        public List<TableChatMessage> getRecentTableMessages(String roomId, String tableId, int limit) {
+            if (limit <= 0) return List.of();
+            List<TableChatMessage> list = tableChatByKey.getOrDefault(roomId + ":" + tableId, List.of());
+            return list.size() <= limit ? List.copyOf(list) : List.copyOf(list.subList(list.size() - limit, list.size()));
+        }
+
+        @Override
+        public void appendTableChatMessage(String roomId, String tableId, TableChatMessage message, int maxBuffer) {
+            List<TableChatMessage> list = tableChatByKey.computeIfAbsent(roomId + ":" + tableId, k -> new CopyOnWriteArrayList<>());
+            list.add(message);
+            while (maxBuffer > 0 && list.size() > maxBuffer) {
+                list.remove(0);
+            }
+        }
+
+        @Override
+        public boolean deleteTableChatMessages(String roomId, String tableId) {
+            return tableChatByKey.remove(roomId + ":" + tableId) != null;
         }
 
         void clearAll() {

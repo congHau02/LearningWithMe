@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PermissionRequestNotification, TableMemberDto, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
+import type { PermissionRequestNotification, TableChatMessage, TableMemberDto, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
 import type { RoomEvent } from '../services/roomApi';
 
 export interface VideoSyncState { videoId: string | null; isPlaying: boolean; currentTime: number; lastUpdatedEpoch: number; }
@@ -15,6 +15,7 @@ export interface TableWorkspaceState {
   pendingPermissionRequests: PermissionRequestNotification[];
   permissionToast: string | null;
   videoState: VideoSyncState;
+  recentMessages: TableChatMessage[];
   setTableState: (payload: { tableId: string; hostUserId: string | null; coHostUserIds?: string[]; isFreeCollab?: boolean; sosBanner?: string | null; sitStartTimeEpoch?: number | null; videoState?: Partial<VideoSyncState>; }) => void;
   applyWorkspaceSnapshot: (snapshot: TableWorkspaceSnapshot, selfUserId: string | null) => void;
   applyWorkspaceEvent: (event: TableWorkspaceEvent, selfUserId: string | null) => void;
@@ -34,7 +35,7 @@ const INITIAL_TABLE_STATE = {
   tableId: null as string | null, hostUserId: null as string | null, coHostUserIds: [] as string[],
   isFreeCollab: false, sosBanner: null as string | null, sitStartTimeEpoch: null as number | null,
   members: [] as TableMemberDto[], pendingPermissionRequests: [] as PermissionRequestNotification[],
-  permissionToast: null as string | null, videoState: DEFAULT_VIDEO_STATE,
+  permissionToast: null as string | null, videoState: DEFAULT_VIDEO_STATE, recentMessages: [] as TableChatMessage[],
 };
 const ROLE_TOAST: Record<string, string> = {
   GRANT: 'Trưởng bàn đã cấp quyền Co-Host cho bạn', DENY: 'Yêu cầu xin quyền điều khiển đã bị từ chối',
@@ -59,6 +60,7 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
         isFreeCollab: snapshot.isFreeCollab, sosBanner: snapshot.sosBanner, members: snapshot.members,
         sitStartTimeEpoch: self?.sitStartTimeEpoch || s.sitStartTimeEpoch || Date.now(),
         videoState: { ...s.videoState, ...snapshot.videoState },
+        recentMessages: (snapshot.recentMessages ?? []).slice(-50),
       };
     }),
   applyWorkspaceEvent: (event, selfUserId) =>
@@ -74,6 +76,11 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
       }
       if (event.type === 'SOS_UPDATED') {
         return { sosBanner: event.sosBanner ?? null };
+      }
+      if (event.type === 'TABLE_CHAT' && event.chatMessage) {
+        const msg = event.chatMessage;
+        if (s.recentMessages.some((m) => m.id === msg.id)) return s;
+        return { recentMessages: [...s.recentMessages, msg].slice(-50) };
       }
       if (event.type !== 'PERMISSION_UPDATED') return s;
       const nextMembers = s.members.map((m) => ({ ...m, tableRole: roleOf(m.userId, event.hostUserId, event.coHostUserIds) }));

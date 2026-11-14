@@ -237,6 +237,12 @@ export class RoomStompSession {
     }
   }
 
+  sendTableChat(tableId: string, content: string): void {
+    if (this.transport && !this.stopped && !this.replaced) {
+      this.transport.publish(`/app/table/${tableId}/chat`, JSON.stringify({ content }));
+    }
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.generation += 1;
@@ -423,6 +429,14 @@ export function sendTableSosToggle(
 ): boolean {
   if (activeRoomSession) {
     activeRoomSession.sendSosToggle(tableId, payload);
+    return true;
+  }
+  return false;
+}
+
+export function sendTableChatMessage(tableId: string, content: string): boolean {
+  if (activeRoomSession) {
+    activeRoomSession.sendTableChat(tableId, content);
     return true;
   }
   return false;

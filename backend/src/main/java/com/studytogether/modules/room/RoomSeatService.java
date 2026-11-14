@@ -173,6 +173,7 @@ public class RoomSeatService {
         if (remainingSeated.isEmpty()) {
             Optional<RedisTableState> existing = stateStore.getTableState(roomId, tableId);
             stateStore.deleteTableState(roomId, tableId);
+            stateStore.deleteTableChatMessages(roomId, tableId);
             if (existing.isPresent() && existing.get().sosBanner() != null) {
                 long sosSeq = stateStore.incrementEventSeq(roomId);
                 RoomEvent sosCleared = RoomEvent.sosUpdated(

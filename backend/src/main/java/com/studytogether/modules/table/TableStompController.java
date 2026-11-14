@@ -6,6 +6,7 @@ import com.studytogether.modules.room.StompErrorDispatcher;
 import com.studytogether.modules.table.model.PermissionRequestPayload;
 import com.studytogether.modules.table.model.PermissionRespondRequest;
 import com.studytogether.modules.table.model.SosToggleRequest;
+import com.studytogether.modules.table.model.TableChatSendRequest;
 import com.studytogether.modules.table.model.VideoSyncRequest;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -30,17 +31,20 @@ public class TableStompController {
     private final TableWorkspaceService workspaceService;
     private final TableVideoService videoService;
     private final TableSosService sosService;
+    private final TableChatService tableChatService;
     private final StompErrorDispatcher errorDispatcher;
 
     public TableStompController(
             TableWorkspaceService workspaceService,
             TableVideoService videoService,
             TableSosService sosService,
+            TableChatService tableChatService,
             StompErrorDispatcher errorDispatcher
     ) {
         this.workspaceService = workspaceService;
         this.videoService = videoService;
         this.sosService = sosService;
+        this.tableChatService = tableChatService;
         this.errorDispatcher = errorDispatcher;
     }
 
@@ -80,6 +84,15 @@ public class TableStompController {
         sosService.toggleSos(extractPrincipal(user), tableId, request);
     }
 
+    @MessageMapping("/table/{tableId}/chat")
+    public void sendTableChat(
+            @DestinationVariable String tableId,
+            @Payload(required = false) TableChatSendRequest request,
+            Principal user
+    ) {
+        tableChatService.sendTableChatMessage(extractPrincipal(user), tableId, request);
+    }
+
     @MessageExceptionHandler(BusinessException.class)
     public void handleBusinessException(
             BusinessException ex,
@@ -114,6 +127,7 @@ public class TableStompController {
         if (TableExceptions.TABLE_PERMISSION_DENIED_TYPE.equals(ex.getType())) return "TABLE_PERMISSION_DENIED";
         if (TableExceptions.INVALID_TABLE_ACTION_TYPE.equals(ex.getType())) return "INVALID_TABLE_ACTION";
         if (TableExceptions.TARGET_NOT_SEATED_AT_TABLE_TYPE.equals(ex.getType())) return "TARGET_NOT_SEATED_AT_TABLE";
+        if (TableExceptions.TABLE_CHAT_RATE_LIMIT_EXCEEDED_TYPE.equals(ex.getType())) return "TABLE_CHAT_RATE_LIMIT_EXCEEDED";
         return switch (ex.getStatus()) {
             case FORBIDDEN -> "TABLE_PERMISSION_DENIED";
             case BAD_REQUEST -> "INVALID_TABLE_ACTION";
