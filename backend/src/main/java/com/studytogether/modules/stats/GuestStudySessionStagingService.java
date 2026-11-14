@@ -2,6 +2,7 @@ package com.studytogether.modules.stats;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -17,8 +18,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class GuestStudySessionStagingService {
 
     private static final Logger log = LoggerFactory.getLogger(GuestStudySessionStagingService.class);
-    private static final String DEFAULT_ROOM_ID = "main-library";
-    private static final String DEFAULT_TABLE_ID = "unknown";
+    public static final String DEFAULT_ROOM_ID = "main-library";
+    public static final String DEFAULT_TABLE_ID = "unknown";
+    public static final Duration GUEST_SESSION_TTL = Duration.ofDays(7);
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -36,6 +38,28 @@ public class GuestStudySessionStagingService {
 
     public static String sessionListKey(String guestId) {
         return "guest:" + guestId + ":sessions";
+    }
+
+    public void stageSession(String guestId, StagedGuestStudySession session) {
+        if (guestId == null || guestId.isBlank() || session == null || session.durationMinutes() < 1) {
+            return;
+        }
+        StagedGuestStudySession normalized = new StagedGuestStudySession(
+                normalizeId(session.roomId(), DEFAULT_ROOM_ID),
+                normalizeId(session.tableId(), DEFAULT_TABLE_ID),
+                normalizeStudyGoal(session.studyGoal()),
+                session.startedAt(),
+                session.endedAt(),
+                session.durationMinutes()
+        );
+        String key = sessionListKey(guestId);
+        try {
+            String json = objectMapper.writeValueAsString(normalized);
+            redisTemplate.opsForList().rightPush(key, json);
+            redisTemplate.expire(key, GUEST_SESSION_TTL);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Failed to serialize staged guest study session", ex);
+        }
     }
 
     public List<StagedGuestStudySession> readStagedSessions(String guestId) {
@@ -86,9 +110,9 @@ public class GuestStudySessionStagingService {
 
         return new StudySessionEntity(
                 userId,
-                truncate(defaultIfBlank(session.roomId(), DEFAULT_ROOM_ID), 50),
-                truncate(defaultIfBlank(session.tableId(), DEFAULT_TABLE_ID), 50),
-                session.studyGoal() != null ? truncate(session.studyGoal(), 120) : null,
+                normalizeId(session.roomId(), DEFAULT_ROOM_ID),
+                normalizeId(session.tableId(), DEFAULT_TABLE_ID),
+                normalizeStudyGoal(session.studyGoal()),
                 startedAt,
                 endedAt,
                 session.durationMinutes()
@@ -113,11 +137,16 @@ public class GuestStudySessionStagingService {
         }
     }
 
-    private static String defaultIfBlank(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value.trim();
+    public static String normalizeId(String value, String fallback) {
+        String trimmed = value == null || value.isBlank() ? fallback : value.trim();
+        return trimmed.length() <= 50 ? trimmed : trimmed.substring(0, 50);
     }
 
-    private static String truncate(String value, int maxLength) {
-        return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    public static String normalizeStudyGoal(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= 120 ? trimmed : trimmed.substring(0, 120);
     }
 }

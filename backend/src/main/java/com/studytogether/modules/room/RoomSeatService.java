@@ -70,7 +70,8 @@ public class RoomSeatService {
                 seat.tileX(),
                 seat.tileY(),
                 seat.facingDir().name(),
-                now
+                now,
+                principal.studyGoal()
         );
         stateStore.savePlayer(roomId, updated);
 
@@ -107,13 +108,21 @@ public class RoomSeatService {
         String tableId = player.tableId();
         String seatId = player.seatId();
         long sitStart = player.sitStartTimeEpoch();
+        String studyGoal = (player.studyGoal() != null && !player.studyGoal().isBlank())
+                ? player.studyGoal()
+                : principal.studyGoal();
+        String role = (player.role() != null && !player.role().isBlank())
+                ? player.role()
+                : principal.role().name();
         long now = System.currentTimeMillis();
 
         stateStore.releaseSeat(roomId, seatId);
         RoomPlayerState updated = player.withFreeRoam(now);
         stateStore.savePlayer(roomId, updated);
 
-        eventPublisher.publishEvent(new SeatReleasedEvent(roomId, tableId, seatId, principal.userId(), sitStart, now));
+        eventPublisher.publishEvent(new SeatReleasedEvent(
+                roomId, tableId, seatId, principal.userId(), sitStart, now, studyGoal, role
+        ));
 
         String newHostUserId = updateTableOnLeave(roomId, tableId, principal.userId());
 
@@ -141,7 +150,9 @@ public class RoomSeatService {
         stateStore.releaseSeat(roomId, seatId);
         stateStore.deletePlayer(roomId, userId);
         stateStore.removeDisconnect(roomId, userId);
-        eventPublisher.publishEvent(new SeatReleasedEvent(roomId, tableId, seatId, userId, sitStart, now));
+        eventPublisher.publishEvent(new SeatReleasedEvent(
+                roomId, tableId, seatId, userId, sitStart, now, player.studyGoal(), player.role()
+        ));
 
         String newHostUserId = updateTableOnLeave(roomId, tableId, userId);
 

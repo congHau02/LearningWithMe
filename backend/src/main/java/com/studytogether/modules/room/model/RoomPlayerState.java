@@ -19,14 +19,15 @@ public record RoomPlayerState(
         boolean connected,
         long updatedAtEpoch,
         boolean isMoving,
-        long sitStartTimeEpoch
+        long sitStartTimeEpoch,
+        String studyGoal
 ) {
     public RoomPlayerState(
             String userId, String nickname, String avatarId, String role, String state,
             int x, int y, String facingDir, String tableId, String seatId,
             String activeWsSessionId, boolean connected, long updatedAtEpoch
     ) {
-        this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, false, 0L);
+        this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, false, 0L, null);
     }
 
     public RoomPlayerState(
@@ -34,7 +35,15 @@ public record RoomPlayerState(
             int x, int y, String facingDir, String tableId, String seatId,
             String activeWsSessionId, boolean connected, long updatedAtEpoch, boolean isMoving
     ) {
-        this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, isMoving, 0L);
+        this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, isMoving, 0L, null);
+    }
+
+    public RoomPlayerState(
+            String userId, String nickname, String avatarId, String role, String state,
+            int x, int y, String facingDir, String tableId, String seatId,
+            String activeWsSessionId, boolean connected, long updatedAtEpoch, boolean isMoving, long sitStartTimeEpoch
+    ) {
+        this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, isMoving, sitStartTimeEpoch, null);
     }
 
     public RoomPlayerDto toDto() {
@@ -47,67 +56,35 @@ public record RoomPlayerState(
         );
     }
 
-    public RoomPlayerState withConnection(
-            String nickname, String avatarId, String role,
-            String activeWsSessionId, boolean connected, long updatedAtEpoch
-    ) {
-        return new RoomPlayerState(
-                userId, nickname, avatarId, role,
-                state != null ? state : "FREE_ROAM",
-                x, y,
-                facingDir != null ? facingDir : "DOWN",
-                tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, false, sitStartTimeEpoch
-        );
+    public RoomPlayerState withConnection(String nickname, String avatarId, String role, String activeWsSessionId, boolean connected, long updatedAtEpoch, String nextStudyGoal) {
+        String effectiveGoal = (nextStudyGoal != null && !nextStudyGoal.isBlank()) ? nextStudyGoal : studyGoal;
+        return new RoomPlayerState(userId, nickname, avatarId, role, state != null ? state : "FREE_ROAM", x, y,
+                facingDir != null ? facingDir : "DOWN", tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, false, sitStartTimeEpoch, effectiveGoal);
     }
 
     public RoomPlayerState withMovement(int newX, int newY, String newFacingDir, boolean newIsMoving, long now) {
-        return new RoomPlayerState(
-                userId, nickname, avatarId, role,
-                state != null ? state : "FREE_ROAM",
-                newX, newY,
-                newFacingDir != null ? newFacingDir : facingDir,
-                tableId, seatId, activeWsSessionId, connected, now, newIsMoving, sitStartTimeEpoch
-        );
+        return new RoomPlayerState(userId, nickname, avatarId, role, state != null ? state : "FREE_ROAM", newX, newY,
+                newFacingDir != null ? newFacingDir : facingDir, tableId, seatId, activeWsSessionId, connected, now, newIsMoving, sitStartTimeEpoch, studyGoal);
     }
 
-    public RoomPlayerState withIdentity(
-            String newUserId, String nickname, String avatarId, String role, long updatedAtEpoch
-    ) {
-        return new RoomPlayerState(
-                newUserId, nickname, avatarId, role,
-                state != null ? state : "FREE_ROAM",
-                x, y,
-                facingDir != null ? facingDir : "DOWN",
-                tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, isMoving, sitStartTimeEpoch
-        );
+    public RoomPlayerState withIdentity(String newUserId, String nickname, String avatarId, String role, long updatedAtEpoch) {
+        return new RoomPlayerState(newUserId, nickname, avatarId, role, state != null ? state : "FREE_ROAM", x, y,
+                facingDir != null ? facingDir : "DOWN", tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, isMoving, sitStartTimeEpoch, studyGoal);
     }
 
     public RoomPlayerState withDisconnectedGrace(long updatedAtEpoch) {
-        return new RoomPlayerState(
-                userId, nickname, avatarId, role, state,
-                x, y,
-                facingDir != null ? facingDir : "DOWN",
-                tableId, seatId, activeWsSessionId, false, updatedAtEpoch, false, sitStartTimeEpoch
-        );
+        return new RoomPlayerState(userId, nickname, avatarId, role, state, x, y,
+                facingDir != null ? facingDir : "DOWN", tableId, seatId, activeWsSessionId, false, updatedAtEpoch, false, sitStartTimeEpoch, studyGoal);
     }
 
-    public RoomPlayerState withSeated(
-            String newTableId, String newSeatId, int seatX, int seatY, String newFacingDir, long now
-    ) {
-        return new RoomPlayerState(
-                userId, nickname, avatarId, role, "SEATED",
-                seatX, seatY,
-                newFacingDir != null ? newFacingDir : facingDir,
-                newTableId, newSeatId, activeWsSessionId, connected, now, false, now
-        );
+    public RoomPlayerState withSeated(String newTableId, String newSeatId, int seatX, int seatY, String newFacingDir, long now, String nextStudyGoal) {
+        String effectiveGoal = (nextStudyGoal != null && !nextStudyGoal.isBlank()) ? nextStudyGoal : studyGoal;
+        return new RoomPlayerState(userId, nickname, avatarId, role, "SEATED", seatX, seatY,
+                newFacingDir != null ? newFacingDir : facingDir, newTableId, newSeatId, activeWsSessionId, connected, now, false, now, effectiveGoal);
     }
 
     public RoomPlayerState withFreeRoam(long now) {
-        return new RoomPlayerState(
-                userId, nickname, avatarId, role, "FREE_ROAM",
-                x, y,
-                facingDir != null ? facingDir : "DOWN",
-                null, null, activeWsSessionId, connected, now, false, 0L
-        );
+        return new RoomPlayerState(userId, nickname, avatarId, role, "FREE_ROAM", x, y,
+                facingDir != null ? facingDir : "DOWN", null, null, activeWsSessionId, connected, now, false, 0L, studyGoal);
     }
 }

@@ -115,7 +115,9 @@ public class RoomPresenceService {
         String eventType;
         if (existingOpt.isPresent()) {
             RoomPlayerState existing = existingOpt.get();
-            nextState = existing.withConnection(nickname, avatarId, role, wsSessionId, true, now);
+            nextState = existing.withConnection(
+                    nickname, avatarId, role, wsSessionId, true, now, principal.studyGoal()
+            );
             eventType = existing.connected() ? "PLAYER_UPDATED" : "PLAYER_RECONNECTED";
         } else {
             nextState = new RoomPlayerState(
@@ -131,7 +133,10 @@ public class RoomPresenceService {
                     null,
                     wsSessionId,
                     true,
-                    now
+                    now,
+                    false,
+                    0L,
+                    principal.studyGoal()
             );
             eventType = "PLAYER_JOINED";
         }

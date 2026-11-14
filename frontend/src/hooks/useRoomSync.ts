@@ -6,6 +6,7 @@ import {
   type RoomStompSession,
 } from '../services/roomStompClient';
 import { useAuthStore } from '../stores/useAuthStore';
+import { refreshPersonalStudyStats } from '../services/statsApi';
 import { useGameStore } from '../stores/useGameStore';
 import { useTableStore } from '../stores/useTableStore';
 
@@ -147,6 +148,9 @@ export function useRoomSync(): void {
             }
           } else if (event.type === 'SEAT_RELEASED' || event.type === 'TABLE_HOST_CHANGED') {
             useTableStore.getState().syncFromRoomSeatEvent(event);
+            if (event.type === 'SEAT_RELEASED' && event.userId === selfUserId) {
+              void refreshPersonalStudyStats();
+            }
           }
         },
         onError: (err) => {

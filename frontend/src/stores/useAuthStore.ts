@@ -44,6 +44,7 @@ export interface AuthState {
   totalStudyMinutes: number;
   token: string | null;
   setSession: (payload: SetSessionPayload) => void;
+  setTotalStudyMinutes: (totalStudyMinutes: number) => void;
   updateProfile: (payload: { nickname?: string; avatarSpriteId?: string; studyGoal?: string }) => void;
   upgradeAccount: (payload: UpgradeAccountPayload) => void;
   hydrateSession: () => boolean;
@@ -69,6 +70,20 @@ function saveSessionOrToken(session: Omit<PersistedAuthSession, 'userId'> & { us
   }
 }
 
+function persistState(state: AuthState, patch: Partial<PersistedAuthSession> = {}) {
+  if (!state.token) return;
+  saveSessionOrToken({
+    userId: patch.userId !== undefined ? patch.userId : state.userId,
+    nickname: patch.nickname ?? state.nickname,
+    avatarSpriteId: patch.avatarSpriteId ?? state.avatarSpriteId,
+    studyGoal: patch.studyGoal ?? state.studyGoal,
+    authProvider: patch.authProvider ?? state.authProvider,
+    email: patch.email !== undefined ? patch.email : state.email,
+    totalStudyMinutes: patch.totalStudyMinutes ?? state.totalStudyMinutes,
+    token: patch.token ?? state.token,
+  });
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   ...(loadPersistedAuthSession() ?? DEFAULT_AUTH_STATE),
 
@@ -85,16 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         avatarSpriteId: payload.avatarSpriteId ?? state.avatarSpriteId,
         studyGoal: payload.studyGoal ?? state.studyGoal,
       };
-      if (state.userId && state.token) {
-        savePersistedAuthSession({
-          userId: state.userId,
-          authProvider: state.authProvider,
-          email: state.email,
-          totalStudyMinutes: state.totalStudyMinutes,
-          token: state.token,
-          ...next,
-        });
-      }
+      if (state.userId) persistState(state, next);
       return next;
     }),
 
@@ -122,6 +128,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set(restored);
     return true;
   },
+
+  setTotalStudyMinutes: (totalStudyMinutes) =>
+    set((state) => {
+      persistState(state, { totalStudyMinutes });
+      return { totalStudyMinutes };
+    }),
 
   clearSession: () => {
     clearPersistedAuthSession();

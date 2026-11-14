@@ -21,6 +21,7 @@ export interface TopBarProps {
   isTableHost?: boolean;
   onLeaveSeat?: () => void;
   onOpenUpgrade?: () => void;
+  onOpenStudySessions?: () => void;
 }
 
 const STATE_LABELS: Record<CharacterState, string> = {
@@ -49,6 +50,7 @@ export function TopBar({
   isTableHost,
   onLeaveSeat,
   onOpenUpgrade,
+  onOpenStudySessions,
 }: TopBarProps) {
   return (
     <header
@@ -137,7 +139,17 @@ export function TopBar({
           </button>
         ) : null}
 
-        {authProvider !== 'GUEST' ? (
+        {onOpenStudySessions ? (
+          <button
+            type="button"
+            data-testid="study-minutes-badge"
+            onClick={onOpenStudySessions}
+            title="Xem Lịch sử Phiên học"
+            className="min-h-8 rounded-md border border-border bg-secondary px-2.5 py-1 font-mono font-medium text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            ⏱ {totalStudyMinutes} phút
+          </button>
+        ) : authProvider !== 'GUEST' ? (
           <span
             data-testid="study-minutes-badge"
             className="rounded-md border border-border bg-secondary px-2.5 py-1 font-mono font-medium text-foreground"

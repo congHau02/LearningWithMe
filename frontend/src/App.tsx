@@ -5,12 +5,14 @@ import { ClassroomCanvas } from './components/game/ClassroomCanvas';
 import { LeaveTableConfirmModal } from './components/hud/LeaveTableConfirmModal';
 import { RoomChatBox } from './components/hud/RoomChatBox';
 import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
+import { StudySessionsModal } from './components/hud/StudySessionsModal';
 import { TopBar } from './components/hud/TopBar';
 import { TableWorkspaceShell } from './components/table/TableWorkspaceShell';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { useRoomSync } from './hooks/useRoomSync';
 import { useTableWorkspaceSync } from './hooks/useTableWorkspaceSync';
 import type { UpgradeAccountResponse } from './services/authApi';
+import { refreshPersonalStudyStats } from './services/statsApi';
 import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
 import { useTableStore } from './stores/useTableStore';
@@ -29,6 +31,9 @@ export function App() {
   const clearToast = useGameStore((s) => s.clearToast);
   const requestLeaveSeat = useGameStore((s) => s.requestLeaveSeat);
 
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isStudySessionsOpen, setIsStudySessionsOpen] = useState(false);
+
   useEffect(() => {
     if (!toastMessage) return;
     const timer = setTimeout(() => {
@@ -40,6 +45,7 @@ export function App() {
   useEffect(() => {
     if (characterState !== 'SEATED') return;
     const onEscape = (event: KeyboardEvent) => {
+      if (isStudySessionsOpen || isUpgradeModalOpen) return;
       const active = document.activeElement as HTMLElement | null;
       const tag = active?.tagName;
       const isFormField =
@@ -54,7 +60,7 @@ export function App() {
     };
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
-  }, [characterState, openLeaveConfirm]);
+  }, [characterState, isStudySessionsOpen, isUpgradeModalOpen, openLeaveConfirm]);
 
   const nickname = useAuthStore((s) => s.nickname);
   const avatarSpriteId = useAuthStore((s) => s.avatarSpriteId);
@@ -70,7 +76,12 @@ export function App() {
   const backendStatus = useAppBootstrap();
   useRoomSync();
   useTableWorkspaceSync();
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      void refreshPersonalStudyStats();
+    }
+  }, [token]);
 
   const handleLeaveSeat = () => {
     requestLeaveSeat();
@@ -116,6 +127,7 @@ export function App() {
             ? () => setIsUpgradeModalOpen(true)
             : undefined
         }
+        onOpenStudySessions={token ? () => setIsStudySessionsOpen(true) : undefined}
       />
 
       {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
@@ -151,6 +163,13 @@ export function App() {
         <AccountUpgradeModal
           onClose={() => setIsUpgradeModalOpen(false)}
           onUpgraded={handleAccountUpgraded}
+        />
+      ) : null}
+
+      {token && isStudySessionsOpen ? (
+        <StudySessionsModal
+          authProvider={authProvider}
+          onClose={() => setIsStudySessionsOpen(false)}
         />
       ) : null}
 

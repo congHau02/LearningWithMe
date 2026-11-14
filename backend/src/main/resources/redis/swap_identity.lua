@@ -23,6 +23,9 @@ for _, key in ipairs(KEYS) do
                 if obj.userId ~= nil then
                     obj.userId = registeredUserId
                 end
+                if obj.role ~= nil then
+                    obj.role = "REGISTERED"
+                end
                 if nickname ~= "" and obj.nickname ~= nil then
                     obj.nickname = nickname
                 end

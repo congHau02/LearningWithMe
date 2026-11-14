@@ -24,14 +24,20 @@ export function useAppBootstrap(): BackendConnectionStatus {
         if (!isMounted || useAuthStore.getState().token !== restoredToken) {
           return;
         }
+        const authProvider = resolveAuthProvider(me);
+        const currentMinutes = useAuthStore.getState().totalStudyMinutes;
         useAuthStore.getState().setSession({
           userId: me.userId,
           nickname: me.nickname,
           avatarSpriteId: me.avatarId,
           studyGoal: me.studyGoal,
-          authProvider: resolveAuthProvider(me),
+          authProvider,
           email: me.email ?? null,
-          totalStudyMinutes: me.totalStudyMinutes ?? 0,
+          // /api/v1/auth/me intentionally returns 0 for Guests (ADR-0001); keep stats fetched from /api/v1/stats/me.
+          totalStudyMinutes:
+            authProvider === 'GUEST'
+              ? Math.max(currentMinutes, me.totalStudyMinutes ?? 0)
+              : (me.totalStudyMinutes ?? 0),
           token: restoredToken,
         });
       })
