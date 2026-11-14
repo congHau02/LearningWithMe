@@ -22,6 +22,7 @@ export interface TopBarProps {
   onLeaveSeat?: () => void;
   onOpenUpgrade?: () => void;
   onOpenStudySessions?: () => void;
+  onOpenLeaderboard?: () => void;
 }
 
 const STATE_LABELS: Record<CharacterState, string> = {
@@ -51,6 +52,7 @@ export function TopBar({
   onLeaveSeat,
   onOpenUpgrade,
   onOpenStudySessions,
+  onOpenLeaderboard,
 }: TopBarProps) {
   return (
     <header
@@ -156,6 +158,18 @@ export function TopBar({
           >
             {totalStudyMinutes} phút
           </span>
+        ) : null}
+
+        {onOpenLeaderboard ? (
+          <button
+            type="button"
+            data-testid="leaderboard-open-btn"
+            onClick={onOpenLeaderboard}
+            title="Xem Bảng Xếp Hạng Giờ Học"
+            className="min-h-8 rounded-md border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 font-medium text-amber-200 transition hover:bg-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            🏆 Bảng xếp hạng
+          </button>
         ) : null}
 
         <span

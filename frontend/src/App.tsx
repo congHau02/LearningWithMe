@@ -5,6 +5,7 @@ import { ClassroomCanvas } from './components/game/ClassroomCanvas';
 import { LeaveTableConfirmModal } from './components/hud/LeaveTableConfirmModal';
 import { RoomChatBox } from './components/hud/RoomChatBox';
 import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
+import { StudyLeaderboardModal } from './components/hud/StudyLeaderboardModal';
 import { StudySessionsModal } from './components/hud/StudySessionsModal';
 import { TopBar } from './components/hud/TopBar';
 import { TableWorkspaceShell } from './components/table/TableWorkspaceShell';
@@ -33,6 +34,7 @@ export function App() {
 
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isStudySessionsOpen, setIsStudySessionsOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -45,7 +47,7 @@ export function App() {
   useEffect(() => {
     if (characterState !== 'SEATED') return;
     const onEscape = (event: KeyboardEvent) => {
-      if (isStudySessionsOpen || isUpgradeModalOpen) return;
+      if (isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen) return;
       const active = document.activeElement as HTMLElement | null;
       const tag = active?.tagName;
       const isFormField =
@@ -60,7 +62,7 @@ export function App() {
     };
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
-  }, [characterState, isStudySessionsOpen, isUpgradeModalOpen, openLeaveConfirm]);
+  }, [characterState, isStudySessionsOpen, isUpgradeModalOpen, isLeaderboardOpen, openLeaveConfirm]);
 
   const nickname = useAuthStore((s) => s.nickname);
   const avatarSpriteId = useAuthStore((s) => s.avatarSpriteId);
@@ -128,6 +130,7 @@ export function App() {
             : undefined
         }
         onOpenStudySessions={token ? () => setIsStudySessionsOpen(true) : undefined}
+        onOpenLeaderboard={token ? () => setIsLeaderboardOpen(true) : undefined}
       />
 
       {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
@@ -170,6 +173,20 @@ export function App() {
         <StudySessionsModal
           authProvider={authProvider}
           onClose={() => setIsStudySessionsOpen(false)}
+        />
+      ) : null}
+
+      {token && isLeaderboardOpen ? (
+        <StudyLeaderboardModal
+          onClose={() => setIsLeaderboardOpen(false)}
+          onRequestUpgrade={
+            authProvider === 'GUEST'
+              ? () => {
+                  setIsLeaderboardOpen(false);
+                  setIsUpgradeModalOpen(true);
+                }
+              : undefined
+          }
         />
       ) : null}
 

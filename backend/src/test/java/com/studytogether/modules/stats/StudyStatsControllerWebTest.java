@@ -48,6 +48,9 @@ class StudyStatsControllerWebTest {
     @MockitoBean
     private StudySessionService studySessionService;
 
+    @MockitoBean
+    private StudyLeaderboardService studyLeaderboardService;
+
     @Test
     void statsMeRequiresAuthenticationAndReturns401ProblemDetail() throws Exception {
         mockMvc.perform(get("/api/v1/stats/me"))
@@ -103,5 +106,62 @@ class StudyStatsControllerWebTest {
                 .andExpect(jsonPath("$.role").value("REGISTERED"))
                 .andExpect(jsonPath("$.totalStudyMinutes").value(120))
                 .andExpect(jsonPath("$.recentSessions[0].id").value(10));
+    }
+
+    @Test
+    void leaderboardRequiresAuthenticationAndReturns401ProblemDetail() throws Exception {
+        mockMvc.perform(get("/api/v1/stats/leaderboard"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    void leaderboardRejectsInvalidLimitWith400ProblemDetail() throws Exception {
+        String guestToken = jwtTokenService.issueGuestToken(new AuthPrincipal(
+                "guest-1", AuthRole.GUEST, "Khách", "default_student", ""
+        ));
+
+        mockMvc.perform(get("/api/v1/stats/leaderboard?limit=0")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + guestToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400));
+
+        mockMvc.perform(get("/api/v1/stats/leaderboard?limit=101")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + guestToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void leaderboardReturnsTopLearnersAndMyEntryForGuestAndRegistered() throws Exception {
+        String guestToken = jwtTokenService.issueGuestToken(new AuthPrincipal(
+                "guest-9", AuthRole.GUEST, "Khách Học", "student_sprout", "Ôn Java"
+        ));
+        when(studyLeaderboardService.getLeaderboard(any(), org.mockito.ArgumentMatchers.eq(20)))
+                .thenReturn(new StudyLeaderboardResponse(
+                        20,
+                        1L,
+                        List.of(new StudyLeaderboardEntryDto(
+                                1, "reg-1", "An", "student_glasses", AuthRole.REGISTERED, 150L, 4
+                        )),
+                        new StudyLeaderboardEntryDto(
+                                null, "guest-9", "Khách Học", "student_sprout", AuthRole.GUEST, 35L, 2
+                        )
+                ));
+
+        mockMvc.perform(get("/api/v1/stats/leaderboard")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + guestToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalRankedLearners").value(1))
+                .andExpect(jsonPath("$.entries[0].rank").value(1))
+                .andExpect(jsonPath("$.entries[0].nickname").value("An"))
+                .andExpect(jsonPath("$.entries[0].totalSessions").value(4))
+                .andExpect(jsonPath("$.myEntry.role").value("GUEST"))
+                .andExpect(jsonPath("$.myEntry.rank").isEmpty())
+                .andExpect(jsonPath("$.myEntry.totalStudyMinutes").value(35));
     }
 }
