@@ -245,6 +245,7 @@ export class RoomStompSession {
       action: import('../utils/homeworkCanvasMath').BoardDrawAction;
       stroke?: import('../utils/homeworkCanvasMath').BoardStroke;
       strokeId?: string;
+      point?: import('../utils/homeworkCanvasMath').NormalizedPoint;
     },
   ): void {
     this.publishJson(`/app/table/${tableId}/board.draw`, payload);

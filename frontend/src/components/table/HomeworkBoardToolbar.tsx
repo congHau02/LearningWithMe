@@ -5,6 +5,7 @@ const TOOL_OPTIONS: Array<{ id: BoardTool; label: string }> = [
   { id: 'HIGHLIGHTER', label: 'Dạ quang' },
   { id: 'TEXT', label: 'Chữ' },
   { id: 'ERASER', label: 'Tẩy' },
+  { id: 'LASER', label: 'Laser' },
 ];
 
 const COLOR_SWATCHES = ['#ef4444', '#38bdf8', '#22c55e', '#facc15', '#f8fafc'];

@@ -56,6 +56,14 @@ export interface TableWorkspaceSnapshot {
   activeSlideId?: string | null;
 }
 
+export interface LaserPointerPayload {
+  userId: string;
+  nickname: string;
+  slideId: string;
+  x: number;
+  y: number;
+}
+
 export interface TableWorkspaceEvent {
   type:
     | 'PERMISSION_REQUESTED'
@@ -66,7 +74,8 @@ export interface TableWorkspaceEvent {
     | 'HOMEWORK_SLIDE_ADDED'
     | 'HOMEWORK_SLIDE_SELECTED'
     | 'HOMEWORK_SLIDE_DELETED'
-    | 'BOARD_DRAW';
+    | 'BOARD_DRAW'
+    | 'LASER_MOVE';
   tableId: string;
   actorUserId: string;
   targetUserId: string | null;
@@ -84,6 +93,7 @@ export interface TableWorkspaceEvent {
   drawAction?: BoardDrawAction | null;
   stroke?: BoardStroke | null;
   erasedStrokeId?: string | null;
+  laserPointer?: LaserPointerPayload | null;
   timestampEpoch: number;
 }
 

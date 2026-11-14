@@ -10,5 +10,6 @@ public record BoardDrawRequest(
         @NotBlank(message = "slideId is required") String slideId,
         @NotNull(message = "draw action is required") BoardDrawAction action,
         @Valid BoardStroke stroke,
-        String strokeId
+        String strokeId,
+        @Valid NormalizedPoint point
 ) {}

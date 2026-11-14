@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useHomeworkCanvas } from '../../hooks/useHomeworkCanvas';
 import type { BoardStroke, BoardTool } from '../../utils/homeworkCanvasMath';
+import { HomeworkLaserOverlay } from './HomeworkLaserOverlay';
 
 interface HomeworkAnnotationCanvasProps {
   tableId: string;
@@ -74,6 +75,7 @@ export function HomeworkAnnotationCanvas({
           onPointerCancel={finishFreehandStroke}
           className={`absolute inset-0 h-full w-full touch-none rounded ${cursorClass}`}
         />
+        <HomeworkLaserOverlay slideId={slideId} />
         {pendingText && canControl ? (
           <input
             type="text"

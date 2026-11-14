@@ -1,8 +1,8 @@
 export type BoardStrokeTool = 'PEN' | 'HIGHLIGHTER' | 'TEXT';
 
-export type BoardTool = BoardStrokeTool | 'ERASER';
+export type BoardTool = BoardStrokeTool | 'ERASER' | 'LASER';
 
-export type BoardDrawAction = 'ADD_STROKE' | 'ERASE_STROKE' | 'CLEAR_SLIDE';
+export type BoardDrawAction = 'ADD_STROKE' | 'ERASE_STROKE' | 'CLEAR_SLIDE' | 'LASER_MOVE';
 
 export interface NormalizedPoint {
   x: number;

@@ -11,9 +11,12 @@ import com.studytogether.modules.table.model.BoardStrokeTool;
 import com.studytogether.modules.table.model.HomeworkSlide;
 import com.studytogether.modules.table.model.NormalizedPoint;
 import com.studytogether.modules.table.model.TableWorkspaceEvent;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -23,19 +26,33 @@ public class TableBoardService {
     // shortcut: cap 500 strokes per slide in Redis to prevent unbounded state growth
     public static final int MAX_STROKES_PER_SLIDE = 500;
     public static final int MAX_TEXT_LENGTH = 300;
+    public static final long MIN_LASER_INTERVAL_MS = 90L;
 
     private final RoomStateStore stateStore;
     private final TableAuthorizationService authService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final Clock clock;
+    private final ConcurrentHashMap<String, Long> lastLaserEpochByUserId = new ConcurrentHashMap<>();
 
+    @Autowired
     public TableBoardService(
             RoomStateStore stateStore,
             TableAuthorizationService authService,
             SimpMessagingTemplate messagingTemplate
     ) {
+        this(stateStore, authService, messagingTemplate, Clock.systemUTC());
+    }
+
+    public TableBoardService(
+            RoomStateStore stateStore,
+            TableAuthorizationService authService,
+            SimpMessagingTemplate messagingTemplate,
+            Clock clock
+    ) {
         this.stateStore = stateStore;
         this.authService = authService;
         this.messagingTemplate = messagingTemplate;
+        this.clock = clock != null ? clock : Clock.systemUTC();
     }
 
     public TableWorkspaceEvent handleDraw(AuthPrincipal principal, String tableId, BoardDrawRequest request) {
@@ -53,7 +70,11 @@ public class TableBoardService {
             throw TableExceptions.invalidAction("Homework slide not found: " + targetSlideId);
         }
 
-        long now = System.currentTimeMillis();
+        long now = clock.millis();
+        if (request.action() == BoardDrawAction.LASER_MOVE) {
+            return handleLaserMove(principal, tableId, targetSlideId, request.point(), current, now);
+        }
+
         HomeworkSlide slide = current.homeworkSlides().get(slideIndex);
         BoardStroke savedStroke = null;
         String erasedStrokeId = null;
@@ -79,6 +100,7 @@ public class TableBoardService {
                         .toList();
             }
             case CLEAR_SLIDE -> List.of();
+            case LASER_MOVE -> throw new IllegalStateException("LASER_MOVE handled above");
         };
 
         List<HomeworkSlide> nextSlides = new ArrayList<>(current.homeworkSlides());
@@ -90,6 +112,34 @@ public class TableBoardService {
         TableWorkspaceEvent event = TableWorkspaceEvent.boardDraw(
                 tableId, principal.userId(), targetSlideId, request.action(),
                 savedStroke, erasedStrokeId, updatedState, now
+        );
+        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
+        return event;
+    }
+
+    private TableWorkspaceEvent handleLaserMove(
+            AuthPrincipal principal,
+            String tableId,
+            String targetSlideId,
+            NormalizedPoint point,
+            RedisTableState current,
+            long now
+    ) {
+        if (point == null || !isNormalized(point.x()) || !isNormalized(point.y())) {
+            throw TableExceptions.invalidAction("Laser pointer point must be within [0.0, 1.0]");
+        }
+        // shortcut: memory-based 10Hz burst throttle per pod; upgrade to Redis sliding token bucket if multi-pod clustered
+        Long lastLaser = lastLaserEpochByUserId.get(principal.userId());
+        if (lastLaser != null && (now - lastLaser) < MIN_LASER_INTERVAL_MS) {
+            return null;
+        }
+        lastLaserEpochByUserId.put(principal.userId(), now);
+
+        String nickname = (principal.nickname() != null && !principal.nickname().isBlank())
+                ? principal.nickname()
+                : principal.userId();
+        TableWorkspaceEvent event = TableWorkspaceEvent.laserMove(
+                tableId, principal.userId(), nickname, targetSlideId, point, current, now
         );
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return event;
