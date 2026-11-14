@@ -54,7 +54,9 @@ public class TableWorkspaceService {
                 tableState.sosBanner(),
                 tableState.videoState(),
                 members,
-                stateStore.getRecentTableMessages(roomId, tableId, 50)
+                stateStore.getRecentTableMessages(roomId, tableId, 50),
+                tableState.homeworkSlides(),
+                tableState.activeSlideId()
         );
     }
 
@@ -120,7 +122,7 @@ public class TableWorkspaceService {
         if (!nextCoHosts.contains(targetUserId)) {
             nextCoHosts.add(targetUserId);
         }
-        return new RedisTableState(current.hostUserId(), nextCoHosts, current.isFreeCollab(), current.sosBanner(), current.videoState());
+        return current.withPermissions(current.hostUserId(), nextCoHosts, current.isFreeCollab());
     }
 
     private RedisTableState handleRevoke(RedisTableState current, String targetUserId) {
@@ -128,7 +130,7 @@ public class TableWorkspaceService {
         List<String> nextCoHosts = current.coHostUserIds().stream()
                 .filter(id -> !id.equals(targetUserId))
                 .toList();
-        return new RedisTableState(current.hostUserId(), nextCoHosts, current.isFreeCollab(), current.sosBanner(), current.videoState());
+        return current.withPermissions(current.hostUserId(), nextCoHosts, current.isFreeCollab());
     }
 
     private RedisTableState handleTransferHost(String roomId, String tableId, RedisTableState current, String targetUserId) {
@@ -140,12 +142,12 @@ public class TableWorkspaceService {
         List<String> nextCoHosts = current.coHostUserIds().stream()
                 .filter(id -> !id.equals(newHostId))
                 .toList();
-        return new RedisTableState(newHostId, nextCoHosts, current.isFreeCollab(), current.sosBanner(), current.videoState());
+        return current.withPermissions(newHostId, nextCoHosts, current.isFreeCollab());
     }
 
     private RedisTableState handleToggleFreeCollab(RedisTableState current, Boolean explicitValue) {
         boolean nextValue = explicitValue != null ? explicitValue : !current.isFreeCollab();
-        return new RedisTableState(current.hostUserId(), current.coHostUserIds(), nextValue, current.sosBanner(), current.videoState());
+        return current.withPermissions(current.hostUserId(), current.coHostUserIds(), nextValue);
     }
 
     private static void requireTargetUserId(String targetUserId) {

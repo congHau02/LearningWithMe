@@ -12,12 +12,15 @@ public record TableWorkspaceSnapshot(
         String sosBanner,
         TableVideoState videoState,
         List<TableMemberDto> members,
-        List<TableChatMessage> recentMessages
+        List<TableChatMessage> recentMessages,
+        List<HomeworkSlide> homeworkSlides,
+        String activeSlideId
 ) {
     public TableWorkspaceSnapshot {
         coHostUserIds = coHostUserIds == null ? List.of() : List.copyOf(coHostUserIds);
         videoState = videoState == null ? TableVideoState.empty() : videoState;
         members = members == null ? List.of() : List.copyOf(members);
         recentMessages = recentMessages == null ? List.of() : List.copyOf(recentMessages);
+        homeworkSlides = homeworkSlides == null ? List.of() : List.copyOf(homeworkSlides);
     }
 }

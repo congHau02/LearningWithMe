@@ -3,7 +3,9 @@ package com.studytogether.modules.room;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomPlayerState;
+import com.studytogether.modules.table.model.EphemeralImageMetadata;
 import com.studytogether.modules.table.model.TableChatMessage;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -58,4 +60,10 @@ public interface RoomStateStore {
     void appendTableChatMessage(String roomId, String tableId, TableChatMessage message, int maxBuffer);
 
     boolean deleteTableChatMessages(String roomId, String tableId);
+
+    void saveEphemeralImage(EphemeralImageMetadata metadata, Duration ttl);
+
+    Optional<EphemeralImageMetadata> getEphemeralImage(String imageId);
+
+    boolean deleteEphemeralImage(String imageId);
 }

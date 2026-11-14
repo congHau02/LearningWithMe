@@ -41,13 +41,7 @@ public class TableVideoService {
         TableVideoState previous = current.videoState() != null ? current.videoState() : TableVideoState.empty();
         TableVideoState nextVideo = computeNextVideoState(previous, request, now);
 
-        RedisTableState updated = new RedisTableState(
-                current.hostUserId(),
-                current.coHostUserIds(),
-                current.isFreeCollab(),
-                current.sosBanner(),
-                nextVideo
-        );
+        RedisTableState updated = current.withVideoState(nextVideo);
         stateStore.saveTableState(roomId, tableId, updated);
 
         TableWorkspaceEvent event = TableWorkspaceEvent.videoSynced(

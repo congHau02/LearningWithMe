@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { HostPermissionToast } from './HostPermissionToast';
+import { HomeworkDeckPanel } from './HomeworkDeckPanel';
 import { SosBannerControl } from './SosBannerControl';
 import { SyncedYouTubePlayer } from './SyncedYouTubePlayer';
 import { TableChatPanel } from './TableChatPanel';
@@ -158,8 +159,9 @@ export function TableWorkspaceShell() {
       />
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="flex flex-col gap-4 lg:col-span-2">
           <SyncedYouTubePlayer tableId={activeTableId} canControl={canControl} />
+          <HomeworkDeckPanel tableId={activeTableId} canControl={canControl} />
         </div>
 
         <div className="flex flex-col gap-4">

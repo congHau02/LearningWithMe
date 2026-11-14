@@ -1,7 +1,16 @@
-import { apiRequest } from './apiClient';
+import { API_BASE_URL, apiRequest } from './apiClient';
 import type { VideoSyncState } from '../stores/useTableStore';
 
 export type TableRole = 'TABLE_HOST' | 'CO_HOST' | 'MEMBER';
+export type HomeworkSlideAction = 'SELECT' | 'DELETE';
+
+export interface HomeworkSlide {
+  imageId: string;
+  fileName: string;
+  url: string;
+  uploadedByUserId: string;
+  uploadedAtEpoch: number;
+}
 
 export type PermissionAction =
   | 'GRANT'
@@ -41,10 +50,20 @@ export interface TableWorkspaceSnapshot {
   videoState: VideoSyncState;
   members: TableMemberDto[];
   recentMessages?: TableChatMessage[];
+  homeworkSlides?: HomeworkSlide[];
+  activeSlideId?: string | null;
 }
 
 export interface TableWorkspaceEvent {
-  type: 'PERMISSION_REQUESTED' | 'PERMISSION_UPDATED' | 'VIDEO_SYNCED' | 'SOS_UPDATED' | 'TABLE_CHAT';
+  type:
+    | 'PERMISSION_REQUESTED'
+    | 'PERMISSION_UPDATED'
+    | 'VIDEO_SYNCED'
+    | 'SOS_UPDATED'
+    | 'TABLE_CHAT'
+    | 'HOMEWORK_SLIDE_ADDED'
+    | 'HOMEWORK_SLIDE_SELECTED'
+    | 'HOMEWORK_SLIDE_DELETED';
   tableId: string;
   actorUserId: string;
   targetUserId: string | null;
@@ -56,6 +75,8 @@ export interface TableWorkspaceEvent {
   videoState?: VideoSyncState | null;
   sosBanner?: string | null;
   chatMessage?: TableChatMessage | null;
+  homeworkSlides?: HomeworkSlide[];
+  activeSlideId?: string | null;
   timestampEpoch: number;
 }
 
@@ -73,4 +94,25 @@ export async function fetchTableWorkspaceState(
     `/api/v1/rooms/${encodeURIComponent(roomId)}/tables/${encodeURIComponent(tableId)}/state`,
     { method: 'GET' },
   );
+}
+
+export async function uploadHomeworkImage(
+  tableId: string,
+  file: File,
+): Promise<HomeworkSlide> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiRequest<HomeworkSlide>(
+    `/api/v1/tables/${encodeURIComponent(tableId)}/homework-image`,
+    { method: 'POST', body: formData },
+  );
+}
+
+export function resolveEphemeralFileUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const normalized = url.startsWith('/') ? url : `/${url}`;
+  return `${API_BASE_URL}${normalized}`;
 }

@@ -231,6 +231,13 @@ export class RoomStompSession {
     this.publishJson(`/app/table/${tableId}/chat`, { content });
   }
 
+  sendHomeworkSlideAction(
+    tableId: string,
+    payload: { action: 'SELECT' | 'DELETE'; imageId: string },
+  ): void {
+    this.publishJson(`/app/table/${tableId}/board.slide`, payload);
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.generation += 1;

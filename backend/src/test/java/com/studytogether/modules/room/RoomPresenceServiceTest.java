@@ -18,9 +18,11 @@ import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomEvent;
 import com.studytogether.modules.room.model.RoomJoinResponse;
+import com.studytogether.modules.table.model.EphemeralImageMetadata;
 import com.studytogether.modules.table.model.TableChatMessage;
 import com.studytogether.modules.room.model.RoomPlayerState;
 import com.studytogether.modules.room.model.RoomSnapshotResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -374,6 +376,23 @@ public class RoomPresenceServiceTest {
             return tableChatByKey.remove(roomId + ":" + tableId) != null;
         }
 
+        private final Map<String, EphemeralImageMetadata> ephemeralImages = new ConcurrentHashMap<>();
+
+        @Override
+        public void saveEphemeralImage(EphemeralImageMetadata metadata, Duration ttl) {
+            ephemeralImages.put(metadata.imageId(), metadata);
+        }
+
+        @Override
+        public Optional<EphemeralImageMetadata> getEphemeralImage(String imageId) {
+            return Optional.ofNullable(ephemeralImages.get(imageId));
+        }
+
+        @Override
+        public boolean deleteEphemeralImage(String imageId) {
+            return ephemeralImages.remove(imageId) != null;
+        }
+
         void clearAll() {
             playersByRoom.clear();
             seatsByRoom.clear();
@@ -381,6 +400,7 @@ public class RoomPresenceServiceTest {
             tablesByRoom.clear();
             chatByRoom.clear();
             seqByRoom.clear();
+            ephemeralImages.clear();
         }
 
         void putSeat(String roomId, String seatId, String userId) {

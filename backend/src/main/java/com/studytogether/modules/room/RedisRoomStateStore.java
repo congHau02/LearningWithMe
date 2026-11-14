@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomPlayerState;
+import com.studytogether.modules.table.model.EphemeralImageMetadata;
 import com.studytogether.modules.table.model.TableChatMessage;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -202,6 +204,21 @@ public class RedisRoomStateStore implements RoomStateStore {
     @Override
     public boolean deleteTableChatMessages(String roomId, String tableId) {
         return tableStore.deleteTableChatMessages(roomId, tableId);
+    }
+
+    @Override
+    public void saveEphemeralImage(EphemeralImageMetadata metadata, Duration ttl) {
+        tableStore.saveEphemeralImage(metadata, ttl);
+    }
+
+    @Override
+    public Optional<EphemeralImageMetadata> getEphemeralImage(String imageId) {
+        return tableStore.getEphemeralImage(imageId);
+    }
+
+    @Override
+    public boolean deleteEphemeralImage(String imageId) {
+        return tableStore.deleteEphemeralImage(imageId);
     }
 
     private boolean userExistsInShard(String shardId, String userId) {

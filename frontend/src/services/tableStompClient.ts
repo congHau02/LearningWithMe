@@ -1,4 +1,5 @@
 import { getActiveRoomStompSession } from './roomStompClient';
+import type { HomeworkSlideAction } from './tableApi';
 
 export function sendTablePermissionRequest(tableId: string, reason?: string): boolean {
   const session = getActiveRoomStompSession();
@@ -41,5 +42,15 @@ export function sendTableChatMessage(tableId: string, content: string): boolean 
   const session = getActiveRoomStompSession();
   if (!session) return false;
   session.sendTableChat(tableId, content);
+  return true;
+}
+
+export function sendHomeworkSlideAction(
+  tableId: string,
+  payload: { action: HomeworkSlideAction; imageId: string },
+): boolean {
+  const session = getActiveRoomStompSession();
+  if (!session) return false;
+  session.sendHomeworkSlideAction(tableId, payload);
   return true;
 }

@@ -17,10 +17,13 @@ public record TableWorkspaceEvent(
         TableVideoState videoState,
         String sosBanner,
         TableChatMessage chatMessage,
+        List<HomeworkSlide> homeworkSlides,
+        String activeSlideId,
         long timestampEpoch
 ) {
     public TableWorkspaceEvent {
         coHostUserIds = coHostUserIds == null ? List.of() : List.copyOf(coHostUserIds);
+        homeworkSlides = homeworkSlides == null ? List.of() : List.copyOf(homeworkSlides);
     }
 
     public static TableWorkspaceEvent permissionRequested(
@@ -28,7 +31,7 @@ public record TableWorkspaceEvent(
     ) {
         return new TableWorkspaceEvent("PERMISSION_REQUESTED", tableId, requesterUserId, null,
                 requesterNickname, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
-                null, null, null, now);
+                null, null, null, state.homeworkSlides(), state.activeSlideId(), now);
     }
 
     public static TableWorkspaceEvent permissionUpdated(
@@ -37,7 +40,7 @@ public record TableWorkspaceEvent(
     ) {
         return new TableWorkspaceEvent("PERMISSION_UPDATED", tableId, actorUserId, targetUserId,
                 null, action, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
-                null, null, null, now);
+                null, null, null, state.homeworkSlides(), state.activeSlideId(), now);
     }
 
     public static TableWorkspaceEvent videoSynced(
@@ -45,7 +48,7 @@ public record TableWorkspaceEvent(
     ) {
         return new TableWorkspaceEvent("VIDEO_SYNCED", tableId, actorUserId, null,
                 null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
-                videoState, null, null, now);
+                videoState, null, null, state.homeworkSlides(), state.activeSlideId(), now);
     }
 
     public static TableWorkspaceEvent sosUpdated(
@@ -53,7 +56,7 @@ public record TableWorkspaceEvent(
     ) {
         return new TableWorkspaceEvent("SOS_UPDATED", tableId, actorUserId, null,
                 null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
-                null, sosBanner, null, now);
+                null, sosBanner, null, state.homeworkSlides(), state.activeSlideId(), now);
     }
 
     public static TableWorkspaceEvent tableChat(
@@ -61,6 +64,14 @@ public record TableWorkspaceEvent(
     ) {
         return new TableWorkspaceEvent("TABLE_CHAT", tableId, actorUserId, null,
                 null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
-                null, null, chatMessage, now);
+                null, null, chatMessage, state.homeworkSlides(), state.activeSlideId(), now);
+    }
+
+    public static TableWorkspaceEvent homeworkSlideEvent(
+            String type, String tableId, String actorUserId, RedisTableState state, long now
+    ) {
+        return new TableWorkspaceEvent(type, tableId, actorUserId, null,
+                null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
+                null, null, null, state.homeworkSlides(), state.activeSlideId(), now);
     }
 }

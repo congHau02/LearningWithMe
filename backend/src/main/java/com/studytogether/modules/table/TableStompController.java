@@ -3,6 +3,7 @@ package com.studytogether.modules.table;
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.room.StompErrorDispatcher;
+import com.studytogether.modules.table.model.HomeworkSlideActionRequest;
 import com.studytogether.modules.table.model.PermissionRequestPayload;
 import com.studytogether.modules.table.model.PermissionRespondRequest;
 import com.studytogether.modules.table.model.SosToggleRequest;
@@ -27,19 +28,19 @@ public class TableStompController {
     private final TableVideoService videoService;
     private final TableSosService sosService;
     private final TableChatService tableChatService;
+    private final TableHomeworkService homeworkService;
     private final StompErrorDispatcher errorDispatcher;
 
     public TableStompController(
-            TableWorkspaceService workspaceService,
-            TableVideoService videoService,
-            TableSosService sosService,
-            TableChatService tableChatService,
-            StompErrorDispatcher errorDispatcher
+            TableWorkspaceService workspaceService, TableVideoService videoService,
+            TableSosService sosService, TableChatService tableChatService,
+            TableHomeworkService homeworkService, StompErrorDispatcher errorDispatcher
     ) {
         this.workspaceService = workspaceService;
         this.videoService = videoService;
         this.sosService = sosService;
         this.tableChatService = tableChatService;
+        this.homeworkService = homeworkService;
         this.errorDispatcher = errorDispatcher;
     }
 
@@ -86,6 +87,15 @@ public class TableStompController {
             Principal user
     ) {
         tableChatService.sendTableChatMessage(extractPrincipal(user), tableId, request);
+    }
+
+    @MessageMapping("/table/{tableId}/board.slide")
+    public void handleHomeworkSlideAction(
+            @DestinationVariable String tableId,
+            @Valid @Payload HomeworkSlideActionRequest request,
+            Principal user
+    ) {
+        homeworkService.handleSlideAction(extractPrincipal(user), tableId, request);
     }
 
     @MessageExceptionHandler(MethodArgumentNotValidException.class)

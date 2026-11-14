@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PermissionRequestNotification, TableChatMessage, TableMemberDto, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
+import type { HomeworkSlide, PermissionRequestNotification, TableChatMessage, TableMemberDto, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
 import type { RoomEvent } from '../services/roomApi';
 
 export interface VideoSyncState { videoId: string | null; isPlaying: boolean; currentTime: number; lastUpdatedEpoch: number; }
@@ -16,6 +16,8 @@ export interface TableWorkspaceState {
   permissionToast: string | null;
   videoState: VideoSyncState;
   recentMessages: TableChatMessage[];
+  homeworkSlides: HomeworkSlide[];
+  activeSlideId: string | null;
   setTableState: (payload: { tableId: string; hostUserId: string | null; coHostUserIds?: string[]; isFreeCollab?: boolean; sosBanner?: string | null; sitStartTimeEpoch?: number | null; videoState?: Partial<VideoSyncState>; }) => void;
   applyWorkspaceSnapshot: (snapshot: TableWorkspaceSnapshot, selfUserId: string | null) => void;
   applyWorkspaceEvent: (event: TableWorkspaceEvent, selfUserId: string | null) => void;
@@ -36,6 +38,7 @@ const INITIAL_TABLE_STATE = {
   isFreeCollab: false, sosBanner: null as string | null, sitStartTimeEpoch: null as number | null,
   members: [] as TableMemberDto[], pendingPermissionRequests: [] as PermissionRequestNotification[],
   permissionToast: null as string | null, videoState: DEFAULT_VIDEO_STATE, recentMessages: [] as TableChatMessage[],
+  homeworkSlides: [] as HomeworkSlide[], activeSlideId: null as string | null,
 };
 const ROLE_TOAST: Record<string, string> = {
   GRANT: 'Trưởng bàn đã cấp quyền Co-Host cho bạn', DENY: 'Yêu cầu xin quyền điều khiển đã bị từ chối',
@@ -61,6 +64,8 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
         sitStartTimeEpoch: self?.sitStartTimeEpoch || s.sitStartTimeEpoch || Date.now(),
         videoState: { ...s.videoState, ...snapshot.videoState },
         recentMessages: (snapshot.recentMessages ?? []).slice(-50),
+        homeworkSlides: snapshot.homeworkSlides ?? [],
+        activeSlideId: snapshot.activeSlideId ?? null,
       };
     }),
   applyWorkspaceEvent: (event, selfUserId) =>
@@ -81,6 +86,12 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
         const msg = event.chatMessage;
         if (s.recentMessages.some((m) => m.id === msg.id)) return s;
         return { recentMessages: [...s.recentMessages, msg].slice(-50) };
+      }
+      if (event.type === 'HOMEWORK_SLIDE_ADDED' || event.type === 'HOMEWORK_SLIDE_SELECTED' || event.type === 'HOMEWORK_SLIDE_DELETED') {
+        return {
+          homeworkSlides: event.homeworkSlides ?? s.homeworkSlides,
+          activeSlideId: event.activeSlideId !== undefined ? event.activeSlideId : s.activeSlideId,
+        };
       }
       if (event.type !== 'PERMISSION_UPDATED') return s;
       const nextMembers = s.members.map((m) => ({ ...m, tableRole: roleOf(m.userId, event.hostUserId, event.coHostUserIds) }));

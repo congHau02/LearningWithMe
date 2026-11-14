@@ -39,13 +39,7 @@ public class TableSosService {
         authService.requireControlPermission(current, principal.userId());
 
         String nextSosBanner = normalizeSosTopic(request.active(), request.topic());
-        RedisTableState updated = new RedisTableState(
-                current.hostUserId(),
-                current.coHostUserIds(),
-                current.isFreeCollab(),
-                nextSosBanner,
-                current.videoState()
-        );
+        RedisTableState updated = current.withSosBanner(nextSosBanner);
         stateStore.saveTableState(roomId, tableId, updated);
 
         long now = System.currentTimeMillis();
