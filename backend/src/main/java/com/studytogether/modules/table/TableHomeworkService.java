@@ -152,8 +152,8 @@ public class TableHomeworkService {
         String imageId = HomeworkImageValidator.extractImageId(safeName);
         stateStore.getEphemeralImage(imageId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Ephemeral File Not Found", "Homework file expired or not found"));
-        Path resolved = homeworkDir.resolve(safeName).normalize();
-        if (!resolved.startsWith(homeworkDir) || !Files.isRegularFile(resolved)) {
+        Path resolved = resolveSafePath(safeName);
+        if (!Files.isRegularFile(resolved)) {
             throw new BusinessException(HttpStatus.NOT_FOUND, "Ephemeral File Not Found", "Homework file not found");
         }
         try {
@@ -184,10 +184,7 @@ public class TableHomeworkService {
         stateStore.deleteEphemeralImage(slide.imageId());
         try {
             String safeName = HomeworkImageValidator.validateSafeFileName(slide.fileName());
-            Path resolved = homeworkDir.resolve(safeName).normalize();
-            if (resolved.startsWith(homeworkDir)) {
-                Files.deleteIfExists(resolved);
-            }
+            Files.deleteIfExists(resolveSafePath(safeName));
         } catch (RuntimeException | IOException ignored) {
             // Best-effort cleanup of deleted slide file
         }
@@ -196,14 +193,18 @@ public class TableHomeworkService {
     private void writeFileToTempDir(String fileName, byte[] bytes) {
         try {
             Files.createDirectories(homeworkDir);
-            Path target = homeworkDir.resolve(fileName).normalize();
-            if (!target.startsWith(homeworkDir)) {
-                throw TableExceptions.invalidAction("Invalid storage path");
-            }
-            Files.write(target, bytes);
+            Files.write(resolveSafePath(fileName), bytes);
         } catch (IOException ex) {
             throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "Storage Error", "Failed to store homework image");
         }
+    }
+
+    private Path resolveSafePath(String safeFileName) {
+        Path resolved = homeworkDir.resolve(safeFileName).normalize();
+        if (!resolved.startsWith(homeworkDir)) {
+            throw TableExceptions.invalidAction("Invalid storage path");
+        }
+        return resolved;
     }
 
     private static byte[] readMultipartBytes(MultipartFile file) {

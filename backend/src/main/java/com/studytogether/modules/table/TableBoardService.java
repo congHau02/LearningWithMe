@@ -2,6 +2,7 @@ package com.studytogether.modules.table;
 
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.room.RoomStateStore;
+import com.studytogether.modules.room.SeatReleasedEvent;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.table.TableAuthorizationService.SeatedContext;
 import com.studytogether.modules.table.model.BoardDrawAction;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +28,7 @@ public class TableBoardService {
     // shortcut: cap 500 strokes per slide in Redis to prevent unbounded state growth
     public static final int MAX_STROKES_PER_SLIDE = 500;
     public static final int MAX_TEXT_LENGTH = 300;
-    public static final long MIN_LASER_INTERVAL_MS = 90L;
+    public static final long MIN_LASER_INTERVAL_MS = 100L;
 
     private final RoomStateStore stateStore;
     private final TableAuthorizationService authService;
@@ -129,11 +131,17 @@ public class TableBoardService {
             throw TableExceptions.invalidAction("Laser pointer point must be within [0.0, 1.0]");
         }
         // shortcut: memory-based 10Hz burst throttle per pod; upgrade to Redis sliding token bucket if multi-pod clustered
-        Long lastLaser = lastLaserEpochByUserId.get(principal.userId());
-        if (lastLaser != null && (now - lastLaser) < MIN_LASER_INTERVAL_MS) {
+        boolean[] allowed = { false };
+        lastLaserEpochByUserId.compute(principal.userId(), (uid, prev) -> {
+            if (prev == null || (now - prev) >= MIN_LASER_INTERVAL_MS) {
+                allowed[0] = true;
+                return now;
+            }
+            return prev;
+        });
+        if (!allowed[0]) {
             return null;
         }
-        lastLaserEpochByUserId.put(principal.userId(), now);
 
         String nickname = (principal.nickname() != null && !principal.nickname().isBlank())
                 ? principal.nickname()
@@ -143,6 +151,13 @@ public class TableBoardService {
         );
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return event;
+    }
+
+    @EventListener
+    public void onSeatReleased(SeatReleasedEvent event) {
+        if (event != null && event.userId() != null) {
+            lastLaserEpochByUserId.remove(event.userId());
+        }
     }
 
     private static int findSlideIndex(List<HomeworkSlide> slides, String slideId) {

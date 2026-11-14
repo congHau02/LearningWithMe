@@ -282,6 +282,7 @@ class HomeworkLifecycleIntegrationTest {
         assertThat(snapshot.homeworkSlides()).hasSize(1);
         assertThat(snapshot.homeworkSlides().get(0).uploadedByUserId()).isEqualTo(registeredUserId);
         assertThat(snapshot.homeworkSlides().get(0).strokes()).hasSize(1);
+        assertThat(snapshot.homeworkSlides().get(0).strokes().get(0).authorUserId()).isEqualTo(registeredUserId);
         assertThat(Files.exists(tempHomeworkDir.resolve(memberSlide.fileName()))).isTrue();
 
         ResponseEntity<byte[]> fileResp = restTemplate.getForEntity(

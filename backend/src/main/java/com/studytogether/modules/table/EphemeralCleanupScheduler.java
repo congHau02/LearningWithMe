@@ -57,7 +57,7 @@ public class EphemeralCleanupScheduler {
         this.ttl = ttl != null ? ttl : TableHomeworkService.EPHEMERAL_IMAGE_TTL;
     }
 
-    @Scheduled(fixedDelayString = "${app.storage.cleanup-interval-ms:300000}")
+    @Scheduled(fixedDelayString = "${app.storage.cleanup-interval-ms:900000}")
     public int cleanupOrphanedAndExpiredFiles() {
         if (!Files.isDirectory(homeworkDir)) {
             return 0;

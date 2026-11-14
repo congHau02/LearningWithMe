@@ -162,9 +162,14 @@ describe('Homework Laser Pointer (P5-T3)', () => {
     expect(pointer).toHaveTextContent('Gia sư');
     expect(pointer).toHaveStyle({ left: '40%', top: '60%' });
 
-    // Auto-hide after idle timeout (1500ms)
+    // Auto-hide after idle timeout (1500ms) with fade-out before removal
     act(() => {
-      vi.advanceTimersByTime(1600);
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.getByTestId('laser-pointer-host-1').firstElementChild).toHaveClass('opacity-0');
+
+    act(() => {
+      vi.advanceTimersByTime(600);
     });
     expect(screen.queryByTestId('laser-pointer-host-1')).not.toBeInTheDocument();
 
@@ -216,5 +221,55 @@ describe('Homework Laser Pointer (P5-T3)', () => {
       );
     });
     expect(screen.queryByTestId('laser-pointer-host-1')).not.toBeInTheDocument();
+
+    // Also clears laserPointers in store when a new slide is added and becomes active
+    act(() => {
+      useTableStore.getState().applyWorkspaceEvent(
+        {
+          type: 'LASER_MOVE',
+          tableId: 'table-1',
+          actorUserId: 'host-1',
+          targetUserId: null,
+          requesterNickname: 'Gia sư',
+          action: null,
+          hostUserId: 'host-1',
+          coHostUserIds: [],
+          isFreeCollab: false,
+          slideId: 'img-2',
+          drawAction: 'LASER_MOVE',
+          laserPointer: { userId: 'host-1', nickname: 'Gia sư', slideId: 'img-2', x: 0.5, y: 0.5 },
+          timestampEpoch: Date.now(),
+        },
+        'member-1',
+      );
+      useTableStore.getState().applyWorkspaceEvent(
+        {
+          type: 'HOMEWORK_SLIDE_ADDED',
+          tableId: 'table-1',
+          actorUserId: 'host-1',
+          targetUserId: null,
+          requesterNickname: null,
+          action: null,
+          hostUserId: 'host-1',
+          coHostUserIds: [],
+          isFreeCollab: false,
+          homeworkSlides: [
+            ...useTableStore.getState().homeworkSlides,
+            {
+              imageId: 'img-3',
+              fileName: 'img-3.webp',
+              url: '/api/v1/ephemeral-files/img-3.webp',
+              uploadedByUserId: 'host-1',
+              uploadedAtEpoch: 3000,
+              strokes: [],
+            },
+          ],
+          activeSlideId: 'img-3',
+          timestampEpoch: Date.now(),
+        },
+        'member-1',
+      );
+    });
+    expect(useTableStore.getState().laserPointers).toEqual({});
   });
 });

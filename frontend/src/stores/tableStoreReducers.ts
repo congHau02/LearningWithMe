@@ -61,7 +61,7 @@ export function reduceWorkspaceEvent(
   }
   if (event.type === 'HOMEWORK_SLIDE_ADDED' || event.type === 'HOMEWORK_SLIDE_SELECTED' || event.type === 'HOMEWORK_SLIDE_DELETED') {
     const nextActive = event.activeSlideId !== undefined ? event.activeSlideId : s.activeSlideId;
-    const slideChanged = event.type !== 'HOMEWORK_SLIDE_ADDED' && nextActive !== s.activeSlideId;
+    const slideChanged = nextActive !== s.activeSlideId;
     return {
       homeworkSlides: event.homeworkSlides ?? s.homeworkSlides,
       activeSlideId: nextActive,

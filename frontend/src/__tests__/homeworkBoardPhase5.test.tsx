@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomeworkDeckPanel } from '../components/table/HomeworkDeckPanel';
 import { setActiveRoomStompSession } from '../services/roomStompClient';
@@ -101,24 +101,26 @@ describe('HomeworkAnnotationCanvas & Board Toolbar (P5-T2)', () => {
     ]);
 
     // Simulate server broadcast back into store
-    useTableStore.getState().applyWorkspaceEvent(
-      {
-        type: 'BOARD_DRAW',
-        tableId: 'table-1',
-        actorUserId: 'host-1',
-        targetUserId: null,
-        requesterNickname: null,
-        action: null,
-        hostUserId: 'host-1',
-        coHostUserIds: [],
-        isFreeCollab: false,
-        slideId: 'img-1',
-        drawAction: 'ADD_STROKE',
-        stroke: addPayload.stroke,
-        timestampEpoch: 3000,
-      },
-      'host-1',
-    );
+    act(() => {
+      useTableStore.getState().applyWorkspaceEvent(
+        {
+          type: 'BOARD_DRAW',
+          tableId: 'table-1',
+          actorUserId: 'host-1',
+          targetUserId: null,
+          requesterNickname: null,
+          action: null,
+          hostUserId: 'host-1',
+          coHostUserIds: [],
+          isFreeCollab: false,
+          slideId: 'img-1',
+          drawAction: 'ADD_STROKE',
+          stroke: addPayload.stroke,
+          timestampEpoch: 3000,
+        },
+        'host-1',
+      );
+    });
     expect(useTableStore.getState().homeworkSlides[0].strokes).toHaveLength(1);
 
     // Switch to ERASER and click near the stroke -> emits ERASE_STROKE with exact strokeId

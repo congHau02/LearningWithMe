@@ -1,6 +1,7 @@
 package com.studytogether.modules.table.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -12,7 +13,7 @@ public record BoardStroke(
         @NotNull(message = "Stroke tool is required") BoardStrokeTool tool,
         @NotBlank(message = "Stroke color is required") String color,
         double lineWidth,
-        @NotEmpty(message = "Stroke must contain at least one point") List<NormalizedPoint> points,
+        @NotEmpty(message = "Stroke must contain at least one point") List<@Valid NormalizedPoint> points,
         String text,
         String authorUserId,
         long createdAtEpoch

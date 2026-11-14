@@ -94,6 +94,14 @@ for _, key in ipairs(KEYS) do
                                 slide.uploadedBy = registeredUserId
                                 changed = true
                             end
+                            if type(slide.strokes) == "table" then
+                                for _, stroke in ipairs(slide.strokes) do
+                                    if type(stroke) == "table" and stroke.authorUserId == guestId then
+                                        stroke.authorUserId = registeredUserId
+                                        changed = true
+                                    end
+                                end
+                            end
                         end
                     end
                 end

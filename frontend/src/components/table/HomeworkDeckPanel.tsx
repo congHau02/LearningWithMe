@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { formatApiError } from '../../services/apiClient';
 import { resolveEphemeralFileUrl, uploadHomeworkImage } from '../../services/tableApi';
 import { sendBoardDraw, sendHomeworkSlideAction } from '../../services/tableStompClient';
@@ -9,6 +9,11 @@ import { HomeworkAnnotationCanvas } from './HomeworkAnnotationCanvas';
 import { HomeworkBoardToolbar } from './HomeworkBoardToolbar';
 
 const MAX_SLIDES = 5;
+
+const extractImageFile = (data: DataTransfer | null | undefined): File | null => {
+  const item = Array.from(data?.items ?? []).find((entry) => entry.type.startsWith('image/'));
+  return item ? item.getAsFile() : null;
+};
 
 interface HomeworkDeckPanelProps {
   tableId: string;
@@ -28,7 +33,7 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
   const activeSlide = activeSlideId ? (slides.find((s) => s.imageId === activeSlideId) ?? null) : null;
   const isDeckFull = slides.length >= MAX_SLIDES;
 
-  const processAndUpload = async (rawFile: File) => {
+  const processAndUpload = useCallback(async (rawFile: File) => {
     if (!canControl || isUploading) return;
     if (isDeckFull) {
       setErrorMsg('Bàn học đã đạt tối đa 5 trang bài tập.');
@@ -44,7 +49,10 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [canControl, isDeckFull, isUploading, tableId]);
+
+  const uploadRef = useRef(processAndUpload);
+  uploadRef.current = processAndUpload;
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,40 +60,26 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
     if (file) void processAndUpload(file);
   };
 
-  const extractImageFile = (data: DataTransfer | null | undefined): File | null => {
-    const items = data?.items;
-    if (!items) return null;
-    for (let i = 0; i < items.length; i += 1) {
-      if (items[i]?.type.startsWith('image/')) {
-        const file = items[i].getAsFile();
-        if (file) return file;
-      }
+  const handlePasteEvent = useCallback((e: { clipboardData: DataTransfer | null; defaultPrevented: boolean; preventDefault: () => void }) => {
+    if (!canControl || e.defaultPrevented) return;
+    const file = extractImageFile(e.clipboardData);
+    if (file) {
+      e.preventDefault();
+      void uploadRef.current(file);
     }
-    return null;
-  };
+  }, [canControl]);
 
   useEffect(() => {
     if (!canControl) return;
-    const onWindowPaste = (e: globalThis.ClipboardEvent) => {
-      if (e.defaultPrevented) return;
-      const file = extractImageFile(e.clipboardData);
-      if (file) { e.preventDefault(); void processAndUpload(file); }
-    };
-    window.addEventListener('paste', onWindowPaste);
-    return () => window.removeEventListener('paste', onWindowPaste);
-  });
-
-  const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
-    if (!canControl || e.defaultPrevented) return;
-    const file = extractImageFile(e.clipboardData);
-    if (file) { e.preventDefault(); void processAndUpload(file); }
-  };
+    window.addEventListener('paste', handlePasteEvent);
+    return () => window.removeEventListener('paste', handlePasteEvent);
+  }, [canControl, handlePasteEvent]);
 
   return (
     <div
       data-testid="homework-deck-panel"
       tabIndex={0}
-      onPaste={handlePaste}
+      onPaste={handlePasteEvent}
       className="flex flex-col gap-3 rounded-xl border border-border bg-slate-900/80 p-3 outline-none focus:border-sky-500/50"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
