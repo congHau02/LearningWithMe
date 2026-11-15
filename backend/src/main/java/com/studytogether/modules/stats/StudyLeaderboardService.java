@@ -78,7 +78,7 @@ public class StudyLeaderboardService {
     ) {
         if (principal.role() != AuthRole.REGISTERED) {
             List<StagedGuestStudySession> staged = guestStagingService.readStagedSessions(principal.userId());
-            long totalMinutes = staged.stream().mapToLong(StagedGuestStudySession::durationMinutes).sum();
+            long totalMinutes = GuestStudySessionStagingService.sumMinutes(staged);
             return new StudyLeaderboardEntryDto(
                     null,
                     principal.userId(),

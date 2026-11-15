@@ -274,38 +274,58 @@ export class WebRtcMeshManager {
     if (!this.tableId || !this.joined) return;
     useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'connecting' });
     const pc = this.getOrCreatePeerConnection(peerId);
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    if (!this.joined || !this.tableId) return;
-    sendTableVoiceSignal(this.tableId, {
-      signalType: 'SDP_OFFER',
-      targetUserId: peerId,
-      muted: useVoiceStore.getState().isMuted,
-      sdp: { type: offer.type, sdp: offer.sdp },
-    });
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      if (!this.joined || !this.tableId) return;
+      sendTableVoiceSignal(this.tableId, {
+        signalType: 'SDP_OFFER',
+        targetUserId: peerId,
+        muted: useVoiceStore.getState().isMuted,
+        sdp: { type: offer.type, sdp: offer.sdp },
+      });
+    } catch {
+      if (this.joined && this.peers.get(peerId) === pc) {
+        useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'failed' });
+      }
+    }
   }
 
   private async handleOffer(peerId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
     if (!this.tableId || !this.joined) return;
-    this.closePeer(peerId);
+    if (this.peers.has(peerId)) {
+      this.closePeer(peerId);
+    }
     const pc = this.getOrCreatePeerConnection(peerId);
-    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-    await this.flushPendingIce(peerId, pc);
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    if (!this.joined || !this.tableId) return;
-    sendTableVoiceSignal(this.tableId, {
-      signalType: 'SDP_ANSWER',
-      targetUserId: peerId,
-      sdp: { type: answer.type, sdp: answer.sdp },
-    });
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      await this.flushPendingIce(peerId, pc);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      if (!this.joined || !this.tableId) return;
+      sendTableVoiceSignal(this.tableId, {
+        signalType: 'SDP_ANSWER',
+        targetUserId: peerId,
+        sdp: { type: answer.type, sdp: answer.sdp },
+      });
+    } catch {
+      if (this.joined && this.peers.get(peerId) === pc) {
+        useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'failed' });
+      }
+    }
   }
 
   private async handleAnswer(peerId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
     const pc = this.peers.get(peerId);
     if (!pc || !this.joined) return;
-    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-    await this.flushPendingIce(peerId, pc);
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      await this.flushPendingIce(peerId, pc);
+    } catch {
+      if (this.joined && this.peers.get(peerId) === pc) {
+        useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'failed' });
+      }
+    }
   }
 
   private async handleIceCandidate(peerId: string, candidate: RTCIceCandidateInit): Promise<void> {
@@ -316,7 +336,13 @@ export class WebRtcMeshManager {
       this.pendingIce.set(peerId, queue);
       return;
     }
-    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch {
+      if (this.joined && this.peers.get(peerId) === pc) {
+        useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'failed' });
+      }
+    }
   }
 
   private async flushPendingIce(peerId: string, pc: RTCPeerConnection): Promise<void> {

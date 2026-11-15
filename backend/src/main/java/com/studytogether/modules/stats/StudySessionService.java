@@ -99,7 +99,7 @@ public class StudySessionService {
     public PersonalStudyStatsResponse getPersonalStats(AuthPrincipal principal) {
         if (principal.role() != AuthRole.REGISTERED) {
             List<StagedGuestStudySession> staged = guestStagingService.readStagedSessions(principal.userId());
-            long totalMinutes = staged.stream().mapToLong(StagedGuestStudySession::durationMinutes).sum();
+            long totalMinutes = GuestStudySessionStagingService.sumMinutes(staged);
             List<StudySessionDto> recent = staged.stream()
                     .sorted(Comparator
                             .comparing(StagedGuestStudySession::startedAt, Comparator.nullsLast(Comparator.reverseOrder()))

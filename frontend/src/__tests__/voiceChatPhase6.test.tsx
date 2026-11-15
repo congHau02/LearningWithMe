@@ -490,4 +490,94 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
     expect(localTracks[0].stop).toHaveBeenCalled();
     expect(screen.queryByTestId('table-workspace-shell')).not.toBeInTheDocument();
   });
+
+  it('flushes early ICE candidates before SDP_OFFER, catches WebRTC errors, filters cross-shard signals & preserves voice on account upgrade', async () => {
+    render(<WorkspaceHarness />);
+    await waitFor(() => expect(screen.getByTestId('table-member-u-bob')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('voice-join-btn'));
+    await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(true));
+
+    // 1. Early ICE_CANDIDATE arrives BEFORE SDP_OFFER from 'u-aaa'
+    act(() => {
+      dispatchIncomingVoiceSignal({
+        signalType: 'ICE_CANDIDATE',
+        senderUserId: 'u-aaa',
+        senderNickname: 'Aaron',
+        targetUserId: 'u-alice',
+        candidate: { candidate: 'candidate:early-1', sdpMid: '0', sdpMLineIndex: 0 },
+      });
+    });
+
+    await act(async () => {
+      dispatchIncomingVoiceSignal({
+        signalType: 'SDP_OFFER',
+        senderUserId: 'u-aaa',
+        senderNickname: 'Aaron',
+        targetUserId: 'u-alice',
+        sdp: { type: 'offer', sdp: 'v=0-aaron-offer' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(createdPeers).toHaveLength(1);
+      expect(createdPeers[0].addIceCandidate).toHaveBeenCalledTimes(1);
+    });
+
+    // 2. Cross-shard VOICE_SIGNAL on /topic/table/table_01/workspace from 'main-library-2' is ignored
+    const wsHandler = subscribeTableWorkspace.mock.calls.at(-1)?.[1] as ((raw: string) => void) | undefined;
+    expect(wsHandler).toBeDefined();
+    act(() => {
+      wsHandler!(
+        JSON.stringify({
+          type: 'VOICE_SIGNAL',
+          roomId: 'main-library-2',
+          tableId: 'table_01',
+          actorUserId: 'u-other-shard',
+          coHostUserIds: [],
+          isFreeCollab: false,
+          homeworkSlides: [],
+          voiceSignal: {
+            signalType: 'VOICE_JOIN',
+            senderUserId: 'u-other-shard',
+            senderNickname: 'Shard2User',
+            muted: false,
+          },
+          timestampEpoch: Date.now(),
+        }),
+      );
+    });
+    expect(useVoiceStore.getState().peers['u-other-shard']).toBeUndefined();
+
+    // 3. Zero-interruption account upgrade (selfUserId changes while seated at same table) keeps voice active
+    sendVoiceSignal.mockClear();
+    act(() => {
+      useAuthStore.setState({ userId: 'u-alice-registered', authProvider: 'LOCAL' });
+    });
+    expect(useVoiceStore.getState().inVoice).toBe(true);
+    expect(localTracks[0].stop).not.toHaveBeenCalled();
+
+    // 4. Rejected setRemoteDescription marks peer connectionState as 'failed' without unhandled rejection
+    await act(async () => {
+      dispatchIncomingVoiceSignal({
+        signalType: 'SDP_OFFER',
+        senderUserId: 'u-bad-sdp',
+        senderNickname: 'BadPeer',
+        targetUserId: 'u-alice-registered',
+        sdp: { type: 'offer', sdp: 'corrupted' },
+      });
+    });
+    const badPeerPc = createdPeers.at(-1)!;
+    badPeerPc.setRemoteDescription.mockRejectedValueOnce(new Error('Invalid SDP'));
+    await act(async () => {
+      dispatchIncomingVoiceSignal({
+        signalType: 'SDP_ANSWER',
+        senderUserId: 'u-bad-sdp',
+        senderNickname: 'BadPeer',
+        targetUserId: 'u-alice-registered',
+        sdp: { type: 'answer', sdp: 'corrupted-answer' },
+      });
+    });
+    expect(useVoiceStore.getState().peers['u-bad-sdp']?.connectionState).toBe('failed');
+  });
 });

@@ -86,6 +86,13 @@ public class GuestStudySessionStagingService {
         return List.copyOf(validSessions);
     }
 
+    public static long sumMinutes(List<StagedGuestStudySession> sessions) {
+        if (sessions == null || sessions.isEmpty()) {
+            return 0L;
+        }
+        return sessions.stream().mapToLong(StagedGuestStudySession::durationMinutes).sum();
+    }
+
     public int persistAndScheduleRedisCleanup(
             String guestId,
             String targetUserId,

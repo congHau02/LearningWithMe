@@ -6,6 +6,7 @@ import java.util.List;
 
 public record TableWorkspaceEvent(
         String type,
+        String roomId,
         String tableId,
         String actorUserId,
         String targetUserId,
@@ -32,19 +33,24 @@ public record TableWorkspaceEvent(
         homeworkSlides = homeworkSlides == null ? List.of() : List.copyOf(homeworkSlides);
     }
 
+    public TableWorkspaceEvent withRoomId(String nextRoomId) {
+        return new TableWorkspaceEvent(type, nextRoomId, tableId, actorUserId, targetUserId, requesterNickname,
+                action, hostUserId, coHostUserIds, isFreeCollab, videoState, sosBanner, chatMessage,
+                homeworkSlides, activeSlideId, slideId, drawAction, stroke, erasedStrokeId, laserPointer, voiceSignal, timestampEpoch);
+    }
+
     public static TableWorkspaceEvent permissionRequested(
             String tableId, String requesterUserId, String requesterNickname, RedisTableState state, long now
     ) {
-        return new TableWorkspaceEvent("PERMISSION_REQUESTED", tableId, requesterUserId, null,
+        return new TableWorkspaceEvent("PERMISSION_REQUESTED", null, tableId, requesterUserId, null,
                 requesterNickname, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
                 null, null, null, state.homeworkSlides(), state.activeSlideId(), null, null, null, null, null, null, now);
     }
 
     public static TableWorkspaceEvent permissionUpdated(
-            String tableId, PermissionAction action, String actorUserId, String targetUserId,
-            RedisTableState state, long now
+            String tableId, PermissionAction action, String actorUserId, String targetUserId, RedisTableState state, long now
     ) {
-        return new TableWorkspaceEvent("PERMISSION_UPDATED", tableId, actorUserId, targetUserId,
+        return new TableWorkspaceEvent("PERMISSION_UPDATED", null, tableId, actorUserId, targetUserId,
                 null, action, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
                 null, null, null, state.homeworkSlides(), state.activeSlideId(), null, null, null, null, null, null, now);
     }
@@ -52,7 +58,7 @@ public record TableWorkspaceEvent(
     public static TableWorkspaceEvent videoSynced(
             String tableId, String actorUserId, TableVideoState videoState, RedisTableState state, long now
     ) {
-        return new TableWorkspaceEvent("VIDEO_SYNCED", tableId, actorUserId, null,
+        return new TableWorkspaceEvent("VIDEO_SYNCED", null, tableId, actorUserId, null,
                 null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
                 videoState, null, null, state.homeworkSlides(), state.activeSlideId(), null, null, null, null, null, null, now);
     }
@@ -60,7 +66,7 @@ public record TableWorkspaceEvent(
     public static TableWorkspaceEvent sosUpdated(
             String tableId, String actorUserId, String sosBanner, RedisTableState state, long now
     ) {
-        return new TableWorkspaceEvent("SOS_UPDATED", tableId, actorUserId, null,
+        return new TableWorkspaceEvent("SOS_UPDATED", null, tableId, actorUserId, null,
                 null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
                 null, sosBanner, null, state.homeworkSlides(), state.activeSlideId(), null, null, null, null, null, null, now);
     }
@@ -68,7 +74,7 @@ public record TableWorkspaceEvent(
     public static TableWorkspaceEvent tableChat(
             String tableId, String actorUserId, TableChatMessage chatMessage, RedisTableState state, long now
     ) {
-        return new TableWorkspaceEvent("TABLE_CHAT", tableId, actorUserId, null,
+        return new TableWorkspaceEvent("TABLE_CHAT", null, tableId, actorUserId, null,
                 null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
                 null, null, chatMessage, state.homeworkSlides(), state.activeSlideId(), null, null, null, null, null, null, now);
     }
@@ -76,7 +82,7 @@ public record TableWorkspaceEvent(
     public static TableWorkspaceEvent homeworkSlideEvent(
             String type, String tableId, String actorUserId, RedisTableState state, long now
     ) {
-        return new TableWorkspaceEvent(type, tableId, actorUserId, null,
+        return new TableWorkspaceEvent(type, null, tableId, actorUserId, null,
                 null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
                 null, null, null, state.homeworkSlides(), state.activeSlideId(), null, null, null, null, null, null, now);
     }
@@ -85,7 +91,7 @@ public record TableWorkspaceEvent(
             String tableId, String actorUserId, String slideId, BoardDrawAction drawAction,
             BoardStroke stroke, String erasedStrokeId, RedisTableState state, long now
     ) {
-        return new TableWorkspaceEvent("BOARD_DRAW", tableId, actorUserId, null,
+        return new TableWorkspaceEvent("BOARD_DRAW", null, tableId, actorUserId, null,
                 null, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
                 null, null, null, null, state.activeSlideId(), slideId, drawAction, stroke, erasedStrokeId, null, null, now);
     }
@@ -94,7 +100,7 @@ public record TableWorkspaceEvent(
             String tableId, String actorUserId, String nickname, String slideId,
             NormalizedPoint point, RedisTableState state, long now
     ) {
-        return new TableWorkspaceEvent("LASER_MOVE", tableId, actorUserId, null,
+        return new TableWorkspaceEvent("LASER_MOVE", null, tableId, actorUserId, null,
                 nickname, null, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
                 null, null, null, null, state.activeSlideId(), slideId, BoardDrawAction.LASER_MOVE,
                 null, null, new LaserPointerPayload(actorUserId, nickname, slideId, point.x(), point.y()), null, now);
@@ -104,7 +110,7 @@ public record TableWorkspaceEvent(
             String tableId, String actorUserId, String targetUserId,
             VoiceSignalPayload voiceSignal, RedisTableState state, long now
     ) {
-        return new TableWorkspaceEvent("VOICE_SIGNAL", tableId, actorUserId, targetUserId,
+        return new TableWorkspaceEvent("VOICE_SIGNAL", null, tableId, actorUserId, targetUserId,
                 voiceSignal != null ? voiceSignal.senderNickname() : null, null,
                 state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(),
                 null, null, null, null, state.activeSlideId(), null, null, null, null, null, voiceSignal, now);

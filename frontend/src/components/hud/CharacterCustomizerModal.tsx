@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { formatApiError } from '../../services/apiClient';
 import {
   fetchCharacterItemsCatalog,
@@ -36,16 +37,7 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' || event.key === 'Esc') {
-        event.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeToClose(onClose);
 
   useEffect(() => {
     let active = true;

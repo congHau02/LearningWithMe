@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import {
   fetchPersonalStudyStats,
   type PersonalStudyStatsResponse,
@@ -66,16 +67,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
     void loadStats();
   }, [loadStats]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  useEscapeToClose(onClose);
 
   const totalMinutes = stats?.totalStudyMinutes ?? storeTotalMinutes;
   const totalSessions = stats?.totalSessions ?? 0;

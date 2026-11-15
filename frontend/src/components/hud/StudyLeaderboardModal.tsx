@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import {
   fetchStudyLeaderboard,
   formatStudyDuration,
@@ -39,16 +40,7 @@ export function StudyLeaderboardModal({
     void loadLeaderboard();
   }, [loadLeaderboard]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  useEscapeToClose(onClose);
 
   const entries = data?.entries ?? [];
   const myEntry = data?.myEntry ?? null;

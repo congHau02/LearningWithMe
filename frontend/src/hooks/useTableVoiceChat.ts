@@ -20,10 +20,12 @@ export function useTableVoiceChat(
   }
 
   useEffect(() => {
-    const manager = managerRef.current!;
-    manager.bindTable(tableId, selfUserId);
+    managerRef.current!.bindTable(tableId, selfUserId);
+  }, [tableId, selfUserId]);
 
-    if (!tableId || !selfUserId) {
+  useEffect(() => {
+    const manager = managerRef.current!;
+    if (!tableId) {
       setActiveVoiceBridge(null);
       return;
     }
@@ -38,7 +40,7 @@ export function useTableVoiceChat(
       manager.leave(true);
       useVoiceStore.getState().resetVoice();
     };
-  }, [tableId, selfUserId]);
+  }, [tableId]);
 
   useEffect(() => {
     if (!tableId || members.length === 0) return;

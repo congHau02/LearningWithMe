@@ -66,7 +66,7 @@ public class TableWorkspaceService {
         String requesterName = ctx.player().nickname() != null ? ctx.player().nickname() : principal.nickname();
         TableWorkspaceEvent event = TableWorkspaceEvent.permissionRequested(
                 tableId, principal.userId(), requesterName, tableState, System.currentTimeMillis()
-        );
+        ).withRoomId(ctx.roomId());
         messagingTemplate.convertAndSend(workspaceTopic(tableId), event);
         return event;
     }
@@ -101,7 +101,7 @@ public class TableWorkspaceService {
 
         TableWorkspaceEvent event = TableWorkspaceEvent.permissionUpdated(
                 tableId, action, principal.userId(), targetUserId, updated, now
-        );
+        ).withRoomId(roomId);
         messagingTemplate.convertAndSend(workspaceTopic(tableId), event);
 
         if (action == PermissionAction.TRANSFER_HOST) {
@@ -164,6 +164,8 @@ public class TableWorkspaceService {
                         p.userId(),
                         p.nickname(),
                         p.avatarId(),
+                        p.hatId(),
+                        p.deskPetId(),
                         p.seatId(),
                         resolveRole(p.userId(), tableState),
                         p.sitStartTimeEpoch(),

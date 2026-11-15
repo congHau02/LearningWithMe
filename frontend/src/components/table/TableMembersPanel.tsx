@@ -1,4 +1,6 @@
 import type { PermissionAction, TableMemberDto } from '../../services/tableApi';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useGameStore } from '../../stores/useGameStore';
 import { useVoiceStore } from '../../stores/useVoiceStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
 
@@ -25,6 +27,9 @@ export function TableMembersPanel({
   const isSelfMuted = useVoiceStore((s) => s.isMuted);
   const isSelfSpeaking = useVoiceStore((s) => s.isSelfSpeaking);
   const voicePeers = useVoiceStore((s) => s.peers);
+  const selfHatId = useAuthStore((s) => s.hatId);
+  const selfDeskPetId = useAuthStore((s) => s.deskPetId);
+  const remotePlayers = useGameStore((s) => s.remotePlayers);
 
   return (
     <aside
@@ -56,7 +61,12 @@ export function TableMembersPanel({
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-secondary/40 px-2.5 py-2 text-xs"
               >
                 <div className="flex items-center gap-2">
-                  <StarterAvatarPortrait avatarId={member.avatarId} size={24} />
+                  <StarterAvatarPortrait
+                    avatarId={member.avatarId}
+                    hatId={member.hatId ?? (isSelf ? selfHatId : remotePlayers[member.userId]?.hatId)}
+                    deskPetId={member.deskPetId ?? (isSelf ? selfDeskPetId : remotePlayers[member.userId]?.deskPetId)}
+                    size={24}
+                  />
                   <div>
                     <p className="flex items-center gap-1.5 font-medium text-foreground">
                       <span>{member.nickname}</span>

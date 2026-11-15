@@ -74,7 +74,7 @@ public class TableBoardService {
 
         long now = clock.millis();
         if (request.action() == BoardDrawAction.LASER_MOVE) {
-            return handleLaserMove(principal, tableId, targetSlideId, request.point(), current, now);
+            return handleLaserMove(principal, roomId, tableId, targetSlideId, request.point(), current, now);
         }
 
         HomeworkSlide slide = current.homeworkSlides().get(slideIndex);
@@ -114,13 +114,14 @@ public class TableBoardService {
         TableWorkspaceEvent event = TableWorkspaceEvent.boardDraw(
                 tableId, principal.userId(), targetSlideId, request.action(),
                 savedStroke, erasedStrokeId, updatedState, now
-        );
+        ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return event;
     }
 
     private TableWorkspaceEvent handleLaserMove(
             AuthPrincipal principal,
+            String roomId,
             String tableId,
             String targetSlideId,
             NormalizedPoint point,
@@ -148,7 +149,7 @@ public class TableBoardService {
                 : principal.userId();
         TableWorkspaceEvent event = TableWorkspaceEvent.laserMove(
                 tableId, principal.userId(), nickname, targetSlideId, point, current, now
-        );
+        ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return event;
     }

@@ -348,6 +348,31 @@ class RoomSeatServiceTest {
         verify(eventPublisher, org.mockito.Mockito.never()).publishEvent(any(TableEmptiedEvent.class));
     }
 
+    @Test
+    void leaveAndEvictStillElectSuccessorAndBroadcastWhenSeatReleasedListenerThrows() {
+        String roomId = "main-library";
+        AuthPrincipal host = guest("u-host", "Host");
+        stateStore.savePlayer(roomId, playerState("u-host", "Host", "SEATED", 3, 4, "table_01", "T1_S1", 1000L));
+        stateStore.savePlayer(roomId, playerState("u-2", "Bob", "SEATED", 4, 4, "table_01", "T1_S2", 2000L));
+        stateStore.putSeat(roomId, "T1_S1", "u-host");
+        stateStore.putSeat(roomId, "T1_S2", "u-2");
+        stateStore.saveTableState(roomId, "table_01", new RedisTableState("u-host", List.of(), false, null));
+
+        org.mockito.Mockito.doThrow(new RuntimeException("Transient DB error"))
+                .when(eventPublisher).publishEvent(any(SeatReleasedEvent.class));
+
+        RoomEvent event = seatService.handleLeave(host, roomId, "ws-1");
+
+        assertThat(event.type()).isEqualTo("SEAT_RELEASED");
+        assertThat(event.hostUserId()).isEqualTo("u-2");
+        assertThat(stateStore.getTableState(roomId, "table_01").orElseThrow().hostUserId()).isEqualTo("u-2");
+
+        // Now u-2 disconnects and gets evicted while SeatReleasedEvent listener still throws
+        stateStore.savePlayer(roomId, playerState("u-2", "Bob", "SEATED", 4, 4, "table_01", "T1_S2", 2000L, false));
+        seatService.evictGracePeriodSeat(roomId, "u-2", "T1_S2");
+        assertThat(stateStore.getTableState(roomId, "table_01")).isEmpty();
+    }
+
     private static AuthPrincipal guest(String userId, String nickname) {
         return new AuthPrincipal(userId, AuthRole.GUEST, nickname, "default_student", "Study");
     }

@@ -52,6 +52,8 @@ export interface TableMemberDto {
   userId: string;
   nickname: string;
   avatarId: string;
+  hatId?: string;
+  deskPetId?: string;
   seatId: string;
   tableRole: TableRole;
   sitStartTimeEpoch: number;
@@ -102,6 +104,7 @@ export interface TableWorkspaceEvent {
     | 'BOARD_DRAW'
     | 'LASER_MOVE'
     | 'VOICE_SIGNAL';
+  roomId?: string | null;
   tableId: string;
   actorUserId: string;
   targetUserId: string | null;

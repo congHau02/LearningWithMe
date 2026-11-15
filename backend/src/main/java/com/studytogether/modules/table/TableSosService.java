@@ -45,7 +45,7 @@ public class TableSosService {
         long now = System.currentTimeMillis();
         TableWorkspaceEvent workspaceEvent = TableWorkspaceEvent.sosUpdated(
                 tableId, principal.userId(), nextSosBanner, updated, now
-        );
+        ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), workspaceEvent);
 
         long seq = stateStore.incrementEventSeq(roomId);

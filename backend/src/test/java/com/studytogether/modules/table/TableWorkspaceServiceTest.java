@@ -72,6 +72,8 @@ class TableWorkspaceServiceTest {
         assertThat(snapshot.isFreeCollab()).isFalse();
         assertThat(snapshot.members()).hasSize(2);
         assertThat(snapshot.members().get(0).userId()).isEqualTo("u-host");
+        assertThat(snapshot.members().get(0).hatId()).isEqualTo("hat_none");
+        assertThat(snapshot.members().get(0).deskPetId()).isEqualTo("pet_sprout_pot");
         assertThat(snapshot.members().get(0).tableRole()).isEqualTo(TableRole.TABLE_HOST);
         assertThat(snapshot.members().get(1).userId()).isEqualTo("u-member");
         assertThat(snapshot.members().get(1).tableRole()).isEqualTo(TableRole.MEMBER);

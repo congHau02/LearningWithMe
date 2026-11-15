@@ -55,7 +55,7 @@ public class TableVoiceService {
         );
         TableWorkspaceEvent event = TableWorkspaceEvent.voiceSignal(
                 tableId, principal.userId(), targetUserId, payload, tableState, System.currentTimeMillis()
-        );
+        ).withRoomId(ctx.roomId());
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return event;
     }

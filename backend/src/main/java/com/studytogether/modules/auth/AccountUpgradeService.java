@@ -69,7 +69,7 @@ public class AccountUpgradeService {
 
         ResolvedCredentials credentials = resolveCredentials(targetProvider, request);
         List<StagedGuestStudySession> stagedSessions = guestSessionStagingService.readStagedSessions(guestId);
-        long mergedMinutes = stagedSessions.stream().mapToLong(StagedGuestStudySession::durationMinutes).sum();
+        long mergedMinutes = GuestStudySessionStagingService.sumMinutes(stagedSessions);
         String effectiveStudyGoal = principal.studyGoal() != null ? principal.studyGoal() : "";
         boolean explicitExistingMode = Boolean.TRUE.equals(request.existingAccount());
 

@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -19,16 +21,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class RoomSeatService {
 
+    private static final Logger log = LoggerFactory.getLogger(RoomSeatService.class);
+
     private final RoomTopologyService topologyService;
     private final RoomStateStore stateStore;
     private final SimpMessagingTemplate messagingTemplate;
     private final ApplicationEventPublisher eventPublisher;
 
     public RoomSeatService(
-            RoomTopologyService topologyService,
-            RoomStateStore stateStore,
-            SimpMessagingTemplate messagingTemplate,
-            ApplicationEventPublisher eventPublisher
+            RoomTopologyService topologyService, RoomStateStore stateStore,
+            SimpMessagingTemplate messagingTemplate, ApplicationEventPublisher eventPublisher
     ) {
         this.topologyService = topologyService;
         this.stateStore = stateStore;
@@ -65,13 +67,8 @@ public class RoomSeatService {
 
         long now = System.currentTimeMillis();
         RoomPlayerState updated = player.withSeated(
-                seat.tableId(),
-                seat.seatId(),
-                seat.tileX(),
-                seat.tileY(),
-                seat.facingDir().name(),
-                now,
-                principal.studyGoal()
+                seat.tableId(), seat.seatId(), seat.tileX(), seat.tileY(),
+                seat.facingDir().name(), now, principal.studyGoal()
         );
         stateStore.savePlayer(roomId, updated);
 
@@ -120,7 +117,7 @@ public class RoomSeatService {
         RoomPlayerState updated = player.withFreeRoam(now);
         stateStore.savePlayer(roomId, updated);
 
-        eventPublisher.publishEvent(new SeatReleasedEvent(
+        publishSeatReleasedSafely(new SeatReleasedEvent(
                 roomId, tableId, seatId, principal.userId(), sitStart, now, studyGoal, role
         ));
 
@@ -150,7 +147,7 @@ public class RoomSeatService {
         stateStore.releaseSeat(roomId, seatId);
         stateStore.deletePlayer(roomId, userId);
         stateStore.removeDisconnect(roomId, userId);
-        eventPublisher.publishEvent(new SeatReleasedEvent(
+        publishSeatReleasedSafely(new SeatReleasedEvent(
                 roomId, tableId, seatId, userId, sitStart, now, player.studyGoal(), player.role()
         ));
 
@@ -168,6 +165,14 @@ public class RoomSeatService {
                 leftSeq, "PLAYER_LEFT", roomId, userId, null, player.toDto(), now
         );
         messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", leftEvent);
+    }
+
+    private void publishSeatReleasedSafely(SeatReleasedEvent event) {
+        try {
+            eventPublisher.publishEvent(event);
+        } catch (RuntimeException ex) {
+            log.error("Failed to process SeatReleasedEvent for userId={} tableId={}", event.userId(), event.tableId(), ex);
+        }
     }
 
     private String updateTableOnLeave(String roomId, String tableId, String leavingUserId) {
@@ -231,10 +236,6 @@ public class RoomSeatService {
                 .thenComparingLong(RoomPlayerState::sitStartTimeEpoch)
                 .thenComparing(RoomPlayerState::userId);
 
-        return remainingSeated.stream()
-                .sorted(comparator)
-                .map(RoomPlayerState::userId)
-                .findFirst()
-                .orElse(null);
+        return remainingSeated.stream().sorted(comparator).map(RoomPlayerState::userId).findFirst().orElse(null);
     }
 }

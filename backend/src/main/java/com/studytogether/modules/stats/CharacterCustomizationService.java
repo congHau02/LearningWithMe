@@ -128,9 +128,9 @@ public class CharacterCustomizationService {
             return new CallerCustomizationState(user.getTotalStudyMinutes(), equipped, user);
         }
 
-        long guestMinutes = guestStagingService.readStagedSessions(principal.userId()).stream()
-                .mapToLong(StagedGuestStudySession::durationMinutes)
-                .sum();
+        long guestMinutes = GuestStudySessionStagingService.sumMinutes(
+                guestStagingService.readStagedSessions(principal.userId())
+        );
         EquippedCustomizationDto fallback = EquippedCustomizationDto.defaults(principal.avatarId());
         EquippedCustomizationDto equipped = guestCustomizationStore.get(principal.userId())
                 .map(saved -> new EquippedCustomizationDto(

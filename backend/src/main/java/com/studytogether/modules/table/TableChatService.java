@@ -78,7 +78,7 @@ public class TableChatService {
         RedisTableState tableState = stateStore.getTableState(ctx.roomId(), tableId).orElseGet(RedisTableState::empty);
         TableWorkspaceEvent event = TableWorkspaceEvent.tableChat(
                 tableId, principal.userId(), message, tableState, now
-        );
+        ).withRoomId(ctx.roomId());
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
 
         return message;

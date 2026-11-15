@@ -24,6 +24,9 @@ export function useTableWorkspaceSync(): void {
     session?.subscribeTableWorkspace?.(currentTableId, (rawBody) => {
       try {
         const event = JSON.parse(rawBody) as TableWorkspaceEvent;
+        if (event.roomId && event.roomId !== roomId) {
+          return;
+        }
         if (event.type === 'VOICE_SIGNAL' && event.voiceSignal) {
           dispatchIncomingVoiceSignal(event.voiceSignal);
           return;

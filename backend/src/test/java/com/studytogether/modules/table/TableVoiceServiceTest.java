@@ -115,6 +115,7 @@ class TableVoiceServiceTest {
         TableWorkspaceEvent joinEvent = voiceService.relaySignal(
                 alice, "table_01", new VoiceSignalRequest(VoiceSignalType.VOICE_JOIN, null, false, null, null));
         assertThat(joinEvent.type()).isEqualTo("VOICE_SIGNAL");
+        assertThat(joinEvent.roomId()).isEqualTo("main-library");
         assertThat(joinEvent.voiceSignal().signalType()).isEqualTo(VoiceSignalType.VOICE_JOIN);
         assertThat(joinEvent.voiceSignal().senderUserId()).isEqualTo("u-alice");
         assertThat(joinEvent.voiceSignal().muted()).isFalse();

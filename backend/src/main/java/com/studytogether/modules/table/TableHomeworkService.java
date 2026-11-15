@@ -97,7 +97,7 @@ public class TableHomeworkService {
 
         TableWorkspaceEvent event = TableWorkspaceEvent.homeworkSlideEvent(
                 "HOMEWORK_SLIDE_ADDED", tableId, principal.userId(), updated, now
-        );
+        ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return newSlide;
     }
@@ -142,7 +142,7 @@ public class TableHomeworkService {
         stateStore.saveTableState(roomId, tableId, updated);
         TableWorkspaceEvent event = TableWorkspaceEvent.homeworkSlideEvent(
                 eventType, tableId, principal.userId(), updated, now
-        );
+        ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return event;
     }

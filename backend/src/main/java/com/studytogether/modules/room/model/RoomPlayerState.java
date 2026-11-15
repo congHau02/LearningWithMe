@@ -13,36 +13,19 @@ public record RoomPlayerState(
     public static final String DEFAULT_HAT_ID = "hat_none";
     public static final String DEFAULT_DESK_PET_ID = "pet_sprout_pot";
 
-    public RoomPlayerState(
-            String userId, String nickname, String avatarId, String role, String state,
-            int x, int y, String facingDir, String tableId, String seatId,
-            String activeWsSessionId, boolean connected, long updatedAtEpoch
-    ) {
+    public RoomPlayerState(String userId, String nickname, String avatarId, String role, String state, int x, int y, String facingDir, String tableId, String seatId, String activeWsSessionId, boolean connected, long updatedAtEpoch) {
         this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, false, 0L, null, DEFAULT_HAT_ID, DEFAULT_DESK_PET_ID);
     }
 
-    public RoomPlayerState(
-            String userId, String nickname, String avatarId, String role, String state,
-            int x, int y, String facingDir, String tableId, String seatId,
-            String activeWsSessionId, boolean connected, long updatedAtEpoch, boolean isMoving
-    ) {
+    public RoomPlayerState(String userId, String nickname, String avatarId, String role, String state, int x, int y, String facingDir, String tableId, String seatId, String activeWsSessionId, boolean connected, long updatedAtEpoch, boolean isMoving) {
         this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, isMoving, 0L, null, DEFAULT_HAT_ID, DEFAULT_DESK_PET_ID);
     }
 
-    public RoomPlayerState(
-            String userId, String nickname, String avatarId, String role, String state,
-            int x, int y, String facingDir, String tableId, String seatId,
-            String activeWsSessionId, boolean connected, long updatedAtEpoch, boolean isMoving, long sitStartTimeEpoch
-    ) {
+    public RoomPlayerState(String userId, String nickname, String avatarId, String role, String state, int x, int y, String facingDir, String tableId, String seatId, String activeWsSessionId, boolean connected, long updatedAtEpoch, boolean isMoving, long sitStartTimeEpoch) {
         this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, isMoving, sitStartTimeEpoch, null, DEFAULT_HAT_ID, DEFAULT_DESK_PET_ID);
     }
 
-    public RoomPlayerState(
-            String userId, String nickname, String avatarId, String role, String state,
-            int x, int y, String facingDir, String tableId, String seatId,
-            String activeWsSessionId, boolean connected, long updatedAtEpoch, boolean isMoving, long sitStartTimeEpoch,
-            String studyGoal
-    ) {
+    public RoomPlayerState(String userId, String nickname, String avatarId, String role, String state, int x, int y, String facingDir, String tableId, String seatId, String activeWsSessionId, boolean connected, long updatedAtEpoch, boolean isMoving, long sitStartTimeEpoch, String studyGoal) {
         this(userId, nickname, avatarId, role, state, x, y, facingDir, tableId, seatId, activeWsSessionId, connected, updatedAtEpoch, isMoving, sitStartTimeEpoch, studyGoal, DEFAULT_HAT_ID, DEFAULT_DESK_PET_ID);
     }
 
