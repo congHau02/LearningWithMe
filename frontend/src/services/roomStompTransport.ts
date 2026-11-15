@@ -1,5 +1,20 @@
 import { Client } from '@stomp/stompjs';
 
+const BASE_RECONNECT_DELAY_MS = 1000;
+const MAX_RECONNECT_DELAY_MS = 15_000;
+
+/**
+ * Computes an exponential backoff delay (1s, 2s, 4s... capped at 15s) with full jitter.
+ */
+export function computeJitteredReconnectDelay(
+  attempt: number,
+  random: () => number = Math.random,
+): number {
+  const ceiling = Math.min(MAX_RECONNECT_DELAY_MS, BASE_RECONNECT_DELAY_MS * 2 ** Math.max(0, attempt));
+  const clamped = Math.min(1, Math.max(0, random()));
+  return Math.round(clamped * ceiling);
+}
+
 export interface StompTransportConfig {
   brokerURL: string;
   connectHeaders: Record<string, string>;
@@ -24,7 +39,8 @@ export function createStompJsTransport(config: StompTransportConfig): StompTrans
   const client = new Client({
     brokerURL: config.brokerURL,
     connectHeaders: config.connectHeaders,
-    reconnectDelay: 3000,
+    // Managed by RoomStompSession using exponential backoff with full jitter
+    reconnectDelay: 0,
     onConnect: () => config.onConnect(),
     onDisconnect: () => config.onDisconnect?.(),
     onWebSocketClose: (ev) => config.onWebSocketClose?.(ev?.code ?? 1000),

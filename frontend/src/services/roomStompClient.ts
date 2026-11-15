@@ -11,6 +11,7 @@ import {
 } from './roomApi';
 import { RoomStompChannels } from './roomStompChannels';
 import {
+  computeJitteredReconnectDelay,
   createStompJsTransport,
   type StompTransport,
   type StompTransportConfig,
@@ -23,6 +24,7 @@ export interface RoomStompSessionOptions {
   joinShard?: () => Promise<RoomJoinResponse>;
   fetchSnapshot?: (roomId: string) => Promise<RoomSnapshotResponse>;
   transportFactory?: (config: StompTransportConfig) => StompTransport;
+  random?: () => number;
   onStatusChange?: (status: RoomConnectionStatus, error?: StompErrorPayload | null) => void;
   onSnapshot?: (snapshot: RoomSnapshotResponse) => void;
   onEvent?: (event: RoomEvent) => void;
@@ -44,6 +46,8 @@ export class RoomStompSession extends RoomStompChannels {
   private stopped = false;
   private replaced = false;
   private roomFullRetried = false;
+  private reconnectAttempt = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: RoomStompSessionOptions = {}) {
     super({
@@ -74,6 +78,7 @@ export class RoomStompSession extends RoomStompChannels {
   private retryAfterRoomFull(): void {
     this.roomFullRetried = true;
     this.generation += 1;
+    this.clearReconnectTimer();
     const retryToken = this.activeToken;
     void this.teardownTransport().then(() => {
       if (!this.stopped && !this.replaced && retryToken && this.activeToken === retryToken) {
@@ -88,6 +93,8 @@ export class RoomStompSession extends RoomStompChannels {
     this.activeToken = token;
     this.stopped = false;
     this.replaced = false;
+    this.reconnectAttempt = 0;
+    this.clearReconnectTimer();
     if (!isRetry) this.roomFullRetried = false;
     this.options.onStatusChange?.('CONNECTING');
 
@@ -102,22 +109,41 @@ export class RoomStompSession extends RoomStompChannels {
 
     if (this.generation !== myGen || this.stopped || !shard?.roomId) return;
 
-    const roomId = shard.roomId;
+    await this.openTransport(token, shard.roomId, myGen);
+  }
+
+  private isCurrentSession(myGen: number): boolean {
+    return this.generation === myGen && !this.stopped && !this.replaced;
+  }
+
+  private async openTransport(token: string, roomId: string, myGen: number): Promise<void> {
     await this.teardownTransport();
+    if (!this.isCurrentSession(myGen)) return;
 
     const transport = this.transportFactory({
       brokerURL: this.wsUrl,
       connectHeaders: { Authorization: `Bearer ${token}` },
       onConnect: () => {
+        if (!this.isCurrentSession(myGen)) return;
+        this.clearReconnectTimer();
         void this.connectRoom({
           transport,
           roomId,
-          isCurrent: () => this.generation === myGen && !this.stopped && !this.replaced,
+          isCurrent: () => this.isCurrentSession(myGen),
           canRetryRoomFull: () => !this.roomFullRetried && Boolean(this.activeToken),
+        }).then((connected) => {
+          if (connected && this.isCurrentSession(myGen)) {
+            this.reconnectAttempt = 0;
+          }
         });
       },
       onWebSocketClose: (code) => {
-        if (this.generation === myGen && code === 4001) void this.markSessionReplaced(transport);
+        if (!this.isCurrentSession(myGen)) return;
+        if (code === 4001) {
+          void this.markSessionReplaced(transport);
+          return;
+        }
+        this.scheduleReconnect(token, roomId, myGen, transport);
       },
       onStompError: (message) => {
         if (this.generation !== myGen || this.replaced) return;
@@ -134,8 +160,34 @@ export class RoomStompSession extends RoomStompChannels {
     transport.activate();
   }
 
+  private scheduleReconnect(
+    token: string,
+    roomId: string,
+    myGen: number,
+    closedTransport: StompTransport,
+  ): void {
+    if (this.transport !== closedTransport || this.reconnectTimer !== null) return;
+    this.clearSubscriptions();
+    this.options.onStatusChange?.('RECONNECTING');
+    const delayMs = computeJitteredReconnectDelay(this.reconnectAttempt, this.options.random);
+    this.reconnectAttempt += 1;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (!this.isCurrentSession(myGen)) return;
+      void this.openTransport(token, roomId, myGen);
+    }, delayMs);
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
   async updateToken(nextToken: string): Promise<void> {
     if (!nextToken || (this.activeToken === nextToken && !this.stopped && !this.replaced)) return;
+    this.clearReconnectTimer();
     await this.teardownTransport();
     await this.start(nextToken);
   }
@@ -144,12 +196,14 @@ export class RoomStompSession extends RoomStompChannels {
     this.stopped = true;
     this.generation += 1;
     this.activeToken = null;
+    this.clearReconnectTimer();
     await this.teardownTransport();
   }
 
   private async markSessionReplaced(transport: StompTransport): Promise<void> {
     if (this.replaced) return;
     this.replaced = true;
+    this.clearReconnectTimer();
     transport.disableReconnect();
     this.options.onStatusChange?.('REPLACED');
     this.clearSubscriptions();

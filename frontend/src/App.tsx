@@ -4,6 +4,7 @@ import { GuestOnboardingModal } from './components/auth/GuestOnboardingModal';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
 import { CharacterCustomizerModal } from './components/hud/CharacterCustomizerModal';
 import { LeaveTableConfirmModal } from './components/hud/LeaveTableConfirmModal';
+import { ReconnectingBanner } from './components/hud/ReconnectingBanner';
 import { RoomChatBox } from './components/hud/RoomChatBox';
 import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
 import { StudyLeaderboardModal } from './components/hud/StudyLeaderboardModal';
@@ -128,6 +129,7 @@ export function App() {
       />
 
       {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
+      {connectionStatus === 'RECONNECTING' ? <ReconnectingBanner /> : null}
 
       {toastMessage ? (
         <aside

@@ -17,6 +17,8 @@ public interface RoomStateStore {
 
     Optional<String> findUserShard(String userId);
 
+    List<String> getKnownShards();
+
     long countPlayers(String roomId);
 
     boolean isShardKnownOrActive(String roomId);

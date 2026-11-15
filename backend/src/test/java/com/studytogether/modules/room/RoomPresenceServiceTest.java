@@ -240,6 +240,15 @@ public class RoomPresenceServiceTest {
         }
 
         @Override
+        public List<String> getKnownShards() {
+            return java.util.stream.Stream.concat(playersByRoom.keySet().stream(), seatsByRoom.keySet().stream())
+                    .filter(this::isShardKnownOrActive)
+                    .distinct()
+                    .sorted()
+                    .toList();
+        }
+
+        @Override
         public long countPlayers(String roomId) {
             return playersByRoom.getOrDefault(roomId, Map.of()).size();
         }

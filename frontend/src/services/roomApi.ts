@@ -100,6 +100,7 @@ export type RoomConnectionStatus =
   | 'IDLE'
   | 'CONNECTING'
   | 'CONNECTED'
+  | 'RECONNECTING'
   | 'REPLACED'
   | 'ERROR';
 

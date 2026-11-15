@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+// shortcut: in-memory ScheduledExecutorService assumes single backend instance; replace with Redis keyspace notifications or a Redis ZSET deadline poller when scaling horizontally
 @Component
 public class SeatDisconnectWatchdog {
 
@@ -92,12 +93,11 @@ public class SeatDisconnectWatchdog {
         activeTasks.remove(taskKey(roomId, userId));
 
         Optional<RoomPlayerState> playerOpt = stateStore.getPlayer(roomId, userId);
-        if (playerOpt.isEmpty()) {
-            return;
-        }
-        RoomPlayerState player = playerOpt.get();
-        if (player.connected() || !"SEATED".equals(player.state())) {
-            return;
+        if (playerOpt.isPresent()) {
+            RoomPlayerState player = playerOpt.get();
+            if (player.connected() || !"SEATED".equals(player.state())) {
+                return;
+            }
         }
 
         Optional<Long> recordedDisconnect = stateStore.getDisconnectTime(roomId, userId);
@@ -112,8 +112,16 @@ public class SeatDisconnectWatchdog {
 
         long now = clock.millis();
         long elapsed = now - disconnectEpoch;
-        if (elapsed < roomConfig.getSeatGraceDuration().toMillis()) {
-            log.debug("Grace period not yet expired according to clock (elapsed: {}ms)", elapsed);
+        long graceMs = roomConfig.getSeatGraceDuration().toMillis();
+        if (elapsed < graceMs) {
+            long remainingMs = Math.max(1L, graceMs - elapsed);
+            log.debug("Grace period not yet expired according to clock (elapsed: {}ms, rescheduling {}ms)", elapsed, remainingMs);
+            ScheduledFuture<?> future = scheduler.schedule(
+                    () -> executeGraceCheck(roomId, userId, seatId, tableId, disconnectEpoch),
+                    remainingMs,
+                    TimeUnit.MILLISECONDS
+            );
+            activeTasks.put(taskKey(roomId, userId), future);
             return;
         }
 

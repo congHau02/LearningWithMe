@@ -10,7 +10,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,23 +42,28 @@ public class RedisRoomStateStore implements RoomStateStore {
     @Override
     public Optional<String> findUserShard(String userId) {
         if (userId == null || userId.isBlank()) return Optional.empty();
-        Set<String> checked = new HashSet<>();
+        for (String shardId : getKnownShards()) {
+            if (userExistsInShard(shardId, userId)) return Optional.of(shardId);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public List<String> getKnownShards() {
+        Set<String> shards = new LinkedHashSet<>();
         int index = 1;
         while (true) {
             String shardId = RoomPresenceService.shardIdForIndex(index);
-            checked.add(shardId);
-            if (userExistsInShard(shardId, userId)) return Optional.of(shardId);
-            if (index > 1 && !isShardKnownOrActive(shardId)) break;
+            boolean active = isShardKnownOrActive(shardId);
+            if (index > 1 && !active) break;
+            if (active) shards.add(shardId);
             index++;
         }
         Set<String> extraShards = redisTemplate.opsForSet().members(SHARDS_KEY);
         if (extraShards != null) {
-            List<String> sortedExtras = extraShards.stream().filter(s -> !checked.contains(s)).sorted().toList();
-            for (String shardId : sortedExtras) {
-                if (userExistsInShard(shardId, userId)) return Optional.of(shardId);
-            }
+            extraShards.stream().filter(s -> !shards.contains(s)).sorted().forEach(shards::add);
         }
-        return Optional.empty();
+        return List.copyOf(shards);
     }
 
     @Override

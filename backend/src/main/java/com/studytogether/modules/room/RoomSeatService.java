@@ -134,22 +134,27 @@ public class RoomSeatService {
 
     public void evictGracePeriodSeat(String roomId, String userId, String seatId) {
         Optional<RoomPlayerState> playerOpt = stateStore.getPlayer(roomId, userId);
-        if (playerOpt.isEmpty() || playerOpt.get().connected()) {
+        if (playerOpt.isPresent() && playerOpt.get().connected()) {
             return;
         }
-        RoomPlayerState player = playerOpt.get();
-        String tableId = player.tableId() != null
+        if (playerOpt.isEmpty() && !userId.equals(stateStore.getSeats(roomId).get(seatId))) {
+            return;
+        }
+        RoomPlayerState player = playerOpt.orElse(null);
+        String tableId = (player != null && player.tableId() != null)
                 ? player.tableId()
                 : topologyService.getSeat(roomId, seatId).tableId();
-        long sitStart = player.sitStartTimeEpoch();
+        long sitStart = player != null ? player.sitStartTimeEpoch() : 0L;
         long now = System.currentTimeMillis();
 
         stateStore.releaseSeat(roomId, seatId);
         stateStore.deletePlayer(roomId, userId);
         stateStore.removeDisconnect(roomId, userId);
-        publishSeatReleasedSafely(new SeatReleasedEvent(
-                roomId, tableId, seatId, userId, sitStart, now, player.studyGoal(), player.role()
-        ));
+        if (player != null) {
+            publishSeatReleasedSafely(new SeatReleasedEvent(
+                    roomId, tableId, seatId, userId, sitStart, now, player.studyGoal(), player.role()
+            ));
+        }
 
         String newHostUserId = updateTableOnLeave(roomId, tableId, userId);
 
@@ -162,7 +167,7 @@ public class RoomSeatService {
 
         long leftSeq = stateStore.incrementEventSeq(roomId);
         RoomEvent leftEvent = new RoomEvent(
-                leftSeq, "PLAYER_LEFT", roomId, userId, null, player.toDto(), now
+                leftSeq, "PLAYER_LEFT", roomId, userId, null, player != null ? player.toDto() : null, now
         );
         messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", leftEvent);
     }

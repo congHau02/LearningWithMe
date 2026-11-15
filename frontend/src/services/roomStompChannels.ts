@@ -41,9 +41,9 @@ export abstract class RoomStompChannels {
 
   protected abstract getActiveTransport(): StompTransport | null;
 
-  protected async connectRoom(ctx: RoomConnectContext): Promise<void> {
+  protected async connectRoom(ctx: RoomConnectContext): Promise<boolean> {
     const { transport, roomId, isCurrent, canRetryRoomFull } = ctx;
-    if (!isCurrent()) return;
+    if (!isCurrent()) return false;
     this.clearSubscriptions();
 
     let snapshotLoaded = false;
@@ -84,17 +84,17 @@ export abstract class RoomStompChannels {
     try {
       snapshot = await this.channelCallbacks.fetchSnapshot(roomId);
     } catch (err) {
-      if (!isCurrent()) return;
+      if (!isCurrent()) return false;
       this.channelCallbacks.onStatusChange?.('ERROR', {
         code: 'SNAPSHOT_FETCH_FAILED',
         message: err instanceof Error ? err.message : 'Failed to fetch room snapshot',
         details: {},
         timestampEpoch: Date.now(),
       });
-      return;
+      return false;
     }
 
-    if (!isCurrent()) return;
+    if (!isCurrent()) return false;
 
     this.channelCallbacks.onSnapshot?.(snapshot);
     snapshotLoaded = true;
@@ -105,6 +105,7 @@ export abstract class RoomStompChannels {
         this.channelCallbacks.onEvent?.(buffered);
       }
     }
+    return true;
   }
 
   subscribeTableWorkspace(tableId: string, onRawMessage: (body: string) => void): void {
