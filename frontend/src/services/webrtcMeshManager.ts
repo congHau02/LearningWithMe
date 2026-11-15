@@ -1,12 +1,8 @@
 import { sendTableVoiceSignal } from './tableStompClient';
-import type { VoiceSignalPayload } from './tableApi';
+import type { VoiceSignalPayload, VoiceSignalRequest } from './tableApi';
 import { VoiceAudioAnalyzer } from './voiceAudioAnalyzer';
-import { useVoiceStore, type VoicePeerConnectionState } from '../stores/useVoiceStore';
-
-// shortcut: WebRTC P2P Mesh for <= 6 seats/table, upgrade to LiveKit SFU if table size > 8
-const RTC_ICE_CONFIG: RTCConfiguration = {
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-};
+import { WebRtcPeerPool } from './webrtcPeerPool';
+import { useVoiceStore } from '../stores/useVoiceStore';
 
 const SELF_AUDIO_KEY = '__self__';
 
@@ -21,19 +17,13 @@ function mapMicError(err: unknown): string {
   return 'Không thể khởi động micro. Vui lòng kiểm tra quyền trình duyệt.';
 }
 
-function mapConnectionState(state: RTCPeerConnectionState | undefined): VoicePeerConnectionState {
-  if (state === 'connected') return 'connected';
-  if (state === 'failed') return 'failed';
-  if (state === 'disconnected' || state === 'closed') return 'disconnected';
-  return 'connecting';
-}
-
+/**
+ * Coordinates table voice lifecycle, local microphone state, and WebRTC signaling.
+ */
 export class WebRtcMeshManager {
   private tableId: string | null = null;
   private selfUserId: string | null = null;
   private localStream: MediaStream | null = null;
-  private peers = new Map<string, RTCPeerConnection>();
-  private pendingIce = new Map<string, RTCIceCandidateInit[]>();
   private joined = false;
   private joinGeneration = 0;
 
@@ -46,9 +36,31 @@ export class WebRtcMeshManager {
     }
   });
 
+  private readonly peerPool = new WebRtcPeerPool({
+    isActive: () => this.joined && Boolean(this.tableId),
+    getLocalStream: () => this.localStream,
+    getIsMuted: () => useVoiceStore.getState().isMuted,
+    sendSignal: (payload) => this.sendSignal(payload),
+    onRemoteStream: (peerId, stream) => {
+      const muted = useVoiceStore.getState().peers[peerId]?.muted ?? false;
+      this.analyzer.attachStream(peerId, stream, true, muted);
+    },
+    onPeerStateChange: (peerId, connectionState) => {
+      useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState });
+    },
+    onPeerClosed: (peerId) => {
+      this.analyzer.detachStream(peerId);
+    },
+  });
+
   bindTable(tableId: string | null, selfUserId: string | null): void {
     this.tableId = tableId;
     this.selfUserId = selfUserId;
+  }
+
+  private sendSignal(payload: VoiceSignalRequest): void {
+    if (!this.tableId) return;
+    sendTableVoiceSignal(this.tableId, payload);
   }
 
   async join(): Promise<void> {
@@ -87,12 +99,12 @@ export class WebRtcMeshManager {
     this.analyzer.attachStream(SELF_AUDIO_KEY, stream, false, false);
     store.setInVoice(true, false);
 
-    sendTableVoiceSignal(this.tableId, { signalType: 'VOICE_JOIN', muted: false });
+    this.sendSignal({ signalType: 'VOICE_JOIN', muted: false });
 
     const knownPeers = Object.keys(useVoiceStore.getState().peers);
     for (const peerId of knownPeers) {
       if (peerId !== this.selfUserId && this.selfUserId < peerId) {
-        await this.createAndSendOffer(peerId);
+        await this.peerPool.createAndSendOffer(peerId);
       }
     }
   }
@@ -105,7 +117,7 @@ export class WebRtcMeshManager {
     }
     this.analyzer.setMuted(SELF_AUDIO_KEY, nextMuted);
     useVoiceStore.getState().setMuted(nextMuted);
-    sendTableVoiceSignal(this.tableId, { signalType: 'MUTE_STATUS', muted: nextMuted });
+    this.sendSignal({ signalType: 'MUTE_STATUS', muted: nextMuted });
     return nextMuted;
   }
 
@@ -119,25 +131,25 @@ export class WebRtcMeshManager {
 
     switch (signal.signalType) {
       case 'VOICE_JOIN': {
-        const existingPc = this.peers.get(senderId);
+        const hadPeer = this.peerPool.hasPeer(senderId);
         store.upsertPeer({
           userId: senderId,
           nickname: signal.senderNickname,
           muted: Boolean(signal.muted),
-          connectionState: this.joined ? mapConnectionState(existingPc?.connectionState) : 'ready',
+          connectionState: this.joined ? this.peerPool.getConnectionState(senderId) : 'ready',
         });
         if (!this.joined || !this.tableId) return;
 
-        if (!signal.targetUserId && existingPc) {
-          this.closePeer(senderId);
+        if (!signal.targetUserId && hadPeer) {
+          this.peerPool.closePeer(senderId);
         }
 
         if (selfId < senderId) {
-          if (!this.peers.has(senderId)) {
-            void this.createAndSendOffer(senderId);
+          if (!this.peerPool.hasPeer(senderId)) {
+            void this.peerPool.createAndSendOffer(senderId);
           }
         } else if (!signal.targetUserId) {
-          sendTableVoiceSignal(this.tableId, {
+          this.sendSignal({
             signalType: 'VOICE_JOIN',
             targetUserId: senderId,
             muted: store.isMuted,
@@ -146,7 +158,7 @@ export class WebRtcMeshManager {
         return;
       }
       case 'VOICE_LEAVE': {
-        this.closePeer(senderId);
+        this.peerPool.closePeer(senderId);
         store.removePeer(senderId);
         return;
       }
@@ -169,27 +181,27 @@ export class WebRtcMeshManager {
           connectionState: 'connecting',
           ...(typeof signal.muted === 'boolean' ? { muted: signal.muted } : {}),
         });
-        void this.handleOffer(senderId, signal.sdp);
+        void this.peerPool.handleOffer(senderId, signal.sdp);
         return;
       }
       case 'SDP_ANSWER': {
         if (!this.joined || !signal.sdp) return;
-        void this.handleAnswer(senderId, signal.sdp);
+        void this.peerPool.handleAnswer(senderId, signal.sdp);
         return;
       }
       case 'ICE_CANDIDATE': {
         if (!this.joined || !signal.candidate) return;
-        void this.handleIceCandidate(senderId, signal.candidate);
+        void this.peerPool.handleIceCandidate(senderId, signal.candidate);
       }
     }
   }
 
   syncSeatedMembers(seatedUserIds: Set<string>): void {
     const store = useVoiceStore.getState();
-    const allPeerIds = new Set([...Object.keys(store.peers), ...this.peers.keys()]);
+    const allPeerIds = new Set([...Object.keys(store.peers), ...this.peerPool.getPeerIds()]);
     for (const peerId of allPeerIds) {
       if (!seatedUserIds.has(peerId)) {
-        this.closePeer(peerId);
+        this.peerPool.closePeer(peerId);
         store.removePeer(peerId);
       }
     }
@@ -202,7 +214,7 @@ export class WebRtcMeshManager {
     this.joined = false;
 
     if (sendSignal && wasJoined && activeTableId) {
-      sendTableVoiceSignal(activeTableId, { signalType: 'VOICE_LEAVE' });
+      this.sendSignal({ signalType: 'VOICE_LEAVE' });
     }
 
     if (this.localStream) {
@@ -212,10 +224,7 @@ export class WebRtcMeshManager {
       this.localStream = null;
     }
 
-    for (const peerId of Array.from(this.peers.keys())) {
-      this.closePeer(peerId);
-    }
-    this.pendingIce.clear();
+    this.peerPool.closeAll();
     this.analyzer.destroy();
 
     const store = useVoiceStore.getState();
@@ -223,147 +232,5 @@ export class WebRtcMeshManager {
     for (const peerId of Object.keys(store.peers)) {
       store.upsertPeer({ userId: peerId, speaking: false, connectionState: 'ready' });
     }
-  }
-
-  private getOrCreatePeerConnection(peerId: string): RTCPeerConnection {
-    const existing = this.peers.get(peerId);
-    if (existing) return existing;
-
-    const pc = new RTCPeerConnection(RTC_ICE_CONFIG);
-    this.peers.set(peerId, pc);
-
-    if (this.localStream) {
-      for (const track of this.localStream.getTracks()) {
-        pc.addTrack(track, this.localStream);
-      }
-    }
-
-    pc.onicecandidate = (event) => {
-      if (!event.candidate || !this.joined || !this.tableId) return;
-      const candidateInit = typeof event.candidate.toJSON === 'function'
-        ? event.candidate.toJSON()
-        : {
-            candidate: event.candidate.candidate,
-            sdpMid: event.candidate.sdpMid,
-            sdpMLineIndex: event.candidate.sdpMLineIndex,
-          };
-      sendTableVoiceSignal(this.tableId, {
-        signalType: 'ICE_CANDIDATE',
-        targetUserId: peerId,
-        candidate: candidateInit,
-      });
-    };
-
-    pc.ontrack = (event) => {
-      const remoteStream = event.streams?.[0] ?? new MediaStream([event.track]);
-      const muted = useVoiceStore.getState().peers[peerId]?.muted ?? false;
-      this.analyzer.attachStream(peerId, remoteStream, true, muted);
-    };
-
-    pc.onconnectionstatechange = () => {
-      useVoiceStore.getState().upsertPeer({
-        userId: peerId,
-        connectionState: mapConnectionState(pc.connectionState),
-      });
-    };
-
-    return pc;
-  }
-
-  private async createAndSendOffer(peerId: string): Promise<void> {
-    if (!this.tableId || !this.joined) return;
-    useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'connecting' });
-    const pc = this.getOrCreatePeerConnection(peerId);
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      if (!this.joined || !this.tableId) return;
-      sendTableVoiceSignal(this.tableId, {
-        signalType: 'SDP_OFFER',
-        targetUserId: peerId,
-        muted: useVoiceStore.getState().isMuted,
-        sdp: { type: offer.type, sdp: offer.sdp },
-      });
-    } catch {
-      if (this.joined && this.peers.get(peerId) === pc) {
-        useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'failed' });
-      }
-    }
-  }
-
-  private async handleOffer(peerId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
-    if (!this.tableId || !this.joined) return;
-    if (this.peers.has(peerId)) {
-      this.closePeer(peerId);
-    }
-    const pc = this.getOrCreatePeerConnection(peerId);
-    try {
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-      await this.flushPendingIce(peerId, pc);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      if (!this.joined || !this.tableId) return;
-      sendTableVoiceSignal(this.tableId, {
-        signalType: 'SDP_ANSWER',
-        targetUserId: peerId,
-        sdp: { type: answer.type, sdp: answer.sdp },
-      });
-    } catch {
-      if (this.joined && this.peers.get(peerId) === pc) {
-        useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'failed' });
-      }
-    }
-  }
-
-  private async handleAnswer(peerId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
-    const pc = this.peers.get(peerId);
-    if (!pc || !this.joined) return;
-    try {
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-      await this.flushPendingIce(peerId, pc);
-    } catch {
-      if (this.joined && this.peers.get(peerId) === pc) {
-        useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'failed' });
-      }
-    }
-  }
-
-  private async handleIceCandidate(peerId: string, candidate: RTCIceCandidateInit): Promise<void> {
-    const pc = this.peers.get(peerId);
-    if (!pc || !pc.remoteDescription) {
-      const queue = this.pendingIce.get(peerId) ?? [];
-      queue.push(candidate);
-      this.pendingIce.set(peerId, queue);
-      return;
-    }
-    try {
-      await pc.addIceCandidate(new RTCIceCandidate(candidate));
-    } catch {
-      if (this.joined && this.peers.get(peerId) === pc) {
-        useVoiceStore.getState().upsertPeer({ userId: peerId, connectionState: 'failed' });
-      }
-    }
-  }
-
-  private async flushPendingIce(peerId: string, pc: RTCPeerConnection): Promise<void> {
-    const queued = this.pendingIce.get(peerId);
-    if (!queued || queued.length === 0) return;
-    this.pendingIce.delete(peerId);
-    for (const candidate of queued) {
-      await pc.addIceCandidate(new RTCIceCandidate(candidate));
-    }
-  }
-
-  private closePeer(peerId: string): void {
-    const pc = this.peers.get(peerId);
-    if (pc) {
-      pc.onicecandidate = null;
-      pc.ontrack = null;
-      pc.onconnectionstatechange = null;
-      pc.close();
-      this.peers.delete(peerId);
-    }
-    this.pendingIce.delete(peerId);
-    this.analyzer.detachStream(peerId);
   }
 }
