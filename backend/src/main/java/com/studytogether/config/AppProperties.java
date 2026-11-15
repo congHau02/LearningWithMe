@@ -32,7 +32,26 @@ public record AppProperties(
 
     public record Cors(
             @NotEmpty @DefaultValue({"http://localhost:5173", "http://127.0.0.1:5173"}) List<@NotBlank String> allowedOrigins
-    ) {}
+    ) {
+        public Cors {
+            if (allowedOrigins != null) {
+                allowedOrigins = allowedOrigins.stream()
+                        .map(origin -> origin == null ? "" : origin.trim())
+                        .peek(Cors::validateOriginPattern)
+                        .toList();
+            }
+        }
+
+        private static void validateOriginPattern(String origin) {
+            if ("*".equals(origin)
+                    || origin.matches("^https?://\\*$")
+                    || origin.matches("^https?://\\*\\.vercel\\.app$")) {
+                throw new IllegalArgumentException(
+                        "Overly broad wildcard origin is not permitted in app.cors.allowed-origins: " + origin
+                );
+            }
+        }
+    }
 
     public record Google(
             @DefaultValue("") String clientId,

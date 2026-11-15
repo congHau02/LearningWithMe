@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiRequest } from './apiClient';
+import { API_BASE_URL, apiRequest, normalizeBaseUrl } from './apiClient';
 import type { FacingDirection } from '../game/topology/roomTopology';
 
 export interface RoomJoinResponse {
@@ -105,8 +105,16 @@ export type RoomConnectionStatus =
   | 'ERROR';
 
 export function resolveWebSocketUrl(): string {
-  const base = API_BASE_URL.replace(/\/+$/, '');
-  const wsBase = base.replace(/^https:\/\//i, 'wss://').replace(/^http:\/\//i, 'ws://');
+  const configuredWsBase = normalizeBaseUrl(import.meta.env.VITE_WS_BASE_URL);
+  if (configuredWsBase) {
+    return configuredWsBase.endsWith('/ws')
+      ? configuredWsBase
+      : `${configuredWsBase}/ws`;
+  }
+  if (!API_BASE_URL) {
+    throw new Error('Missing VITE_API_BASE_URL or VITE_WS_BASE_URL for WebSocket connection.');
+  }
+  const wsBase = API_BASE_URL.replace(/^https:\/\//i, 'wss://').replace(/^http:\/\//i, 'ws://');
   return `${wsBase}/ws`;
 }
 

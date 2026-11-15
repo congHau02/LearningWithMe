@@ -377,6 +377,17 @@ node --test scripts/check-file-limits.test.mjs # Chạy unit test cho script ki�
 ```
 Ngưỡng áp dụng: `.tsx` $\le 200$, Phaser (`src/game/**/*.ts`) $\le 250$, Zustand stores (`src/stores/*.ts`) $\le 150$, TS khác $\le 250$, Java Controller/Handler $\le 150$, Java DTO/Record/Entity $\le 120$, Java Service/khác $\le 250$. (CI trong `.github/workflows/ci.yml` chạy song song 3 job: `file-limits`, `backend`, `frontend` trên mỗi PR vào `main`.)
 
+### 7.3. Triển khai Production (Vercel Frontend + Oracle ARM VM + Caddy + CD)
+
+Kiến trúc triển khai 0 đồng ([ADR-0007](docs/adr/0007-free-tier-oracle-vercel-topology.md)):
+- **Frontend (Vercel Hobby):** Deploy qua Git integration (Root Directory: `frontend`, cấu hình [frontend/vercel.json](frontend/vercel.json)) với biến build-time `VITE_API_BASE_URL` và `VITE_WS_BASE_URL` (không chứa `localhost` trong bản production).
+- **Backend + DB + TLS Proxy (Oracle Always Free ARM VM):** Chạy qua [docker-compose.prod.yml](docker-compose.prod.yml) và [deploy/Caddyfile](deploy/Caddyfile) (`mysql`, `redis` AOF, `backend` profile `prod`, `caddy` tự động cấp TLS cho subdomain DuckDNS).
+- **CD tự động:** Merge vào `main` kích hoạt [.github/workflows/cd.yml](.github/workflows/cd.yml) để build Docker image đa kiến trúc (`linux/arm64,linux/amd64`), đẩy lên GHCR và SSH vào VM chạy `docker compose -f docker-compose.prod.yml pull && up -d`.
+- **Wizard cấp phát hạ tầng:** Chạy script tương tác [scripts/setup-prod-infra.sh](scripts/setup-prod-infra.sh) (hỗ trợ WSL/Git Bash/macOS/Linux) để đi từng bước qua Oracle Cloud VM, DuckDNS, Vercel env, tạo `.env.prod.local` quyền `0600` và nạp GitHub Secrets (`VM_HOST`, `VM_USER`, `VM_SSH_KEY`):
+  ```bash
+  ./scripts/setup-prod-infra.sh
+  ```
+
 ---
 
 ## 8. TRẠNG THÁI TRIỂN KHAI (6 PHASES COMPLETED)

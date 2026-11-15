@@ -1,4 +1,4 @@
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+FROM --platform=$BUILDPLATFORM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /workspace/backend
 COPY backend/pom.xml .
 RUN mvn dependency:go-offline -B

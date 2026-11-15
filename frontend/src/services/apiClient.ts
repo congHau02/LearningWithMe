@@ -1,5 +1,12 @@
+export function normalizeBaseUrl(raw?: string): string {
+  return (raw ?? '').trim().replace(/\/+$/, '');
+}
+
+const configuredApiBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
+const isDevRuntime = import.meta.env.DEV === true && import.meta.env.PROD !== true;
+
 export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  configuredApiBaseUrl || (isDevRuntime ? 'http://localhost:8080' : '');
 
 export const AUTH_TOKEN_STORAGE_KEY = 'study_together_token';
 export const GUEST_TOKEN_STORAGE_KEY = 'guestToken';
