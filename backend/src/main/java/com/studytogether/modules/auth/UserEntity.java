@@ -28,6 +28,12 @@ public class UserEntity {
     @Column(name = "avatar_sprite_id", length = 50, nullable = false)
     private String avatarSpriteId = "default_student";
 
+    @Column(name = "equipped_hat_id", length = 50, nullable = false)
+    private String equippedHatId = "hat_none";
+
+    @Column(name = "equipped_desk_pet_id", length = 50, nullable = false)
+    private String equippedDeskPetId = "pet_sprout_pot";
+
     @Enumerated(EnumType.STRING)
     @Column(name = "auth_provider", nullable = false, columnDefinition = "ENUM('GUEST', 'LOCAL', 'GOOGLE')")
     private AuthProvider authProvider = AuthProvider.GUEST;
@@ -59,6 +65,10 @@ public class UserEntity {
     public void setNickname(String nickname) { this.nickname = nickname; }
     public String getAvatarSpriteId() { return avatarSpriteId; }
     public void setAvatarSpriteId(String avatarSpriteId) { this.avatarSpriteId = avatarSpriteId; }
+    public String getEquippedHatId() { return equippedHatId; }
+    public void setEquippedHatId(String equippedHatId) { this.equippedHatId = equippedHatId; }
+    public String getEquippedDeskPetId() { return equippedDeskPetId; }
+    public void setEquippedDeskPetId(String equippedDeskPetId) { this.equippedDeskPetId = equippedDeskPetId; }
     public AuthProvider getAuthProvider() { return authProvider; }
     public void setAuthProvider(AuthProvider authProvider) { this.authProvider = authProvider; }
     public long getTotalStudyMinutes() { return totalStudyMinutes; }

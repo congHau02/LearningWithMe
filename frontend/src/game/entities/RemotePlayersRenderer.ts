@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { RoomPlayerDto } from '../../services/roomApi';
 import { useGameStore } from '../../stores/useGameStore';
+import { CharacterAccessoriesOverlay } from './CharacterAccessoriesOverlay';
 import { ChatBubble } from './ChatBubble';
 import {
   PlayerSprite,
@@ -13,6 +14,7 @@ interface RemotePlayerEntry {
   model: PlayerSprite;
   animKey: string;
   chatBubble: ChatBubble;
+  accessories: CharacterAccessoriesOverlay;
   lastLabel?: string;
   sprite?: Phaser.GameObjects.Sprite;
   label?: Phaser.GameObjects.Text;
@@ -22,6 +24,9 @@ export interface RemotePlayerRenderSnapshot {
   userId: string;
   nickname: string;
   avatarKey: StarterAvatarKey;
+  skinId: string;
+  hatId: string;
+  deskPetId: string;
   tileX: number;
   tileY: number;
   pixelX: number;
@@ -47,6 +52,7 @@ export class RemotePlayersRenderer {
         entry.sprite?.destroy();
         entry.label?.destroy();
         entry.chatBubble.destroy();
+        entry.accessories.destroy();
         this.entries.delete(userId);
       }
     }
@@ -61,6 +67,8 @@ export class RemotePlayersRenderer {
           facingDir: player.facingDir,
           nickname: player.nickname,
           avatarId: player.avatarId,
+          hatId: player.hatId,
+          deskPetId: player.deskPetId,
         });
         model.syncFromStore({
           tileX: player.x,
@@ -70,14 +78,18 @@ export class RemotePlayersRenderer {
           isMoving: (player.isMoving ?? false) && player.state !== 'SEATED',
           nickname: player.nickname,
           avatarId: player.avatarId,
+          hatId: player.hatId,
+          deskPetId: player.deskPetId,
         });
 
         const chatBubble = new ChatBubble({ scene: this.scene });
+        const accessories = new CharacterAccessoriesOverlay({ scene: this.scene, depth: 10 });
         const entry: RemotePlayerEntry = {
           data: player,
           model,
           animKey: model.getAnimationKey(),
           chatBubble,
+          accessories,
         };
 
         if (this.scene) {
@@ -98,7 +110,7 @@ export class RemotePlayersRenderer {
               padding: { x: 4, y: 2 },
             })
             .setOrigin(0.5, 1)
-            .setDepth(10);
+            .setDepth(11);
         }
 
         this.entries.set(player.userId, entry);
@@ -116,6 +128,8 @@ export class RemotePlayersRenderer {
             player.state !== 'SEATED',
           nickname: player.nickname,
           avatarId: player.avatarId,
+          hatId: player.hatId,
+          deskPetId: player.deskPetId,
         });
       }
     }
@@ -147,6 +161,15 @@ export class RemotePlayersRenderer {
         entry.label.setAlpha(alpha);
       }
 
+      entry.accessories.update({
+        x: pos.x,
+        y: pos.y,
+        skinId: entry.model.getSkinId(),
+        hatId: entry.model.getHatId(),
+        deskPetId: entry.model.getDeskPetId(),
+        alpha,
+      });
+
       entry.chatBubble.update(now, pos.x, pos.y - 42);
     }
   }
@@ -176,6 +199,9 @@ export class RemotePlayersRenderer {
       userId: entry.data.userId,
       nickname: entry.model.getNickname(),
       avatarKey: entry.model.getAvatarId(),
+      skinId: entry.model.getSkinId(),
+      hatId: entry.model.getHatId(),
+      deskPetId: entry.model.getDeskPetId(),
       tileX: coord.tileX,
       tileY: coord.tileY,
       pixelX: px.x,
@@ -191,6 +217,7 @@ export class RemotePlayersRenderer {
       entry.sprite?.destroy();
       entry.label?.destroy();
       entry.chatBubble.destroy();
+      entry.accessories.destroy();
     }
     this.entries.clear();
   }

@@ -30,6 +30,8 @@ export function useAppBootstrap(): BackendConnectionStatus {
           userId: me.userId,
           nickname: me.nickname,
           avatarSpriteId: me.avatarId,
+          hatId: me.hatId,
+          deskPetId: me.deskPetId,
           studyGoal: me.studyGoal,
           authProvider,
           email: me.email ?? null,

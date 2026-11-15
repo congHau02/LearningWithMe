@@ -25,6 +25,8 @@ export interface AuthenticatedUserResponse {
   email?: string | null;
   nickname: string;
   avatarId: string;
+  hatId?: string;
+  deskPetId?: string;
   studyGoal: string;
   totalStudyMinutes?: number;
 }
@@ -60,6 +62,8 @@ export interface LoginResponse {
   email: string | null;
   nickname: string;
   avatarId: string;
+  hatId?: string;
+  deskPetId?: string;
   studyGoal: string;
   totalStudyMinutes: number;
 }
@@ -72,6 +76,8 @@ export interface UpgradeAccountResponse {
   email: string | null;
   nickname: string;
   avatarId: string;
+  hatId?: string;
+  deskPetId?: string;
   studyGoal: string;
   totalStudyMinutes: number;
   mergedSessionCount: number;

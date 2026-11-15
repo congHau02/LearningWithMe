@@ -52,6 +52,8 @@ public class AuthLoginService {
                 user.getEmail(),
                 user.getNickname(),
                 user.getAvatarSpriteId(),
+                user.getEquippedHatId(),
+                user.getEquippedDeskPetId(),
                 effectiveStudyGoal,
                 user.getTotalStudyMinutes()
         );

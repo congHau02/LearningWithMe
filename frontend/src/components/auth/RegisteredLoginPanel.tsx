@@ -31,6 +31,8 @@ export function RegisteredLoginPanel() {
       userId: response.userId,
       nickname: response.nickname,
       avatarSpriteId: response.avatarId,
+      hatId: response.hatId,
+      deskPetId: response.deskPetId,
       studyGoal: response.studyGoal,
       authProvider: response.authProvider,
       email: response.email,

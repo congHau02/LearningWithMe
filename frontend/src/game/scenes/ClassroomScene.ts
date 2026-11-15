@@ -6,6 +6,7 @@ import {
   InputController,
   isTypingInFormElement,
 } from '../controllers/InputController';
+import { CharacterAccessoriesOverlay } from '../entities/CharacterAccessoriesOverlay';
 import { ChatBubble } from '../entities/ChatBubble';
 import { PlayerSprite } from '../entities/PlayerSprite';
 import { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
@@ -29,6 +30,7 @@ export class ClassroomScene extends Phaser.Scene {
   private tableSosOverlay?: TableSosOverlay;
   private dynamicGraphics?: Phaser.GameObjects.Graphics;
   private actorSprite?: Phaser.GameObjects.Sprite;
+  private selfAccessoriesOverlay?: CharacterAccessoriesOverlay;
   private nicknameLabel?: Phaser.GameObjects.Text;
   private selfChatBubble?: ChatBubble;
   private storeUnsub?: () => void;
@@ -49,6 +51,8 @@ export class ClassroomScene extends Phaser.Scene {
       facingDir: initialGame.facingDir,
       nickname: initialAuth.nickname,
       avatarId: initialAuth.avatarSpriteId,
+      hatId: initialAuth.hatId,
+      deskPetId: initialAuth.deskPetId,
     });
   }
 
@@ -72,6 +76,7 @@ export class ClassroomScene extends Phaser.Scene {
       .setDepth(10);
     this.currentAnimKey = this.playerSprite.getAnimationKey();
     this.actorSprite.play(this.currentAnimKey, true);
+    this.selfAccessoriesOverlay = new CharacterAccessoriesOverlay({ scene: this, depth: 11 });
 
     this.nicknameLabel = this.add
       .text(pos.x, pos.y - 20, this.playerSprite.getNickname(), {
@@ -82,7 +87,7 @@ export class ClassroomScene extends Phaser.Scene {
         padding: { x: 4, y: 2 },
       })
       .setOrigin(0.5, 1)
-      .setDepth(11);
+      .setDepth(12);
 
     this.selfChatBubble = new ChatBubble({ scene: this });
 
@@ -141,6 +146,7 @@ export class ClassroomScene extends Phaser.Scene {
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
       this.storeUnsub?.();
+      this.selfAccessoriesOverlay?.destroy();
       this.selfChatBubble?.destroy();
       this.remotePlayersRenderer?.destroy();
       this.tableSosOverlay?.destroy();
@@ -160,6 +166,8 @@ export class ClassroomScene extends Phaser.Scene {
       isMoving: game.isMoving,
       nickname: auth.nickname,
       avatarId: auth.avatarSpriteId,
+      hatId: auth.hatId,
+      deskPetId: auth.deskPetId,
     });
 
     this.remotePlayersRenderer?.syncPlayers(game.remotePlayers);
@@ -167,6 +175,13 @@ export class ClassroomScene extends Phaser.Scene {
     this.tableSosOverlay?.update(game.roomTables, time);
 
     const pos = this.playerSprite.interpolatePosition(0.35);
+    this.selfAccessoriesOverlay?.update({
+      x: pos.x,
+      y: pos.y,
+      skinId: this.playerSprite.getSkinId(),
+      hatId: this.playerSprite.getHatId(),
+      deskPetId: this.playerSprite.getDeskPetId(),
+    });
     this.selfChatBubble?.update(Date.now(), pos.x, pos.y - 42);
     const animKey = this.playerSprite.getAnimationKey();
     if (this.actorSprite) {

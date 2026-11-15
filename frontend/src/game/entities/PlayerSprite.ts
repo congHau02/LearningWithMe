@@ -22,10 +22,12 @@ export const STARTER_AVATAR_KEYS: readonly StarterAvatarKey[] = [
 const LEGACY_AVATAR_ALIASES: Readonly<Record<string, StarterAvatarKey>> = {
   default_student: 'default_student',
   student_default_01: 'default_student',
+  skin_scholar_blazer: 'default_student',
   student_glasses: 'student_glasses',
   student_default_02: 'student_glasses',
   student_hoodie: 'student_hoodie',
   student_default_03: 'student_hoodie',
+  skin_hoodie_blue: 'student_hoodie',
   student_sprout: 'student_sprout',
   student_default_04: 'student_sprout',
 };
@@ -55,6 +57,9 @@ export class PlayerSprite {
   private posture: CharacterPosture;
   private nickname: string;
   private avatarId: StarterAvatarKey;
+  private skinId: string;
+  private hatId: string;
+  private deskPetId: string;
 
   constructor(options: {
     tileX: number;
@@ -63,6 +68,8 @@ export class PlayerSprite {
     facingDir?: FacingDirection;
     nickname?: string;
     avatarId?: string;
+    hatId?: string;
+    deskPetId?: string;
   }) {
     this.tileSize = options.tileSize ?? 32;
     this.tileX = options.tileX;
@@ -73,7 +80,10 @@ export class PlayerSprite {
     this.facingDir = options.facingDir ?? 'DOWN';
     this.posture = 'STANDING';
     this.nickname = options.nickname ?? 'Khách học';
-    this.avatarId = resolveAvatarTextureKey(options.avatarId ?? 'default_student');
+    this.skinId = options.avatarId ?? 'default_student';
+    this.avatarId = resolveAvatarTextureKey(this.skinId);
+    this.hatId = options.hatId ?? 'hat_none';
+    this.deskPetId = options.deskPetId ?? 'pet_sprout_pot';
   }
 
   public syncFromStore(state: {
@@ -84,6 +94,8 @@ export class PlayerSprite {
     isMoving: boolean;
     nickname?: string;
     avatarId?: string;
+    hatId?: string;
+    deskPetId?: string;
   }): void {
     this.tileX = state.tileX;
     this.tileY = state.tileY;
@@ -92,7 +104,14 @@ export class PlayerSprite {
       this.nickname = state.nickname;
     }
     if (state.avatarId !== undefined) {
+      this.skinId = state.avatarId;
       this.avatarId = resolveAvatarTextureKey(state.avatarId);
+    }
+    if (state.hatId !== undefined) {
+      this.hatId = state.hatId;
+    }
+    if (state.deskPetId !== undefined) {
+      this.deskPetId = state.deskPetId;
     }
 
     if (state.characterState === 'SEATED') {
@@ -147,5 +166,17 @@ export class PlayerSprite {
 
   public getAvatarId(): StarterAvatarKey {
     return this.avatarId;
+  }
+
+  public getSkinId(): string {
+    return this.skinId;
+  }
+
+  public getHatId(): string {
+    return this.hatId;
+  }
+
+  public getDeskPetId(): string {
+    return this.deskPetId;
   }
 }

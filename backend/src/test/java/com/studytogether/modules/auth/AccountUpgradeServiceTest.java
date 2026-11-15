@@ -93,7 +93,9 @@ class AccountUpgradeServiceTest {
 
         verify(userRepository).saveAndFlush(existing);
         verify(guestSessionStagingService).persistAndScheduleRedisCleanup(guestId, registeredId, staged);
-        verify(redisIdentitySwapService).swapIdentity(guestId, registeredId, "Cựu Học Viên", "skin_hoodie_blue");
+        verify(redisIdentitySwapService).swapIdentity(
+                guestId, registeredId, "Cựu Học Viên", "skin_hoodie_blue", "hat_none", "pet_sprout_pot"
+        );
     }
 
     @Test

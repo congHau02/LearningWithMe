@@ -10,9 +10,12 @@ import com.studytogether.modules.room.model.RoomPlayerDto;
 import com.studytogether.modules.room.model.RoomPlayerState;
 import com.studytogether.modules.room.model.RoomSnapshotResponse;
 import com.studytogether.modules.room.model.RoomTableSummary;
+import com.studytogether.modules.stats.CharacterCustomizationLookup;
+import com.studytogether.modules.stats.EquippedCustomizationDto;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
@@ -29,14 +32,21 @@ public class RoomPresenceService {
     private final StompSessionRegistry sessionRegistry;
     private final SimpMessagingTemplate messagingTemplate;
     private final SeatDisconnectWatchdog watchdog;
+    private final CharacterCustomizationLookup customizationLookup;
 
     public RoomPresenceService(
-            RoomConfig roomConfig,
-            RoomStateStore stateStore,
-            RoomTopologyService topologyService,
-            StompSessionRegistry sessionRegistry,
-            SimpMessagingTemplate messagingTemplate,
+            RoomConfig roomConfig, RoomStateStore stateStore, RoomTopologyService topologyService,
+            StompSessionRegistry sessionRegistry, SimpMessagingTemplate messagingTemplate,
             SeatDisconnectWatchdog watchdog
+    ) {
+        this(roomConfig, stateStore, topologyService, sessionRegistry, messagingTemplate, watchdog, null);
+    }
+
+    @Autowired
+    public RoomPresenceService(
+            RoomConfig roomConfig, RoomStateStore stateStore, RoomTopologyService topologyService,
+            StompSessionRegistry sessionRegistry, SimpMessagingTemplate messagingTemplate,
+            SeatDisconnectWatchdog watchdog, CharacterCustomizationLookup customizationLookup
     ) {
         this.roomConfig = roomConfig;
         this.stateStore = stateStore;
@@ -44,6 +54,7 @@ public class RoomPresenceService {
         this.sessionRegistry = sessionRegistry;
         this.messagingTemplate = messagingTemplate;
         this.watchdog = watchdog;
+        this.customizationLookup = customizationLookup;
     }
 
     public static String shardIdForIndex(int index) {
@@ -85,13 +96,7 @@ public class RoomPresenceService {
                 .toList();
         List<RoomChatMessage> recentMessages = stateStore.getRecentMessages(roomId, RECENT_CHAT_LIMIT);
         return new RoomSnapshotResponse(
-                topology.roomId(),
-                roomConfig.getShardCapacity(),
-                eventSeq,
-                players,
-                seats,
-                tables,
-                recentMessages
+                topology.roomId(), roomConfig.getShardCapacity(), eventSeq, players, seats, tables, recentMessages
         );
     }
 
@@ -108,35 +113,26 @@ public class RoomPresenceService {
         watchdog.cancelGraceCheck(roomId, principal.userId());
 
         String nickname = nonBlankOrDefault(principal.nickname(), "Learner");
-        String avatarId = nonBlankOrDefault(principal.avatarId(), "default_student");
+        EquippedCustomizationDto equipped = customizationLookup != null
+                ? customizationLookup.resolveEquipped(principal)
+                : EquippedCustomizationDto.defaults(nonBlankOrDefault(principal.avatarId(), "default_student"));
+        String avatarId = nonBlankOrDefault(equipped.skinId(), nonBlankOrDefault(principal.avatarId(), "default_student"));
+        String hatId = nonBlankOrDefault(equipped.hatId(), RoomPlayerState.DEFAULT_HAT_ID);
+        String deskPetId = nonBlankOrDefault(equipped.deskPetId(), RoomPlayerState.DEFAULT_DESK_PET_ID);
         String role = principal.role().name();
 
         RoomPlayerState nextState;
         String eventType;
         if (existingOpt.isPresent()) {
-            RoomPlayerState existing = existingOpt.get();
-            nextState = existing.withConnection(
-                    nickname, avatarId, role, wsSessionId, true, now, principal.studyGoal()
+            nextState = existingOpt.get().withConnection(
+                    nickname, avatarId, hatId, deskPetId, role, wsSessionId, true, now, principal.studyGoal()
             );
-            eventType = existing.connected() ? "PLAYER_UPDATED" : "PLAYER_RECONNECTED";
+            eventType = existingOpt.get().connected() ? "PLAYER_UPDATED" : "PLAYER_RECONNECTED";
         } else {
-            nextState = new RoomPlayerState(
-                    principal.userId(),
-                    nickname,
-                    avatarId,
-                    role,
-                    "FREE_ROAM",
-                    topology.spawnTile().tileX(),
-                    topology.spawnTile().tileY(),
-                    FacingDirection.DOWN.name(),
-                    null,
-                    null,
-                    wsSessionId,
-                    true,
-                    now,
-                    false,
-                    0L,
-                    principal.studyGoal()
+            nextState = RoomPlayerState.spawnFreeRoam(
+                    principal.userId(), nickname, avatarId, hatId, deskPetId, role,
+                    topology.spawnTile().tileX(), topology.spawnTile().tileY(),
+                    FacingDirection.DOWN.name(), wsSessionId, now, principal.studyGoal()
             );
             eventType = "PLAYER_JOINED";
         }
@@ -146,22 +142,14 @@ public class RoomPresenceService {
     }
 
     public void handleDisconnect(String userId, String roomIdHint, String wsSessionId) {
-        if (userId == null) {
-            return;
-        }
+        if (userId == null) return;
         String roomId = roomIdHint != null ? roomIdHint : stateStore.findUserShard(userId).orElse(null);
-        if (roomId == null) {
-            return;
-        }
+        if (roomId == null) return;
         Optional<RoomPlayerState> playerOpt = stateStore.getPlayer(roomId, userId);
-        if (playerOpt.isEmpty()) {
-            return;
-        }
+        if (playerOpt.isEmpty()) return;
 
         RoomPlayerState player = playerOpt.get();
-        if (player.activeWsSessionId() != null && !player.activeWsSessionId().equals(wsSessionId)) {
-            return;
-        }
+        if (player.activeWsSessionId() != null && !player.activeWsSessionId().equals(wsSessionId)) return;
 
         long now = System.currentTimeMillis();
         if ("SEATED".equals(player.state())) {
@@ -205,6 +193,8 @@ public class RoomPresenceService {
                 event.newUserId(),
                 nonBlankOrDefault(event.nickname(), currentOpt.get().nickname()),
                 nonBlankOrDefault(event.avatarId(), currentOpt.get().avatarId()),
+                nonBlankOrDefault(event.hatId(), currentOpt.get().hatId()),
+                nonBlankOrDefault(event.deskPetId(), currentOpt.get().deskPetId()),
                 "REGISTERED",
                 now
         );
@@ -215,6 +205,19 @@ public class RoomPresenceService {
 
         String previousUserId = event.previousUserId().equals(event.newUserId()) ? null : event.previousUserId();
         broadcastRoomEvent(roomId, "PLAYER_UPDATED", event.newUserId(), previousUserId, updated.toDto(), now);
+    }
+
+    public Optional<String> syncPlayerCustomization(String userId, String skinId, String hatId, String deskPetId) {
+        if (userId == null || userId.isBlank()) return Optional.empty();
+        String roomId = stateStore.findUserShard(userId).orElse(null);
+        if (roomId == null) return Optional.empty();
+        Optional<RoomPlayerState> currentOpt = stateStore.getPlayer(roomId, userId);
+        if (currentOpt.isEmpty()) return Optional.empty();
+        long now = System.currentTimeMillis();
+        RoomPlayerState updated = currentOpt.get().withCustomization(skinId, hatId, deskPetId, now);
+        stateStore.savePlayer(roomId, updated);
+        broadcastRoomEvent(roomId, "PLAYER_UPDATED", userId, null, updated.toDto(), now);
+        return Optional.of(roomId);
     }
 
     private RoomTableSummary toTableSummary(String roomId, TableMetadata table, Map<String, String> seats) {

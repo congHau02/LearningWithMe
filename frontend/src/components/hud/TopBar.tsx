@@ -1,9 +1,6 @@
 import type { CharacterState } from '../../stores/useGameStore';
 import type { AuthProvider } from '../../stores/useAuthStore';
-import {
-  DEFAULT_AVATAR_ID,
-  StarterAvatarPortrait,
-} from '../auth/starterAvatars';
+import { DEFAULT_AVATAR_ID, StarterAvatarPortrait } from '../auth/starterAvatars';
 
 export type BackendConnectionStatus = 'CHECKING' | 'UP' | 'OFFLINE';
 
@@ -12,6 +9,8 @@ export interface TopBarProps {
   characterState: CharacterState;
   nickname: string;
   avatarSpriteId?: string;
+  hatId?: string;
+  deskPetId?: string;
   authProvider: AuthProvider;
   studyGoal: string;
   totalStudyMinutes?: number;
@@ -23,6 +22,7 @@ export interface TopBarProps {
   onOpenUpgrade?: () => void;
   onOpenStudySessions?: () => void;
   onOpenLeaderboard?: () => void;
+  onOpenCustomizer?: () => void;
 }
 
 const STATE_LABELS: Record<CharacterState, string> = {
@@ -42,6 +42,8 @@ export function TopBar({
   characterState,
   nickname,
   avatarSpriteId = DEFAULT_AVATAR_ID,
+  hatId,
+  deskPetId,
   authProvider,
   studyGoal,
   totalStudyMinutes = 0,
@@ -53,6 +55,7 @@ export function TopBar({
   onOpenUpgrade,
   onOpenStudySessions,
   onOpenLeaderboard,
+  onOpenCustomizer,
 }: TopBarProps) {
   return (
     <header
@@ -112,7 +115,7 @@ export function TopBar({
         ) : null}
 
         <div className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/70 px-2 py-1">
-          <StarterAvatarPortrait avatarId={avatarSpriteId} size={22} />
+          <StarterAvatarPortrait avatarId={avatarSpriteId} hatId={hatId} deskPetId={deskPetId} size={22} testId="topbar-avatar-portrait" />
           {isTableHost ? (
             <span
               data-testid="table-host-crown"
@@ -167,9 +170,17 @@ export function TopBar({
             onClick={onOpenLeaderboard}
             title="Xem Bảng Xếp Hạng Giờ Học"
             className="min-h-8 rounded-md border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 font-medium text-amber-200 transition hover:bg-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            🏆 Bảng xếp hạng
-          </button>
+          >🏆 Bảng xếp hạng</button>
+        ) : null}
+
+        {onOpenCustomizer ? (
+          <button
+            type="button"
+            data-testid="customizer-open-btn"
+            onClick={onOpenCustomizer}
+            title="Tùy chỉnh Nhân vật & Thú cưng"
+            className="min-h-8 rounded-md border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 font-medium text-sky-200 transition hover:bg-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >🎨 Tủ đồ</button>
         ) : null}
 
         <span

@@ -1,6 +1,8 @@
 package com.studytogether.modules.auth;
 
 import com.studytogether.config.BusinessException;
+import com.studytogether.modules.stats.EquippedCustomizationDto;
+import com.studytogether.modules.stats.GuestCustomizationStore;
 import com.studytogether.modules.stats.GuestStudySessionStagingService;
 import com.studytogether.modules.stats.StagedGuestStudySession;
 import java.util.List;
@@ -23,35 +25,23 @@ public class AccountUpgradeService {
     private final GuestStudySessionStagingService guestSessionStagingService;
     private final RedisIdentitySwapService redisIdentitySwapService;
     private final ApplicationEventPublisher eventPublisher;
+    private final GuestCustomizationStore guestCustomizationStore;
 
     public AccountUpgradeService(
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            JwtTokenService jwtTokenService,
-            GoogleTokenVerifier googleTokenVerifier,
-            GuestStudySessionStagingService guestSessionStagingService,
+            UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenService jwtTokenService,
+            GoogleTokenVerifier googleTokenVerifier, GuestStudySessionStagingService guestSessionStagingService,
             RedisIdentitySwapService redisIdentitySwapService
     ) {
-        this(
-                userRepository,
-                passwordEncoder,
-                jwtTokenService,
-                googleTokenVerifier,
-                guestSessionStagingService,
-                redisIdentitySwapService,
-                event -> {}
-        );
+        this(userRepository, passwordEncoder, jwtTokenService, googleTokenVerifier,
+                guestSessionStagingService, redisIdentitySwapService, event -> {}, null);
     }
 
     @Autowired
     public AccountUpgradeService(
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            JwtTokenService jwtTokenService,
-            GoogleTokenVerifier googleTokenVerifier,
-            GuestStudySessionStagingService guestSessionStagingService,
-            RedisIdentitySwapService redisIdentitySwapService,
-            ApplicationEventPublisher eventPublisher
+            UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenService jwtTokenService,
+            GoogleTokenVerifier googleTokenVerifier, GuestStudySessionStagingService guestSessionStagingService,
+            RedisIdentitySwapService redisIdentitySwapService, ApplicationEventPublisher eventPublisher,
+            GuestCustomizationStore guestCustomizationStore
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -60,6 +50,7 @@ public class AccountUpgradeService {
         this.guestSessionStagingService = guestSessionStagingService;
         this.redisIdentitySwapService = redisIdentitySwapService;
         this.eventPublisher = eventPublisher;
+        this.guestCustomizationStore = guestCustomizationStore;
     }
 
     @Transactional
@@ -98,15 +89,14 @@ public class AccountUpgradeService {
     }
 
     private UpgradeAccountResponse createNewRegisteredAccount(
-            String guestId,
-            AuthProvider targetProvider,
-            ResolvedCredentials credentials,
-            AuthPrincipal principal,
-            List<StagedGuestStudySession> stagedSessions,
-            long mergedMinutes,
-            String effectiveStudyGoal
+            String guestId, AuthProvider targetProvider, ResolvedCredentials credentials,
+            AuthPrincipal principal, List<StagedGuestStudySession> stagedSessions,
+            long mergedMinutes, String effectiveStudyGoal
     ) {
-        UserEntity user = buildNewUserEntity(guestId, targetProvider, credentials, mergedMinutes, principal);
+        EquippedCustomizationDto guestEquipped = guestCustomizationStore != null
+                ? guestCustomizationStore.get(guestId).orElse(null)
+                : null;
+        UserEntity user = buildNewUserEntity(guestId, targetProvider, credentials, mergedMinutes, principal, guestEquipped);
         try {
             userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException ex) {
@@ -118,18 +108,16 @@ public class AccountUpgradeService {
 
         int mergedSessionCount = guestSessionStagingService.persistAndScheduleRedisCleanup(
                 guestId, user.getId(), stagedSessions);
+        if (guestCustomizationStore != null) {
+            guestCustomizationStore.scheduleDeleteAfterCommit(guestId);
+        }
         return issueUpgradeResponse(guestId, user, effectiveStudyGoal, mergedSessionCount);
     }
 
     private UpgradeAccountResponse mergeIntoExistingAccount(
-            UserEntity existingUser,
-            String guestId,
-            AuthProvider targetProvider,
-            String rawPassword,
-            List<StagedGuestStudySession> stagedSessions,
-            long mergedMinutes,
-            String effectiveStudyGoal,
-            boolean explicitExistingMode
+            UserEntity existingUser, String guestId, AuthProvider targetProvider,
+            String rawPassword, List<StagedGuestStudySession> stagedSessions,
+            long mergedMinutes, String effectiveStudyGoal, boolean explicitExistingMode
     ) {
         verifyExistingAccountCredentials(existingUser, targetProvider, rawPassword, explicitExistingMode);
 
@@ -138,10 +126,14 @@ public class AccountUpgradeService {
 
         int mergedSessionCount = guestSessionStagingService.persistAndScheduleRedisCleanup(
                 guestId, existingUser.getId(), stagedSessions);
+        if (guestCustomizationStore != null) {
+            guestCustomizationStore.scheduleDeleteAfterCommit(guestId);
+        }
 
         // Execute live Redis swap after MySQL flushes so @Transactional rolls back MySQL if Redis fails.
         redisIdentitySwapService.swapIdentity(
-                guestId, existingUser.getId(), existingUser.getNickname(), existingUser.getAvatarSpriteId()
+                guestId, existingUser.getId(), existingUser.getNickname(), existingUser.getAvatarSpriteId(),
+                existingUser.getEquippedHatId(), existingUser.getEquippedDeskPetId()
         );
 
         return issueUpgradeResponse(guestId, existingUser, effectiveStudyGoal, mergedSessionCount);
@@ -173,13 +165,12 @@ public class AccountUpgradeService {
     }
 
     private UpgradeAccountResponse issueUpgradeResponse(
-            String previousGuestId,
-            UserEntity user,
-            String effectiveStudyGoal,
-            int mergedSessionCount
+            String previousGuestId, UserEntity user, String effectiveStudyGoal, int mergedSessionCount
     ) {
         eventPublisher.publishEvent(new AccountIdentityUpgradedEvent(
-                previousGuestId, user.getId(), user.getNickname(), user.getAvatarSpriteId(), effectiveStudyGoal));
+                previousGuestId, user.getId(), user.getNickname(), user.getAvatarSpriteId(),
+                user.getEquippedHatId(), user.getEquippedDeskPetId(), effectiveStudyGoal
+        ));
         AuthPrincipal registeredPrincipal = new AuthPrincipal(
                 user.getId(), AuthRole.REGISTERED, user.getAuthProvider(),
                 user.getEmail(), user.getNickname(), user.getAvatarSpriteId(), effectiveStudyGoal
@@ -188,6 +179,7 @@ public class AccountUpgradeService {
         return new UpgradeAccountResponse(
                 user.getId(), accessToken, AuthRole.REGISTERED, user.getAuthProvider(),
                 user.getEmail(), user.getNickname(), user.getAvatarSpriteId(),
+                user.getEquippedHatId(), user.getEquippedDeskPetId(),
                 effectiveStudyGoal, user.getTotalStudyMinutes(), mergedSessionCount
         );
     }
@@ -219,12 +211,22 @@ public class AccountUpgradeService {
 
     private static UserEntity buildNewUserEntity(
             String guestId, AuthProvider targetProvider, ResolvedCredentials credentials,
-            long mergedMinutes, AuthPrincipal principal
+            long mergedMinutes, AuthPrincipal principal, EquippedCustomizationDto guestEquipped
     ) {
         String effectiveNickname = resolveNickname(principal.nickname(), credentials.fallbackName());
-        String effectiveAvatarId = principal.avatarId() != null && !principal.avatarId().isBlank()
+        String fallbackAvatar = principal.avatarId() != null && !principal.avatarId().isBlank()
                 ? principal.avatarId() : GuestAuthService.DEFAULT_AVATAR_ID;
+        String effectiveAvatarId = (guestEquipped != null && guestEquipped.skinId() != null && !guestEquipped.skinId().isBlank())
+                ? guestEquipped.skinId() : fallbackAvatar;
         UserEntity user = new UserEntity(guestId, effectiveNickname, effectiveAvatarId, targetProvider);
+        if (guestEquipped != null) {
+            if (guestEquipped.hatId() != null && !guestEquipped.hatId().isBlank()) {
+                user.setEquippedHatId(guestEquipped.hatId());
+            }
+            if (guestEquipped.deskPetId() != null && !guestEquipped.deskPetId().isBlank()) {
+                user.setEquippedDeskPetId(guestEquipped.deskPetId());
+            }
+        }
         user.setEmail(credentials.email());
         user.setPasswordHash(credentials.passwordHash());
         user.setTotalStudyMinutes(mergedMinutes);

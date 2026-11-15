@@ -34,6 +34,17 @@ public class RedisIdentitySwapService {
             String registeredNickname,
             String registeredAvatarId
     ) {
+        return swapIdentity(guestId, registeredUserId, registeredNickname, registeredAvatarId, "", "");
+    }
+
+    public long swapIdentity(
+            String guestId,
+            String registeredUserId,
+            String registeredNickname,
+            String registeredAvatarId,
+            String registeredHatId,
+            String registeredDeskPetId
+    ) {
         if (guestId == null || guestId.isBlank()
                 || registeredUserId == null || registeredUserId.isBlank()
                 || guestId.equals(registeredUserId)) {
@@ -47,13 +58,17 @@ public class RedisIdentitySwapService {
 
         String safeNickname = registeredNickname != null ? registeredNickname : "";
         String safeAvatarId = registeredAvatarId != null ? registeredAvatarId : "";
+        String safeHatId = registeredHatId != null ? registeredHatId : "";
+        String safeDeskPetId = registeredDeskPetId != null ? registeredDeskPetId : "";
         Long result = redisTemplate.execute(
                 swapIdentityScript,
                 targetKeys,
                 guestId,
                 registeredUserId,
                 safeNickname,
-                safeAvatarId
+                safeAvatarId,
+                safeHatId,
+                safeDeskPetId
         );
         return result != null ? result : 0L;
     }

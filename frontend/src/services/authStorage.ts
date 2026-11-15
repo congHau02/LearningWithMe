@@ -8,12 +8,16 @@ import type { AuthProvider } from '../stores/useAuthStore';
 export const SESSION_STORAGE_KEY = 'study_together_auth_session_v1';
 export const DEFAULT_GUEST_NICKNAME = 'Bạn học mới';
 export const DEFAULT_AVATAR_ID = 'default_student';
+export const DEFAULT_HAT_ID = 'hat_none';
+export const DEFAULT_DESK_PET_ID = 'pet_sprout_pot';
 export const DEFAULT_STUDY_GOAL = 'Tập trung ôn tập 45 phút';
 
 export interface NormalizedAuthSession {
   userId: string;
   nickname: string;
   avatarSpriteId: string;
+  hatId: string;
+  deskPetId: string;
   studyGoal: string;
   authProvider: AuthProvider;
   email: string | null;
@@ -25,6 +29,8 @@ export interface PersistedAuthSession {
   userId: string;
   nickname: string;
   avatarSpriteId: string;
+  hatId?: string;
+  deskPetId?: string;
   studyGoal: string;
   authProvider: AuthProvider;
   email?: string | null;
@@ -132,6 +138,8 @@ export function loadPersistedAuthSession(): NormalizedAuthSession | null {
           userId: parsed.userId,
           nickname: parsed.nickname ?? DEFAULT_GUEST_NICKNAME,
           avatarSpriteId: parsed.avatarSpriteId ?? DEFAULT_AVATAR_ID,
+          hatId: parsed.hatId ?? DEFAULT_HAT_ID,
+          deskPetId: parsed.deskPetId ?? DEFAULT_DESK_PET_ID,
           studyGoal: parsed.studyGoal ?? '',
           authProvider: parsed.authProvider ?? 'GUEST',
           email: parsed.email ?? null,
@@ -185,6 +193,8 @@ export function loadPersistedAuthSession(): NormalizedAuthSession | null {
       typeof jwtPayload.avatarId === 'string' && jwtPayload.avatarId
         ? jwtPayload.avatarId
         : DEFAULT_AVATAR_ID,
+    hatId: DEFAULT_HAT_ID,
+    deskPetId: DEFAULT_DESK_PET_ID,
     studyGoal:
       typeof jwtPayload.studyGoal === 'string' ? jwtPayload.studyGoal : '',
     authProvider,

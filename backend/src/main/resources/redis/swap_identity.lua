@@ -3,6 +3,8 @@ local guestId = ARGV[1]
 local registeredUserId = ARGV[2]
 local nickname = ARGV[3]
 local avatarId = ARGV[4]
+local hatId = ARGV[5] or ""
+local deskPetId = ARGV[6] or ""
 local swappedCount = 0
 
 local function startsWith(str, prefix)
@@ -31,6 +33,12 @@ for _, key in ipairs(KEYS) do
                 end
                 if avatarId ~= "" and obj.avatarId ~= nil then
                     obj.avatarId = avatarId
+                end
+                if hatId ~= "" then
+                    obj.hatId = hatId
+                end
+                if deskPetId ~= "" then
+                    obj.deskPetId = deskPetId
                 end
                 updated = cjson.encode(obj)
             end

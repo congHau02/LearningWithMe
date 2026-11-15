@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AccountUpgradeModal } from './components/auth/AccountUpgradeModal';
 import { GuestOnboardingModal } from './components/auth/GuestOnboardingModal';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
+import { CharacterCustomizerModal } from './components/hud/CharacterCustomizerModal';
 import { LeaveTableConfirmModal } from './components/hud/LeaveTableConfirmModal';
 import { RoomChatBox } from './components/hud/RoomChatBox';
 import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
@@ -35,26 +36,22 @@ export function App() {
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isStudySessionsOpen, setIsStudySessionsOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
 
   useEffect(() => {
     if (!toastMessage) return;
-    const timer = setTimeout(() => {
-      clearToast();
-    }, 3500);
+    const timer = setTimeout(() => clearToast(), 3500);
     return () => clearTimeout(timer);
   }, [toastMessage, clearToast]);
 
   useEffect(() => {
     if (characterState !== 'SEATED') return;
+    const hasOpenModal = isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen || isCustomizerOpen;
     const onEscape = (event: KeyboardEvent) => {
-      if (isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen) return;
+      if (hasOpenModal) return;
       const active = document.activeElement as HTMLElement | null;
       const tag = active?.tagName;
-      const isFormField =
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT' ||
-        Boolean(active?.isContentEditable);
+      const isFormField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || Boolean(active?.isContentEditable);
       if ((event.key === 'Escape' || event.key === 'Esc') && !isFormField) {
         event.preventDefault();
         openLeaveConfirm();
@@ -62,10 +59,12 @@ export function App() {
     };
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
-  }, [characterState, isStudySessionsOpen, isUpgradeModalOpen, isLeaderboardOpen, openLeaveConfirm]);
+  }, [characterState, isStudySessionsOpen, isUpgradeModalOpen, isLeaderboardOpen, isCustomizerOpen, openLeaveConfirm]);
 
   const nickname = useAuthStore((s) => s.nickname);
   const avatarSpriteId = useAuthStore((s) => s.avatarSpriteId);
+  const hatId = useAuthStore((s) => s.hatId);
+  const deskPetId = useAuthStore((s) => s.deskPetId);
   const authProvider = useAuthStore((s) => s.authProvider);
   const studyGoal = useAuthStore((s) => s.studyGoal);
   const totalStudyMinutes = useAuthStore((s) => s.totalStudyMinutes);
@@ -80,14 +79,10 @@ export function App() {
   useTableWorkspaceSync();
 
   useEffect(() => {
-    if (token) {
-      void refreshPersonalStudyStats();
-    }
+    if (token) void refreshPersonalStudyStats();
   }, [token]);
 
-  const handleLeaveSeat = () => {
-    requestLeaveSeat();
-  };
+  const handleLeaveSeat = () => requestLeaveSeat();
 
   const handleAccountUpgraded = (response: UpgradeAccountResponse) => {
     const previousUserId = useAuthStore.getState().userId;
@@ -97,14 +92,14 @@ export function App() {
       token: response.accessToken,
       nickname: response.nickname,
       avatarSpriteId: response.avatarId,
+      hatId: response.hatId,
+      deskPetId: response.deskPetId,
       studyGoal: response.studyGoal,
       email: response.email,
       totalStudyMinutes: response.totalStudyMinutes,
     });
     if (previousUserId && previousUserId !== response.userId) {
-      useTableStore
-        .getState()
-        .swapParticipantIdentity(previousUserId, response.userId);
+      useTableStore.getState().swapParticipantIdentity(previousUserId, response.userId);
     }
     setIsUpgradeModalOpen(false);
   };
@@ -116,6 +111,8 @@ export function App() {
         characterState={characterState}
         nickname={nickname}
         avatarSpriteId={avatarSpriteId}
+        hatId={hatId}
+        deskPetId={deskPetId}
         authProvider={authProvider}
         studyGoal={studyGoal}
         totalStudyMinutes={totalStudyMinutes}
@@ -124,13 +121,10 @@ export function App() {
         currentSeatId={currentSeatId}
         isTableHost={isTableHost}
         onLeaveSeat={handleLeaveSeat}
-        onOpenUpgrade={
-          token && authProvider === 'GUEST'
-            ? () => setIsUpgradeModalOpen(true)
-            : undefined
-        }
+        onOpenUpgrade={token && authProvider === 'GUEST' ? () => setIsUpgradeModalOpen(true) : undefined}
         onOpenStudySessions={token ? () => setIsStudySessionsOpen(true) : undefined}
         onOpenLeaderboard={token ? () => setIsLeaderboardOpen(true) : undefined}
+        onOpenCustomizer={token ? () => setIsCustomizerOpen(true) : undefined}
       />
 
       {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
@@ -168,26 +162,20 @@ export function App() {
           onUpgraded={handleAccountUpgraded}
         />
       ) : null}
-
       {token && isStudySessionsOpen ? (
-        <StudySessionsModal
-          authProvider={authProvider}
-          onClose={() => setIsStudySessionsOpen(false)}
-        />
+        <StudySessionsModal authProvider={authProvider} onClose={() => setIsStudySessionsOpen(false)} />
       ) : null}
-
       {token && isLeaderboardOpen ? (
         <StudyLeaderboardModal
           onClose={() => setIsLeaderboardOpen(false)}
-          onRequestUpgrade={
-            authProvider === 'GUEST'
-              ? () => {
-                  setIsLeaderboardOpen(false);
-                  setIsUpgradeModalOpen(true);
-                }
-              : undefined
-          }
+          onRequestUpgrade={authProvider === 'GUEST' ? () => {
+            setIsLeaderboardOpen(false);
+            setIsUpgradeModalOpen(true);
+          } : undefined}
         />
+      ) : null}
+      {token && isCustomizerOpen ? (
+        <CharacterCustomizerModal onClose={() => setIsCustomizerOpen(false)} />
       ) : null}
 
       {token ? <RoomChatBox /> : null}

@@ -11,6 +11,8 @@ export interface RoomPlayerDto {
   userId: string;
   nickname: string;
   avatarId: string;
+  hatId?: string;
+  deskPetId?: string;
   role: string;
   state: 'FREE_ROAM' | 'SEATED';
   x: number;
