@@ -346,6 +346,10 @@ docker compose up --build
 - **Giao diện Web (Frontend):** `http://localhost:5173`
 - **Backend API & Health Check:** `http://localhost:8080/api/v1/health`
 
+**Profile `prod` & Kiểm tra Redis AOF Persistence:**
+- Khi chạy thực tế (`SPRING_PROFILES_ACTIVE=prod`), Backend yêu cầu đủ biến môi trường bí mật trong `.env` (không fallback về giá trị dev), tin cậy `X-Forwarded-For` từ reverse proxy (`server.forward-headers-strategy: framework`), chỉ mở `/actuator/health`, ẩn stack trace khỏi `ProblemDetail`, xuất log dạng JSON (`logstash`), và giới hạn `10 requests/phút` theo IP cho `/api/v1/auth/{guest,login,upgrade}`.
+- Service `redis` trong `docker-compose.yml` chạy với `--appendonly yes --appendfsync everysec` gắn volume `redis_data:/data`. Kiểm chứng thủ công: ghi phiên học tạm của Guest (`RPUSH guest:<id>:sessions ...`), chạy `docker compose restart redis` và xác nhận `LRANGE guest:<id>:sessions 0 -1` giữ nguyên dữ liệu sau khi container khởi động lại.
+
 ### 7.2. Chạy môi trường Phát triển & Kiểm thử (Local Dev & Tests)
 
 **Frontend (`frontend/`):**

@@ -22,10 +22,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -94,6 +96,14 @@ class AccountUpgradeIntegrationTest {
 
     @MockitoBean
     private GoogleTokenVerifier googleTokenVerifier;
+
+    @BeforeEach
+    void clearAuthRateLimitKeys() {
+        Set<String> keys = redisTemplate.keys("ratelimit:auth:*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
 
     @Test
     void localUpgradeCreatesMysqlUserWithGuestIdAndBcryptPasswordAndReturnsRegisteredJwt() throws Exception {

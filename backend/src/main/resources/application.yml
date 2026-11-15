@@ -47,3 +47,7 @@ app:
   google:
     client-id: ${GOOGLE_CLIENT_ID:}
     jwk-set-uri: ${GOOGLE_JWK_SET_URI:https://www.googleapis.com/oauth2/v3/certs}
+  auth:
+    rate-limit:
+      max-requests: ${APP_AUTH_RATE_LIMIT_MAX_REQUESTS:10}
+      window-seconds: ${APP_AUTH_RATE_LIMIT_WINDOW_SECONDS:60}
