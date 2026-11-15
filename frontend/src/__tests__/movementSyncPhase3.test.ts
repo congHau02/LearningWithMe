@@ -88,7 +88,7 @@ describe('P3-T2 (#16): 10Hz Movement Sync, Server Validation & 60 FPS Remote Ler
 
       renderer.syncPlayers({ 'remote-lerp': initialPlayer });
       const snap0 = renderer.getSnapshot('remote-lerp');
-      expect(snap0).not.null;
+      expect(snap0).not.toBeNull();
       // Tile 10 center: 10 * 32 + 16 = 336
       expect(snap0?.pixelX).toBe(336);
       expect(snap0?.pixelY).toBe(336);

@@ -353,6 +353,7 @@ docker compose up --build
 cd frontend
 npm install
 npm run dev         # Chạy Vite dev server tại http://localhost:5173
+npm run lint        # Kiểm tra ESLint
 npm run typecheck   # Kiểm tra kiểu TypeScript
 npm test            # Chạy toàn bộ unit & integration tests với Vitest
 ```
@@ -362,7 +363,15 @@ npm test            # Chạy toàn bộ unit & integration tests với Vitest
 cd backend
 ./mvnw spring-boot:run   # Chạy Backend (yêu cầu MySQL 8.0 & Redis 7 đang chạy)
 ./mvnw test              # Chạy toàn bộ Unit Test & Testcontainers Integration Test
+./mvnw verify            # Chạy Testcontainers + cổng kiểm tra độ phủ JaCoCo (>= 70% trên modules/**)
 ```
+
+**Kiểm tra giới hạn số dòng theo `AGENTS.md` (từ thư mục gốc):**
+```bash
+node scripts/check-file-limits.mjs             # Kiểm tra toàn bộ file nguồn; thoát khác 0 nếu vượt ngưỡng
+node --test scripts/check-file-limits.test.mjs # Chạy unit test cho script kiểm tra
+```
+Ngưỡng áp dụng: `.tsx` $\le 200$, Phaser (`src/game/**/*.ts`) $\le 250$, Zustand stores (`src/stores/*.ts`) $\le 150$, TS khác $\le 250$, Java Controller/Handler $\le 150$, Java DTO/Record/Entity $\le 120$, Java Service/khác $\le 250$. (CI trong `.github/workflows/ci.yml` chạy song song 3 job: `file-limits`, `backend`, `frontend` trên mỗi PR vào `main`.)
 
 ---
 
