@@ -1,4 +1,5 @@
 import type { PermissionAction, TableMemberDto } from '../../services/tableApi';
+import { useVoiceStore } from '../../stores/useVoiceStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
 
 export interface TableMembersPanelProps {
@@ -20,6 +21,11 @@ export function TableMembersPanel({
   isSelfHost,
   onAction,
 }: TableMembersPanelProps) {
+  const inVoice = useVoiceStore((s) => s.inVoice);
+  const isSelfMuted = useVoiceStore((s) => s.isMuted);
+  const isSelfSpeaking = useVoiceStore((s) => s.isSelfSpeaking);
+  const voicePeers = useVoiceStore((s) => s.peers);
+
   return (
     <aside
       data-testid="table-members-panel"
@@ -39,6 +45,10 @@ export function TableMembersPanel({
           {members.map((member) => {
             const badge = ROLE_BADGES[member.tableRole];
             const isSelf = member.userId === selfUserId;
+            const peerVoice = voicePeers[member.userId];
+            const memberInVoice = isSelf ? inVoice : Boolean(peerVoice);
+            const memberMuted = isSelf ? isSelfMuted : Boolean(peerVoice?.muted);
+            const memberSpeaking = isSelf ? isSelfSpeaking && !isSelfMuted : Boolean(peerVoice?.speaking && !peerVoice.muted);
             return (
               <li
                 key={member.userId}
@@ -48,8 +58,20 @@ export function TableMembersPanel({
                 <div className="flex items-center gap-2">
                   <StarterAvatarPortrait avatarId={member.avatarId} size={24} />
                   <div>
-                    <p className="font-medium text-foreground">
-                      {member.nickname} {isSelf ? <span className="text-muted-foreground">(Bạn)</span> : null}
+                    <p className="flex items-center gap-1.5 font-medium text-foreground">
+                      <span>{member.nickname}</span>
+                      {isSelf ? <span className="text-muted-foreground">(Bạn)</span> : null}
+                      {memberSpeaking ? (
+                        <span
+                          data-testid={`speaking-indicator-${member.userId}`}
+                          aria-label={`${member.nickname} đang nói`}
+                          className="inline-flex items-end gap-0.5 rounded bg-emerald-500/20 px-1 py-0.5"
+                        >
+                          <span className="h-2 w-0.5 animate-pulse rounded bg-emerald-400" />
+                          <span className="h-3 w-0.5 animate-pulse rounded bg-emerald-300" />
+                          <span className="h-1.5 w-0.5 animate-pulse rounded bg-emerald-400" />
+                        </span>
+                      ) : null}
                     </p>
                     <p className="font-mono text-[10px] text-muted-foreground">
                       {member.seatId} {!member.connected ? '• Grace' : ''}
@@ -58,6 +80,18 @@ export function TableMembersPanel({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5">
+                  {memberInVoice ? (
+                    <span
+                      data-testid={`voice-mute-badge-${member.userId}`}
+                      className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+                        memberMuted
+                          ? 'border-amber-500/40 bg-amber-500/15 text-amber-300'
+                          : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                      }`}
+                    >
+                      {memberMuted ? 'Mic tắt' : 'Mic bật'}
+                    </span>
+                  ) : null}
                   <span
                     data-testid={`member-role-${member.userId}`}
                     className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}

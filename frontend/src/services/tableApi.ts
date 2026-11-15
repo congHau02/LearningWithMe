@@ -4,6 +4,31 @@ import type { BoardDrawAction, BoardStroke } from '../utils/homeworkCanvasMath';
 
 export type TableRole = 'TABLE_HOST' | 'CO_HOST' | 'MEMBER';
 export type HomeworkSlideAction = 'SELECT' | 'DELETE';
+export type VoiceSignalType =
+  | 'VOICE_JOIN'
+  | 'VOICE_LEAVE'
+  | 'SDP_OFFER'
+  | 'SDP_ANSWER'
+  | 'ICE_CANDIDATE'
+  | 'MUTE_STATUS';
+
+export interface VoiceSignalPayload {
+  signalType: VoiceSignalType;
+  senderUserId: string;
+  senderNickname: string;
+  targetUserId?: string | null;
+  muted?: boolean | null;
+  sdp?: RTCSessionDescriptionInit | null;
+  candidate?: RTCIceCandidateInit | null;
+}
+
+export interface VoiceSignalRequest {
+  signalType: VoiceSignalType;
+  targetUserId?: string | null;
+  muted?: boolean | null;
+  sdp?: RTCSessionDescriptionInit | null;
+  candidate?: RTCIceCandidateInit | null;
+}
 
 export interface HomeworkSlide {
   imageId: string;
@@ -75,7 +100,8 @@ export interface TableWorkspaceEvent {
     | 'HOMEWORK_SLIDE_SELECTED'
     | 'HOMEWORK_SLIDE_DELETED'
     | 'BOARD_DRAW'
-    | 'LASER_MOVE';
+    | 'LASER_MOVE'
+    | 'VOICE_SIGNAL';
   tableId: string;
   actorUserId: string;
   targetUserId: string | null;
@@ -94,6 +120,7 @@ export interface TableWorkspaceEvent {
   stroke?: BoardStroke | null;
   erasedStrokeId?: string | null;
   laserPointer?: LaserPointerPayload | null;
+  voiceSignal?: VoiceSignalPayload | null;
   timestampEpoch: number;
 }
 

@@ -9,6 +9,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { refreshPersonalStudyStats } from '../services/statsApi';
 import { useGameStore } from '../stores/useGameStore';
 import { useTableStore } from '../stores/useTableStore';
+import { teardownActiveVoice } from '../stores/useVoiceStore';
 
 export function useRoomSync(): void {
   const token = useAuthStore((s) => s.token);
@@ -54,6 +55,7 @@ export function useRoomSync(): void {
       }
 
       if (state.isPendingSeatLeave) {
+        teardownActiveVoice();
         sessionRef.current?.sendLeave(state.roomId);
         useGameStore.getState().leaveSeat();
         useTableStore.getState().leaveTable();

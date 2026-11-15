@@ -10,6 +10,7 @@ import com.studytogether.modules.table.model.PermissionRespondRequest;
 import com.studytogether.modules.table.model.SosToggleRequest;
 import com.studytogether.modules.table.model.TableChatSendRequest;
 import com.studytogether.modules.table.model.VideoSyncRequest;
+import com.studytogether.modules.table.model.VoiceSignalRequest;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import org.springframework.http.HttpStatus;
@@ -31,13 +32,14 @@ public class TableStompController {
     private final TableChatService tableChatService;
     private final TableHomeworkService homeworkService;
     private final TableBoardService boardService;
+    private final TableVoiceService voiceService;
     private final StompErrorDispatcher errorDispatcher;
 
     public TableStompController(
             TableWorkspaceService workspaceService, TableVideoService videoService,
             TableSosService sosService, TableChatService tableChatService,
             TableHomeworkService homeworkService, TableBoardService boardService,
-            StompErrorDispatcher errorDispatcher
+            TableVoiceService voiceService, StompErrorDispatcher errorDispatcher
     ) {
         this.workspaceService = workspaceService;
         this.videoService = videoService;
@@ -45,51 +47,37 @@ public class TableStompController {
         this.tableChatService = tableChatService;
         this.homeworkService = homeworkService;
         this.boardService = boardService;
+        this.voiceService = voiceService;
         this.errorDispatcher = errorDispatcher;
     }
 
     @MessageMapping("/table/{tableId}/permission.request")
-    public void requestControl(
-            @DestinationVariable String tableId,
-            @Valid @Payload(required = false) PermissionRequestPayload payload,
-            Principal user
-    ) {
+    public void requestControl(@DestinationVariable String tableId,
+            @Valid @Payload(required = false) PermissionRequestPayload payload, Principal user) {
         workspaceService.requestControl(extractPrincipal(user), tableId, payload);
     }
 
     @MessageMapping("/table/{tableId}/permission.respond")
-    public void respondPermission(
-            @DestinationVariable String tableId,
-            @Valid @Payload PermissionRespondRequest request,
-            Principal user
-    ) {
+    public void respondPermission(@DestinationVariable String tableId,
+            @Valid @Payload PermissionRespondRequest request, Principal user) {
         workspaceService.respondPermission(extractPrincipal(user), tableId, request);
     }
 
     @MessageMapping("/table/{tableId}/video.sync")
-    public void syncVideo(
-            @DestinationVariable String tableId,
-            @Valid @Payload VideoSyncRequest request,
-            Principal user
-    ) {
+    public void syncVideo(@DestinationVariable String tableId,
+            @Valid @Payload VideoSyncRequest request, Principal user) {
         videoService.syncVideo(extractPrincipal(user), tableId, request);
     }
 
     @MessageMapping("/table/{tableId}/sos.toggle")
-    public void toggleSos(
-            @DestinationVariable String tableId,
-            @Valid @Payload(required = false) SosToggleRequest request,
-            Principal user
-    ) {
+    public void toggleSos(@DestinationVariable String tableId,
+            @Valid @Payload(required = false) SosToggleRequest request, Principal user) {
         sosService.toggleSos(extractPrincipal(user), tableId, request);
     }
 
     @MessageMapping("/table/{tableId}/chat")
-    public void sendTableChat(
-            @DestinationVariable String tableId,
-            @Valid @Payload(required = false) TableChatSendRequest request,
-            Principal user
-    ) {
+    public void sendTableChat(@DestinationVariable String tableId,
+            @Valid @Payload(required = false) TableChatSendRequest request, Principal user) {
         tableChatService.sendTableChatMessage(extractPrincipal(user), tableId, request);
     }
 
@@ -101,6 +89,11 @@ public class TableStompController {
     @MessageMapping("/table/{tableId}/board.draw")
     public void handleBoardDraw(@DestinationVariable String tableId, @Valid @Payload BoardDrawRequest request, Principal user) {
         boardService.handleDraw(extractPrincipal(user), tableId, request);
+    }
+
+    @MessageMapping("/table/{tableId}/voice.signal")
+    public void handleVoiceSignal(@DestinationVariable String tableId, @Valid @Payload VoiceSignalRequest request, Principal user) {
+        voiceService.relaySignal(extractPrincipal(user), tableId, request);
     }
 
     @MessageExceptionHandler(MethodArgumentNotValidException.class)

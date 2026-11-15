@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { formatStudyDuration, useStudyTimer } from '../../hooks/useStudyTimer';
+import { useTableVoiceChat } from '../../hooks/useTableVoiceChat';
 import { sendTablePermissionRequest, sendTablePermissionRespond } from '../../services/tableStompClient';
 import type { PermissionAction } from '../../services/tableApi';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -11,6 +12,7 @@ import { SosBannerControl } from './SosBannerControl';
 import { SyncedYouTubePlayer } from './SyncedYouTubePlayer';
 import { TableChatPanel } from './TableChatPanel';
 import { TableMembersPanel } from './TableMembersPanel';
+import { VoiceChatBar } from './VoiceChatBar';
 
 export function TableWorkspaceShell() {
   const characterState = useGameStore((s) => s.characterState);
@@ -34,6 +36,11 @@ export function TableWorkspaceShell() {
   const activeTableId = tableId ?? currentTableId;
   const isSeated = characterState === 'SEATED' && Boolean(activeTableId);
   const elapsedSeconds = useStudyTimer(sitStartTimeEpoch, isSeated);
+  const { joinVoice, leaveVoice, toggleMute } = useTableVoiceChat(
+    isSeated ? activeTableId : null,
+    selfUserId,
+    members,
+  );
 
   useEffect(() => {
     if (!permissionToast) return;
@@ -165,6 +172,13 @@ export function TableWorkspaceShell() {
         </div>
 
         <div className="flex flex-col gap-4">
+          <VoiceChatBar
+            members={members}
+            selfUserId={selfUserId}
+            onJoinVoice={() => void joinVoice()}
+            onLeaveVoice={leaveVoice}
+            onToggleMute={toggleMute}
+          />
           <TableMembersPanel
             members={members}
             selfUserId={selfUserId}

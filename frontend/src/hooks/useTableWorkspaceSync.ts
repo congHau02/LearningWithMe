@@ -4,6 +4,7 @@ import { fetchTableWorkspaceState, type TableWorkspaceEvent } from '../services/
 import { useAuthStore } from '../stores/useAuthStore';
 import { useGameStore } from '../stores/useGameStore';
 import { useTableStore } from '../stores/useTableStore';
+import { dispatchIncomingVoiceSignal } from '../stores/useVoiceStore';
 
 export function useTableWorkspaceSync(): void {
   const characterState = useGameStore((s) => s.characterState);
@@ -23,6 +24,10 @@ export function useTableWorkspaceSync(): void {
     session?.subscribeTableWorkspace?.(currentTableId, (rawBody) => {
       try {
         const event = JSON.parse(rawBody) as TableWorkspaceEvent;
+        if (event.type === 'VOICE_SIGNAL' && event.voiceSignal) {
+          dispatchIncomingVoiceSignal(event.voiceSignal);
+          return;
+        }
         const selfUserId = useAuthStore.getState().userId;
         useTableStore.getState().applyWorkspaceEvent(event, selfUserId);
       } catch {

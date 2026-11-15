@@ -251,6 +251,13 @@ export class RoomStompSession {
     this.publishJson(`/app/table/${tableId}/board.draw`, payload);
   }
 
+  sendVoiceSignal(
+    tableId: string,
+    payload: import('./tableApi').VoiceSignalRequest,
+  ): void {
+    this.publishJson(`/app/table/${tableId}/voice.signal`, payload);
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.generation += 1;
