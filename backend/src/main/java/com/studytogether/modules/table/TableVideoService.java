@@ -6,6 +6,7 @@ import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.table.TableAuthorizationService.SeatedContext;
 import com.studytogether.modules.table.model.TableVideoState;
 import com.studytogether.modules.table.model.TableWorkspaceEvent;
+import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import com.studytogether.modules.table.model.VideoSyncAction;
 import com.studytogether.modules.table.model.VideoSyncRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -44,7 +45,7 @@ public class TableVideoService {
         RedisTableState updated = current.withVideoState(nextVideo);
         stateStore.saveTableState(roomId, tableId, updated);
 
-        TableWorkspaceEvent event = TableWorkspaceEvent.videoSynced(
+        TableWorkspaceEvent event = TableWorkspaceEvents.videoSynced(
                 tableId, principal.userId(), nextVideo, updated, now
         ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);

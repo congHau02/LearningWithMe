@@ -61,3 +61,42 @@ export function createStompJsTransport(config: StompTransportConfig): StompTrans
     deactivate: () => client.deactivate(),
   };
 }
+
+/**
+ * Coordinates exponential backoff with jitter across reconnect attempts.
+ */
+export class ReconnectBackoffTimer {
+  private attempt = 0;
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private readonly random?: () => number;
+
+  constructor(random?: () => number) {
+    this.random = random;
+  }
+
+  get isPending(): boolean {
+    return this.timer !== null;
+  }
+
+  schedule(task: () => void): void {
+    if (this.timer !== null) return;
+    const delayMs = computeJitteredReconnectDelay(this.attempt, this.random);
+    this.attempt += 1;
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      task();
+    }, delayMs);
+  }
+
+  clear(): void {
+    if (this.timer !== null) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+  }
+
+  reset(): void {
+    this.attempt = 0;
+    this.clear();
+  }
+}

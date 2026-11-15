@@ -1,6 +1,7 @@
 package com.studytogether.modules.auth;
 
 import com.studytogether.config.BusinessException;
+import com.studytogether.modules.auth.AccountUpgradeSupport.ResolvedCredentials;
 import com.studytogether.modules.stats.EquippedCustomizationDto;
 import com.studytogether.modules.stats.GuestCustomizationStore;
 import com.studytogether.modules.stats.GuestStudySessionStagingService;
@@ -55,7 +56,7 @@ public class AccountUpgradeService {
 
     @Transactional
     public UpgradeAccountResponse upgradeAccount(AuthPrincipal principal, UpgradeAccountRequest request) {
-        validateCallerIsActiveGuest(principal, request.guestToken());
+        AccountUpgradeSupport.validateCallerIsActiveGuest(principal, request.guestToken(), jwtTokenService);
 
         AuthProvider targetProvider = request.provider();
         if (targetProvider == null || targetProvider == AuthProvider.GUEST) {
@@ -67,7 +68,9 @@ public class AccountUpgradeService {
             throw AuthExceptions.alreadyRegistered();
         }
 
-        ResolvedCredentials credentials = resolveCredentials(targetProvider, request);
+        ResolvedCredentials credentials = AccountUpgradeSupport.resolveCredentials(
+                targetProvider, request, googleTokenVerifier, passwordEncoder
+        );
         List<StagedGuestStudySession> stagedSessions = guestSessionStagingService.readStagedSessions(guestId);
         long mergedMinutes = GuestStudySessionStagingService.sumMinutes(stagedSessions);
         String effectiveStudyGoal = principal.studyGoal() != null ? principal.studyGoal() : "";
@@ -96,7 +99,9 @@ public class AccountUpgradeService {
         EquippedCustomizationDto guestEquipped = guestCustomizationStore != null
                 ? guestCustomizationStore.get(guestId).orElse(null)
                 : null;
-        UserEntity user = buildNewUserEntity(guestId, targetProvider, credentials, mergedMinutes, principal, guestEquipped);
+        UserEntity user = AccountUpgradeSupport.buildNewUserEntity(
+                guestId, targetProvider, credentials, mergedMinutes, principal, guestEquipped
+        );
         try {
             userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException ex) {
@@ -119,7 +124,9 @@ public class AccountUpgradeService {
             String rawPassword, List<StagedGuestStudySession> stagedSessions,
             long mergedMinutes, String effectiveStudyGoal, boolean explicitExistingMode
     ) {
-        verifyExistingAccountCredentials(existingUser, targetProvider, rawPassword, explicitExistingMode);
+        AccountUpgradeSupport.verifyExistingAccountCredentials(
+                existingUser, targetProvider, rawPassword, explicitExistingMode, passwordEncoder
+        );
 
         existingUser.setTotalStudyMinutes(existingUser.getTotalStudyMinutes() + mergedMinutes);
         userRepository.saveAndFlush(existingUser);
@@ -137,31 +144,6 @@ public class AccountUpgradeService {
         );
 
         return issueUpgradeResponse(guestId, existingUser, effectiveStudyGoal, mergedSessionCount);
-    }
-
-    private void verifyExistingAccountCredentials(
-            UserEntity existingUser,
-            AuthProvider targetProvider,
-            String rawPassword,
-            boolean explicitExistingMode
-    ) {
-        if (targetProvider == AuthProvider.LOCAL) {
-            boolean matches = existingUser.getAuthProvider() == AuthProvider.LOCAL
-                    && existingUser.getPasswordHash() != null
-                    && rawPassword != null
-                    && passwordEncoder.matches(rawPassword, existingUser.getPasswordHash());
-            if (!matches) {
-                throw explicitExistingMode
-                        ? AuthExceptions.invalidCredentials("Invalid email or password")
-                        : AuthExceptions.emailConflict("An account with this email already exists. Provide its password to merge, or sign in.");
-            }
-            return;
-        }
-        if (existingUser.getAuthProvider() != AuthProvider.GOOGLE) {
-            throw AuthExceptions.emailConflict(
-                    "An account with this email is already registered with Email & Password. Please sign in with your password."
-            );
-        }
     }
 
     private UpgradeAccountResponse issueUpgradeResponse(
@@ -183,65 +165,4 @@ public class AccountUpgradeService {
                 effectiveStudyGoal, user.getTotalStudyMinutes(), mergedSessionCount
         );
     }
-
-    private ResolvedCredentials resolveCredentials(AuthProvider provider, UpgradeAccountRequest request) {
-        if (provider == AuthProvider.GOOGLE) {
-            GoogleUserClaims claims = googleTokenVerifier.verify(request.googleIdToken());
-            return new ResolvedCredentials(claims.email(), null, claims.name());
-        }
-        String hashedPassword = Boolean.TRUE.equals(request.existingAccount())
-                ? null
-                : passwordEncoder.encode(request.password());
-        return new ResolvedCredentials(request.email(), hashedPassword, null);
-    }
-
-    private void validateCallerIsActiveGuest(AuthPrincipal principal, String optionalBodyGuestToken) {
-        if (principal == null) {
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Unauthorized", "Valid Bearer guestToken is required");
-        }
-        if (principal.role() != AuthRole.GUEST) {
-            throw AuthExceptions.alreadyRegistered();
-        }
-        if (optionalBodyGuestToken != null) {
-            jwtTokenService.parseToken(optionalBodyGuestToken)
-                    .filter(tp -> tp.role() == AuthRole.GUEST && tp.userId().equals(principal.userId()))
-                    .orElseThrow(AuthExceptions::invalidGuestToken);
-        }
-    }
-
-    private static UserEntity buildNewUserEntity(
-            String guestId, AuthProvider targetProvider, ResolvedCredentials credentials,
-            long mergedMinutes, AuthPrincipal principal, EquippedCustomizationDto guestEquipped
-    ) {
-        String effectiveNickname = resolveNickname(principal.nickname(), credentials.fallbackName());
-        String fallbackAvatar = principal.avatarId() != null && !principal.avatarId().isBlank()
-                ? principal.avatarId() : GuestAuthService.DEFAULT_AVATAR_ID;
-        String effectiveAvatarId = (guestEquipped != null && guestEquipped.skinId() != null && !guestEquipped.skinId().isBlank())
-                ? guestEquipped.skinId() : fallbackAvatar;
-        UserEntity user = new UserEntity(guestId, effectiveNickname, effectiveAvatarId, targetProvider);
-        if (guestEquipped != null) {
-            if (guestEquipped.hatId() != null && !guestEquipped.hatId().isBlank()) {
-                user.setEquippedHatId(guestEquipped.hatId());
-            }
-            if (guestEquipped.deskPetId() != null && !guestEquipped.deskPetId().isBlank()) {
-                user.setEquippedDeskPetId(guestEquipped.deskPetId());
-            }
-        }
-        user.setEmail(credentials.email());
-        user.setPasswordHash(credentials.passwordHash());
-        user.setTotalStudyMinutes(mergedMinutes);
-        return user;
-    }
-
-    private static String resolveNickname(String guestNickname, String googleName) {
-        if (guestNickname != null && !guestNickname.isBlank()) {
-            return guestNickname;
-        }
-        if (googleName != null && !googleName.isBlank()) {
-            return googleName.length() <= 20 ? googleName : googleName.substring(0, 20);
-        }
-        return "Thành viên mới";
-    }
-
-    private record ResolvedCredentials(String email, String passwordHash, String fallbackName) {}
 }

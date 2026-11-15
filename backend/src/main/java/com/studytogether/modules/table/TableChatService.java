@@ -9,6 +9,7 @@ import com.studytogether.modules.table.TableAuthorizationService.SeatedContext;
 import com.studytogether.modules.table.model.TableChatMessage;
 import com.studytogether.modules.table.model.TableChatSendRequest;
 import com.studytogether.modules.table.model.TableWorkspaceEvent;
+import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import java.util.UUID;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -76,7 +77,7 @@ public class TableChatService {
         stateStore.appendTableChatMessage(ctx.roomId(), tableId, message, RECENT_TABLE_CHAT_LIMIT);
 
         RedisTableState tableState = stateStore.getTableState(ctx.roomId(), tableId).orElseGet(RedisTableState::empty);
-        TableWorkspaceEvent event = TableWorkspaceEvent.tableChat(
+        TableWorkspaceEvent event = TableWorkspaceEvents.tableChat(
                 tableId, principal.userId(), message, tableState, now
         ).withRoomId(ctx.roomId());
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);

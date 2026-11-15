@@ -1,8 +1,5 @@
 import { useGameStore } from '../../stores/useGameStore';
-import {
-  SeatInteractionManager,
-  resolveDirectionBetweenTiles,
-} from '../managers/SeatInteractionManager';
+import { SeatInteractionManager } from '../managers/SeatInteractionManager';
 import { GridPathfinder } from '../pathfinding/GridPathfinder';
 import {
   MAIN_LIBRARY_TOPOLOGY,
@@ -13,8 +10,10 @@ import {
 import {
   DIRECTION_DELTAS,
   isTypingInFormElement,
+  KeyboardHoldTracker,
   mapKeyToDirection,
 } from './keyboardMapping';
+import { advancePathStep, queueFloorTilePath } from './tilePathHelpers';
 
 export { isTypingInFormElement, mapKeyToDirection };
 
@@ -22,9 +21,8 @@ export class InputController {
   private readonly pathfinder: GridPathfinder;
   private readonly seatManager: SeatInteractionManager;
   private readonly stepIntervalMs: number;
+  private readonly keyboardTracker = new KeyboardHoldTracker();
   private stepAccumulatorMs = 0;
-  private holdAccumulatorMs = 0;
-  private heldDirections: FacingDirection[] = [];
 
   constructor(options?: {
     topology?: RoomTopology;
@@ -56,7 +54,7 @@ export class InputController {
   public handleKeyDown(key: string, isRepeat = false): boolean {
     const store = useGameStore.getState();
     if (store.characterState === 'SEATED') {
-      this.heldDirections = [];
+      this.keyboardTracker.clear();
       if (key === 'Escape' || key === 'Esc') {
         return this.seatManager.requestLeaveConfirmation();
       }
@@ -68,38 +66,23 @@ export class InputController {
       return false;
     }
 
-    this.heldDirections = [
-      ...this.heldDirections.filter((d) => d !== direction),
-      direction,
-    ];
-
+    this.keyboardTracker.press(direction, isRepeat);
     if (isRepeat) {
       return true;
     }
 
-    this.holdAccumulatorMs = 0;
     return this.moveByDirection(direction);
   }
 
   public handleKeyUp(key?: string): void {
-    if (key) {
-      const direction = mapKeyToDirection(key);
-      if (direction) {
-        this.heldDirections = this.heldDirections.filter(
-          (d) => d !== direction,
-        );
-      }
-    } else {
-      this.heldDirections = [];
-    }
-
+    const noKeysHeld = this.keyboardTracker.release(key);
     const store = useGameStore.getState();
     if (
       store.characterState !== 'SEATED' &&
       store.pathQueue.length === 0 &&
-      this.heldDirections.length === 0
+      noKeysHeld
     ) {
-      this.holdAccumulatorMs = 0;
+      this.keyboardTracker.resetAccumulator();
       store.setIsMoving(false);
     }
   }
@@ -153,81 +136,32 @@ export class InputController {
       return { moved: false, path: [] };
     }
 
-    const start: TileCoordinate = {
-      tileX: store.position.x,
-      tileY: store.position.y,
-    };
-    const path = this.pathfinder.findPath(start, { tileX, tileY });
-
-    // Spec #13 AC2: clicking an obstacle/wall leaves any existing valid path intact
-    if (path.length === 0) {
-      return { moved: false, path: [] };
+    const floorResult = queueFloorTilePath(this.pathfinder, tileX, tileY, () => this.clearPath());
+    if (floorResult.moved) {
+      this.stepAccumulatorMs = 0;
     }
-
-    if (store.characterState === 'WALKING_TO_SEAT') {
-      this.clearPath();
-    }
-
-    const latestStore = useGameStore.getState();
-    const initialDir = resolveDirectionBetweenTiles(
-      start,
-      path[0],
-      latestStore.facingDir,
-    );
-    this.stepAccumulatorMs = 0;
-    latestStore.setFacingDir(initialDir);
-    latestStore.setPathQueue(path);
-    return { moved: true, path };
+    return floorResult;
   }
 
   public stepPath(): TileCoordinate | null {
-    const store = useGameStore.getState();
-    if (store.characterState === 'SEATED' || store.pathQueue.length === 0) {
-      return null;
-    }
-
-    const [nextTile, ...remainingQueue] = store.pathQueue;
-    const currentTile: TileCoordinate = {
-      tileX: store.position.x,
-      tileY: store.position.y,
-    };
-    const nextDir = resolveDirectionBetweenTiles(
-      currentTile,
-      nextTile,
-      store.facingDir,
-    );
-
-    store.setPosition(
-      { x: nextTile.tileX, y: nextTile.tileY },
-      nextDir,
-      remainingQueue.length > 0,
-    );
-    store.setPathQueue(remainingQueue);
-
-    if (remainingQueue.length === 0) {
-      if (useGameStore.getState().characterState === 'WALKING_TO_SEAT') {
-        this.seatManager.completeArrivalAtSeat();
-      } else {
-        useGameStore.getState().setIsMoving(false);
-      }
-    }
-
-    return nextTile;
+    return advancePathStep(this.seatManager);
   }
 
   public update(deltaMs: number, heldDirection?: FacingDirection | null): void {
     const store = useGameStore.getState();
     if (store.characterState === 'SEATED' || isTypingInFormElement()) {
-      this.heldDirections = [];
+      this.keyboardTracker.clear();
       return;
     }
 
-    const activeDir = heldDirection ?? this.heldDirections.at(-1) ?? null;
-    if (activeDir) {
-      this.holdAccumulatorMs += deltaMs;
-      while (this.holdAccumulatorMs >= this.stepIntervalMs) {
-        this.holdAccumulatorMs -= this.stepIntervalMs;
-        this.moveByDirection(activeDir);
+    const { active, steps } = this.keyboardTracker.consumeSteps(
+      deltaMs,
+      this.stepIntervalMs,
+      heldDirection,
+    );
+    if (active) {
+      for (const dir of steps) {
+        this.moveByDirection(dir);
       }
       return;
     }

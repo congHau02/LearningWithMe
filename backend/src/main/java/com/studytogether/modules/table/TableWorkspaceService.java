@@ -11,11 +11,9 @@ import com.studytogether.modules.table.model.PermissionAction;
 import com.studytogether.modules.table.model.PermissionRequestPayload;
 import com.studytogether.modules.table.model.PermissionRespondRequest;
 import com.studytogether.modules.table.model.TableMemberDto;
-import com.studytogether.modules.table.model.TableRole;
 import com.studytogether.modules.table.model.TableWorkspaceEvent;
+import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import com.studytogether.modules.table.model.TableWorkspaceSnapshot;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -44,7 +42,7 @@ public class TableWorkspaceService {
         topologyService.getTable(roomId, tableId);
         authService.requireSeatedInRoom(principal.userId(), roomId, tableId);
         RedisTableState tableState = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-        List<TableMemberDto> members = resolveTableMembers(roomId, tableId, tableState);
+        List<TableMemberDto> members = TablePermissionCoordinator.resolveTableMembers(stateStore, roomId, tableId, tableState);
         return new TableWorkspaceSnapshot(
                 roomId,
                 tableId,
@@ -64,7 +62,7 @@ public class TableWorkspaceService {
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
         RedisTableState tableState = stateStore.getTableState(ctx.roomId(), tableId).orElseGet(RedisTableState::empty);
         String requesterName = ctx.player().nickname() != null ? ctx.player().nickname() : principal.nickname();
-        TableWorkspaceEvent event = TableWorkspaceEvent.permissionRequested(
+        TableWorkspaceEvent event = TableWorkspaceEvents.permissionRequested(
                 tableId, principal.userId(), requesterName, tableState, System.currentTimeMillis()
         ).withRoomId(ctx.roomId());
         messagingTemplate.convertAndSend(workspaceTopic(tableId), event);
@@ -84,22 +82,15 @@ public class TableWorkspaceService {
         PermissionAction action = request.action();
         String targetUserId = request.targetUserId() != null ? request.targetUserId().trim() : null;
 
-        RedisTableState updated = switch (action) {
-            case GRANT -> handleGrant(roomId, tableId, current, targetUserId);
-            case DENY -> {
-                requireTargetUserId(targetUserId);
-                yield current;
-            }
-            case REVOKE -> handleRevoke(current, targetUserId);
-            case TRANSFER_HOST -> handleTransferHost(roomId, tableId, current, targetUserId);
-            case TOGGLE_FREE_COLLAB -> handleToggleFreeCollab(current, request.isFreeCollab());
-        };
+        RedisTableState updated = TablePermissionCoordinator.applyPermissionChange(
+                stateStore, authService, roomId, tableId, current, request, targetUserId
+        );
 
         if (action != PermissionAction.DENY) {
             stateStore.saveTableState(roomId, tableId, updated);
         }
 
-        TableWorkspaceEvent event = TableWorkspaceEvent.permissionUpdated(
+        TableWorkspaceEvent event = TableWorkspaceEvents.permissionUpdated(
                 tableId, action, principal.userId(), targetUserId, updated, now
         ).withRoomId(roomId);
         messagingTemplate.convertAndSend(workspaceTopic(tableId), event);
@@ -110,78 +101,6 @@ public class TableWorkspaceService {
             messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", roomEvent);
         }
         return event;
-    }
-
-    private RedisTableState handleGrant(String roomId, String tableId, RedisTableState current, String targetUserId) {
-        requireTargetUserId(targetUserId);
-        authService.requireSeatedInRoom(targetUserId, roomId, tableId);
-        if (targetUserId.equals(current.hostUserId())) {
-            return current;
-        }
-        List<String> nextCoHosts = new ArrayList<>(current.coHostUserIds());
-        if (!nextCoHosts.contains(targetUserId)) {
-            nextCoHosts.add(targetUserId);
-        }
-        return current.withPermissions(current.hostUserId(), nextCoHosts, current.isFreeCollab());
-    }
-
-    private RedisTableState handleRevoke(RedisTableState current, String targetUserId) {
-        requireTargetUserId(targetUserId);
-        List<String> nextCoHosts = current.coHostUserIds().stream()
-                .filter(id -> !id.equals(targetUserId))
-                .toList();
-        return current.withPermissions(current.hostUserId(), nextCoHosts, current.isFreeCollab());
-    }
-
-    private RedisTableState handleTransferHost(String roomId, String tableId, RedisTableState current, String targetUserId) {
-        requireTargetUserId(targetUserId);
-        RoomPlayerState targetPlayer = stateStore.getPlayer(roomId, targetUserId)
-                .filter(p -> "SEATED".equalsIgnoreCase(p.state()) && tableId.equals(p.tableId()))
-                .orElseThrow(() -> TableExceptions.targetNotSeatedAtTable(targetUserId, tableId));
-        String newHostId = targetPlayer.userId();
-        List<String> nextCoHosts = current.coHostUserIds().stream()
-                .filter(id -> !id.equals(newHostId))
-                .toList();
-        return current.withPermissions(newHostId, nextCoHosts, current.isFreeCollab());
-    }
-
-    private RedisTableState handleToggleFreeCollab(RedisTableState current, Boolean explicitValue) {
-        boolean nextValue = explicitValue != null ? explicitValue : !current.isFreeCollab();
-        return current.withPermissions(current.hostUserId(), current.coHostUserIds(), nextValue);
-    }
-
-    private static void requireTargetUserId(String targetUserId) {
-        if (targetUserId == null || targetUserId.isBlank()) {
-            throw TableExceptions.invalidAction("targetUserId is required for this permission action");
-        }
-    }
-
-    private List<TableMemberDto> resolveTableMembers(String roomId, String tableId, RedisTableState tableState) {
-        return stateStore.getAllPlayers(roomId).stream()
-                .filter(p -> "SEATED".equalsIgnoreCase(p.state()) && tableId.equals(p.tableId()))
-                .sorted(Comparator.comparingLong(RoomPlayerState::sitStartTimeEpoch).thenComparing(RoomPlayerState::userId))
-                .map(p -> new TableMemberDto(
-                        p.userId(),
-                        p.nickname(),
-                        p.avatarId(),
-                        p.hatId(),
-                        p.deskPetId(),
-                        p.seatId(),
-                        resolveRole(p.userId(), tableState),
-                        p.sitStartTimeEpoch(),
-                        p.connected()
-                ))
-                .toList();
-    }
-
-    private static TableRole resolveRole(String userId, RedisTableState tableState) {
-        if (userId.equals(tableState.hostUserId())) {
-            return TableRole.TABLE_HOST;
-        }
-        if (tableState.coHostUserIds().contains(userId)) {
-            return TableRole.CO_HOST;
-        }
-        return TableRole.MEMBER;
     }
 
     public static String workspaceTopic(String tableId) {

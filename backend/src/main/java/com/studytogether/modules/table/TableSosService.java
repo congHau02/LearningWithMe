@@ -7,6 +7,7 @@ import com.studytogether.modules.room.model.RoomEvent;
 import com.studytogether.modules.table.TableAuthorizationService.SeatedContext;
 import com.studytogether.modules.table.model.SosToggleRequest;
 import com.studytogether.modules.table.model.TableWorkspaceEvent;
+import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -43,7 +44,7 @@ public class TableSosService {
         stateStore.saveTableState(roomId, tableId, updated);
 
         long now = System.currentTimeMillis();
-        TableWorkspaceEvent workspaceEvent = TableWorkspaceEvent.sosUpdated(
+        TableWorkspaceEvent workspaceEvent = TableWorkspaceEvents.sosUpdated(
                 tableId, principal.userId(), nextSosBanner, updated, now
         ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), workspaceEvent);

@@ -12,8 +12,7 @@ import com.studytogether.modules.table.model.HomeworkSlide;
 import com.studytogether.modules.table.model.HomeworkSlideAction;
 import com.studytogether.modules.table.model.HomeworkSlideActionRequest;
 import com.studytogether.modules.table.model.TableWorkspaceEvent;
-import java.io.IOException;
-import java.nio.file.Files;
+import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -36,7 +35,7 @@ public class TableHomeworkService {
     private final RoomStateStore stateStore;
     private final TableAuthorizationService authService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final Path homeworkDir;
+    private final TableHomeworkStorage storage;
 
     public TableHomeworkService(
             RoomStateStore stateStore,
@@ -47,7 +46,7 @@ public class TableHomeworkService {
         this.stateStore = stateStore;
         this.authService = authService;
         this.messagingTemplate = messagingTemplate;
-        this.homeworkDir = Path.of(appProperties.storage().homeworkDir()).toAbsolutePath().normalize();
+        this.storage = new TableHomeworkStorage(Path.of(appProperties.storage().homeworkDir()));
     }
 
     public HomeworkSlide uploadSlide(AuthPrincipal principal, String tableId, MultipartFile file) {
@@ -63,7 +62,7 @@ public class TableHomeworkService {
             throw TableExceptions.invalidAction("Homework image file is required");
         }
 
-        byte[] bytes = readMultipartBytes(file);
+        byte[] bytes = storage.readMultipartBytes(file);
         // shortcut: browser normalizes to .webp; backend validates JPEG/PNG/WEBP magic bytes and stores as {imageId}.webp without native libwebp re-encoding
         HomeworkImageValidator.detectAndValidateImageType(bytes);
 
@@ -76,7 +75,7 @@ public class TableHomeworkService {
                 EPHEMERAL_IMAGE_TTL
         );
         try {
-            writeFileToTempDir(fileName, bytes);
+            storage.writeFileToTempDir(fileName, bytes);
         } catch (RuntimeException ex) {
             stateStore.deleteEphemeralImage(imageId);
             throw ex;
@@ -95,7 +94,7 @@ public class TableHomeworkService {
         RedisTableState updated = current.withHomeworkSlides(nextSlides, imageId);
         stateStore.saveTableState(roomId, tableId, updated);
 
-        TableWorkspaceEvent event = TableWorkspaceEvent.homeworkSlideEvent(
+        TableWorkspaceEvent event = TableWorkspaceEvents.homeworkSlideEvent(
                 "HOMEWORK_SLIDE_ADDED", tableId, principal.userId(), updated, now
         ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
@@ -140,7 +139,7 @@ public class TableHomeworkService {
         }
 
         stateStore.saveTableState(roomId, tableId, updated);
-        TableWorkspaceEvent event = TableWorkspaceEvent.homeworkSlideEvent(
+        TableWorkspaceEvent event = TableWorkspaceEvents.homeworkSlideEvent(
                 eventType, tableId, principal.userId(), updated, now
         ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
@@ -152,16 +151,8 @@ public class TableHomeworkService {
         String imageId = HomeworkImageValidator.extractImageId(safeName);
         stateStore.getEphemeralImage(imageId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Ephemeral File Not Found", "Homework file expired or not found"));
-        Path resolved = resolveSafePath(safeName);
-        if (!Files.isRegularFile(resolved)) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "Ephemeral File Not Found", "Homework file not found");
-        }
-        try {
-            byte[] bytes = Files.readAllBytes(resolved);
-            return new LoadedEphemeralFile(bytes, HomeworkImageValidator.detectImageContentTypeOrDefault(bytes));
-        } catch (IOException ex) {
-            throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "File Read Error", "Could not read homework file");
-        }
+        byte[] bytes = storage.readExistingFile(safeName);
+        return new LoadedEphemeralFile(bytes, HomeworkImageValidator.detectImageContentTypeOrDefault(bytes));
     }
 
     @EventListener
@@ -182,39 +173,6 @@ public class TableHomeworkService {
 
     private void deleteSlideArtifacts(HomeworkSlide slide) {
         stateStore.deleteEphemeralImage(slide.imageId());
-        try {
-            String safeName = HomeworkImageValidator.validateSafeFileName(slide.fileName());
-            Files.deleteIfExists(resolveSafePath(safeName));
-        } catch (RuntimeException | IOException ignored) {
-            // Best-effort cleanup of deleted slide file
-        }
-    }
-
-    private void writeFileToTempDir(String fileName, byte[] bytes) {
-        try {
-            Files.createDirectories(homeworkDir);
-            Files.write(resolveSafePath(fileName), bytes);
-        } catch (IOException ex) {
-            throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "Storage Error", "Failed to store homework image");
-        }
-    }
-
-    private Path resolveSafePath(String safeFileName) {
-        Path resolved = homeworkDir.resolve(safeFileName).normalize();
-        if (!resolved.startsWith(homeworkDir)) {
-            throw TableExceptions.invalidAction("Invalid storage path");
-        }
-        return resolved;
-    }
-
-    private static byte[] readMultipartBytes(MultipartFile file) {
-        if (file.getSize() > HomeworkImageValidator.MAX_FILE_BYTES) {
-            throw TableExceptions.invalidAction("Homework image exceeds 5MB limit");
-        }
-        try {
-            return file.getBytes();
-        } catch (IOException ex) {
-            throw TableExceptions.invalidAction("Unable to read uploaded homework image");
-        }
+        storage.deleteFileBestEffort(slide);
     }
 }

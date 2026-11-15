@@ -5,6 +5,7 @@ import com.studytogether.modules.room.RoomStateStore;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.table.TableAuthorizationService.SeatedContext;
 import com.studytogether.modules.table.model.TableWorkspaceEvent;
+import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import com.studytogether.modules.table.model.VoiceSignalPayload;
 import com.studytogether.modules.table.model.VoiceSignalRequest;
 import com.studytogether.modules.table.model.VoiceSignalType;
@@ -53,7 +54,7 @@ public class TableVoiceService {
                 request.sdp(),
                 request.candidate()
         );
-        TableWorkspaceEvent event = TableWorkspaceEvent.voiceSignal(
+        TableWorkspaceEvent event = TableWorkspaceEvents.voiceSignal(
                 tableId, principal.userId(), targetUserId, payload, tableState, System.currentTimeMillis()
         ).withRoomId(ctx.roomId());
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);

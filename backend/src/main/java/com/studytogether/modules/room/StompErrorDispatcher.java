@@ -1,11 +1,13 @@
 package com.studytogether.modules.room;
 
 import com.studytogether.config.BusinessException;
+import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.room.model.StompErrorPayload;
 import java.security.Principal;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -20,6 +22,11 @@ public class StompErrorDispatcher {
 
     public StompErrorDispatcher(SimpMessagingTemplate messagingTemplate) {
         this.messagingTemplate = messagingTemplate;
+    }
+
+    public static AuthPrincipal requirePrincipal(Principal principal) {
+        return AuthPrincipal.fromPrincipal(principal).orElseThrow(() ->
+                new BusinessException(HttpStatus.UNAUTHORIZED, "Unauthorized", "Valid STOMP JWT principal is required"));
     }
 
     public void sendBusinessError(Principal user, String sessionId, String code, BusinessException ex) {

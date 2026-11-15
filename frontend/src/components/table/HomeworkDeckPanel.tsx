@@ -7,6 +7,7 @@ import { compressImageToWebp } from '../../utils/homeworkImageCompression';
 import type { BoardTool } from '../../utils/homeworkCanvasMath';
 import { HomeworkAnnotationCanvas } from './HomeworkAnnotationCanvas';
 import { HomeworkBoardToolbar } from './HomeworkBoardToolbar';
+import { HomeworkSlideTabs } from './HomeworkSlideTabs';
 
 const MAX_SLIDES = 5;
 
@@ -125,39 +126,13 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
         </p>
       ) : null}
 
-      {slides.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {slides.map((slide, index) => {
-            const isActive = activeSlide?.imageId === slide.imageId;
-            return (
-              <div key={slide.imageId} className="flex items-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800">
-                <button
-                  type="button"
-                  data-testid={`homework-slide-tab-${slide.imageId}`}
-                  disabled={!canControl}
-                  onClick={() => sendHomeworkSlideAction(tableId, { action: 'SELECT', imageId: slide.imageId })}
-                  className={`px-2.5 py-1 text-xs font-medium transition ${
-                    isActive ? 'bg-sky-500/25 text-sky-200' : 'text-slate-300 hover:bg-slate-700/60'
-                  } disabled:cursor-default`}
-                >
-                  Trang {index + 1}
-                </button>
-                {canControl ? (
-                  <button
-                    type="button"
-                    data-testid={`homework-slide-delete-${slide.imageId}`}
-                    aria-label={`Xóa trang ${index + 1}`}
-                    onClick={() => sendHomeworkSlideAction(tableId, { action: 'DELETE', imageId: slide.imageId })}
-                    className="border-l border-slate-700 px-2 py-1 text-xs text-rose-300 transition hover:bg-rose-500/20"
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
+      <HomeworkSlideTabs
+        slides={slides}
+        activeSlideId={activeSlide?.imageId ?? null}
+        canControl={canControl}
+        onSelectSlide={(imageId) => sendHomeworkSlideAction(tableId, { action: 'SELECT', imageId })}
+        onDeleteSlide={(imageId) => sendHomeworkSlideAction(tableId, { action: 'DELETE', imageId })}
+      />
 
       {activeSlide ? (
         <div className="flex flex-col gap-2">

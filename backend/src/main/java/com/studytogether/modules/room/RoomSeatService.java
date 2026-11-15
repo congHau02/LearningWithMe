@@ -5,23 +5,14 @@ import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomEvent;
 import com.studytogether.modules.room.model.RoomPlayerState;
 import com.studytogether.modules.room.model.SeatSitRequest;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 public class RoomSeatService {
-
-    private static final Logger log = LoggerFactory.getLogger(RoomSeatService.class);
 
     private final RoomTopologyService topologyService;
     private final RoomStateStore stateStore;
@@ -117,11 +108,13 @@ public class RoomSeatService {
         RoomPlayerState updated = player.withFreeRoam(now);
         stateStore.savePlayer(roomId, updated);
 
-        publishSeatReleasedSafely(new SeatReleasedEvent(
+        RoomSeatSuccessionHelper.publishSeatReleasedSafely(eventPublisher, new SeatReleasedEvent(
                 roomId, tableId, seatId, principal.userId(), sitStart, now, studyGoal, role
         ));
 
-        String newHostUserId = updateTableOnLeave(roomId, tableId, principal.userId());
+        String newHostUserId = RoomSeatSuccessionHelper.updateTableOnLeave(
+                topologyService, stateStore, eventPublisher, messagingTemplate, roomId, tableId, principal.userId()
+        );
 
         long seq = stateStore.incrementEventSeq(roomId);
         RoomEvent event = new RoomEvent(
@@ -151,12 +144,14 @@ public class RoomSeatService {
         stateStore.deletePlayer(roomId, userId);
         stateStore.removeDisconnect(roomId, userId);
         if (player != null) {
-            publishSeatReleasedSafely(new SeatReleasedEvent(
+            RoomSeatSuccessionHelper.publishSeatReleasedSafely(eventPublisher, new SeatReleasedEvent(
                     roomId, tableId, seatId, userId, sitStart, now, player.studyGoal(), player.role()
             ));
         }
 
-        String newHostUserId = updateTableOnLeave(roomId, tableId, userId);
+        String newHostUserId = RoomSeatSuccessionHelper.updateTableOnLeave(
+                topologyService, stateStore, eventPublisher, messagingTemplate, roomId, tableId, userId
+        );
 
         long seq = stateStore.incrementEventSeq(roomId);
         RoomEvent seatEvent = new RoomEvent(
@@ -172,75 +167,7 @@ public class RoomSeatService {
         messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", leftEvent);
     }
 
-    private void publishSeatReleasedSafely(SeatReleasedEvent event) {
-        try {
-            eventPublisher.publishEvent(event);
-        } catch (RuntimeException ex) {
-            log.error("Failed to process SeatReleasedEvent for userId={} tableId={}", event.userId(), event.tableId(), ex);
-        }
-    }
-
-    private String updateTableOnLeave(String roomId, String tableId, String leavingUserId) {
-        TableMetadata table = topologyService.getTable(roomId, tableId);
-        Map<String, String> allSeats = stateStore.getSeats(roomId);
-        List<RoomPlayerState> remainingSeated = new ArrayList<>();
-        for (SeatMetadata s : table.seats()) {
-            String occupantId = allSeats.get(s.seatId());
-            if (occupantId != null && !occupantId.equals(leavingUserId)) {
-                stateStore.getPlayer(roomId, occupantId).ifPresent(remainingSeated::add);
-            }
-        }
-
-        if (remainingSeated.isEmpty()) {
-            Optional<RedisTableState> existing = stateStore.getTableState(roomId, tableId);
-            stateStore.deleteTableState(roomId, tableId);
-            stateStore.deleteTableChatMessages(roomId, tableId);
-            existing.ifPresent(state -> eventPublisher.publishEvent(new TableEmptiedEvent(roomId, tableId, state)));
-            if (existing.isPresent() && existing.get().sosBanner() != null) {
-                long sosSeq = stateStore.incrementEventSeq(roomId);
-                RoomEvent sosCleared = RoomEvent.sosUpdated(
-                        sosSeq, roomId, tableId, leavingUserId, null, System.currentTimeMillis()
-                );
-                messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", sosCleared);
-            }
-            return null;
-        }
-
-        RedisTableState currentTable = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-        String newHostUserId;
-        if (!leavingUserId.equals(currentTable.hostUserId())) {
-            newHostUserId = currentTable.hostUserId();
-        } else {
-            newHostUserId = electSuccessor(remainingSeated, currentTable.coHostUserIds());
-        }
-
-        final String electedHost = newHostUserId;
-        List<String> nextCoHosts = currentTable.coHostUserIds().stream()
-                .filter(id -> !id.equals(electedHost) && !id.equals(leavingUserId))
-                .toList();
-        stateStore.saveTableState(roomId, tableId, currentTable.withPermissions(
-                newHostUserId, nextCoHosts, currentTable.isFreeCollab()
-        ));
-        return newHostUserId;
-    }
-
     public String electSuccessor(List<RoomPlayerState> remainingSeated, List<String> coHostUserIds) {
-        if (remainingSeated == null || remainingSeated.isEmpty()) {
-            return null;
-        }
-        Set<String> coHostSet = new HashSet<>(coHostUserIds != null ? coHostUserIds : List.of());
-        Comparator<RoomPlayerState> comparator = Comparator
-                .comparingInt((RoomPlayerState p) -> {
-                    boolean online = p.connected();
-                    boolean isCoHost = coHostSet.contains(p.userId());
-                    if (online && isCoHost) return 0;
-                    if (online && !isCoHost) return 1;
-                    if (!online && isCoHost) return 2;
-                    return 3;
-                })
-                .thenComparingLong(RoomPlayerState::sitStartTimeEpoch)
-                .thenComparing(RoomPlayerState::userId);
-
-        return remainingSeated.stream().sorted(comparator).map(RoomPlayerState::userId).findFirst().orElse(null);
+        return RoomSeatSuccessionHelper.electSuccessor(remainingSeated, coHostUserIds);
     }
 }

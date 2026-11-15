@@ -1,13 +1,11 @@
-import type { BoardDrawAction, BoardStroke, NormalizedPoint } from '../utils/homeworkCanvasMath';
 import type {
-  PlayerMoveRequest,
   RoomConnectionStatus,
   RoomEvent,
   RoomSnapshotResponse,
   StompErrorPayload,
 } from './roomApi';
+import { RoomStompPublishers } from './roomStompPublishers';
 import type { StompTransport } from './roomStompTransport';
-import type { HomeworkSlideAction, VoiceSignalRequest } from './tableApi';
 
 export interface RoomChannelCallbacks {
   fetchSnapshot: (roomId: string) => Promise<RoomSnapshotResponse>;
@@ -27,19 +25,18 @@ export interface RoomConnectContext {
 }
 
 /**
- * Provides STOMP room/table subscriptions, snapshot sync, and outbound publishers.
+ * Provides STOMP room/table subscriptions and snapshot sync over RoomStompPublishers.
  */
-export abstract class RoomStompChannels {
+export abstract class RoomStompChannels extends RoomStompPublishers {
   private unsubscribers: Array<() => void> = [];
   private tableUnsubscriber: (() => void) | null = null;
   private activeTableId: string | null = null;
   private readonly channelCallbacks: RoomChannelCallbacks;
 
   constructor(channelCallbacks: RoomChannelCallbacks) {
+    super();
     this.channelCallbacks = channelCallbacks;
   }
-
-  protected abstract getActiveTransport(): StompTransport | null;
 
   protected async connectRoom(ctx: RoomConnectContext): Promise<boolean> {
     const { transport, roomId, isCurrent, canRetryRoomFull } = ctx;
@@ -139,66 +136,5 @@ export abstract class RoomStompChannels {
       }
     }
     this.unsubscribers = [];
-  }
-
-  private publishJson(destination: string, payload: unknown): void {
-    this.getActiveTransport()?.publish(destination, JSON.stringify(payload));
-  }
-
-  sendMove(roomId: string, move: PlayerMoveRequest): void {
-    this.publishJson(`/app/room/${roomId}/move`, move);
-  }
-
-  sendSit(roomId: string, tableId: string, seatId: string): void {
-    this.publishJson(`/app/room/${roomId}/seat.sit`, { tableId, seatId });
-  }
-
-  sendLeave(roomId: string): void {
-    this.publishJson(`/app/room/${roomId}/seat.leave`, {});
-  }
-
-  sendChat(roomId: string, content: string): void {
-    this.publishJson(`/app/room/${roomId}/chat`, { content });
-  }
-
-  sendPermissionRequest(tableId: string, reason?: string): void {
-    this.publishJson(`/app/table/${tableId}/permission.request`, { reason: reason ?? null });
-  }
-
-  sendPermissionRespond(
-    tableId: string,
-    payload: { action: string; targetUserId?: string; isFreeCollab?: boolean },
-  ): void {
-    this.publishJson(`/app/table/${tableId}/permission.respond`, payload);
-  }
-
-  sendVideoSync(
-    tableId: string,
-    payload: { action: string; videoUrlOrId?: string | null; currentTime?: number | null },
-  ): void {
-    this.publishJson(`/app/table/${tableId}/video.sync`, payload);
-  }
-
-  sendSosToggle(tableId: string, payload: { active: boolean; topic?: string | null }): void {
-    this.publishJson(`/app/table/${tableId}/sos.toggle`, payload);
-  }
-
-  sendTableChat(tableId: string, content: string): void {
-    this.publishJson(`/app/table/${tableId}/chat`, { content });
-  }
-
-  sendHomeworkSlideAction(tableId: string, payload: { action: HomeworkSlideAction; imageId: string }): void {
-    this.publishJson(`/app/table/${tableId}/board.slide`, payload);
-  }
-
-  sendBoardDraw(
-    tableId: string,
-    payload: { slideId: string; action: BoardDrawAction; stroke?: BoardStroke; strokeId?: string; point?: NormalizedPoint },
-  ): void {
-    this.publishJson(`/app/table/${tableId}/board.draw`, payload);
-  }
-
-  sendVoiceSignal(tableId: string, payload: VoiceSignalRequest): void {
-    this.publishJson(`/app/table/${tableId}/voice.signal`, payload);
   }
 }

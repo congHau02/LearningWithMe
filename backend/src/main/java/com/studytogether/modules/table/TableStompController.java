@@ -1,7 +1,6 @@
 package com.studytogether.modules.table;
 
 import com.studytogether.config.BusinessException;
-import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.room.StompErrorDispatcher;
 import com.studytogether.modules.table.model.BoardDrawRequest;
 import com.studytogether.modules.table.model.HomeworkSlideActionRequest;
@@ -13,7 +12,6 @@ import com.studytogether.modules.table.model.VideoSyncRequest;
 import com.studytogether.modules.table.model.VoiceSignalRequest;
 import jakarta.validation.Valid;
 import java.security.Principal;
-import org.springframework.http.HttpStatus;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
@@ -54,46 +52,46 @@ public class TableStompController {
     @MessageMapping("/table/{tableId}/permission.request")
     public void requestControl(@DestinationVariable String tableId,
             @Valid @Payload(required = false) PermissionRequestPayload payload, Principal user) {
-        workspaceService.requestControl(extractPrincipal(user), tableId, payload);
+        workspaceService.requestControl(StompErrorDispatcher.requirePrincipal(user), tableId, payload);
     }
 
     @MessageMapping("/table/{tableId}/permission.respond")
     public void respondPermission(@DestinationVariable String tableId,
             @Valid @Payload PermissionRespondRequest request, Principal user) {
-        workspaceService.respondPermission(extractPrincipal(user), tableId, request);
+        workspaceService.respondPermission(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageMapping("/table/{tableId}/video.sync")
     public void syncVideo(@DestinationVariable String tableId,
             @Valid @Payload VideoSyncRequest request, Principal user) {
-        videoService.syncVideo(extractPrincipal(user), tableId, request);
+        videoService.syncVideo(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageMapping("/table/{tableId}/sos.toggle")
     public void toggleSos(@DestinationVariable String tableId,
             @Valid @Payload(required = false) SosToggleRequest request, Principal user) {
-        sosService.toggleSos(extractPrincipal(user), tableId, request);
+        sosService.toggleSos(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageMapping("/table/{tableId}/chat")
     public void sendTableChat(@DestinationVariable String tableId,
             @Valid @Payload(required = false) TableChatSendRequest request, Principal user) {
-        tableChatService.sendTableChatMessage(extractPrincipal(user), tableId, request);
+        tableChatService.sendTableChatMessage(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageMapping("/table/{tableId}/board.slide")
     public void handleHomeworkSlideAction(@DestinationVariable String tableId, @Valid @Payload HomeworkSlideActionRequest request, Principal user) {
-        homeworkService.handleSlideAction(extractPrincipal(user), tableId, request);
+        homeworkService.handleSlideAction(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageMapping("/table/{tableId}/board.draw")
     public void handleBoardDraw(@DestinationVariable String tableId, @Valid @Payload BoardDrawRequest request, Principal user) {
-        boardService.handleDraw(extractPrincipal(user), tableId, request);
+        boardService.handleDraw(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageMapping("/table/{tableId}/voice.signal")
     public void handleVoiceSignal(@DestinationVariable String tableId, @Valid @Payload VoiceSignalRequest request, Principal user) {
-        voiceService.relaySignal(extractPrincipal(user), tableId, request);
+        voiceService.relaySignal(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageExceptionHandler(MethodArgumentNotValidException.class)
@@ -107,30 +105,12 @@ public class TableStompController {
     @MessageExceptionHandler(BusinessException.class)
     public void handleBusinessException(BusinessException ex, Principal user,
             @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId) {
-        errorDispatcher.sendBusinessError(user, sessionId, resolveErrorCode(ex), ex);
+        errorDispatcher.sendBusinessError(user, sessionId, TableExceptions.resolveStompErrorCode(ex), ex);
     }
 
     @MessageExceptionHandler(Exception.class)
     public void handleGenericException(Exception ex, Principal user,
             @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId) {
         errorDispatcher.sendInternalError(user, sessionId, "table", ex);
-    }
-
-    private static String resolveErrorCode(BusinessException ex) {
-        if (TableExceptions.NOT_SEATED_AT_TABLE_TYPE.equals(ex.getType())) return "NOT_SEATED_AT_TABLE";
-        if (TableExceptions.TABLE_PERMISSION_DENIED_TYPE.equals(ex.getType())) return "TABLE_PERMISSION_DENIED";
-        if (TableExceptions.INVALID_TABLE_ACTION_TYPE.equals(ex.getType())) return "INVALID_TABLE_ACTION";
-        if (TableExceptions.TARGET_NOT_SEATED_AT_TABLE_TYPE.equals(ex.getType())) return "TARGET_NOT_SEATED_AT_TABLE";
-        if (TableExceptions.TABLE_CHAT_RATE_LIMIT_EXCEEDED_TYPE.equals(ex.getType())) return "TABLE_CHAT_RATE_LIMIT_EXCEEDED";
-        return switch (ex.getStatus()) {
-            case FORBIDDEN -> "TABLE_PERMISSION_DENIED";
-            case BAD_REQUEST -> "INVALID_TABLE_ACTION";
-            default -> "STOMP_BUSINESS_ERROR";
-        };
-    }
-
-    private static AuthPrincipal extractPrincipal(Principal principal) {
-        return AuthPrincipal.fromPrincipal(principal).orElseThrow(() ->
-                new BusinessException(HttpStatus.UNAUTHORIZED, "Unauthorized", "Valid STOMP JWT principal is required"));
     }
 }

@@ -1,24 +1,12 @@
 import type Phaser from 'phaser';
 import type { RoomPlayerDto } from '../../services/roomApi';
-import { useGameStore } from '../../stores/useGameStore';
-import { CharacterAccessoriesOverlay } from './CharacterAccessoriesOverlay';
-import { ChatBubble } from './ChatBubble';
+import type { StarterAvatarKey } from './PlayerSprite';
 import {
-  PlayerSprite,
-  type StarterAvatarKey,
-  tileToWorldCenter,
-} from './PlayerSprite';
-
-interface RemotePlayerEntry {
-  data: RoomPlayerDto;
-  model: PlayerSprite;
-  animKey: string;
-  chatBubble: ChatBubble;
-  accessories: CharacterAccessoriesOverlay;
-  lastLabel?: string;
-  sprite?: Phaser.GameObjects.Sprite;
-  label?: Phaser.GameObjects.Text;
-}
+  createRemotePlayerEntry,
+  formatRemoteLabel,
+  isPlayerTableHost,
+  type RemotePlayerEntry,
+} from './remotePlayerEntryHelper';
 
 export interface RemotePlayerRenderSnapshot {
   userId: string;
@@ -60,60 +48,10 @@ export class RemotePlayersRenderer {
     for (const player of Object.values(remotePlayers)) {
       const existing = this.entries.get(player.userId);
       if (!existing) {
-        const model = new PlayerSprite({
-          tileX: player.x,
-          tileY: player.y,
-          tileSize: this.tileSize,
-          facingDir: player.facingDir,
-          nickname: player.nickname,
-          avatarId: player.avatarId,
-          hatId: player.hatId,
-          deskPetId: player.deskPetId,
-        });
-        model.syncFromStore({
-          tileX: player.x,
-          tileY: player.y,
-          facingDir: player.facingDir,
-          characterState: player.state,
-          isMoving: (player.isMoving ?? false) && player.state !== 'SEATED',
-          nickname: player.nickname,
-          avatarId: player.avatarId,
-          hatId: player.hatId,
-          deskPetId: player.deskPetId,
-        });
-
-        const chatBubble = new ChatBubble({ scene: this.scene });
-        const accessories = new CharacterAccessoriesOverlay({ scene: this.scene, depth: 10 });
-        const entry: RemotePlayerEntry = {
-          data: player,
-          model,
-          animKey: model.getAnimationKey(),
-          chatBubble,
-          accessories,
-        };
-
-        if (this.scene) {
-          const pos = tileToWorldCenter(player.x, player.y, this.tileSize);
-          entry.sprite = this.scene.add
-            .sprite(pos.x, pos.y, model.getAvatarId(), 0)
-            .setDepth(9);
-          entry.sprite.play(entry.animKey, true);
-          const isHost = isPlayerTableHost(player);
-          const initialLabel = formatRemoteLabel(player, isHost);
-          entry.lastLabel = initialLabel;
-          entry.label = this.scene.add
-            .text(pos.x, pos.y - 20, initialLabel, {
-              fontFamily: 'sans-serif',
-              fontSize: '11px',
-              color: '#e2e8f0',
-              backgroundColor: '#0f172acc',
-              padding: { x: 4, y: 2 },
-            })
-            .setOrigin(0.5, 1)
-            .setDepth(11);
-        }
-
-        this.entries.set(player.userId, entry);
+        this.entries.set(
+          player.userId,
+          createRemotePlayerEntry(player, this.tileSize, this.scene),
+        );
       } else {
         const movedTile =
           existing.data.x !== player.x || existing.data.y !== player.y;
@@ -221,20 +159,4 @@ export class RemotePlayersRenderer {
     }
     this.entries.clear();
   }
-}
-
-function formatRemoteLabel(player: RoomPlayerDto, isHost = false): string {
-  const crown = isHost ? '👑 ' : '';
-  if (!player.connected) {
-    return player.state === 'SEATED'
-      ? `${crown}${player.nickname} (Đang giữ chỗ)`
-      : `${crown}${player.nickname} (Mất kết nối)`;
-  }
-  return player.state === 'SEATED' ? `${crown}${player.nickname} • Đang học` : `${crown}${player.nickname}`;
-}
-
-function isPlayerTableHost(player: RoomPlayerDto): boolean {
-  if (player.state !== 'SEATED' || !player.tableId) return false;
-  const table = useGameStore.getState().roomTables.find((t) => t.tableId === player.tableId);
-  return Boolean(table && table.hostUserId === player.userId);
 }

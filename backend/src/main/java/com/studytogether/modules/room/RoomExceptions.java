@@ -122,4 +122,21 @@ public final class RoomExceptions {
                 CHAT_RATE_LIMIT_EXCEEDED_TYPE
         );
     }
+
+    public static String resolveStompErrorCode(BusinessException ex) {
+        if (SEAT_OCCUPIED_TYPE.equals(ex.getType())) return "SEAT_OCCUPIED";
+        if (ALREADY_SEATED_TYPE.equals(ex.getType())) return "ALREADY_SEATED";
+        if (NOT_SEATED_TYPE.equals(ex.getType())) return "NOT_SEATED";
+        if (ROOM_FULL_TYPE.equals(ex.getType())) return "ROOM_FULL";
+        if (INVALID_MOVE_TYPE.equals(ex.getType())) return "INVALID_MOVE";
+        if (INVALID_CHAT_MESSAGE_TYPE.equals(ex.getType())) return "INVALID_CHAT_MESSAGE";
+        if (CHAT_RATE_LIMIT_EXCEEDED_TYPE.equals(ex.getType())) return "RATE_LIMIT_EXCEEDED";
+        return switch (ex.getStatus()) {
+            case NOT_FOUND -> "ROOM_NOT_FOUND";
+            case CONFLICT -> "ROOM_FULL";
+            case UNAUTHORIZED -> "UNAUTHORIZED";
+            case BAD_REQUEST -> "INVALID_MOVE";
+            default -> "STOMP_BUSINESS_ERROR";
+        };
+    }
 }

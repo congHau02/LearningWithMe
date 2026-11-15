@@ -8,6 +8,7 @@ import {
   type BoardTool,
   type NormalizedPoint,
 } from '../utils/homeworkCanvasMath';
+import { useLaserThrottle } from './useLaserThrottle';
 
 export interface PendingTextPlacement {
   point: NormalizedPoint;
@@ -25,8 +26,6 @@ interface UseHomeworkCanvasOptions {
   canvasRef: RefObject<HTMLCanvasElement | null>;
 }
 
-const LASER_THROTTLE_MS = 100;
-
 const generateStrokeId = (): string =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? `stroke-${crypto.randomUUID().slice(0, 12)}`
@@ -43,10 +42,8 @@ export function useHomeworkCanvas({
   canvasRef,
 }: UseHomeworkCanvasOptions) {
   const draftStrokeRef = useRef<BoardStroke | null>(null);
-  const lastLaserSentAtRef = useRef<number>(0);
-  const trailingLaserTimerRef = useRef<number | null>(null);
-  const pendingLaserPointRef = useRef<NormalizedPoint | null>(null);
   const [pendingText, setPendingText] = useState<PendingTextPlacement | null>(null);
+  const { emitLaserMove } = useLaserThrottle(tableId, slideId, `${slideId}:${tool}`);
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -76,11 +73,6 @@ export function useHomeworkCanvas({
   useEffect(() => {
     setPendingText(null);
     draftStrokeRef.current = null;
-    if (trailingLaserTimerRef.current !== null) {
-      window.clearTimeout(trailingLaserTimerRef.current);
-      trailingLaserTimerRef.current = null;
-    }
-    pendingLaserPointRef.current = null;
   }, [slideId, tool]);
 
   useEffect(() => {
@@ -105,35 +97,6 @@ export function useHomeworkCanvas({
     if (!canvas) return null;
     return normalizeCanvasPoint(e.clientX, e.clientY, canvas.getBoundingClientRect());
   };
-
-  const emitLaserMove = useCallback(
-    (point: NormalizedPoint) => {
-      const now = Date.now();
-      const elapsed = now - lastLaserSentAtRef.current;
-      if (elapsed >= LASER_THROTTLE_MS) {
-        if (trailingLaserTimerRef.current !== null) {
-          window.clearTimeout(trailingLaserTimerRef.current);
-          trailingLaserTimerRef.current = null;
-        }
-        pendingLaserPointRef.current = null;
-        lastLaserSentAtRef.current = now;
-        sendBoardDraw(tableId, { slideId, action: 'LASER_MOVE', point });
-        return;
-      }
-      pendingLaserPointRef.current = point;
-      if (trailingLaserTimerRef.current === null) {
-        trailingLaserTimerRef.current = window.setTimeout(() => {
-          trailingLaserTimerRef.current = null;
-          const pending = pendingLaserPointRef.current;
-          pendingLaserPointRef.current = null;
-          if (!pending) return;
-          lastLaserSentAtRef.current = Date.now();
-          sendBoardDraw(tableId, { slideId, action: 'LASER_MOVE', point: pending });
-        }, LASER_THROTTLE_MS - elapsed);
-      }
-    },
-    [slideId, tableId],
-  );
 
   const handlePointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
     if (!canControl) return;

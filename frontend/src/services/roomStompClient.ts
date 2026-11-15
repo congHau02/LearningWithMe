@@ -11,13 +11,25 @@ import {
 } from './roomApi';
 import { RoomStompChannels } from './roomStompChannels';
 import {
-  computeJitteredReconnectDelay,
+  getActiveRoomStompSession,
+  sendRoomChatMessage,
+  setActiveRoomStompSession,
+} from './roomStompRegistry';
+import {
   createStompJsTransport,
+  ReconnectBackoffTimer,
   type StompTransport,
   type StompTransportConfig,
 } from './roomStompTransport';
 
-export { createStompJsTransport, type StompTransport, type StompTransportConfig };
+export {
+  createStompJsTransport,
+  getActiveRoomStompSession,
+  sendRoomChatMessage,
+  setActiveRoomStompSession,
+  type StompTransport,
+  type StompTransportConfig,
+};
 
 export interface RoomStompSessionOptions {
   wsUrl?: string;
@@ -39,6 +51,7 @@ export class RoomStompSession extends RoomStompChannels {
   private readonly joinShardFn: () => Promise<RoomJoinResponse>;
   private readonly transportFactory: (config: StompTransportConfig) => StompTransport;
   private readonly options: RoomStompSessionOptions;
+  private readonly reconnectTimer: ReconnectBackoffTimer;
 
   private transport: StompTransport | null = null;
   private activeToken: string | null = null;
@@ -46,8 +59,6 @@ export class RoomStompSession extends RoomStompChannels {
   private stopped = false;
   private replaced = false;
   private roomFullRetried = false;
-  private reconnectAttempt = 0;
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: RoomStompSessionOptions = {}) {
     super({
@@ -65,6 +76,7 @@ export class RoomStompSession extends RoomStompChannels {
     this.wsUrl = options.wsUrl ?? resolveWebSocketUrl();
     this.joinShardFn = options.joinShard ?? joinRoomShard;
     this.transportFactory = options.transportFactory ?? createStompJsTransport;
+    this.reconnectTimer = new ReconnectBackoffTimer(options.random);
   }
 
   protected getActiveTransport(): StompTransport | null {
@@ -78,7 +90,7 @@ export class RoomStompSession extends RoomStompChannels {
   private retryAfterRoomFull(): void {
     this.roomFullRetried = true;
     this.generation += 1;
-    this.clearReconnectTimer();
+    this.reconnectTimer.clear();
     const retryToken = this.activeToken;
     void this.teardownTransport().then(() => {
       if (!this.stopped && !this.replaced && retryToken && this.activeToken === retryToken) {
@@ -93,8 +105,7 @@ export class RoomStompSession extends RoomStompChannels {
     this.activeToken = token;
     this.stopped = false;
     this.replaced = false;
-    this.reconnectAttempt = 0;
-    this.clearReconnectTimer();
+    this.reconnectTimer.reset();
     if (!isRetry) this.roomFullRetried = false;
     this.options.onStatusChange?.('CONNECTING');
 
@@ -125,7 +136,7 @@ export class RoomStompSession extends RoomStompChannels {
       connectHeaders: { Authorization: `Bearer ${token}` },
       onConnect: () => {
         if (!this.isCurrentSession(myGen)) return;
-        this.clearReconnectTimer();
+        this.reconnectTimer.clear();
         void this.connectRoom({
           transport,
           roomId,
@@ -133,7 +144,7 @@ export class RoomStompSession extends RoomStompChannels {
           canRetryRoomFull: () => !this.roomFullRetried && Boolean(this.activeToken),
         }).then((connected) => {
           if (connected && this.isCurrentSession(myGen)) {
-            this.reconnectAttempt = 0;
+            this.reconnectTimer.reset();
           }
         });
       },
@@ -160,34 +171,19 @@ export class RoomStompSession extends RoomStompChannels {
     transport.activate();
   }
 
-  private scheduleReconnect(
-    token: string,
-    roomId: string,
-    myGen: number,
-    closedTransport: StompTransport,
-  ): void {
-    if (this.transport !== closedTransport || this.reconnectTimer !== null) return;
+  private scheduleReconnect(token: string, roomId: string, myGen: number, closedTransport: StompTransport): void {
+    if (this.transport !== closedTransport || this.reconnectTimer.isPending) return;
     this.clearSubscriptions();
     this.options.onStatusChange?.('RECONNECTING');
-    const delayMs = computeJitteredReconnectDelay(this.reconnectAttempt, this.options.random);
-    this.reconnectAttempt += 1;
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
+    this.reconnectTimer.schedule(() => {
       if (!this.isCurrentSession(myGen)) return;
       void this.openTransport(token, roomId, myGen);
-    }, delayMs);
-  }
-
-  private clearReconnectTimer(): void {
-    if (this.reconnectTimer !== null) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
+    });
   }
 
   async updateToken(nextToken: string): Promise<void> {
     if (!nextToken || (this.activeToken === nextToken && !this.stopped && !this.replaced)) return;
-    this.clearReconnectTimer();
+    this.reconnectTimer.clear();
     await this.teardownTransport();
     await this.start(nextToken);
   }
@@ -196,14 +192,14 @@ export class RoomStompSession extends RoomStompChannels {
     this.stopped = true;
     this.generation += 1;
     this.activeToken = null;
-    this.clearReconnectTimer();
+    this.reconnectTimer.clear();
     await this.teardownTransport();
   }
 
   private async markSessionReplaced(transport: StompTransport): Promise<void> {
     if (this.replaced) return;
     this.replaced = true;
-    this.clearReconnectTimer();
+    this.reconnectTimer.clear();
     transport.disableReconnect();
     this.options.onStatusChange?.('REPLACED');
     this.clearSubscriptions();
@@ -223,20 +219,4 @@ export class RoomStompSession extends RoomStompChannels {
 
 export function createRoomStompSession(options: RoomStompSessionOptions = {}): RoomStompSession {
   return new RoomStompSession(options);
-}
-
-let activeRoomSession: RoomStompSession | null = null;
-
-export function setActiveRoomStompSession(session: RoomStompSession | null): void {
-  activeRoomSession = session;
-}
-
-export function getActiveRoomStompSession(): RoomStompSession | null {
-  return activeRoomSession;
-}
-
-export function sendRoomChatMessage(roomId: string, content: string): boolean {
-  if (!activeRoomSession) return false;
-  activeRoomSession.sendChat(roomId, content);
-  return true;
 }

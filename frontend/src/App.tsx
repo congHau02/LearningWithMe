@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react';
-import { AccountUpgradeModal } from './components/auth/AccountUpgradeModal';
-import { GuestOnboardingModal } from './components/auth/GuestOnboardingModal';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
-import { CharacterCustomizerModal } from './components/hud/CharacterCustomizerModal';
-import { LeaveTableConfirmModal } from './components/hud/LeaveTableConfirmModal';
+import { AppModals } from './components/hud/AppModals';
 import { ReconnectingBanner } from './components/hud/ReconnectingBanner';
-import { RoomChatBox } from './components/hud/RoomChatBox';
 import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
-import { StudyLeaderboardModal } from './components/hud/StudyLeaderboardModal';
-import { StudySessionsModal } from './components/hud/StudySessionsModal';
 import { TopBar } from './components/hud/TopBar';
 import { TableWorkspaceShell } from './components/table/TableWorkspaceShell';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
@@ -148,39 +142,26 @@ export function App() {
 
       <TableWorkspaceShell />
 
-      {characterState === 'SEATED' && isLeaveConfirmOpen ? (
-        <LeaveTableConfirmModal
-          tableId={currentTableId}
-          seatId={currentSeatId}
-          onConfirmLeave={handleLeaveSeat}
-          onCancel={closeLeaveConfirm}
-        />
-      ) : null}
-
-      {!token ? <GuestOnboardingModal /> : null}
-      {token && authProvider === 'GUEST' && isUpgradeModalOpen ? (
-        <AccountUpgradeModal
-          onClose={() => setIsUpgradeModalOpen(false)}
-          onUpgraded={handleAccountUpgraded}
-        />
-      ) : null}
-      {token && isStudySessionsOpen ? (
-        <StudySessionsModal authProvider={authProvider} onClose={() => setIsStudySessionsOpen(false)} />
-      ) : null}
-      {token && isLeaderboardOpen ? (
-        <StudyLeaderboardModal
-          onClose={() => setIsLeaderboardOpen(false)}
-          onRequestUpgrade={authProvider === 'GUEST' ? () => {
-            setIsLeaderboardOpen(false);
-            setIsUpgradeModalOpen(true);
-          } : undefined}
-        />
-      ) : null}
-      {token && isCustomizerOpen ? (
-        <CharacterCustomizerModal onClose={() => setIsCustomizerOpen(false)} />
-      ) : null}
-
-      {token ? <RoomChatBox /> : null}
+      <AppModals
+        token={token}
+        authProvider={authProvider}
+        characterState={characterState}
+        currentTableId={currentTableId}
+        currentSeatId={currentSeatId}
+        isLeaveConfirmOpen={isLeaveConfirmOpen}
+        isUpgradeModalOpen={isUpgradeModalOpen}
+        isStudySessionsOpen={isStudySessionsOpen}
+        isLeaderboardOpen={isLeaderboardOpen}
+        isCustomizerOpen={isCustomizerOpen}
+        onConfirmLeave={handleLeaveSeat}
+        onCancelLeave={closeLeaveConfirm}
+        onCloseUpgrade={() => setIsUpgradeModalOpen(false)}
+        onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+        onUpgraded={handleAccountUpgraded}
+        onCloseStudySessions={() => setIsStudySessionsOpen(false)}
+        onCloseLeaderboard={() => setIsLeaderboardOpen(false)}
+        onCloseCustomizer={() => setIsCustomizerOpen(false)}
+      />
     </div>
   );
 }

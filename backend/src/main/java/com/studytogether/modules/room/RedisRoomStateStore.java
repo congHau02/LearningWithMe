@@ -10,11 +10,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -23,17 +21,17 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class RedisRoomStateStore implements RoomStateStore {
 
-    private static final String SHARDS_KEY = "rooms:shards";
-
     private final StringRedisTemplate redisTemplate;
     private final RedisJsonCodec codec;
     private final RedisTableStateStore tableStore;
+    private final RedisRoomShardRegistry shardRegistry;
     private final DefaultRedisScript<Long> seatSitScript;
 
     public RedisRoomStateStore(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
         this.codec = new RedisJsonCodec(objectMapper);
         this.tableStore = new RedisTableStateStore(redisTemplate, this.codec);
+        this.shardRegistry = new RedisRoomShardRegistry(redisTemplate);
         this.seatSitScript = new DefaultRedisScript<>();
         this.seatSitScript.setLocation(new ClassPathResource("redis/atomic_seat_sit.lua"));
         this.seatSitScript.setResultType(Long.class);
@@ -41,29 +39,12 @@ public class RedisRoomStateStore implements RoomStateStore {
 
     @Override
     public Optional<String> findUserShard(String userId) {
-        if (userId == null || userId.isBlank()) return Optional.empty();
-        for (String shardId : getKnownShards()) {
-            if (userExistsInShard(shardId, userId)) return Optional.of(shardId);
-        }
-        return Optional.empty();
+        return shardRegistry.findUserShard(userId);
     }
 
     @Override
     public List<String> getKnownShards() {
-        Set<String> shards = new LinkedHashSet<>();
-        int index = 1;
-        while (true) {
-            String shardId = RoomPresenceService.shardIdForIndex(index);
-            boolean active = isShardKnownOrActive(shardId);
-            if (index > 1 && !active) break;
-            if (active) shards.add(shardId);
-            index++;
-        }
-        Set<String> extraShards = redisTemplate.opsForSet().members(SHARDS_KEY);
-        if (extraShards != null) {
-            extraShards.stream().filter(s -> !shards.contains(s)).sorted().forEach(shards::add);
-        }
-        return List.copyOf(shards);
+        return shardRegistry.getKnownShards();
     }
 
     @Override
@@ -74,10 +55,7 @@ public class RedisRoomStateStore implements RoomStateStore {
 
     @Override
     public boolean isShardKnownOrActive(String roomId) {
-        if (countPlayers(roomId) > 0) return true;
-        Long seatsSize = redisTemplate.opsForHash().size(seatsKey(roomId));
-        if (seatsSize != null && seatsSize > 0) return true;
-        return Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(SHARDS_KEY, roomId));
+        return shardRegistry.isShardKnownOrActive(roomId);
     }
 
     @Override
@@ -113,7 +91,7 @@ public class RedisRoomStateStore implements RoomStateStore {
 
     @Override
     public void savePlayer(String roomId, RoomPlayerState player) {
-        redisTemplate.opsForSet().add(SHARDS_KEY, roomId);
+        shardRegistry.registerShard(roomId);
         redisTemplate.opsForHash().put(playersKey(roomId), player.userId(), codec.serialize(player));
     }
 
@@ -224,14 +202,6 @@ public class RedisRoomStateStore implements RoomStateStore {
     @Override
     public boolean deleteEphemeralImage(String imageId) {
         return tableStore.deleteEphemeralImage(imageId);
-    }
-
-    private boolean userExistsInShard(String shardId, String userId) {
-        if (Boolean.TRUE.equals(redisTemplate.opsForHash().hasKey(playersKey(shardId), userId))) {
-            return true;
-        }
-        List<Object> seatOccupants = redisTemplate.opsForHash().values(seatsKey(shardId));
-        return seatOccupants != null && seatOccupants.stream().anyMatch(v -> userId.equals(String.valueOf(v)));
     }
 
     public static String playersKey(String roomId) { return "room:" + roomId + ":players"; }

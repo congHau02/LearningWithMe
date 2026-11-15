@@ -2,18 +2,13 @@ package com.studytogether.modules.room;
 
 import com.studytogether.modules.auth.AccountIdentityUpgradedEvent;
 import com.studytogether.modules.auth.AuthPrincipal;
-import com.studytogether.modules.room.model.RedisTableState;
-import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomEvent;
 import com.studytogether.modules.room.model.RoomJoinResponse;
 import com.studytogether.modules.room.model.RoomPlayerDto;
 import com.studytogether.modules.room.model.RoomPlayerState;
 import com.studytogether.modules.room.model.RoomSnapshotResponse;
-import com.studytogether.modules.room.model.RoomTableSummary;
 import com.studytogether.modules.stats.CharacterCustomizationLookup;
 import com.studytogether.modules.stats.EquippedCustomizationDto;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -86,18 +81,7 @@ public class RoomPresenceService {
 
     public RoomSnapshotResponse getRoomSnapshot(String roomId) {
         RoomTopology topology = topologyService.getRoomTopology(roomId);
-        long eventSeq = stateStore.currentEventSeq(roomId);
-        List<RoomPlayerDto> players = stateStore.getAllPlayers(roomId).stream()
-                .map(RoomPlayerState::toDto)
-                .toList();
-        Map<String, String> seats = stateStore.getSeats(roomId);
-        List<RoomTableSummary> tables = topology.tables().stream()
-                .map(table -> toTableSummary(roomId, table, seats))
-                .toList();
-        List<RoomChatMessage> recentMessages = stateStore.getRecentMessages(roomId, RECENT_CHAT_LIMIT);
-        return new RoomSnapshotResponse(
-                topology.roomId(), roomConfig.getShardCapacity(), eventSeq, players, seats, tables, recentMessages
-        );
+        return RoomPresenceHelper.buildSnapshot(topology, roomConfig.getShardCapacity(), stateStore, RECENT_CHAT_LIMIT);
     }
 
     public RoomEvent registerStompJoin(AuthPrincipal principal, String roomId, String wsSessionId) {
@@ -112,13 +96,13 @@ public class RoomPresenceService {
         stateStore.removeDisconnect(roomId, principal.userId());
         watchdog.cancelGraceCheck(roomId, principal.userId());
 
-        String nickname = nonBlankOrDefault(principal.nickname(), "Learner");
-        EquippedCustomizationDto equipped = customizationLookup != null
-                ? customizationLookup.resolveEquipped(principal)
-                : EquippedCustomizationDto.defaults(nonBlankOrDefault(principal.avatarId(), "default_student"));
-        String avatarId = nonBlankOrDefault(equipped.skinId(), nonBlankOrDefault(principal.avatarId(), "default_student"));
-        String hatId = nonBlankOrDefault(equipped.hatId(), RoomPlayerState.DEFAULT_HAT_ID);
-        String deskPetId = nonBlankOrDefault(equipped.deskPetId(), RoomPlayerState.DEFAULT_DESK_PET_ID);
+        String nickname = RoomPresenceHelper.nonBlankOrDefault(principal.nickname(), "Learner");
+        EquippedCustomizationDto equipped = RoomPresenceHelper.resolveEquipped(customizationLookup, principal);
+        String avatarId = RoomPresenceHelper.nonBlankOrDefault(
+                equipped.skinId(), RoomPresenceHelper.nonBlankOrDefault(principal.avatarId(), "default_student")
+        );
+        String hatId = RoomPresenceHelper.nonBlankOrDefault(equipped.hatId(), RoomPlayerState.DEFAULT_HAT_ID);
+        String deskPetId = RoomPresenceHelper.nonBlankOrDefault(equipped.deskPetId(), RoomPlayerState.DEFAULT_DESK_PET_ID);
         String role = principal.role().name();
 
         RoomPlayerState nextState;
@@ -138,7 +122,9 @@ public class RoomPresenceService {
         }
 
         stateStore.savePlayer(roomId, nextState);
-        return broadcastRoomEvent(roomId, eventType, principal.userId(), null, nextState.toDto(), now);
+        return RoomPresenceHelper.broadcastRoomEvent(
+                stateStore, messagingTemplate, roomId, eventType, principal.userId(), null, nextState.toDto(), now
+        );
     }
 
     public void handleDisconnect(String userId, String roomIdHint, String wsSessionId) {
@@ -156,7 +142,9 @@ public class RoomPresenceService {
             RoomPlayerState disconnected = player.withDisconnectedGrace(now);
             stateStore.savePlayer(roomId, disconnected);
             stateStore.recordDisconnect(roomId, userId, now);
-            broadcastRoomEvent(roomId, "PLAYER_DISCONNECTED_GRACE", userId, null, disconnected.toDto(), now);
+            RoomPresenceHelper.broadcastRoomEvent(
+                    stateStore, messagingTemplate, roomId, "PLAYER_DISCONNECTED_GRACE", userId, null, disconnected.toDto(), now
+            );
             watchdog.scheduleGraceCheck(roomId, userId, player.seatId(), player.tableId(), now);
             return;
         }
@@ -165,46 +153,14 @@ public class RoomPresenceService {
         stateStore.deletePlayer(roomId, userId);
         stateStore.removeDisconnect(roomId, userId);
         RoomPlayerDto departedDto = player.withDisconnectedGrace(now).toDto();
-        broadcastRoomEvent(roomId, "PLAYER_LEFT", userId, null, departedDto, now);
+        RoomPresenceHelper.broadcastRoomEvent(
+                stateStore, messagingTemplate, roomId, "PLAYER_LEFT", userId, null, departedDto, now
+        );
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onAccountIdentityUpgraded(AccountIdentityUpgradedEvent event) {
-        sessionRegistry.markUpgradeInProgress(event.previousUserId(), event.newUserId());
-        String roomId = stateStore.findUserShard(event.newUserId())
-                .or(() -> stateStore.findUserShard(event.previousUserId()))
-                .orElse(null);
-        if (roomId == null) {
-            return;
-        }
-
-        Optional<RoomPlayerState> currentOpt = stateStore.getPlayer(roomId, event.newUserId());
-        boolean migratedKey = false;
-        if (currentOpt.isEmpty() && !event.previousUserId().equals(event.newUserId())) {
-            currentOpt = stateStore.getPlayer(roomId, event.previousUserId());
-            migratedKey = currentOpt.isPresent();
-        }
-        if (currentOpt.isEmpty()) {
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-        RoomPlayerState updated = currentOpt.get().withIdentity(
-                event.newUserId(),
-                nonBlankOrDefault(event.nickname(), currentOpt.get().nickname()),
-                nonBlankOrDefault(event.avatarId(), currentOpt.get().avatarId()),
-                nonBlankOrDefault(event.hatId(), currentOpt.get().hatId()),
-                nonBlankOrDefault(event.deskPetId(), currentOpt.get().deskPetId()),
-                "REGISTERED",
-                now
-        );
-        if (migratedKey) {
-            stateStore.deletePlayer(roomId, event.previousUserId());
-        }
-        stateStore.savePlayer(roomId, updated);
-
-        String previousUserId = event.previousUserId().equals(event.newUserId()) ? null : event.previousUserId();
-        broadcastRoomEvent(roomId, "PLAYER_UPDATED", event.newUserId(), previousUserId, updated.toDto(), now);
+        RoomPresenceHelper.applyIdentityUpgrade(event, stateStore, sessionRegistry, messagingTemplate);
     }
 
     public Optional<String> syncPlayerCustomization(String userId, String skinId, String hatId, String deskPetId) {
@@ -216,30 +172,9 @@ public class RoomPresenceService {
         long now = System.currentTimeMillis();
         RoomPlayerState updated = currentOpt.get().withCustomization(skinId, hatId, deskPetId, now);
         stateStore.savePlayer(roomId, updated);
-        broadcastRoomEvent(roomId, "PLAYER_UPDATED", userId, null, updated.toDto(), now);
-        return Optional.of(roomId);
-    }
-
-    private RoomTableSummary toTableSummary(String roomId, TableMetadata table, Map<String, String> seats) {
-        RedisTableState tableState = stateStore.getTableState(roomId, table.tableId()).orElseGet(RedisTableState::empty);
-        int occupiedSeats = (int) table.seats().stream().filter(seat -> seats.containsKey(seat.seatId())).count();
-        return new RoomTableSummary(
-                table.tableId(), table.label(), table.capacity(), tableState.hostUserId(),
-                tableState.coHostUserIds(), tableState.isFreeCollab(), tableState.sosBanner(), occupiedSeats
+        RoomPresenceHelper.broadcastRoomEvent(
+                stateStore, messagingTemplate, roomId, "PLAYER_UPDATED", userId, null, updated.toDto(), now
         );
-    }
-
-    private RoomEvent broadcastRoomEvent(
-            String roomId, String type, String userId, String previousUserId,
-            RoomPlayerDto player, long timestampEpoch
-    ) {
-        long seq = stateStore.incrementEventSeq(roomId);
-        RoomEvent event = new RoomEvent(seq, type, roomId, userId, previousUserId, player, timestampEpoch);
-        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", event);
-        return event;
-    }
-
-    private static String nonBlankOrDefault(String value, String fallback) {
-        return (value == null || value.isBlank()) ? fallback : value;
+        return Optional.of(roomId);
     }
 }

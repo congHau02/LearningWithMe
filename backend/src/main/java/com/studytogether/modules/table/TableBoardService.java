@@ -8,14 +8,13 @@ import com.studytogether.modules.table.TableAuthorizationService.SeatedContext;
 import com.studytogether.modules.table.model.BoardDrawAction;
 import com.studytogether.modules.table.model.BoardDrawRequest;
 import com.studytogether.modules.table.model.BoardStroke;
-import com.studytogether.modules.table.model.BoardStrokeTool;
 import com.studytogether.modules.table.model.HomeworkSlide;
 import com.studytogether.modules.table.model.NormalizedPoint;
 import com.studytogether.modules.table.model.TableWorkspaceEvent;
+import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -86,7 +85,7 @@ public class TableBoardService {
                 if (slide.strokes().size() >= MAX_STROKES_PER_SLIDE) {
                     throw TableExceptions.invalidAction("Slide has reached maximum stroke limit");
                 }
-                savedStroke = validateAndNormalizeStroke(request.stroke(), principal.userId(), now);
+                savedStroke = BoardStrokeValidator.validateAndNormalize(request.stroke(), principal.userId(), now);
                 List<BoardStroke> updated = new ArrayList<>(slide.strokes());
                 updated.add(savedStroke);
                 yield updated;
@@ -111,7 +110,7 @@ public class TableBoardService {
         RedisTableState updatedState = current.withHomeworkSlides(nextSlides, current.activeSlideId());
         stateStore.saveTableState(roomId, tableId, updatedState);
 
-        TableWorkspaceEvent event = TableWorkspaceEvent.boardDraw(
+        TableWorkspaceEvent event = TableWorkspaceEvents.boardDraw(
                 tableId, principal.userId(), targetSlideId, request.action(),
                 savedStroke, erasedStrokeId, updatedState, now
         ).withRoomId(roomId);
@@ -128,7 +127,7 @@ public class TableBoardService {
             RedisTableState current,
             long now
     ) {
-        if (point == null || !isNormalized(point.x()) || !isNormalized(point.y())) {
+        if (point == null || !BoardStrokeValidator.isNormalized(point.x()) || !BoardStrokeValidator.isNormalized(point.y())) {
             throw TableExceptions.invalidAction("Laser pointer point must be within [0.0, 1.0]");
         }
         // shortcut: memory-based 10Hz burst throttle per pod; upgrade to Redis sliding token bucket if multi-pod clustered
@@ -147,7 +146,7 @@ public class TableBoardService {
         String nickname = (principal.nickname() != null && !principal.nickname().isBlank())
                 ? principal.nickname()
                 : principal.userId();
-        TableWorkspaceEvent event = TableWorkspaceEvent.laserMove(
+        TableWorkspaceEvent event = TableWorkspaceEvents.laserMove(
                 tableId, principal.userId(), nickname, targetSlideId, point, current, now
         ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
@@ -168,52 +167,5 @@ public class TableBoardService {
             }
         }
         return -1;
-    }
-
-    private static BoardStroke validateAndNormalizeStroke(BoardStroke input, String userId, long now) {
-        if (input == null || input.tool() == null) {
-            throw TableExceptions.invalidAction("Stroke and tool are required for ADD_STROKE");
-        }
-        if (input.color() == null || input.color().isBlank() || input.color().length() > 32) {
-            throw TableExceptions.invalidAction("Valid stroke color is required");
-        }
-        if (!Double.isFinite(input.lineWidth()) || input.lineWidth() <= 0 || input.lineWidth() > 64) {
-            throw TableExceptions.invalidAction("Stroke lineWidth must be between 0 and 64");
-        }
-        if (input.points() == null || input.points().isEmpty()) {
-            throw TableExceptions.invalidAction("Stroke must contain at least one normalized point");
-        }
-        for (NormalizedPoint pt : input.points()) {
-            if (pt == null || !isNormalized(pt.x()) || !isNormalized(pt.y())) {
-                throw TableExceptions.invalidAction("All stroke coordinates must be within [0.0, 1.0]");
-            }
-        }
-        String text = null;
-        if (input.tool() == BoardStrokeTool.TEXT) {
-            if (input.text() == null || input.text().isBlank()) {
-                throw TableExceptions.invalidAction("Text content is required for TEXT stroke");
-            }
-            text = input.text().trim();
-            if (text.length() > MAX_TEXT_LENGTH) {
-                throw TableExceptions.invalidAction("Text annotation exceeds 300 characters");
-            }
-        }
-        String strokeId = (input.id() != null && !input.id().isBlank())
-                ? input.id().trim()
-                : "stroke-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        return new BoardStroke(
-                strokeId,
-                input.tool(),
-                input.color().trim(),
-                input.lineWidth(),
-                input.points(),
-                text,
-                userId,
-                now
-        );
-    }
-
-    private static boolean isNormalized(double value) {
-        return Double.isFinite(value) && value >= 0.0 && value <= 1.0;
     }
 }

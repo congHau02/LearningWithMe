@@ -2,10 +2,7 @@ import Phaser from 'phaser';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
-import {
-  InputController,
-  isTypingInFormElement,
-} from '../controllers/InputController';
+import { InputController } from '../controllers/InputController';
 import { CharacterAccessoriesOverlay } from '../entities/CharacterAccessoriesOverlay';
 import { ChatBubble } from '../entities/ChatBubble';
 import { PlayerSprite } from '../entities/PlayerSprite';
@@ -21,6 +18,10 @@ import {
   preloadClassroomAssets,
   registerCharacterAnimations,
 } from './classroomMapRenderer';
+import {
+  bindClassroomSceneInputs,
+  subscribeSceneChatBubbles,
+} from './classroomSceneBindings';
 
 export class ClassroomScene extends Phaser.Scene {
   private readonly topology: RoomTopology;
@@ -90,66 +91,22 @@ export class ClassroomScene extends Phaser.Scene {
       .setDepth(12);
 
     this.selfChatBubble = new ChatBubble({ scene: this });
+    this.storeUnsub = subscribeSceneChatBubbles(this.selfChatBubble, this.remotePlayersRenderer);
 
-    let lastChatId = useGameStore.getState().recentMessages.at(-1)?.id;
-    this.storeUnsub = useGameStore.subscribe((state) => {
-      const latest = state.recentMessages.at(-1);
-      if (latest && latest.id !== lastChatId) {
-        lastChatId = latest.id;
-        const selfId = useAuthStore.getState().userId;
-        const now = latest.createdAtEpoch || Date.now();
-        if (Date.now() - now < 4000) {
-          if (latest.userId === selfId) {
-            this.selfChatBubble?.show(latest.content, now);
-          } else {
-            this.remotePlayersRenderer?.showChatBubble(latest.userId, latest.content, now);
-          }
-        }
-      }
-    });
-
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      const tileX = Math.floor(pointer.worldX / this.topology.tileSize);
-      const tileY = Math.floor(pointer.worldY / this.topology.tileSize);
-      const seat = this.inputController
-        .getSeatManager()
-        .getSeatAtTile(tileX, tileY);
-      const isOccupied = seat?.seatId ? Boolean(useGameStore.getState().occupiedSeats[seat.seatId]) : false;
-      this.hoveredSeatId = (seat && !isOccupied) ? seat.seatId : null;
-    });
-
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (isTypingInFormElement()) return;
-      const tileX = Math.floor(pointer.worldX / this.topology.tileSize);
-      const tileY = Math.floor(pointer.worldY / this.topology.tileSize);
-      this.inputController.handleTileClick(tileX, tileY);
-    });
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (isTypingInFormElement()) return;
-      if (this.inputController.handleKeyDown(event.key, event.repeat)) {
-        event.preventDefault();
-      }
-    };
-    const onKeyUp = (event: KeyboardEvent) => {
-      this.inputController.handleKeyUp(event.key);
-    };
-    const onBlur = () => {
-      this.inputController.handleKeyUp();
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    window.addEventListener('blur', onBlur);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('blur', onBlur);
-      this.storeUnsub?.();
-      this.selfAccessoriesOverlay?.destroy();
-      this.selfChatBubble?.destroy();
-      this.remotePlayersRenderer?.destroy();
-      this.tableSosOverlay?.destroy();
+    bindClassroomSceneInputs({
+      scene: this,
+      topology: this.topology,
+      inputController: this.inputController,
+      onHoverSeatChange: (seatId) => {
+        this.hoveredSeatId = seatId;
+      },
+      onShutdownCleanup: () => {
+        this.storeUnsub?.();
+        this.selfAccessoriesOverlay?.destroy();
+        this.selfChatBubble?.destroy();
+        this.remotePlayersRenderer?.destroy();
+        this.tableSosOverlay?.destroy();
+      },
     });
   }
 

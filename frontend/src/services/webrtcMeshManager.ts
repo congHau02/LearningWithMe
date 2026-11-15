@@ -2,20 +2,10 @@ import { sendTableVoiceSignal } from './tableStompClient';
 import type { VoiceSignalPayload, VoiceSignalRequest } from './tableApi';
 import { VoiceAudioAnalyzer } from './voiceAudioAnalyzer';
 import { WebRtcPeerPool } from './webrtcPeerPool';
+import { handleIncomingWebRtcSignal, mapMicError } from './webrtcSignalHandler';
 import { useVoiceStore } from '../stores/useVoiceStore';
 
 const SELF_AUDIO_KEY = '__self__';
-
-function mapMicError(err: unknown): string {
-  const name = err instanceof Error ? err.name : '';
-  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-    return 'Không thể truy cập micro: bạn đã từ chối quyền sử dụng micro.';
-  }
-  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-    return 'Không tìm thấy thiết bị micro nào đang kết nối.';
-  }
-  return 'Không thể khởi động micro. Vui lòng kiểm tra quyền trình duyệt.';
-}
 
 /**
  * Coordinates table voice lifecycle, local microphone state, and WebRTC signaling.
@@ -122,78 +112,17 @@ export class WebRtcMeshManager {
   }
 
   handleIncomingSignal(signal: VoiceSignalPayload): void {
-    const selfId = this.selfUserId;
-    if (!selfId || signal.senderUserId === selfId) return;
-    if (signal.targetUserId && signal.targetUserId !== selfId) return;
-
-    const senderId = signal.senderUserId;
-    const store = useVoiceStore.getState();
-
-    switch (signal.signalType) {
-      case 'VOICE_JOIN': {
-        const hadPeer = this.peerPool.hasPeer(senderId);
-        store.upsertPeer({
-          userId: senderId,
-          nickname: signal.senderNickname,
-          muted: Boolean(signal.muted),
-          connectionState: this.joined ? this.peerPool.getConnectionState(senderId) : 'ready',
-        });
-        if (!this.joined || !this.tableId) return;
-
-        if (!signal.targetUserId && hadPeer) {
-          this.peerPool.closePeer(senderId);
-        }
-
-        if (selfId < senderId) {
-          if (!this.peerPool.hasPeer(senderId)) {
-            void this.peerPool.createAndSendOffer(senderId);
-          }
-        } else if (!signal.targetUserId) {
-          this.sendSignal({
-            signalType: 'VOICE_JOIN',
-            targetUserId: senderId,
-            muted: store.isMuted,
-          });
-        }
-        return;
-      }
-      case 'VOICE_LEAVE': {
-        this.peerPool.closePeer(senderId);
-        store.removePeer(senderId);
-        return;
-      }
-      case 'MUTE_STATUS': {
-        const muted = Boolean(signal.muted);
-        this.analyzer.setMuted(senderId, muted);
-        store.upsertPeer({
-          userId: senderId,
-          nickname: signal.senderNickname,
-          muted,
-          ...(muted ? { speaking: false } : {}),
-        });
-        return;
-      }
-      case 'SDP_OFFER': {
-        if (!this.joined || !signal.sdp) return;
-        store.upsertPeer({
-          userId: senderId,
-          nickname: signal.senderNickname,
-          connectionState: 'connecting',
-          ...(typeof signal.muted === 'boolean' ? { muted: signal.muted } : {}),
-        });
-        void this.peerPool.handleOffer(senderId, signal.sdp);
-        return;
-      }
-      case 'SDP_ANSWER': {
-        if (!this.joined || !signal.sdp) return;
-        void this.peerPool.handleAnswer(senderId, signal.sdp);
-        return;
-      }
-      case 'ICE_CANDIDATE': {
-        if (!this.joined || !signal.candidate) return;
-        void this.peerPool.handleIceCandidate(senderId, signal.candidate);
-      }
-    }
+    handleIncomingWebRtcSignal(
+      {
+        selfUserId: this.selfUserId,
+        tableId: this.tableId,
+        joined: this.joined,
+        peerPool: this.peerPool,
+        analyzer: this.analyzer,
+        sendSignal: (payload) => this.sendSignal(payload),
+      },
+      signal,
+    );
   }
 
   syncSeatedMembers(seatedUserIds: Set<string>): void {
