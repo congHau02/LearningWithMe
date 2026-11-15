@@ -29,6 +29,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -66,7 +68,7 @@ public class RoomPresenceServiceTest {
         AuthPrincipal u3 = guest("u-3", "Three");
         AuthPrincipal u4 = guest("u-4", "Four");
 
-        assertThat(service.joinShard(u1)).isEqualTo(new RoomJoinResponse("main-library", 3, 0));
+        assertThat(service.joinShard(u1)).isEqualTo(new RoomJoinResponse("main-library", 3, 1));
 
         stateStore.savePlayer("main-library", playerState("u-1", "One", "FREE_ROAM", 12, 13, null, null, "ws-1", true));
         stateStore.savePlayer("main-library", playerState("u-2", "Two", "FREE_ROAM", 12, 13, null, null, "ws-2", true));
@@ -76,12 +78,12 @@ public class RoomPresenceServiceTest {
         assertThat(service.joinShard(u2)).isEqualTo(new RoomJoinResponse("main-library", 3, 3));
 
         // New user overflows to main-library-2
-        assertThat(service.joinShard(u4)).isEqualTo(new RoomJoinResponse("main-library-2", 3, 0));
+        assertThat(service.joinShard(u4)).isEqualTo(new RoomJoinResponse("main-library-2", 3, 1));
         stateStore.savePlayer("main-library-2", playerState("u-4", "Four", "FREE_ROAM", 12, 13, null, null, "ws-4", true));
 
         // If main-library drops below capacity, lowest open shard wins again
         stateStore.deletePlayer("main-library", "u-3");
-        assertThat(service.joinShard(guest("u-5", "Five"))).isEqualTo(new RoomJoinResponse("main-library", 3, 2));
+        assertThat(service.joinShard(guest("u-5", "Five"))).isEqualTo(new RoomJoinResponse("main-library", 3, 3));
     }
 
     @Test
@@ -219,6 +221,7 @@ public class RoomPresenceServiceTest {
     public static final class InMemoryRoomStateStore implements RoomStateStore {
         private final Map<String, Map<String, RoomPlayerState>> playersByRoom = new ConcurrentHashMap<>();
         private final Map<String, Map<String, String>> seatsByRoom = new ConcurrentHashMap<>();
+        private final Map<String, Map<String, Long>> reservationsByRoom = new ConcurrentHashMap<>();
         private final Map<String, Map<String, Long>> disconnectsByRoom = new ConcurrentHashMap<>();
         private final Map<String, Map<String, RedisTableState>> tablesByRoom = new ConcurrentHashMap<>();
         private final Map<String, List<RoomChatMessage>> chatByRoom = new ConcurrentHashMap<>();
@@ -226,12 +229,21 @@ public class RoomPresenceServiceTest {
         private final Map<String, AtomicLong> seqByRoom = new ConcurrentHashMap<>();
 
         @Override
-        public Optional<String> findUserShard(String userId) {
+        public synchronized Optional<String> findUserShard(String userId) {
+            long now = System.currentTimeMillis();
             return playersByRoom.entrySet().stream()
                     .filter(e -> e.getValue().containsKey(userId))
                     .map(Map.Entry::getKey)
                     .sorted()
                     .findFirst()
+                    .or(() -> reservationsByRoom.entrySet().stream()
+                            .filter(e -> {
+                                Long exp = e.getValue().get(userId);
+                                return exp != null && exp > now;
+                            })
+                            .map(Map.Entry::getKey)
+                            .sorted()
+                            .findFirst())
                     .or(() -> seatsByRoom.entrySet().stream()
                             .filter(e -> e.getValue().containsValue(userId))
                             .map(Map.Entry::getKey)
@@ -251,6 +263,70 @@ public class RoomPresenceServiceTest {
         @Override
         public long countPlayers(String roomId) {
             return playersByRoom.getOrDefault(roomId, Map.of()).size();
+        }
+
+        @Override
+        public synchronized long countActiveLearners(String roomId, long nowEpochMs) {
+            return countActiveUnique(roomId, nowEpochMs);
+        }
+
+        @Override
+        public synchronized ShardReservationOutcome reserveShardSlot(
+                String roomId, String userId, int capacity, long nowEpochMs, long expiresAtEpochMs
+        ) {
+            pruneExpiredReservations(roomId, nowEpochMs);
+            Map<String, RoomPlayerState> players = playersByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+            Map<String, Long> reservations = reservationsByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+            long activeCount = countActiveUnique(roomId, nowEpochMs);
+
+            if (players.containsKey(userId)) {
+                reservations.remove(userId);
+                return new ShardReservationOutcome(true, activeCount);
+            }
+            if (seatsByRoom.getOrDefault(roomId, Map.of()).containsValue(userId)) {
+                return new ShardReservationOutcome(true, activeCount);
+            }
+            if (reservations.containsKey(userId)) {
+                reservations.put(userId, expiresAtEpochMs);
+                return new ShardReservationOutcome(true, activeCount);
+            }
+            if (activeCount < capacity) {
+                reservations.put(userId, expiresAtEpochMs);
+                return new ShardReservationOutcome(true, activeCount + 1);
+            }
+            return new ShardReservationOutcome(false, activeCount);
+        }
+
+        @Override
+        public synchronized boolean savePlayerWithinCapacity(
+                String roomId, RoomPlayerState player, int capacity, long nowEpochMs
+        ) {
+            pruneExpiredReservations(roomId, nowEpochMs);
+            Map<String, RoomPlayerState> players = playersByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+            Map<String, Long> reservations = reservationsByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+            if (players.containsKey(player.userId()) || reservations.remove(player.userId()) != null) {
+                players.put(player.userId(), player);
+                return true;
+            }
+            if (countActiveUnique(roomId, nowEpochMs) < capacity) {
+                players.put(player.userId(), player);
+                return true;
+            }
+            return false;
+        }
+
+        private void pruneExpiredReservations(String roomId, long nowEpochMs) {
+            Map<String, Long> reservations = reservationsByRoom.get(roomId);
+            if (reservations != null) {
+                reservations.entrySet().removeIf(e -> e.getValue() <= nowEpochMs);
+            }
+        }
+
+        private long countActiveUnique(String roomId, long nowEpochMs) {
+            pruneExpiredReservations(roomId, nowEpochMs);
+            java.util.Set<String> unique = new java.util.HashSet<>(playersByRoom.getOrDefault(roomId, Map.of()).keySet());
+            unique.addAll(reservationsByRoom.getOrDefault(roomId, Map.of()).keySet());
+            return unique.size();
         }
 
         @Override
@@ -286,6 +362,10 @@ public class RoomPresenceServiceTest {
 
         @Override
         public boolean deletePlayer(String roomId, String userId) {
+            Map<String, Long> reservations = reservationsByRoom.get(roomId);
+            if (reservations != null) {
+                reservations.remove(userId);
+            }
             Map<String, RoomPlayerState> players = playersByRoom.get(roomId);
             return players != null && players.remove(userId) != null;
         }
@@ -316,15 +396,27 @@ public class RoomPresenceServiceTest {
         }
 
         @Override
-        public synchronized SeatLockResult lockSeat(String roomId, String seatId, String userId) {
+        public synchronized SeatLockOutcome lockSeat(String roomId, String tableId, String seatId, String userId) {
             Map<String, String> seats = seatsByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
             if (seats.containsValue(userId)) {
-                return SeatLockResult.ALREADY_SEATED;
+                return new SeatLockOutcome(SeatLockResult.ALREADY_SEATED, null);
             }
             if (seats.putIfAbsent(seatId, userId) != null) {
-                return SeatLockResult.SEAT_OCCUPIED;
+                return new SeatLockOutcome(SeatLockResult.SEAT_OCCUPIED, null);
             }
-            return SeatLockResult.SUCCESS;
+            Map<String, RedisTableState> tables = tablesByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+            RedisTableState tableState = tables.get(tableId);
+            String hostUserId;
+            if (tableState == null || tableState.hostUserId() == null || tableState.hostUserId().isBlank()) {
+                hostUserId = userId;
+                RedisTableState updated = tableState == null
+                        ? new RedisTableState(hostUserId, List.of(), false, null)
+                        : tableState.withPermissions(hostUserId, tableState.coHostUserIds(), tableState.isFreeCollab());
+                tables.put(tableId, updated);
+            } else {
+                hostUserId = tableState.hostUserId();
+            }
+            return new SeatLockOutcome(SeatLockResult.SUCCESS, hostUserId);
         }
 
         @Override
@@ -332,6 +424,8 @@ public class RoomPresenceServiceTest {
             Map<String, String> seats = seatsByRoom.get(roomId);
             return seats != null && seats.remove(seatId) != null;
         }
+
+        private final Map<String, ReentrantLock> tableLocks = new ConcurrentHashMap<>();
 
         @Override
         public Optional<RedisTableState> getTableState(String roomId, String tableId) {
@@ -341,6 +435,26 @@ public class RoomPresenceServiceTest {
         @Override
         public void saveTableState(String roomId, String tableId, RedisTableState state) {
             tablesByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>()).put(tableId, state);
+        }
+
+        @Override
+        public RedisTableState mutateTableState(String roomId, String tableId, UnaryOperator<RedisTableState> mutator) {
+            ReentrantLock lock = tableLocks.computeIfAbsent(roomId + ":" + tableId, k -> new ReentrantLock(true));
+            lock.lock();
+            try {
+                RedisTableState current = getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
+                RedisTableState next = mutator.apply(current);
+                if (next == null) {
+                    deleteTableState(roomId, tableId);
+                    return null;
+                }
+                if (!next.equals(current)) {
+                    saveTableState(roomId, tableId, next);
+                }
+                return next;
+            } finally {
+                lock.unlock();
+            }
         }
 
         @Override
@@ -405,6 +519,7 @@ public class RoomPresenceServiceTest {
         void clearAll() {
             playersByRoom.clear();
             seatsByRoom.clear();
+            reservationsByRoom.clear();
             disconnectsByRoom.clear();
             tablesByRoom.clear();
             chatByRoom.clear();

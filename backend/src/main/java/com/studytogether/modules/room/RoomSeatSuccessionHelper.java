@@ -8,8 +8,8 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -39,43 +39,54 @@ final class RoomSeatSuccessionHelper {
             String leavingUserId
     ) {
         TableMetadata table = topologyService.getTable(roomId, tableId);
-        Map<String, String> allSeats = stateStore.getSeats(roomId);
-        List<RoomPlayerState> remainingSeated = new ArrayList<>();
-        for (SeatMetadata s : table.seats()) {
-            String occupantId = allSeats.get(s.seatId());
-            if (occupantId != null && !occupantId.equals(leavingUserId)) {
-                stateStore.getPlayer(roomId, occupantId).ifPresent(remainingSeated::add);
-            }
-        }
+        AtomicReference<RedisTableState> emptiedStateRef = new AtomicReference<>();
+        AtomicReference<Boolean> isEmptiedRef = new AtomicReference<>(false);
 
-        if (remainingSeated.isEmpty()) {
-            Optional<RedisTableState> existing = stateStore.getTableState(roomId, tableId);
-            stateStore.deleteTableState(roomId, tableId);
+        RedisTableState result = stateStore.mutateTableState(roomId, tableId, currentTable -> {
+            Map<String, String> allSeats = stateStore.getSeats(roomId);
+            List<RoomPlayerState> remainingSeated = new ArrayList<>();
+            for (SeatMetadata s : table.seats()) {
+                String occupantId = allSeats.get(s.seatId());
+                if (occupantId != null && !occupantId.equals(leavingUserId)) {
+                    stateStore.getPlayer(roomId, occupantId).ifPresent(remainingSeated::add);
+                }
+            }
+
+            if (remainingSeated.isEmpty()) {
+                isEmptiedRef.set(true);
+                emptiedStateRef.set(currentTable);
+                return null;
+            }
+
+            isEmptiedRef.set(false);
+            String newHostUserId = !leavingUserId.equals(currentTable.hostUserId())
+                    ? currentTable.hostUserId()
+                    : electSuccessor(remainingSeated, currentTable.coHostUserIds());
+
+            final String electedHost = newHostUserId;
+            List<String> nextCoHosts = currentTable.coHostUserIds().stream()
+                    .filter(id -> !id.equals(electedHost) && !id.equals(leavingUserId))
+                    .toList();
+            return currentTable.withPermissions(newHostUserId, nextCoHosts, currentTable.isFreeCollab());
+        });
+
+        if (Boolean.TRUE.equals(isEmptiedRef.get())) {
             stateStore.deleteTableChatMessages(roomId, tableId);
-            existing.ifPresent(state -> eventPublisher.publishEvent(new TableEmptiedEvent(roomId, tableId, state)));
-            if (existing.isPresent() && existing.get().sosBanner() != null) {
-                long sosSeq = stateStore.incrementEventSeq(roomId);
-                RoomEvent sosCleared = RoomEvent.sosUpdated(
-                        sosSeq, roomId, tableId, leavingUserId, null, System.currentTimeMillis()
-                );
-                messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", sosCleared);
+            RedisTableState lastState = emptiedStateRef.get();
+            if (lastState != null && (lastState.hostUserId() != null || !lastState.homeworkSlides().isEmpty()
+                    || lastState.sosBanner() != null || lastState.videoState().videoId() != null)) {
+                eventPublisher.publishEvent(new TableEmptiedEvent(roomId, tableId, lastState));
+                if (lastState.sosBanner() != null) {
+                    long sosSeq = stateStore.incrementEventSeq(roomId);
+                    RoomEvent sosCleared = RoomEvent.sosUpdated(
+                            sosSeq, roomId, tableId, leavingUserId, null, System.currentTimeMillis()
+                    );
+                    messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", sosCleared);
+                }
             }
             return null;
         }
-
-        RedisTableState currentTable = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-        String newHostUserId = !leavingUserId.equals(currentTable.hostUserId())
-                ? currentTable.hostUserId()
-                : electSuccessor(remainingSeated, currentTable.coHostUserIds());
-
-        final String electedHost = newHostUserId;
-        List<String> nextCoHosts = currentTable.coHostUserIds().stream()
-                .filter(id -> !id.equals(electedHost) && !id.equals(leavingUserId))
-                .toList();
-        stateStore.saveTableState(roomId, tableId, currentTable.withPermissions(
-                newHostUserId, nextCoHosts, currentTable.isFreeCollab()
-        ));
-        return newHostUserId;
+        return result != null ? result.hostUserId() : null;
     }
 
     static String electSuccessor(List<RoomPlayerState> remainingSeated, List<String> coHostUserIds) {
@@ -92,7 +103,9 @@ final class RoomSeatSuccessionHelper {
                     if (!online && isCoHost) return 2;
                     return 3;
                 })
-                .thenComparingLong(RoomPlayerState::sitStartTimeEpoch)
+                .thenComparingLong(p -> "SEATED".equalsIgnoreCase(p.state()) && p.sitStartTimeEpoch() > 0L
+                        ? p.sitStartTimeEpoch()
+                        : Long.MAX_VALUE)
                 .thenComparing(RoomPlayerState::userId);
 
         return remainingSeated.stream().sorted(comparator).map(RoomPlayerState::userId).findFirst().orElse(null);

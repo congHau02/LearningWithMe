@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -62,57 +63,64 @@ public class TableBoardService {
         }
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
         String roomId = ctx.roomId();
-        RedisTableState current = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-        authService.requireControlPermission(current, principal.userId());
-
         String targetSlideId = request.slideId().trim();
-        int slideIndex = findSlideIndex(current.homeworkSlides(), targetSlideId);
-        if (slideIndex < 0) {
-            throw TableExceptions.invalidAction("Homework slide not found: " + targetSlideId);
-        }
-
         long now = clock.millis();
+
         if (request.action() == BoardDrawAction.LASER_MOVE) {
+            RedisTableState current = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
+            authService.requireControlPermission(current, principal.userId());
+            if (findSlideIndex(current.homeworkSlides(), targetSlideId) < 0) {
+                throw TableExceptions.invalidAction("Homework slide not found: " + targetSlideId);
+            }
             return handleLaserMove(principal, roomId, tableId, targetSlideId, request.point(), current, now);
         }
 
-        HomeworkSlide slide = current.homeworkSlides().get(slideIndex);
-        BoardStroke savedStroke = null;
-        String erasedStrokeId = null;
-
-        List<BoardStroke> nextStrokes = switch (request.action()) {
-            case ADD_STROKE -> {
-                if (slide.strokes().size() >= MAX_STROKES_PER_SLIDE) {
-                    throw TableExceptions.invalidAction("Slide has reached maximum stroke limit");
-                }
-                savedStroke = BoardStrokeValidator.validateAndNormalize(request.stroke(), principal.userId(), now);
-                List<BoardStroke> updated = new ArrayList<>(slide.strokes());
-                updated.add(savedStroke);
-                yield updated;
+        AtomicReference<BoardStroke> savedStrokeRef = new AtomicReference<>();
+        AtomicReference<String> erasedStrokeIdRef = new AtomicReference<>();
+        RedisTableState updatedState = stateStore.mutateTableState(roomId, tableId, current -> {
+            authService.requireControlPermission(current, principal.userId());
+            int slideIndex = findSlideIndex(current.homeworkSlides(), targetSlideId);
+            if (slideIndex < 0) {
+                throw TableExceptions.invalidAction("Homework slide not found: " + targetSlideId);
             }
-            case ERASE_STROKE -> {
-                if (request.strokeId() == null || request.strokeId().isBlank()) {
-                    throw TableExceptions.invalidAction("strokeId is required for ERASE_STROKE");
+            HomeworkSlide slide = current.homeworkSlides().get(slideIndex);
+            savedStrokeRef.set(null);
+            erasedStrokeIdRef.set(null);
+
+            List<BoardStroke> nextStrokes = switch (request.action()) {
+                case ADD_STROKE -> {
+                    if (slide.strokes().size() >= MAX_STROKES_PER_SLIDE) {
+                        throw TableExceptions.invalidAction("Slide has reached maximum stroke limit");
+                    }
+                    BoardStroke validated = BoardStrokeValidator.validateAndNormalize(
+                            request.stroke(), principal.userId(), now);
+                    savedStrokeRef.set(validated);
+                    List<BoardStroke> updated = new ArrayList<>(slide.strokes());
+                    updated.add(validated);
+                    yield updated;
                 }
-                erasedStrokeId = request.strokeId().trim();
-                String targetId = erasedStrokeId;
-                yield slide.strokes().stream()
-                        .filter(s -> !s.id().equals(targetId))
-                        .toList();
-            }
-            case CLEAR_SLIDE -> List.of();
-            case LASER_MOVE -> throw new IllegalStateException("LASER_MOVE handled above");
-        };
+                case ERASE_STROKE -> {
+                    if (request.strokeId() == null || request.strokeId().isBlank()) {
+                        throw TableExceptions.invalidAction("strokeId is required for ERASE_STROKE");
+                    }
+                    String targetId = request.strokeId().trim();
+                    erasedStrokeIdRef.set(targetId);
+                    yield slide.strokes().stream()
+                            .filter(s -> !s.id().equals(targetId))
+                            .toList();
+                }
+                case CLEAR_SLIDE -> List.of();
+                case LASER_MOVE -> throw new IllegalStateException("LASER_MOVE handled above");
+            };
 
-        List<HomeworkSlide> nextSlides = new ArrayList<>(current.homeworkSlides());
-        nextSlides.set(slideIndex, slide.withStrokes(nextStrokes));
-
-        RedisTableState updatedState = current.withHomeworkSlides(nextSlides, current.activeSlideId());
-        stateStore.saveTableState(roomId, tableId, updatedState);
+            List<HomeworkSlide> nextSlides = new ArrayList<>(current.homeworkSlides());
+            nextSlides.set(slideIndex, slide.withStrokes(nextStrokes));
+            return current.withHomeworkSlides(nextSlides, current.activeSlideId());
+        });
 
         TableWorkspaceEvent event = TableWorkspaceEvents.boardDraw(
                 tableId, principal.userId(), targetSlideId, request.action(),
-                savedStroke, erasedStrokeId, updatedState, now
+                savedStrokeRef.get(), erasedStrokeIdRef.get(), updatedState, now
         ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return event;

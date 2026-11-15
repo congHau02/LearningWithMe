@@ -75,20 +75,16 @@ public class TableWorkspaceService {
         }
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
         String roomId = ctx.roomId();
-        RedisTableState current = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-        authService.requireHost(current, principal.userId());
-
         long now = System.currentTimeMillis();
         PermissionAction action = request.action();
         String targetUserId = request.targetUserId() != null ? request.targetUserId().trim() : null;
 
-        RedisTableState updated = TablePermissionCoordinator.applyPermissionChange(
-                stateStore, authService, roomId, tableId, current, request, targetUserId
-        );
-
-        if (action != PermissionAction.DENY) {
-            stateStore.saveTableState(roomId, tableId, updated);
-        }
+        RedisTableState updated = stateStore.mutateTableState(roomId, tableId, current -> {
+            authService.requireHost(current, principal.userId());
+            return TablePermissionCoordinator.applyPermissionChange(
+                    stateStore, authService, roomId, tableId, current, request, targetUserId
+            );
+        });
 
         TableWorkspaceEvent event = TableWorkspaceEvents.permissionUpdated(
                 tableId, action, principal.userId(), targetUserId, updated, now

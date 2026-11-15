@@ -20,6 +20,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class RoomPresenceService {
 
     private static final int RECENT_CHAT_LIMIT = 50;
+    private static final long SHARD_RESERVATION_TTL_MS = 30_000L;
 
     private final RoomConfig roomConfig;
     private final RoomStateStore stateStore;
@@ -61,19 +62,28 @@ public class RoomPresenceService {
 
     public RoomJoinResponse joinShard(AuthPrincipal principal) {
         int capacity = roomConfig.getShardCapacity();
+        long now = System.currentTimeMillis();
+        long expiresAt = now + SHARD_RESERVATION_TTL_MS;
+
         Optional<String> existingShard = stateStore.findUserShard(principal.userId());
         if (existingShard.isPresent()) {
             String shardId = existingShard.get();
-            return new RoomJoinResponse(shardId, capacity, stateStore.countPlayers(shardId));
+            ShardReservationOutcome outcome = stateStore.reserveShardSlot(
+                    shardId, principal.userId(), capacity, now, expiresAt
+            );
+            if (outcome.reserved()) {
+                return new RoomJoinResponse(shardId, capacity, outcome.activeLearnerCount());
+            }
         }
 
-        // shortcut: sequential shard count check without Redis reservation lock; acceptable under normal join rates
         int index = 1;
         while (true) {
             String candidateShard = shardIdForIndex(index);
-            long count = stateStore.countPlayers(candidateShard);
-            if (count < capacity) {
-                return new RoomJoinResponse(candidateShard, capacity, count);
+            ShardReservationOutcome outcome = stateStore.reserveShardSlot(
+                    candidateShard, principal.userId(), capacity, now, expiresAt
+            );
+            if (outcome.reserved()) {
+                return new RoomJoinResponse(candidateShard, capacity, outcome.activeLearnerCount());
             }
             index++;
         }
@@ -88,13 +98,6 @@ public class RoomPresenceService {
         RoomTopology topology = topologyService.getRoomTopology(roomId);
         long now = System.currentTimeMillis();
         Optional<RoomPlayerState> existingOpt = stateStore.getPlayer(roomId, principal.userId());
-        if (existingOpt.isEmpty() && stateStore.countPlayers(roomId) >= roomConfig.getShardCapacity()) {
-            throw RoomExceptions.roomFull(roomId, roomConfig.getShardCapacity());
-        }
-
-        sessionRegistry.attachRoom(wsSessionId, roomId);
-        stateStore.removeDisconnect(roomId, principal.userId());
-        watchdog.cancelGraceCheck(roomId, principal.userId());
 
         String nickname = RoomPresenceHelper.nonBlankOrDefault(principal.nickname(), "Learner");
         EquippedCustomizationDto equipped = RoomPresenceHelper.resolveEquipped(customizationLookup, principal);
@@ -121,7 +124,14 @@ public class RoomPresenceService {
             eventType = "PLAYER_JOINED";
         }
 
-        stateStore.savePlayer(roomId, nextState);
+        if (!stateStore.savePlayerWithinCapacity(roomId, nextState, roomConfig.getShardCapacity(), now)) {
+            throw RoomExceptions.roomFull(roomId, roomConfig.getShardCapacity());
+        }
+
+        sessionRegistry.attachRoom(wsSessionId, roomId);
+        stateStore.removeDisconnect(roomId, principal.userId());
+        watchdog.cancelGraceCheck(roomId, principal.userId());
+
         return RoomPresenceHelper.broadcastRoomEvent(
                 stateStore, messagingTemplate, roomId, eventType, principal.userId(), null, nextState.toDto(), now
         );

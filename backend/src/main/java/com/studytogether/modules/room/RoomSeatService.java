@@ -1,7 +1,6 @@
 package com.studytogether.modules.room;
 
 import com.studytogether.modules.auth.AuthPrincipal;
-import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomEvent;
 import com.studytogether.modules.room.model.RoomPlayerState;
 import com.studytogether.modules.room.model.SeatSitRequest;
@@ -48,11 +47,11 @@ public class RoomSeatService {
             throw RoomExceptions.alreadySeated(roomId, player.seatId());
         }
 
-        SeatLockResult lockResult = stateStore.lockSeat(roomId, seat.seatId(), principal.userId());
-        if (lockResult == SeatLockResult.SEAT_OCCUPIED) {
+        SeatLockOutcome lockOutcome = stateStore.lockSeat(roomId, seat.tableId(), seat.seatId(), principal.userId());
+        if (lockOutcome.result() == SeatLockResult.SEAT_OCCUPIED) {
             throw RoomExceptions.seatOccupied(roomId, seat.seatId());
         }
-        if (lockResult == SeatLockResult.ALREADY_SEATED) {
+        if (lockOutcome.result() == SeatLockResult.ALREADY_SEATED) {
             throw RoomExceptions.alreadySeated(roomId, player.seatId());
         }
 
@@ -63,14 +62,7 @@ public class RoomSeatService {
         );
         stateStore.savePlayer(roomId, updated);
 
-        Optional<RedisTableState> tableStateOpt = stateStore.getTableState(roomId, seat.tableId());
-        String hostUserId;
-        if (tableStateOpt.isEmpty() || tableStateOpt.get().hostUserId() == null || tableStateOpt.get().hostUserId().isBlank()) {
-            hostUserId = principal.userId();
-            stateStore.saveTableState(roomId, seat.tableId(), new RedisTableState(hostUserId, List.of(), false, null));
-        } else {
-            hostUserId = tableStateOpt.get().hostUserId();
-        }
+        String hostUserId = lockOutcome.hostUserId();
 
         long seq = stateStore.incrementEventSeq(roomId);
         RoomEvent event = new RoomEvent(

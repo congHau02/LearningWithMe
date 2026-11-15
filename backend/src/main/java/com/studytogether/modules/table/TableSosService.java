@@ -36,12 +36,12 @@ public class TableSosService {
         }
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
         String roomId = ctx.roomId();
-        RedisTableState current = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-        authService.requireControlPermission(current, principal.userId());
-
         String nextSosBanner = normalizeSosTopic(request.active(), request.topic());
-        RedisTableState updated = current.withSosBanner(nextSosBanner);
-        stateStore.saveTableState(roomId, tableId, updated);
+
+        RedisTableState updated = stateStore.mutateTableState(roomId, tableId, current -> {
+            authService.requireControlPermission(current, principal.userId());
+            return current.withSosBanner(nextSosBanner);
+        });
 
         long now = System.currentTimeMillis();
         TableWorkspaceEvent workspaceEvent = TableWorkspaceEvents.sosUpdated(

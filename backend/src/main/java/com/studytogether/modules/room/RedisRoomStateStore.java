@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -25,7 +26,7 @@ public class RedisRoomStateStore implements RoomStateStore {
     private final RedisJsonCodec codec;
     private final RedisTableStateStore tableStore;
     private final RedisRoomShardRegistry shardRegistry;
-    private final DefaultRedisScript<Long> seatSitScript;
+    private final DefaultRedisScript<String> seatSitScript;
 
     public RedisRoomStateStore(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
@@ -34,7 +35,7 @@ public class RedisRoomStateStore implements RoomStateStore {
         this.shardRegistry = new RedisRoomShardRegistry(redisTemplate);
         this.seatSitScript = new DefaultRedisScript<>();
         this.seatSitScript.setLocation(new ClassPathResource("redis/atomic_seat_sit.lua"));
-        this.seatSitScript.setResultType(Long.class);
+        this.seatSitScript.setResultType(String.class);
     }
 
     @Override
@@ -51,6 +52,21 @@ public class RedisRoomStateStore implements RoomStateStore {
     public long countPlayers(String roomId) {
         Long size = redisTemplate.opsForHash().size(playersKey(roomId));
         return size != null ? size : 0L;
+    }
+
+    @Override
+    public long countActiveLearners(String roomId, long nowEpochMs) {
+        return shardRegistry.countActiveLearners(roomId, nowEpochMs);
+    }
+
+    @Override
+    public ShardReservationOutcome reserveShardSlot(String roomId, String userId, int capacity, long nowEpochMs, long expiresAtEpochMs) {
+        return shardRegistry.reserveShardSlot(roomId, userId, capacity, nowEpochMs, expiresAtEpochMs);
+    }
+
+    @Override
+    public boolean savePlayerWithinCapacity(String roomId, RoomPlayerState player, int capacity, long nowEpochMs) {
+        return shardRegistry.savePlayerWithinCapacity(roomId, player.userId(), codec.serialize(player), capacity, nowEpochMs);
     }
 
     @Override
@@ -97,6 +113,7 @@ public class RedisRoomStateStore implements RoomStateStore {
 
     @Override
     public boolean deletePlayer(String roomId, String userId) {
+        shardRegistry.removeReservation(roomId, userId);
         Long removed = redisTemplate.opsForHash().delete(playersKey(roomId), userId);
         return removed != null && removed > 0;
     }
@@ -115,11 +132,7 @@ public class RedisRoomStateStore implements RoomStateStore {
     public Optional<Long> getDisconnectTime(String roomId, String userId) {
         Object raw = redisTemplate.opsForHash().get(disconnectsKey(roomId), userId);
         if (raw == null) return Optional.empty();
-        try {
-            return Optional.of(Long.parseLong(raw.toString().trim()));
-        } catch (NumberFormatException ex) {
-            return Optional.empty();
-        }
+        try { return Optional.of(Long.parseLong(raw.toString().trim())); } catch (NumberFormatException ex) { return Optional.empty(); }
     }
 
     @Override
@@ -136,11 +149,15 @@ public class RedisRoomStateStore implements RoomStateStore {
     }
 
     @Override
-    public SeatLockResult lockSeat(String roomId, String seatId, String userId) {
-        Long result = redisTemplate.execute(seatSitScript, List.of(seatsKey(roomId)), seatId, userId);
-        if (result == null || result == 0L) return SeatLockResult.SEAT_OCCUPIED;
-        if (result == -1L) return SeatLockResult.ALREADY_SEATED;
-        return SeatLockResult.SUCCESS;
+    public SeatLockOutcome lockSeat(String roomId, String tableId, String seatId, String userId) {
+        String initialTableJson = codec.serialize(new RedisTableState(userId, List.of(), false, null));
+        String result = tableStore.withTableLock(roomId, tableId, () -> redisTemplate.execute(
+                seatSitScript, List.of(seatsKey(roomId), tableStateKey(roomId, tableId)), seatId, userId, initialTableJson));
+        if ("-1".equals(result)) return new SeatLockOutcome(SeatLockResult.ALREADY_SEATED, null);
+        if (result != null && result.startsWith("1:")) {
+            return new SeatLockOutcome(SeatLockResult.SUCCESS, result.substring(2));
+        }
+        return new SeatLockOutcome(SeatLockResult.SEAT_OCCUPIED, null);
     }
 
     @Override
@@ -157,6 +174,11 @@ public class RedisRoomStateStore implements RoomStateStore {
     @Override
     public void saveTableState(String roomId, String tableId, RedisTableState state) {
         tableStore.saveTableState(roomId, tableId, state);
+    }
+
+    @Override
+    public RedisTableState mutateTableState(String roomId, String tableId, UnaryOperator<RedisTableState> mutator) {
+        return tableStore.mutateTableState(roomId, tableId, mutator);
     }
 
     @Override
@@ -206,6 +228,7 @@ public class RedisRoomStateStore implements RoomStateStore {
 
     public static String playersKey(String roomId) { return "room:" + roomId + ":players"; }
     public static String seatsKey(String roomId) { return "room:" + roomId + ":seats"; }
+    public static String reservationsKey(String roomId) { return "room:" + roomId + ":reservations"; }
     public static String disconnectsKey(String roomId) { return "room:" + roomId + ":disconnects"; }
     public static String seqKey(String roomId) { return "room:" + roomId + ":seq"; }
     public static String chatKey(String roomId) { return "room:" + roomId + ":chat"; }

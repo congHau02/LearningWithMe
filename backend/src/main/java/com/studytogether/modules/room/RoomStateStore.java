@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 /**
  * Abstraction over room realtime hot state (backed by Redis 7 in production).
@@ -20,6 +21,13 @@ public interface RoomStateStore {
     List<String> getKnownShards();
 
     long countPlayers(String roomId);
+
+    long countActiveLearners(String roomId, long nowEpochMs);
+
+    ShardReservationOutcome reserveShardSlot(
+            String roomId, String userId, int capacity, long nowEpochMs, long expiresAtEpochMs);
+
+    boolean savePlayerWithinCapacity(String roomId, RoomPlayerState player, int capacity, long nowEpochMs);
 
     boolean isShardKnownOrActive(String roomId);
 
@@ -43,13 +51,15 @@ public interface RoomStateStore {
 
     Map<String, String> getSeats(String roomId);
 
-    SeatLockResult lockSeat(String roomId, String seatId, String userId);
+    SeatLockOutcome lockSeat(String roomId, String tableId, String seatId, String userId);
 
     boolean releaseSeat(String roomId, String seatId);
 
     Optional<RedisTableState> getTableState(String roomId, String tableId);
 
     void saveTableState(String roomId, String tableId, RedisTableState state);
+
+    RedisTableState mutateTableState(String roomId, String tableId, UnaryOperator<RedisTableState> mutator);
 
     boolean deleteTableState(String roomId, String tableId);
 

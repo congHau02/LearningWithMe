@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -52,26 +53,54 @@ public class TableHomeworkService {
     public HomeworkSlide uploadSlide(AuthPrincipal principal, String tableId, MultipartFile file) {
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
         String roomId = ctx.roomId();
-        RedisTableState current = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-        authService.requireControlPermission(current, principal.userId());
+        RedisTableState preCheck = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
+        authService.requireControlPermission(preCheck, principal.userId());
 
-        if (current.homeworkSlides().size() >= MAX_SLIDES_PER_TABLE) {
-            throw TableExceptions.invalidAction("Table already has maximum 5 homework slides");
-        }
         if (file == null || file.isEmpty()) {
             throw TableExceptions.invalidAction("Homework image file is required");
         }
-
         byte[] bytes = storage.readMultipartBytes(file);
         // shortcut: browser normalizes to .webp; backend validates JPEG/PNG/WEBP magic bytes and stores as {imageId}.webp without native libwebp re-encoding
         HomeworkImageValidator.detectAndValidateImageType(bytes);
 
+        long now = System.currentTimeMillis();
+        AtomicReference<HomeworkSlide> createdSlideRef = new AtomicReference<>();
+        RedisTableState updated;
+        try {
+            updated = stateStore.mutateTableState(roomId, tableId, current -> {
+                authService.requireControlPermission(current, principal.userId());
+                if (current.homeworkSlides().size() >= MAX_SLIDES_PER_TABLE) {
+                    throw TableExceptions.invalidAction("Table already has maximum 5 homework slides");
+                }
+                HomeworkSlide slide = createdSlideRef.get();
+                if (slide == null) {
+                    slide = persistSlideArtifacts(principal.userId(), roomId, tableId, bytes, now);
+                    createdSlideRef.set(slide);
+                }
+                List<HomeworkSlide> nextSlides = new ArrayList<>(current.homeworkSlides());
+                nextSlides.add(slide);
+                return current.withHomeworkSlides(nextSlides, slide.imageId());
+            });
+        } catch (RuntimeException ex) {
+            if (createdSlideRef.get() != null) {
+                deleteSlideArtifacts(createdSlideRef.get());
+            }
+            throw ex;
+        }
+
+        HomeworkSlide newSlide = createdSlideRef.get();
+        TableWorkspaceEvent event = TableWorkspaceEvents.homeworkSlideEvent(
+                "HOMEWORK_SLIDE_ADDED", tableId, principal.userId(), updated, now
+        ).withRoomId(roomId);
+        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
+        return newSlide;
+    }
+
+    private HomeworkSlide persistSlideArtifacts(String userId, String roomId, String tableId, byte[] bytes, long now) {
         String imageId = "img-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         String fileName = imageId + ".webp";
-        long now = System.currentTimeMillis();
-
         stateStore.saveEphemeralImage(
-                new EphemeralImageMetadata(imageId, roomId, tableId, fileName, principal.userId(), now),
+                new EphemeralImageMetadata(imageId, roomId, tableId, fileName, userId, now),
                 EPHEMERAL_IMAGE_TTL
         );
         try {
@@ -80,25 +109,7 @@ public class TableHomeworkService {
             stateStore.deleteEphemeralImage(imageId);
             throw ex;
         }
-
-        HomeworkSlide newSlide = new HomeworkSlide(
-                imageId,
-                fileName,
-                "/api/v1/ephemeral-files/" + fileName,
-                principal.userId(),
-                now
-        );
-        List<HomeworkSlide> nextSlides = new ArrayList<>(current.homeworkSlides());
-        nextSlides.add(newSlide);
-
-        RedisTableState updated = current.withHomeworkSlides(nextSlides, imageId);
-        stateStore.saveTableState(roomId, tableId, updated);
-
-        TableWorkspaceEvent event = TableWorkspaceEvents.homeworkSlideEvent(
-                "HOMEWORK_SLIDE_ADDED", tableId, principal.userId(), updated, now
-        ).withRoomId(roomId);
-        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
-        return newSlide;
+        return new HomeworkSlide(imageId, fileName, "/api/v1/ephemeral-files/" + fileName, userId, now);
     }
 
     public TableWorkspaceEvent handleSlideAction(
@@ -111,34 +122,37 @@ public class TableHomeworkService {
         }
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
         String roomId = ctx.roomId();
-        RedisTableState current = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-        authService.requireControlPermission(current, principal.userId());
-
         String targetImageId = request.imageId().trim();
-        HomeworkSlide targetSlide = current.homeworkSlides().stream()
-                .filter(s -> s.imageId().equals(targetImageId))
-                .findFirst()
-                .orElseThrow(() -> TableExceptions.invalidAction("Homework slide not found: " + targetImageId));
-
         long now = System.currentTimeMillis();
-        RedisTableState updated;
-        String eventType;
-        if (request.action() == HomeworkSlideAction.SELECT) {
-            updated = current.withHomeworkSlides(current.homeworkSlides(), targetSlide.imageId());
-            eventType = "HOMEWORK_SLIDE_SELECTED";
-        } else {
+        AtomicReference<HomeworkSlide> deletedSlideRef = new AtomicReference<>();
+
+        RedisTableState updated = stateStore.mutateTableState(roomId, tableId, current -> {
+            authService.requireControlPermission(current, principal.userId());
+            HomeworkSlide targetSlide = current.homeworkSlides().stream()
+                    .filter(s -> s.imageId().equals(targetImageId))
+                    .findFirst()
+                    .orElseThrow(() -> TableExceptions.invalidAction("Homework slide not found: " + targetImageId));
+
+            if (request.action() == HomeworkSlideAction.SELECT) {
+                return current.withHomeworkSlides(current.homeworkSlides(), targetSlide.imageId());
+            }
+            deletedSlideRef.set(targetSlide);
             List<HomeworkSlide> remaining = current.homeworkSlides().stream()
                     .filter(s -> !s.imageId().equals(targetSlide.imageId()))
                     .toList();
             String nextActiveId = targetSlide.imageId().equals(current.activeSlideId())
                     ? (remaining.isEmpty() ? null : remaining.get(0).imageId())
                     : current.activeSlideId();
-            updated = current.withHomeworkSlides(remaining, nextActiveId);
-            eventType = "HOMEWORK_SLIDE_DELETED";
-            deleteSlideArtifacts(targetSlide);
+            return current.withHomeworkSlides(remaining, nextActiveId);
+        });
+
+        String eventType = request.action() == HomeworkSlideAction.SELECT
+                ? "HOMEWORK_SLIDE_SELECTED"
+                : "HOMEWORK_SLIDE_DELETED";
+        if (deletedSlideRef.get() != null) {
+            deleteSlideArtifacts(deletedSlideRef.get());
         }
 
-        stateStore.saveTableState(roomId, tableId, updated);
         TableWorkspaceEvent event = TableWorkspaceEvents.homeworkSlideEvent(
                 eventType, tableId, principal.userId(), updated, now
         ).withRoomId(roomId);

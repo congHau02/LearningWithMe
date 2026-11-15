@@ -121,9 +121,15 @@ class TableWorkspaceIntegrationTest {
         assertThat(sit1.path("type").asText()).isEqualTo("SEAT_LOCKED");
 
         // Host broadcasts a workspace event while outsider is unseated -> unauthorized subscription receives nothing
+        BlockingQueue<JsonNode> hostTableEvents = subscribeJson(hostSession, "/topic/table/table_01/workspace");
+        Thread.sleep(100);
         hostSession.send("/app/table/table_01/permission.respond", Map.of("action", "TOGGLE_FREE_COLLAB", "isFreeCollab", true));
+        assertThat(hostTableEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
         assertThat(unauthorizedTableEvents.poll(400, TimeUnit.MILLISECONDS)).isNull();
         hostSession.send("/app/table/table_01/permission.respond", Map.of("action", "TOGGLE_FREE_COLLAB", "isFreeCollab", false));
+        JsonNode resetCollab = hostTableEvents.poll(5, TimeUnit.SECONDS);
+        assertThat(resetCollab).isNotNull();
+        assertThat(resetCollab.path("isFreeCollab").asBoolean()).isFalse();
         if (outsiderSession.isConnected()) {
             outsiderSession.disconnect();
         }

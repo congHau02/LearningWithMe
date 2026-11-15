@@ -35,18 +35,17 @@ public class TableVideoService {
         }
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
         String roomId = ctx.roomId();
-        RedisTableState current = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
-        authService.requireControlPermission(current, principal.userId());
-
         long now = System.currentTimeMillis();
-        TableVideoState previous = current.videoState() != null ? current.videoState() : TableVideoState.empty();
-        TableVideoState nextVideo = computeNextVideoState(previous, request, now);
 
-        RedisTableState updated = current.withVideoState(nextVideo);
-        stateStore.saveTableState(roomId, tableId, updated);
+        RedisTableState updated = stateStore.mutateTableState(roomId, tableId, current -> {
+            authService.requireControlPermission(current, principal.userId());
+            TableVideoState previous = current.videoState() != null ? current.videoState() : TableVideoState.empty();
+            TableVideoState nextVideo = computeNextVideoState(previous, request, now);
+            return current.withVideoState(nextVideo);
+        });
 
         TableWorkspaceEvent event = TableWorkspaceEvents.videoSynced(
-                tableId, principal.userId(), nextVideo, updated, now
+                tableId, principal.userId(), updated.videoState(), updated, now
         ).withRoomId(roomId);
         messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
         return event;
