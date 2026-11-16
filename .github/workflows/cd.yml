@@ -60,7 +60,7 @@ jobs:
       packages: read
     steps:
       - name: Checkout fallback Compose config when using SSH fallback
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL == '' }}
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL == '' && secrets.VM_HOST != '' }}
         uses: actions/checkout@v4
         with:
           sparse-checkout: |
@@ -152,6 +152,6 @@ jobs:
               echo "Backend is healthy at $HEALTH_URL"
             fi
           else
-            echo "::error::Missing RENDER_DEPLOY_HOOK_URL (or VM_HOST for SSH fallback). Run scripts/setup-prod-infra.sh first."
-            exit 1
+            echo "::notice::RENDER_DEPLOY_HOOK_URL and VM_HOST are not set; skipping remote deploy trigger (assuming Render GitHub Auto-Deploy handles push to main)."
+            exit 0
           fi

@@ -165,6 +165,22 @@ set_secret() {
   warn "skipped GitHub secret $name: gh not ready; set it later"
 }
 
+# clear_optional_secret KEY removes KEY from ENV_FILE and deletes its GitHub secret.
+clear_optional_secret() {
+  local name="$1" tmp
+  if [[ -f "$ENV_FILE" ]]; then
+    tmp=$(mktemp)
+    grep -vE "^${name}=" "$ENV_FILE" > "$tmp" || true
+    cat "$tmp" > "$ENV_FILE"
+    rm -f "$tmp"
+  fi
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    gh secret delete "$name" >/dev/null 2>&1 || true
+  else
+    warn "gh not ready; delete GitHub secret $name manually if previously set"
+  fi
+}
+
 # set_var NAME VALUE sets a GitHub Actions repo variable (non-secret).
 set_var() {
   local name="$1" value="$2"
@@ -293,8 +309,9 @@ write_env APP_AUTH_RATE_LIMIT_WINDOW_SECONDS "60"
 write_env GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID"
 
 open_url "https://dashboard.render.com/"
-step "New → Web Service → Deploy an existing image from a registry (or connect GitHub repo with Dockerfile path = backend/Dockerfile)."
-note "  - Image URL: ghcr.io/conghau02/study-together-backend:latest"
+step "New → Web Service → choose either:"
+note "  1) GitHub repo: Root Directory = (blank), Dockerfile Path = backend/Dockerfile, Auto-Deploy = On Commit"
+note "  2) Existing image: ghcr.io/conghau02/study-together-backend:latest (with Deploy Hook)"
 note "  - Instance Type: Free (512 MB RAM)"
 step "Add Environment Variables on Render from $ENV_FILE (do NOT copy RENDER_DEPLOY_HOOK_URL or VERCEL_*):"
 note "  SPRING_PROFILES_ACTIVE, SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD,"
@@ -304,14 +321,19 @@ note "  APP_JWT_SECRET, APP_CORS_ALLOWED_ORIGINS, APP_STORAGE_HOMEWORK_DIR, APP_
 
 ask_required BACKEND_PUBLIC_URL "Render public HTTPS URL (e.g. https://study-together-backend.onrender.com):"
 BACKEND_PUBLIC_URL="${BACKEND_PUBLIC_URL%/}"
-ask_secret_required RENDER_DEPLOY_HOOK_URL "Render Deploy Hook URL (Settings → Deploy Hook):"
-
 write_env BACKEND_PUBLIC_URL "$BACKEND_PUBLIC_URL"
-write_env RENDER_DEPLOY_HOOK_URL "$RENDER_DEPLOY_HOOK_URL"
-chmod 600 "$ENV_FILE"
-
-set_secret RENDER_DEPLOY_HOOK_URL "$RENDER_DEPLOY_HOOK_URL"
 set_var BACKEND_PUBLIC_URL "$BACKEND_PUBLIC_URL"
+
+if confirm "Using Render GitHub Auto-Deploy (On Commit) instead of a Deploy Hook?"; then
+  RENDER_DEPLOY_HOOK_URL=""
+  clear_optional_secret RENDER_DEPLOY_HOOK_URL
+  note "Skipped RENDER_DEPLOY_HOOK_URL; Render GitHub Auto-Deploy will deploy pushes to main."
+else
+  ask_secret_required RENDER_DEPLOY_HOOK_URL "Render Deploy Hook URL (Settings → Deploy Hook):"
+  write_env RENDER_DEPLOY_HOOK_URL "$RENDER_DEPLOY_HOOK_URL"
+  set_secret RENDER_DEPLOY_HOOK_URL "$RENDER_DEPLOY_HOOK_URL"
+fi
+chmod 600 "$ENV_FILE"
 
 # ── Stage 5: Link Vercel Env, UptimeRobot Keep-Alive & Verify ────────────
 stage "Link Vercel Env, UptimeRobot Keep-Alive & Verify"
