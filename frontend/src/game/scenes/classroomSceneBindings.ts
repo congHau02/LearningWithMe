@@ -10,6 +10,9 @@ import type { ChatBubble } from '../entities/ChatBubble';
 import type { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
 import type { RoomTopology } from '../topology/roomTopology';
 import {
+  CAMERA_ZOOM_STEP,
+} from './classroomCameraController';
+import {
   handleClassroomPointerDown,
   resolveClassroomHoverState,
 } from './classroomPointerHandler';
@@ -87,6 +90,11 @@ export function bindClassroomSceneInputs(options: {
       inputController,
       ambientNpcManager,
     });
+  });
+
+  scene.input.on('wheel', (_pointer: Phaser.Input.Pointer, _objs: unknown[], _dx: number, deltaY: number) => {
+    if (isTypingInFormElement() || deltaY === 0) return;
+    useGameStore.getState().adjustCameraZoom(deltaY < 0 ? CAMERA_ZOOM_STEP : -CAMERA_ZOOM_STEP);
   });
 
   const onKeyDown = (event: KeyboardEvent) => {

@@ -34,6 +34,7 @@ interface TopBarActionsProps {
   onOpenStudySessions?: () => void;
   onOpenLeaderboard?: () => void;
   onOpenCustomizer?: () => void;
+  onActionExecuted?: () => void;
 }
 
 /** Right-side status badges and action buttons displayed in {@link TopBar}. */
@@ -55,9 +56,15 @@ export function TopBarActions({
   onOpenStudySessions,
   onOpenLeaderboard,
   onOpenCustomizer,
+  onActionExecuted,
 }: TopBarActionsProps) {
+  const runAction = (cb?: () => void) => () => {
+    cb?.();
+    onActionExecuted?.();
+  };
+
   return (
-    <div className="flex flex-wrap items-center gap-2.5 text-xs">
+    <div className="flex flex-wrap items-center gap-2 text-xs sm:gap-2.5">
       <span
         data-testid="character-state-badge"
         className="rounded-md border border-border bg-muted px-2.5 py-1 font-medium text-foreground"
@@ -78,7 +85,7 @@ export function TopBarActions({
             <button
               type="button"
               data-testid="leave-seat-btn"
-              onClick={onLeaveSeat}
+              onClick={runAction(onLeaveSeat)}
               className="rounded-md border border-destructive/50 bg-destructive/20 px-2.5 py-1 font-medium text-destructive-foreground transition hover:bg-destructive/30"
             >
               Đứng dậy rời bàn
@@ -106,7 +113,7 @@ export function TopBarActions({
       {authProvider === 'GUEST' && onOpenUpgrade ? (
         <button
           type="button"
-          onClick={onOpenUpgrade}
+          onClick={runAction(onOpenUpgrade)}
           className="min-h-8 rounded-md border border-primary/50 bg-primary/15 px-3 py-1 font-semibold text-primary transition hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Nâng cấp tài khoản
@@ -118,7 +125,7 @@ export function TopBarActions({
           <button
             type="button"
             data-testid="study-minutes-badge"
-            onClick={onOpenStudySessions}
+            onClick={runAction(onOpenStudySessions)}
             title="Xem Lịch sử Phiên học"
             className="min-h-8 rounded-md border border-border bg-secondary px-2.5 py-1 font-mono font-medium text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
@@ -142,7 +149,7 @@ export function TopBarActions({
         <button
           type="button"
           data-testid="leaderboard-open-btn"
-          onClick={onOpenLeaderboard}
+          onClick={runAction(onOpenLeaderboard)}
           title="Xem Bảng Xếp Hạng Giờ Học"
           className="min-h-8 rounded-md border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 font-medium text-amber-200 transition hover:bg-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >🏆 Bảng xếp hạng</button>
@@ -152,7 +159,7 @@ export function TopBarActions({
         <button
           type="button"
           data-testid="customizer-open-btn"
-          onClick={onOpenCustomizer}
+          onClick={runAction(onOpenCustomizer)}
           title="Tùy chỉnh Nhân vật & Thú cưng"
           className="min-h-8 rounded-md border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 font-medium text-sky-200 transition hover:bg-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >🎨 Tủ đồ</button>

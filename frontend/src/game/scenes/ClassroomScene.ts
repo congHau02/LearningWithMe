@@ -21,6 +21,7 @@ import {
   preloadClassroomAssets,
   registerCharacterAnimations,
 } from './classroomMapRenderer';
+import { applyCameraViewportState } from './classroomCameraController';
 import {
   bindClassroomSceneInputs,
   subscribeNpcDrinkReactions,
@@ -43,6 +44,8 @@ export class ClassroomScene extends Phaser.Scene {
   private npcReactionUnsub?: () => void;
   private hoveredSeatId: string | null = null;
   private currentAnimKey = '';
+  private appliedCameraZoom = -1;
+  private appliedCameraFollow: boolean | null = null;
 
   constructor(topology: RoomTopology = MAIN_LIBRARY_TOPOLOGY) {
     super({ key: 'ClassroomScene' });
@@ -105,6 +108,7 @@ export class ClassroomScene extends Phaser.Scene {
     this.selfChatBubble = new ChatBubble({ scene: this });
     this.storeUnsub = subscribeSceneChatBubbles(this.selfChatBubble, this.remotePlayersRenderer);
     this.npcReactionUnsub = subscribeNpcDrinkReactions(this.ambientNpcManager);
+    this.syncCameraFromStore(useGameStore.getState());
 
     bindClassroomSceneInputs({
       scene: this,
@@ -191,5 +195,26 @@ export class ClassroomScene extends Phaser.Scene {
         pathQueue: game.pathQueue,
       });
     }
+    this.syncCameraFromStore(game);
+  }
+
+  private syncCameraFromStore(game: { cameraZoom: number; cameraFollowEnabled: boolean }): void {
+    const mainCamera = this.cameras?.main;
+    if (!mainCamera) return;
+    if (
+      this.appliedCameraZoom === game.cameraZoom &&
+      this.appliedCameraFollow === game.cameraFollowEnabled
+    ) {
+      return;
+    }
+    this.appliedCameraZoom = game.cameraZoom;
+    this.appliedCameraFollow = game.cameraFollowEnabled;
+    applyCameraViewportState({
+      camera: mainCamera,
+      target: this.actorSprite,
+      worldWidth: this.topology.width * this.topology.tileSize,
+      worldHeight: this.topology.height * this.topology.tileSize,
+      view: { zoom: game.cameraZoom, followEnabled: game.cameraFollowEnabled },
+    });
   }
 }

@@ -40,7 +40,12 @@ export function reduceWorkspaceEvent(
   if (event.type === 'SOS_UPDATED') return { sosBanner: event.sosBanner ?? null };
   if (event.type === 'TABLE_CHAT' && event.chatMessage) {
     const msg = event.chatMessage;
-    return s.recentMessages.some((m) => m.id === msg.id) ? s : { recentMessages: [...s.recentMessages, msg].slice(-50) };
+    if (s.recentMessages.some((m) => m.id === msg.id)) return s;
+    const isFromPeer = !selfUserId || msg.userId !== selfUserId;
+    return {
+      recentMessages: [...s.recentMessages, msg].slice(-50),
+      unreadChatCount: s.isWorkspaceMinimized && isFromPeer ? s.unreadChatCount + 1 : s.unreadChatCount,
+    };
   }
   if (event.type === 'HOMEWORK_SLIDE_ADDED' || event.type === 'HOMEWORK_SLIDE_SELECTED' || event.type === 'HOMEWORK_SLIDE_DELETED') {
     const nextActive = event.activeSlideId !== undefined ? event.activeSlideId : s.activeSlideId;

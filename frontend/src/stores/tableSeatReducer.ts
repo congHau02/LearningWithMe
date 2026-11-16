@@ -30,6 +30,8 @@ export interface TableStoreData {
   homeworkSlides: HomeworkSlide[];
   activeSlideId: string | null;
   laserPointers: Record<string, LaserPointerState>;
+  isWorkspaceMinimized: boolean;
+  unreadChatCount: number;
 }
 
 export const roleOf = (uid: string, hostId: string | null, coHosts: string[]) =>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { findVirtualDrink } from '../game/cafe/studyCafeConfig';
+import { clampCameraZoom } from '../game/scenes/classroomCameraController';
 import { applyRoomEvent, reduceSnapshotState } from '../services/roomEventReducer';
 import {
   INITIAL_GAME_STATE,
@@ -109,5 +110,19 @@ export const useGameStore = create<GameState>((set) => ({
     }),
   handleStompError: (error) =>
     set((s) => ({ lastError: error, connectionStatus: error.code === 'SESSION_REPLACED' ? 'REPLACED' : s.connectionStatus })),
+  setCameraView: (zoom, followEnabled, manual = false) =>
+    set((s) => ({
+      cameraZoom: clampCameraZoom(zoom),
+      cameraFollowEnabled: followEnabled !== undefined ? followEnabled : s.cameraFollowEnabled,
+      cameraManualOverride: manual ? true : s.cameraManualOverride,
+    })),
+  adjustCameraZoom: (delta) =>
+    set((s) => {
+      const nextZoom = clampCameraZoom(s.cameraZoom + delta);
+      const autoFollow = nextZoom > 1 && s.cameraZoom <= 1 ? true : s.cameraFollowEnabled;
+      return { cameraZoom: nextZoom, cameraFollowEnabled: autoFollow, cameraManualOverride: true };
+    }),
+  toggleCameraFollow: () =>
+    set((s) => ({ cameraFollowEnabled: !s.cameraFollowEnabled, cameraManualOverride: true })),
   resetGame: () => set({ ...INITIAL_GAME_STATE }),
 }));

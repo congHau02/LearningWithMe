@@ -8,6 +8,7 @@ interface TableWorkspaceHeaderProps {
   canControl: boolean;
   onToggleFreeCollab: () => void;
   onRequestControl: () => void;
+  onMinimize: () => void;
   onRequestLeaveSeat: () => void;
 }
 
@@ -20,6 +21,7 @@ export function TableWorkspaceHeader({
   canControl,
   onToggleFreeCollab,
   onRequestControl,
+  onMinimize,
   onRequestLeaveSeat,
 }: TableWorkspaceHeaderProps) {
   return (
@@ -73,6 +75,16 @@ export function TableWorkspaceHeader({
             Đang có quyền điều khiển
           </span>
         )}
+
+        <button
+          type="button"
+          data-testid="minimize-workspace-btn"
+          onClick={onMinimize}
+          title="Thu gọn để ngắm Study Café"
+          className="rounded-lg border border-border bg-secondary px-3 py-1.5 font-semibold text-foreground transition hover:bg-secondary/80"
+        >
+          Thu gọn
+        </button>
 
         <button
           type="button"

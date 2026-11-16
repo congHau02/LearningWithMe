@@ -50,6 +50,9 @@ export interface GameState {
   activeCafeNpcName: string | null;
   activeCafeNpcId: string | null;
   npcBubbleOrder: NpcBubbleOrder | null;
+  cameraZoom: number;
+  cameraFollowEnabled: boolean;
+  cameraManualOverride: boolean;
   setRoomId: (roomId: string) => void;
   setPosition: (position: GridPosition, facingDir?: FacingDirection, isMoving?: boolean) => void;
   setFacingDir: (facingDir: FacingDirection) => void;
@@ -75,6 +78,9 @@ export interface GameState {
   applyIncomingRoomEvent: (event: RoomEvent, selfUserId: string | null) => void;
   pruneRemotePlayer: (userId: string) => void;
   handleStompError: (error: StompErrorPayload) => void;
+  setCameraView: (zoom: number, followEnabled?: boolean, manual?: boolean) => void;
+  adjustCameraZoom: (delta: number) => void;
+  toggleCameraFollow: () => void;
   resetGame: () => void;
 }
 
@@ -106,4 +112,7 @@ export const INITIAL_GAME_STATE = {
   activeCafeNpcName: null as string | null,
   activeCafeNpcId: null as string | null,
   npcBubbleOrder: null as NpcBubbleOrder | null,
+  cameraZoom: 1,
+  cameraFollowEnabled: false,
+  cameraManualOverride: false,
 };

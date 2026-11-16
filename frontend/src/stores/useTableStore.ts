@@ -24,6 +24,8 @@ export interface TableWorkspaceState {
   homeworkSlides: HomeworkSlide[];
   activeSlideId: string | null;
   laserPointers: Record<string, LaserPointerState>;
+  isWorkspaceMinimized: boolean;
+  unreadChatCount: number;
   setTableState: (payload: { tableId: string; hostUserId: string | null; coHostUserIds?: string[]; isFreeCollab?: boolean; sosBanner?: string | null; sitStartTimeEpoch?: number | null; videoState?: Partial<VideoSyncState>; }) => void;
   applyWorkspaceSnapshot: (snapshot: TableWorkspaceSnapshot, selfUserId: string | null) => void;
   applyWorkspaceEvent: (event: TableWorkspaceEvent, selfUserId: string | null) => void;
@@ -37,6 +39,7 @@ export interface TableWorkspaceState {
   pruneExpiredLaserPointers: (nowEpoch: number, ttlMs: number) => void;
   updateMemberStudyGoal: (userId: string, studyGoal: string, studyGoalCompleted: boolean) => void;
   swapParticipantIdentity: (oldUserId: string, newUserId: string) => void;
+  setWorkspaceMinimized: (minimized: boolean) => void;
   leaveTable: () => void;
 }
 
@@ -48,6 +51,8 @@ const INITIAL_TABLE_STATE = {
   permissionToast: null as string | null, videoState: DEFAULT_VIDEO_STATE, focusCycleState: DEFAULT_FOCUS_CYCLE_STATE, focusCycleResetSeq: 0, recentMessages: [] as TableChatMessage[],
   homeworkSlides: [] as HomeworkSlide[], activeSlideId: null as string | null,
   laserPointers: {} as Record<string, LaserPointerState>,
+  isWorkspaceMinimized: false,
+  unreadChatCount: 0,
 };
 
 export const useTableStore = create<TableWorkspaceState>((set) => ({
@@ -105,5 +110,10 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
       const nextCoHosts = Array.from(new Set(s.coHostUserIds.map((id) => (id === oldUserId ? newUserId : id)))).filter((id) => id !== nextHost);
       return { hostUserId: nextHost, coHostUserIds: nextCoHosts, members: s.members.map((m) => (m.userId === oldUserId ? { ...m, userId: newUserId } : m)) };
     }),
+  setWorkspaceMinimized: (minimized) =>
+    set((s) => ({
+      isWorkspaceMinimized: minimized,
+      unreadChatCount: minimized ? s.unreadChatCount : 0,
+    })),
   leaveTable: () => set({ ...INITIAL_TABLE_STATE }),
 }));

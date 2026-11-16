@@ -155,7 +155,7 @@ export function App() {
         </aside>
       ) : null}
 
-      <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-6">
+      <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-2 sm:p-6">
         <ClassroomCanvas />
       </main>
 

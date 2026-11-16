@@ -9,6 +9,7 @@ import { useTableStore } from '../../stores/useTableStore';
 import { HostPermissionToast } from './HostPermissionToast';
 import { FocusCycleBar } from './FocusCycleBar';
 import { HomeworkDeckPanel } from './HomeworkDeckPanel';
+import { MinimizedTableWorkspaceBar } from './MinimizedTableWorkspaceBar';
 import { SosBannerControl } from './SosBannerControl';
 import { SyncedYouTubePlayer } from './SyncedYouTubePlayer';
 import { TableChatPanel } from './TableChatPanel';
@@ -34,6 +35,8 @@ export function TableWorkspaceShell() {
   const permissionToast = useTableStore((s) => s.permissionToast);
   const setPermissionToast = useTableStore((s) => s.setPermissionToast);
   const dismissPermissionRequest = useTableStore((s) => s.dismissPermissionRequest);
+  const isWorkspaceMinimized = useTableStore((s) => s.isWorkspaceMinimized);
+  const setWorkspaceMinimized = useTableStore((s) => s.setWorkspaceMinimized);
 
   const activeTableId = tableId ?? currentTableId;
   const isSeated = characterState === 'SEATED' && Boolean(activeTableId);
@@ -77,21 +80,29 @@ export function TableWorkspaceShell() {
   };
 
   return (
-    <section
-      data-testid="table-workspace-shell"
-      aria-label={`Không gian bàn học ${activeTableId}`}
-      className="fixed inset-x-4 bottom-4 top-20 z-30 flex flex-col gap-3 overflow-y-auto rounded-2xl border border-border bg-slate-950/92 p-4 shadow-2xl backdrop-blur-lg md:inset-x-8"
-    >
-      <TableWorkspaceHeader
-        activeTableId={activeTableId}
-        elapsedSeconds={elapsedSeconds}
-        isFreeCollab={isFreeCollab}
-        isHost={isHost}
-        canControl={canControl}
-        onToggleFreeCollab={() => handlePermissionAction('TOGGLE_FREE_COLLAB', undefined, !isFreeCollab)}
-        onRequestControl={handleRequestControl}
-        onRequestLeaveSeat={requestLeaveSeat}
-      />
+    <>
+      <section
+        data-testid="table-workspace-shell"
+        aria-label={`Không gian bàn học ${activeTableId}`}
+        hidden={isWorkspaceMinimized}
+        aria-hidden={isWorkspaceMinimized || undefined}
+        className={
+          isWorkspaceMinimized
+            ? 'hidden'
+            : 'fixed inset-x-2 bottom-4 top-20 z-30 flex flex-col gap-3 overflow-y-auto rounded-2xl border border-border bg-slate-950/92 p-3 shadow-2xl backdrop-blur-lg sm:inset-x-4 sm:p-4 md:inset-x-8'
+        }
+      >
+        <TableWorkspaceHeader
+          activeTableId={activeTableId}
+          elapsedSeconds={elapsedSeconds}
+          isFreeCollab={isFreeCollab}
+          isHost={isHost}
+          canControl={canControl}
+          onToggleFreeCollab={() => handlePermissionAction('TOGGLE_FREE_COLLAB', undefined, !isFreeCollab)}
+          onRequestControl={handleRequestControl}
+          onMinimize={() => setWorkspaceMinimized(true)}
+          onRequestLeaveSeat={requestLeaveSeat}
+        />
 
       {permissionToast ? (
         <div
@@ -146,5 +157,18 @@ export function TableWorkspaceShell() {
         </div>
       </div>
     </section>
+
+      {isWorkspaceMinimized ? (
+        <MinimizedTableWorkspaceBar
+          activeTableId={activeTableId}
+          elapsedSeconds={elapsedSeconds}
+          isSeated={isSeated}
+          onJoinVoice={() => void joinVoice()}
+          onToggleMute={toggleMute}
+          onExpand={() => setWorkspaceMinimized(false)}
+          onRequestLeaveSeat={requestLeaveSeat}
+        />
+      ) : null}
+    </>
   );
 }

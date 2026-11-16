@@ -83,7 +83,7 @@ export function StudyGoalControl({
             }
           }}
           placeholder="Nhập mục tiêu hôm nay (≤ 60 ký tự)"
-          className="h-7 w-56 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="h-7 w-44 max-w-full rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary sm:w-56"
           autoFocus
         />
         <span className="font-mono text-[10px] text-muted-foreground">
