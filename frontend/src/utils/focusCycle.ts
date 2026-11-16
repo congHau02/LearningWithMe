@@ -1,3 +1,5 @@
+import { getAudioContextConstructor } from './webAudio';
+
 export type FocusCyclePhase = 'FOCUS' | 'SHORT_BREAK';
 
 export type FocusCycleAction =
@@ -73,7 +75,7 @@ export function formatFocusCountdown(totalSeconds: number): string {
 
 export function playFocusChime(): void {
   try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const AudioCtx = getAudioContextConstructor();
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
     const now = ctx.currentTime;
