@@ -1,5 +1,5 @@
 import { sendTableVoiceSignal } from './tableStompClient';
-import type { VoiceSignalPayload, VoiceSignalRequest } from './tableApi';
+import { fetchVoiceIceServers, type VoiceSignalPayload, type VoiceSignalRequest } from './tableApi';
 import { VoiceAudioAnalyzer } from './voiceAudioAnalyzer';
 import { WebRtcPeerPool } from './webrtcPeerPool';
 import { handleIncomingWebRtcSignal, mapMicError } from './webrtcSignalHandler';
@@ -78,12 +78,14 @@ export class WebRtcMeshManager {
       return;
     }
 
+    const iceServers = await fetchVoiceIceServers();
     if (this.joinGeneration !== myGen || !this.tableId || !this.selfUserId) {
       stream.getTracks().forEach((track) => track.stop());
       store.setJoining(false);
       return;
     }
 
+    this.peerPool.setIceServers(iceServers);
     this.localStream = stream;
     this.joined = true;
     this.analyzer.attachStream(SELF_AUDIO_KEY, stream, false, false);

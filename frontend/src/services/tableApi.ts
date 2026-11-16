@@ -140,6 +140,29 @@ export interface PermissionRequestNotification {
   timestampEpoch: number;
 }
 
+export interface VoiceIceServersResponse {
+  iceServers: RTCIceServer[];
+  ttlSeconds?: number;
+}
+
+export const DEFAULT_VOICE_ICE_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
+];
+
+export async function fetchVoiceIceServers(): Promise<RTCIceServer[]> {
+  try {
+    const data = await apiRequest<VoiceIceServersResponse>('/api/v1/voice/ice-servers', {
+      method: 'GET',
+    });
+    if (Array.isArray(data?.iceServers) && data.iceServers.length > 0) {
+      return data.iceServers;
+    }
+  } catch {
+    // Fall back to default public STUN when ICE endpoint fails or is unreachable
+  }
+  return DEFAULT_VOICE_ICE_SERVERS;
+}
+
 export async function fetchTableWorkspaceState(
   roomId: string,
   tableId: string,

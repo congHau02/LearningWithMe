@@ -51,3 +51,8 @@ app:
     rate-limit:
       max-requests: ${APP_AUTH_RATE_LIMIT_MAX_REQUESTS:10}
       window-seconds: ${APP_AUTH_RATE_LIMIT_WINDOW_SECONDS:60}
+  voice:
+    turn:
+      urls: ${APP_VOICE_TURN_URLS:}
+      secret: ${APP_VOICE_TURN_SECRET:}
+      ttl-seconds: ${APP_VOICE_TURN_TTL_SECONDS:3600}

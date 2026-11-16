@@ -1,10 +1,7 @@
-import type { VoiceSignalRequest } from './tableApi';
+import { DEFAULT_VOICE_ICE_SERVERS, type VoiceSignalRequest } from './tableApi';
 import type { VoicePeerConnectionState } from '../stores/useVoiceStore';
 
 // shortcut: WebRTC P2P Mesh for <= 6 seats/table, upgrade to LiveKit SFU if table size > 8
-const RTC_ICE_CONFIG: RTCConfiguration = {
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-};
 
 function mapConnectionState(state: RTCPeerConnectionState | undefined): VoicePeerConnectionState {
   if (state === 'connected') return 'connected';
@@ -29,10 +26,15 @@ export interface WebRtcPeerPoolCallbacks {
 export class WebRtcPeerPool {
   private peers = new Map<string, RTCPeerConnection>();
   private pendingIce = new Map<string, RTCIceCandidateInit[]>();
+  private iceServers: RTCIceServer[] = DEFAULT_VOICE_ICE_SERVERS;
   private readonly callbacks: WebRtcPeerPoolCallbacks;
 
   constructor(callbacks: WebRtcPeerPoolCallbacks) {
     this.callbacks = callbacks;
+  }
+
+  setIceServers(iceServers: RTCIceServer[]): void {
+    this.iceServers = iceServers.length > 0 ? iceServers : DEFAULT_VOICE_ICE_SERVERS;
   }
 
   hasPeer(peerId: string): boolean {
@@ -51,7 +53,7 @@ export class WebRtcPeerPool {
     const existing = this.peers.get(peerId);
     if (existing) return existing;
 
-    const pc = new RTCPeerConnection(RTC_ICE_CONFIG);
+    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
     this.peers.set(peerId, pc);
 
     const localStream = this.callbacks.getLocalStream();

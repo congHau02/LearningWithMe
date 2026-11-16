@@ -580,4 +580,113 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
     });
     expect(useVoiceStore.getState().peers['u-bad-sdp']?.connectionState).toBe('failed');
   });
+
+  it('fetches ICE servers from /api/v1/voice/ice-servers before creating RTCPeerConnection and falls back to default STUN on failure', async () => {
+    const turnIceServers: RTCIceServer[] = [
+      { urls: ['stun:stun.l.google.com:19302'] },
+      {
+        urls: [
+          'turn:turn.studytogether.example:3478?transport=udp',
+          'turns:turn.studytogether.example:5349?transport=tcp',
+        ],
+        username: '1800003600:u-alice',
+        credential: 'hmac-sha1-base64-sig',
+      },
+    ];
+
+    const workspaceStatePayload = {
+      roomId: 'main-library',
+      tableId: 'table_01',
+      hostUserId: 'u-alice',
+      coHostUserIds: [],
+      isFreeCollab: false,
+      sosBanner: null,
+      videoState: { videoId: null, isPlaying: false, currentTime: 0, lastUpdatedEpoch: 0 },
+      members: [
+        {
+          userId: 'u-alice',
+          nickname: 'Alice',
+          avatarId: 'avatar_01',
+          seatId: 'T1_S1',
+          tableRole: 'TABLE_HOST',
+          sitStartTimeEpoch: Date.now() - 30_000,
+          connected: true,
+        },
+        {
+          userId: 'u-bob',
+          nickname: 'Bob',
+          avatarId: 'avatar_02',
+          seatId: 'T1_S2',
+          tableRole: 'MEMBER',
+          sitStartTimeEpoch: Date.now() - 10_000,
+          connected: true,
+        },
+      ],
+    };
+
+    let failIceEndpoint = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.endsWith('/api/v1/voice/ice-servers')) {
+        if (failIceEndpoint) {
+          return {
+            ok: false,
+            status: 503,
+            statusText: 'Service Unavailable',
+            json: async () => ({ title: 'Service Unavailable', status: 503, detail: 'TURN unreachable' }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ iceServers: turnIceServers, ttlSeconds: 3600 }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => workspaceStatePayload,
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<WorkspaceHarness />);
+    await waitFor(() => expect(screen.getByTestId('table-member-u-bob')).toBeInTheDocument());
+
+    // 1. Join voice when /api/v1/voice/ice-servers succeeds with STUN + TURN
+    fireEvent.click(screen.getByTestId('voice-join-btn'));
+    await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(true));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/voice\/ice-servers$/),
+      expect.objectContaining({ method: 'GET' }),
+    );
+
+    act(() => {
+      dispatchIncomingVoiceSignal({
+        signalType: 'VOICE_JOIN',
+        senderUserId: 'u-bob',
+        senderNickname: 'Bob',
+        muted: false,
+      });
+    });
+
+    await waitFor(() => expect(createdPeers).toHaveLength(1));
+    expect(createdPeers[0].config).toEqual({
+      iceServers: turnIceServers,
+    });
+
+    // 2. Leave voice, then rejoin when /api/v1/voice/ice-servers fails -> gracefully falls back to default STUN
+    fireEvent.click(screen.getByTestId('voice-leave-btn'));
+    await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(false));
+
+    failIceEndpoint = true;
+    fireEvent.click(screen.getByTestId('voice-join-btn'));
+    await waitFor(() => {
+      expect(useVoiceStore.getState().inVoice).toBe(true);
+      expect(createdPeers).toHaveLength(2);
+    });
+    expect(createdPeers[1].config).toEqual({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+  });
 });
