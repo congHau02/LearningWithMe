@@ -40,6 +40,14 @@ _Avoid_: Studying, Occupied, Locked, InTable
 Khoảng thời gian ngắn (30 giây) mà hệ thống bảo lưu Seat và vai trò tại Table cho một người học đang `SEATED` khi họ bị mất kết nối đột ngột.
 _Avoid_: Reconnect Timeout, Session Hold
 
+**Study Café (Quán nước học bài)**:
+Không gian thiết kế chủ đạo của Room mặc định, kết hợp khu vực các Table học tập với quầy pha chế, kệ sách và góc thư giãn ấm cúng.
+_Avoid_: Coffee Shop Room, Cafe Map, Lounge Server
+
+**Ambient NPC (Nhân vật nền / Nhân viên quán)**:
+Nhân vật tự động (nhân viên pha chế, phục vụ, thu ngân) di chuyển và tương tác nhẹ nhàng trong Room để tạo sức sống cho không gian mà không chiếm Seat hay cản đường đi của người học.
+_Avoid_: Bot, AI Player, Remote Player, Dummy User
+
 ## Định danh & Phân quyền (Identity & Permissions)
 
 **Guest (Khách học)**:
@@ -107,3 +115,19 @@ _Avoid_: Global Chat, World Chat, Public Chat, Lobby Chat
 **Chat Bubble (Bong bóng hội thoại)**:
 Khung thông điệp tạm thời nổi lên phía trên nhân vật trên bản đồ 2D trong thời gian ngắn (4 giây) mỗi khi người học gửi tin nhắn hoặc biểu cảm qua Room Chat.
 _Avoid_: Toast Chat, Speech Popover, Overhead Label
+
+**Focus Cycle (Chu kỳ tập trung)**:
+Một nhịp đếm ngược thời gian tập trung hoặc nghỉ giải lao ngắn được đồng bộ chung cho tất cả người học đang `SEATED` tại cùng một Table, độc lập với thời lượng Study Session của từng cá nhân.
+_Avoid_: Pomodoro, Study Session, Countdown Timer
+
+**Study Goal (Mục tiêu học tập)**:
+Mục tiêu cá nhân ngắn gọn mà người học đặt ra cho phiên học trong ngày và có thể đánh dấu hoàn thành ngay khi đang học.
+_Avoid_: Task, Todo Item, Status Message
+
+**Study Streak (Chuỗi ngày học)**:
+Số ngày liên tiếp mà một người học hoàn thành ít nhất một Study Session hợp lệ.
+_Avoid_: Attendance Streak, Login Streak, Combo
+
+**Ambient Soundscape (Âm thanh nền học tập)**:
+Lớp âm thanh môi trường phát lặp nhẹ nhàng (tiếng mưa, quán nước, tiếng ồn trắng) do từng người học tự bật và điều chỉnh cho không gian nghe cá nhân của mình.
+_Avoid_: Background Music, BGM, Audio Track

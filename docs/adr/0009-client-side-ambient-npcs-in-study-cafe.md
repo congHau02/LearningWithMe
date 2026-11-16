@@ -1,0 +1,5 @@
+# Vận hành Ambient NPC hoàn toàn ở tầng Client trên bản đồ Study Café dùng chung
+
+Để biến Room mặc định thành một không gian Study Café ấm cúng có nhân viên pha chế, phục vụ và thu ngân đi lại thường xuyên nhằm xóa cảm giác cô đơn khi phòng vắng người mà không vi phạm mô hình một Room dùng chung (ADR-0003), chúng tôi cần quyết định nơi quản lý vòng đời và chuyển động của các nhân vật này. Nếu đẩy các nhân vật nhân viên vào Redis (`room:{roomId}:players`) và phát gói tin di chuyển 10Hz qua STOMP như người học thật, máy chủ sẽ tốn băng thông vô ích, làm lệch bộ đếm sức chứa 50 người của Room Shard và có nguy cơ làm kẹt thuật toán tìm đường $A^*$ của người học.
+
+Chúng tôi quyết định vận hành toàn bộ **Ambient NPC** như các thực thể mô phỏng xác định ở tầng Client (Phaser 3) dựa trên lộ trình waypoint tĩnh của bản đồ Study Café: chúng không tồn tại trong `room:{roomId}:players`, không bao giờ chiếm `Seat` hay giữ vai trò tại `Table`, không tạo vật cản va chạm với lộ trình $A^*$ của người học, và hỗ trợ tương tác cục bộ (hiển thị `Chat Bubble` khích lệ hoặc chọn đồ uống ảo).
