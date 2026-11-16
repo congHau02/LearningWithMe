@@ -12,13 +12,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.auth.JwtTokenService;
+import com.zaxxer.hikari.HikariDataSource;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.DefaultBootstrapContext;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
 import org.springframework.boot.logging.LoggingInitializationContext;
 import org.springframework.boot.logging.LoggingSystem;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,7 +33,9 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -96,6 +104,12 @@ class ProdProfileIntegrationTest {
 
     @Autowired
     private ConfigurableEnvironment environment;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private RedisProperties redisProperties;
 
     @BeforeEach
     void clearRedis() {
@@ -211,6 +225,41 @@ class ProdProfileIntegrationTest {
             loggingSystem.beforeInitialize();
             loggingSystem.initialize(new LoggingInitializationContext(new StandardEnvironment()), null, null);
         }
+    }
+
+    @Test
+    void prodProfileBindsDynamicPortRedisOptionsAndHikariMaxPoolSize() {
+        assertThat(dataSource).isInstanceOf(HikariDataSource.class);
+        assertThat(((HikariDataSource) dataSource).getMaximumPoolSize()).isEqualTo(5);
+        assertThat(redisProperties.getUsername()).isEmpty();
+        assertThat(redisProperties.getSsl().isEnabled()).isFalse();
+        assertThat(environment.getProperty("server.port", Integer.class)).isEqualTo(8080);
+
+        StandardEnvironment overrideEnv = new StandardEnvironment();
+        overrideEnv.setActiveProfiles("prod");
+        overrideEnv.getPropertySources().addFirst(new MapPropertySource("renderEnv", Map.of(
+                "PORT", "10000",
+                "SPRING_DATASOURCE_URL", "jdbc:mysql://db.example:3306/studytogether",
+                "SPRING_DATASOURCE_USERNAME", "avnadmin",
+                "SPRING_DATASOURCE_PASSWORD", "secret",
+                "SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE", "7",
+                "SPRING_DATA_REDIS_HOST", "redis.example",
+                "SPRING_DATA_REDIS_PORT", "12345",
+                "SPRING_DATA_REDIS_USERNAME", "default",
+                "SPRING_DATA_REDIS_PASSWORD", "redis-secret",
+                "SPRING_DATA_REDIS_SSL_ENABLED", "true"
+        )));
+        ConfigDataEnvironmentPostProcessor.applyTo(
+                overrideEnv,
+                new DefaultResourceLoader(),
+                new DefaultBootstrapContext()
+        );
+
+        assertThat(overrideEnv.getProperty("server.port", Integer.class)).isEqualTo(10000);
+        assertThat(overrideEnv.getProperty("spring.datasource.hikari.maximum-pool-size", Integer.class))
+                .isEqualTo(7);
+        assertThat(overrideEnv.getProperty("spring.data.redis.username")).isEqualTo("default");
+        assertThat(overrideEnv.getProperty("spring.data.redis.ssl.enabled", Boolean.class)).isTrue();
     }
 
     private String issueTestGuestToken() {

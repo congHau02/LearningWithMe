@@ -1,5 +1,5 @@
 server:
-  # Reverse proxy (Caddy) terminates TLS and rewrites X-Forwarded-For; backend port is not exposed directly
+  # Reverse proxy (Render / Caddy) terminates TLS and forwards X-Forwarded-For
   forward-headers-strategy: framework
   error:
     include-stacktrace: never
@@ -14,11 +14,16 @@ spring:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE:5}
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST}
       port: ${SPRING_DATA_REDIS_PORT}
+      username: ${SPRING_DATA_REDIS_USERNAME:}
       password: ${SPRING_DATA_REDIS_PASSWORD:}
+      ssl:
+        enabled: ${SPRING_DATA_REDIS_SSL_ENABLED:false}
 
 management:
   endpoints:

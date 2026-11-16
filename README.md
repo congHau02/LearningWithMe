@@ -292,7 +292,7 @@ LearningWithMe/
 ├── GLOSSARY.md                         # Từ điển miền nghiệp vụ thống nhất (Ubiquitous Language)
 ├── docs/
 │   ├── SPEC.md                         # Đặc tả kỹ thuật tổng thể 6 Phases (47 User Stories)
-│   └── adr/                            # Architecture Decision Records (ADR-0001 .. ADR-0006)
+│   └── adr/                            # Architecture Decision Records (ADR-0001 .. ADR-0009)
 ├── shared/
 │   └── maps/
 │       └── main-library.json           # Bản đồ Tiled JSON dùng chung cho Phaser 3 & Backend
@@ -377,13 +377,14 @@ node --test scripts/check-file-limits.test.mjs # Chạy unit test cho script ki�
 ```
 Ngưỡng áp dụng: `.tsx` $\le 200$, Phaser (`src/game/**/*.ts`) $\le 250$, Zustand stores (`src/stores/*.ts`) $\le 150$, TS khác $\le 250$, Java Controller/Handler $\le 150$, Java DTO/Record/Entity $\le 120$, Java Service/khác $\le 250$. (CI trong `.github/workflows/ci.yml` chạy song song 3 job: `file-limits`, `backend`, `frontend` trên mỗi PR vào `main`.)
 
-### 7.3. Triển khai Production (Vercel Frontend + Oracle ARM VM + Caddy + CD)
+### 7.3. Triển khai Production (Vercel + Render Free Docker + Redis Cloud + Managed MySQL + CD)
 
-Kiến trúc triển khai 0 đồng ([ADR-0007](docs/adr/0007-free-tier-oracle-vercel-topology.md)):
+Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](docs/adr/0007-free-tier-oracle-vercel-topology.md)):
 - **Frontend (Vercel Hobby):** Deploy qua Git integration (Root Directory: `frontend`, cấu hình [frontend/vercel.json](frontend/vercel.json)) với biến build-time `VITE_API_BASE_URL` và `VITE_WS_BASE_URL` (không chứa `localhost` trong bản production).
-- **Backend + DB + TLS Proxy (Oracle Always Free ARM VM):** Chạy qua [docker-compose.prod.yml](docker-compose.prod.yml) và [deploy/Caddyfile](deploy/Caddyfile) (`mysql`, `redis` AOF, `backend` profile `prod`, `caddy` tự động cấp TLS cho subdomain DuckDNS).
-- **CD tự động:** Merge vào `main` kích hoạt [.github/workflows/cd.yml](.github/workflows/cd.yml) để build Docker image đa kiến trúc (`linux/arm64,linux/amd64`), đẩy lên GHCR và SSH vào VM chạy `docker compose -f docker-compose.prod.yml pull && up -d`.
-- **Wizard cấp phát hạ tầng:** Chạy script tương tác [scripts/setup-prod-infra.sh](scripts/setup-prod-infra.sh) (hỗ trợ WSL/Git Bash/macOS/Linux) để đi từng bước qua Oracle Cloud VM, DuckDNS, Vercel env, tạo `.env.prod.local` quyền `0600` và nạp GitHub Secrets (`VM_HOST`, `VM_USER`, `VM_SSH_KEY`):
+- **Backend (Render Free Web Service — `linux/amd64`):** Chạy container Spring Boot từ [backend/Dockerfile](backend/Dockerfile) tối ưu RAM 512MB (`-XX:+UseSerialGC -XX:MaxRAMPercentage=60.0 -Xss512k`), bind cổng động `${PORT}`, bật profile `prod`, kết hợp UptimeRobot ping `/actuator/health` mỗi 5 phút để tránh cold start.
+- **Hot & Cold Managed Databases (Free Tier):** **Redis Cloud Free** (30MB Fixed, không giới hạn lệnh/tháng, cấu hình qua `SPRING_DATA_REDIS_USERNAME` & `SPRING_DATA_REDIS_SSL_ENABLED`) và **Aiven / TiDB Cloud Free MySQL 8.0** (`SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE=5`).
+- **CD tự động:** Merge vào `main` kích hoạt [.github/workflows/cd.yml](.github/workflows/cd.yml) để build Docker image `linux/amd64`, đẩy lên GHCR, kích hoạt `RENDER_DEPLOY_HOOK_URL` (hoặc SSH fallback tới VPS nếu `VM_HOST` được cấu hình kèm [docker-compose.prod.yml](docker-compose.prod.yml) + [deploy/Caddyfile](deploy/Caddyfile)) và xác minh `/actuator/health` trả về `UP`.
+- **Wizard cấp phát hạ tầng:** Chạy script tương tác [scripts/setup-prod-infra.sh](scripts/setup-prod-infra.sh) (hỗ trợ WSL/Git Bash/macOS/Linux) để đi từng bước qua Redis Cloud, Aiven/TiDB MySQL, Vercel, Render Free, tạo `.env.prod.local` quyền `0600` và nạp GitHub Secret `RENDER_DEPLOY_HOOK_URL` cùng Variable `BACKEND_PUBLIC_URL`:
   ```bash
   ./scripts/setup-prod-infra.sh
   ```

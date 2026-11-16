@@ -221,67 +221,51 @@ ask_secret_required() {
   done
 }
 
-banner "Cùng Nhau Học Bài — Production Infra Setup (Vercel + Oracle ARM VM)"
+banner "Cùng Nhau Học Bài — Production Infra Setup (Vercel + Render + Redis Cloud + Free MySQL)"
 
-# ── Stage 1: Oracle Cloud Always Free VM & Firewall ──────────────────────
-stage "Oracle Cloud Always Free VM & Firewall"
-say "Provision the single Always Free VM that runs MySQL, Redis (AOF), Spring Boot, and Caddy."
-open_url "https://cloud.oracle.com/"
-step "Create or sign in to your Oracle Cloud Free Tier account (card verification, \$0 Always Free)."
-step "Compute → Instances → Create Instance:"
-note "  - Image: Ubuntu 22.04/24.04 Minimal aarch64"
-note "  - Shape: VM.Standard.A1.Flex (2-4 OCPU, 12-24 GB RAM Always Free)"
-note "  - Fallback if ARM shows 'Out of capacity' (e.g. Singapore/Tokyo): try another AD, another home region, or VM.Standard.E2.1.Micro."
-step "Networking → VCN → Security List → Add Ingress Rules for TCP ports 22, 80, 443 and UDP port 443 (0.0.0.0/0)."
-step "SSH into the VM, open OS firewall ports 80/443, and install Docker + Compose plugin:"
-note "  sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2"
-note "  sudo usermod -aG docker \$USER && sudo mkdir -p /opt/learningwithme && sudo chown \$USER:\$USER /opt/learningwithme"
-note "  sudo ufw allow 22/tcp && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && sudo ufw allow 443/udp"
-note "  (Or if Ubuntu OCI uses iptables-persistent: open TCP 80, 443 and UDP 443 before REJECT.)"
+# ── Stage 1: Redis Cloud Free (30MB Fixed, Unlimited Ops) ────────────────
+stage "Redis Cloud Free (30MB Fixed, Unlimited Ops)"
+say "Provision the free in-memory Redis 7 instance (no credit card required)."
+open_url "https://app.redislabs.com/"
+step "Sign in with GitHub/Google and create a Free Subscription (AWS ap-southeast-1 Singapore, 30MB Fixed)."
+step "Copy the Public Endpoint (host:port), default username, and password from Database Configuration."
 
-ask_required VM_HOST "VM public IPv4 address:"
-ask VM_USER "VM SSH username (usually ubuntu):"
-VM_USER="${VM_USER:-ubuntu}"
-ask_required VM_SSH_KEY_PATH "Local path to SSH private key for CD (e.g. ~/.ssh/id_ed25519_oci):"
-VM_SSH_KEY_PATH="${VM_SSH_KEY_PATH/#\~/$HOME}"
+ask_required SPRING_DATA_REDIS_HOST "Redis public hostname (e.g. redis-12345.c1.ap-southeast-1-1.ec2.redns.redis-cloud.com):"
+ask_required SPRING_DATA_REDIS_PORT "Redis port (e.g. 12345):"
+ask SPRING_DATA_REDIS_USERNAME "Redis username (default: default):"
+SPRING_DATA_REDIS_USERNAME="${SPRING_DATA_REDIS_USERNAME:-default}"
+ask_secret_required SPRING_DATA_REDIS_PASSWORD "Redis password:"
+ask SPRING_DATA_REDIS_SSL_ENABLED "Enable Redis TLS/SSL? (true/false, default false for Redis Cloud standard port):"
+SPRING_DATA_REDIS_SSL_ENABLED="${SPRING_DATA_REDIS_SSL_ENABLED:-false}"
 
-write_env VM_HOST "$VM_HOST"
-write_env VM_USER "$VM_USER"
-write_env VM_SSH_KEY_PATH "$VM_SSH_KEY_PATH"
-set_secret VM_HOST "$VM_HOST"
-set_secret VM_USER "$VM_USER"
-if [[ -f "$VM_SSH_KEY_PATH" ]]; then
-  VM_SSH_KEY_CONTENT="$(cat "$VM_SSH_KEY_PATH")"
-  set_secret VM_SSH_KEY "$VM_SSH_KEY_CONTENT"
-else
-  warn "File not found: $VM_SSH_KEY_PATH"
-  SKIPPED+=("GitHub secret VM_SSH_KEY (run: gh secret set VM_SSH_KEY < /path/to/private_key)")
-fi
+write_env SPRING_DATA_REDIS_HOST "$SPRING_DATA_REDIS_HOST"
+write_env SPRING_DATA_REDIS_PORT "$SPRING_DATA_REDIS_PORT"
+write_env SPRING_DATA_REDIS_USERNAME "$SPRING_DATA_REDIS_USERNAME"
+write_env SPRING_DATA_REDIS_PASSWORD "$SPRING_DATA_REDIS_PASSWORD"
+write_env SPRING_DATA_REDIS_SSL_ENABLED "$SPRING_DATA_REDIS_SSL_ENABLED"
 
-# ── Stage 2: DuckDNS Subdomain ───────────────────────────────────────────
-stage "DuckDNS Subdomain"
-say "Point a free DuckDNS hostname to your VM public IP ($VM_HOST) so Caddy can issue Let's Encrypt TLS."
-open_url "https://www.duckdns.org/"
-step "Sign in to DuckDNS and create a subdomain (e.g. studytogether)."
-step "Set its current IP to: $VM_HOST and click 'update ip'."
-ask_required DUCKDNS_DOMAIN "Full DuckDNS domain (e.g. studytogether.duckdns.org):"
-DUCKDNS_DOMAIN="${DUCKDNS_DOMAIN#https://}"
-DUCKDNS_DOMAIN="${DUCKDNS_DOMAIN#http://}"
-DUCKDNS_DOMAIN="${DUCKDNS_DOMAIN%/}"
-write_env DUCKDNS_DOMAIN "$DUCKDNS_DOMAIN"
+# ── Stage 2: Managed Free MySQL 8.0 (Aiven or TiDB Serverless) ───────────
+stage "Managed Free MySQL 8.0 (Aiven or TiDB Serverless)"
+say "Provision the persistent MySQL 8.0 database (no credit card required)."
+open_url "https://console.aiven.io/"
+step "Create a Free MySQL 8 service on Aiven (Singapore) OR a Free TiDB Cloud Serverless cluster (tidbcloud.com)."
+step "Format the JDBC URL as: jdbc:mysql://<host>:<port>/<db>?sslMode=REQUIRED&allowPublicKeyRetrieval=true&characterEncoding=UTF-8"
 
-# ── Stage 3: Vercel Frontend Project & Build Env ─────────────────────────
+ask_required SPRING_DATASOURCE_URL "Full JDBC URL (jdbc:mysql://...):"
+ask_required SPRING_DATASOURCE_USERNAME "MySQL username:"
+ask_secret_required SPRING_DATASOURCE_PASSWORD "MySQL password:"
+
+write_env SPRING_DATASOURCE_URL "$SPRING_DATASOURCE_URL"
+write_env SPRING_DATASOURCE_USERNAME "$SPRING_DATASOURCE_USERNAME"
+write_env SPRING_DATASOURCE_PASSWORD "$SPRING_DATASOURCE_PASSWORD"
+write_env SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE "5"
+
+# ── Stage 3: Vercel Frontend & Allowed Origins ───────────────────────────
 stage "Vercel Frontend Project & Allowed Origins"
-say "Connect this repository to Vercel Hobby with build-time backend URLs."
+say "Deploy the React + Phaser frontend on Vercel Hobby."
 open_url "https://vercel.com/new"
-step "Import the Git repository and configure Project Settings:"
-note "  - Root Directory: frontend"
-note "  - Framework Preset: Vite"
-step "Add Environment Variables in Vercel (Production AND Preview):"
-note "  - VITE_API_BASE_URL = https://${DUCKDNS_DOMAIN}"
-note "  - VITE_WS_BASE_URL  = wss://${DUCKDNS_DOMAIN}/ws"
-note "  - VITE_GOOGLE_CLIENT_ID = <your Google OAuth Client ID, if enabled>"
-step "Deploy once, then copy the production domain and your project's preview pattern."
+step "Import this Git repository with Root Directory = frontend and Framework = Vite."
+step "Copy the production domain and preview pattern for this project."
 note "  Example: https://learning-with-me.vercel.app and https://learning-with-me-*-<your-team>.vercel.app"
 note "  IMPORTANT: Never use https://*.vercel.app (rejected by backend so foreign Vercel apps cannot connect)."
 
@@ -295,56 +279,51 @@ APP_CORS_ALLOWED_ORIGINS="${VERCEL_PROD_ORIGIN}"
 [[ -n "$VERCEL_PREVIEW_ORIGIN_PATTERN" ]] && APP_CORS_ALLOWED_ORIGINS="${APP_CORS_ALLOWED_ORIGINS},${VERCEL_PREVIEW_ORIGIN_PATTERN}"
 write_env APP_CORS_ALLOWED_ORIGINS "$APP_CORS_ALLOWED_ORIGINS"
 
-# ── Stage 4: Backend Production Secrets & VM .env (mode 600) ─────────────
-stage "Backend Production Secrets & VM .env"
-say "Generate and persist production secrets into $ENV_FILE (mode 0600) for the Oracle VM."
-step "Enter strong production secrets (never reuse dev defaults)."
-ask_secret_required MYSQL_ROOT_PASSWORD "MySQL root password:"
-ask_secret_required MYSQL_PASSWORD "MySQL app user (studyuser) password:"
+# ── Stage 4: Render Free Web Service (Docker Backend) ────────────────────
+stage "Render Free Web Service (Docker Backend)"
+say "Generate backend secrets first, then create the Render Free Web Service running the Spring Boot Docker image."
 ask_secret_required APP_JWT_SECRET "JWT HMAC secret (>= 32 random chars, e.g. openssl rand -base64 48):"
 ask GOOGLE_CLIENT_ID "Google OAuth Client ID (leave blank if disabled):"
-ask BACKEND_IMAGE "GHCR backend image (default ghcr.io/conghau02/study-together-backend:latest):"
-BACKEND_IMAGE="${BACKEND_IMAGE:-ghcr.io/conghau02/study-together-backend:latest}"
 
 write_env SPRING_PROFILES_ACTIVE "prod"
-write_env MYSQL_DATABASE "studytogether"
-write_env MYSQL_USER "studyuser"
-write_env MYSQL_ROOT_PASSWORD "$MYSQL_ROOT_PASSWORD"
-write_env MYSQL_PASSWORD "$MYSQL_PASSWORD"
-write_env SPRING_DATASOURCE_URL "jdbc:mysql://mysql:3306/studytogether?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8"
-write_env SPRING_DATASOURCE_USERNAME "studyuser"
-write_env SPRING_DATASOURCE_PASSWORD "$MYSQL_PASSWORD"
-write_env SPRING_DATA_REDIS_HOST "redis"
-write_env SPRING_DATA_REDIS_PORT "6379"
 write_env APP_JWT_SECRET "$APP_JWT_SECRET"
 write_env APP_STORAGE_HOMEWORK_DIR "/tmp/homework-uploads"
 write_env APP_AUTH_RATE_LIMIT_MAX_REQUESTS "10"
 write_env APP_AUTH_RATE_LIMIT_WINDOW_SECONDS "60"
 write_env GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID"
-write_env BACKEND_IMAGE "$BACKEND_IMAGE"
+
+open_url "https://dashboard.render.com/"
+step "New → Web Service → Deploy an existing image from a registry (or connect GitHub repo with Dockerfile path = backend/Dockerfile)."
+note "  - Image URL: ghcr.io/conghau02/study-together-backend:latest"
+note "  - Instance Type: Free (512 MB RAM)"
+step "Add Environment Variables on Render from $ENV_FILE (do NOT copy RENDER_DEPLOY_HOOK_URL or VERCEL_*):"
+note "  SPRING_PROFILES_ACTIVE, SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD,"
+note "  SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE, SPRING_DATA_REDIS_HOST, SPRING_DATA_REDIS_PORT,"
+note "  SPRING_DATA_REDIS_USERNAME, SPRING_DATA_REDIS_PASSWORD, SPRING_DATA_REDIS_SSL_ENABLED,"
+note "  APP_JWT_SECRET, APP_CORS_ALLOWED_ORIGINS, APP_STORAGE_HOMEWORK_DIR, APP_AUTH_RATE_LIMIT_*, GOOGLE_CLIENT_ID"
+
+ask_required BACKEND_PUBLIC_URL "Render public HTTPS URL (e.g. https://study-together-backend.onrender.com):"
+BACKEND_PUBLIC_URL="${BACKEND_PUBLIC_URL%/}"
+ask_secret_required RENDER_DEPLOY_HOOK_URL "Render Deploy Hook URL (Settings → Deploy Hook):"
+
+write_env BACKEND_PUBLIC_URL "$BACKEND_PUBLIC_URL"
+write_env RENDER_DEPLOY_HOOK_URL "$RENDER_DEPLOY_HOOK_URL"
 chmod 600 "$ENV_FILE"
 
-if [[ -f "$VM_SSH_KEY_PATH" ]] && confirm "Upload $ENV_FILE to ${VM_USER}@${VM_HOST}:/opt/learningwithme/.env (chmod 600) now?"; then
-  scp -i "$VM_SSH_KEY_PATH" "$ENV_FILE" "${VM_USER}@${VM_HOST}:/opt/learningwithme/.env"
-  ssh -i "$VM_SSH_KEY_PATH" "${VM_USER}@${VM_HOST}" "chmod 600 /opt/learningwithme/.env"
-  printf '  %s✓ uploaded%s /opt/learningwithme/.env (mode 600)\n' "$GREEN" "$RESET"
-else
-  SKIPPED+=("Copy $ENV_FILE to VM: scp $ENV_FILE ${VM_USER}@${VM_HOST}:/opt/learningwithme/.env && ssh ${VM_USER}@${VM_HOST} 'chmod 600 /opt/learningwithme/.env'")
-fi
+set_secret RENDER_DEPLOY_HOOK_URL "$RENDER_DEPLOY_HOOK_URL"
+set_var BACKEND_PUBLIC_URL "$BACKEND_PUBLIC_URL"
 
-# ── Stage 5: GitHub Secrets & CD Readiness ───────────────────────────────
-stage "Verify GitHub Secrets & First Deploy"
-say "Confirming CD workflow (.github/workflows/cd.yml) has all required repository secrets."
-if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-  gh secret list || true
-else
-  warn "gh CLI not authenticated; verify VM_HOST, VM_USER, and VM_SSH_KEY in GitHub → Settings → Secrets and variables → Actions."
-fi
-step "Optional repo variables (defaults work if you used /opt/learningwithme and SSH port 22):"
-note "  - VM_APP_DIR (default: /opt/learningwithme)"
-note "  - VM_SSH_PORT (default: 22)"
-step "Merge to main to trigger CD, then verify:"
-note "  curl -fsS https://${DUCKDNS_DOMAIN}/actuator/health"
+# ── Stage 5: Link Vercel Env, UptimeRobot Keep-Alive & Verify ────────────
+stage "Link Vercel Env, UptimeRobot Keep-Alive & Verify"
+say "Finalize frontend build variables and 5-minute keep-alive ping."
+step "In Vercel → Project Settings → Environment Variables (Production & Preview), set:"
+note "  - VITE_API_BASE_URL = ${BACKEND_PUBLIC_URL}"
+note "  - VITE_WS_BASE_URL  = ${BACKEND_PUBLIC_URL/#https:/wss:}/ws"
+note "  - VITE_GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID:-<optional>}"
+step "In UptimeRobot (https://uptimerobot.com/), create an HTTP(s) monitor every 5 minutes for:"
+note "  ${BACKEND_PUBLIC_URL}/actuator/health"
+step "Merge to main to trigger CD (.github/workflows/cd.yml), then verify:"
+note "  curl -fsS ${BACKEND_PUBLIC_URL}/actuator/health"
 note "  Open ${VERCEL_PROD_ORIGIN} → join as Guest → walk, sit, chat, and open Table Workspace."
 pause "Press Enter to view the final summary"
 

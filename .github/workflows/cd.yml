@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   build-and-push:
-    name: Build & Push Backend (ARM64)
+    name: Build & Push Backend (AMD64)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,7 +29,6 @@ jobs:
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"
           echo "full=${NAME}:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
@@ -39,12 +38,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ARM64 backend image
+      - name: Build and push AMD64 backend image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: backend/Dockerfile
-          platforms: linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
             ${{ steps.image.outputs.full }}
@@ -52,22 +51,26 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy-vm:
-    name: Deploy to Oracle ARM VM
+  deploy-backend:
+    name: Deploy Backend (Render Free / SSH Fallback)
     needs: build-and-push
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout fallback Compose config when using SSH fallback
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL == '' }}
+        uses: actions/checkout@v4
         with:
           sparse-checkout: |
             docker-compose.prod.yml
             deploy/Caddyfile
 
-      - name: Configure SSH and deploy to VM
+      - name: Deploy backend and verify /actuator/health
         env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          BACKEND_PUBLIC_URL: ${{ vars.BACKEND_PUBLIC_URL || secrets.BACKEND_PUBLIC_URL }}
           VM_HOST: ${{ secrets.VM_HOST }}
           VM_USER: ${{ secrets.VM_USER }}
           VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
@@ -77,23 +80,46 @@ jobs:
           GHCR_ACTOR: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -z "$VM_HOST" ] || [ -z "$VM_USER" ] || [ -z "$VM_SSH_KEY" ]; then
-            echo "::error::Missing VM_HOST, VM_USER, or VM_SSH_KEY secret. Run scripts/setup-prod-infra.sh first."
+          if [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then
+            if [ -z "$BACKEND_PUBLIC_URL" ]; then
+              echo "::error::Missing BACKEND_PUBLIC_URL variable/secret for /actuator/health verification. Run scripts/setup-prod-infra.sh first."
+              exit 1
+            fi
+
+            echo "Triggering Render deployment..."
+            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" >/dev/null
+            echo "Render deploy triggered; waiting before polling /actuator/health..."
+            sleep 20
+
+            HEALTH_URL="${BACKEND_PUBLIC_URL%/}/actuator/health"
+            echo "Waiting for $HEALTH_URL to report UP..."
+            for i in $(seq 1 36); do
+              if curl -fsS "$HEALTH_URL" | grep -q '"UP"'; then
+                echo "Backend is healthy at $HEALTH_URL"
+                exit 0
+              fi
+              sleep 10
+            done
+            echo "::error::Timed out waiting for $HEALTH_URL to become healthy."
             exit 1
-          fi
+          elif [ -n "$VM_HOST" ]; then
+            if [ -z "$VM_USER" ] || [ -z "$VM_SSH_KEY" ]; then
+              echo "::error::VM_HOST is set for SSH fallback, but VM_USER or VM_SSH_KEY is missing."
+              exit 1
+            fi
 
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/id_deploy
-          chmod 600 ~/.ssh/id_deploy
+            install -m 700 -d ~/.ssh
+            printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/id_deploy
+            chmod 600 ~/.ssh/id_deploy
 
-          SSH_OPTS="-p $VM_SSH_PORT -i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new"
-          SCP_OPTS="-P $VM_SSH_PORT -i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new"
+            SSH_OPTS="-p $VM_SSH_PORT -i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new"
+            SCP_OPTS="-P $VM_SSH_PORT -i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new"
 
-          ssh $SSH_OPTS "$VM_USER@$VM_HOST" "mkdir -p '$VM_APP_DIR/deploy'"
-          scp $SCP_OPTS docker-compose.prod.yml "$VM_USER@$VM_HOST:$VM_APP_DIR/docker-compose.prod.yml"
-          scp $SCP_OPTS deploy/Caddyfile "$VM_USER@$VM_HOST:$VM_APP_DIR/deploy/Caddyfile"
+            ssh $SSH_OPTS "$VM_USER@$VM_HOST" "mkdir -p '$VM_APP_DIR/deploy'"
+            scp $SCP_OPTS docker-compose.prod.yml "$VM_USER@$VM_HOST:$VM_APP_DIR/docker-compose.prod.yml"
+            scp $SCP_OPTS deploy/Caddyfile "$VM_USER@$VM_HOST:$VM_APP_DIR/deploy/Caddyfile"
 
-          ssh $SSH_OPTS "$VM_USER@$VM_HOST" bash -s <<EOF
+            ssh $SSH_OPTS "$VM_USER@$VM_HOST" bash -s <<EOF
           set -euo pipefail
           cd "$VM_APP_DIR"
           if [ ! -f .env ]; then
@@ -109,11 +135,23 @@ jobs:
             STATUS=\$(docker inspect --format '{{.State.Health.Status}}' "\$(docker compose -f docker-compose.prod.yml ps -q backend)" 2>/dev/null || echo "starting")
             if [ "\$STATUS" = "healthy" ]; then
               echo "Backend container is healthy."
-              exit 0
+              break
+            fi
+            if [ "\$i" = "24" ]; then
+              docker compose -f docker-compose.prod.yml ps
+              docker compose -f docker-compose.prod.yml logs --tail=50 backend
+              exit 1
             fi
             sleep 5
           done
-          docker compose -f docker-compose.prod.yml ps
-          docker compose -f docker-compose.prod.yml logs --tail=50 backend
-          exit 1
           EOF
+
+            if [ -n "$BACKEND_PUBLIC_URL" ]; then
+              HEALTH_URL="${BACKEND_PUBLIC_URL%/}/actuator/health"
+              curl -fsS "$HEALTH_URL" | grep -q '"UP"'
+              echo "Backend is healthy at $HEALTH_URL"
+            fi
+          else
+            echo "::error::Missing RENDER_DEPLOY_HOOK_URL (or VM_HOST for SSH fallback). Run scripts/setup-prod-infra.sh first."
+            exit 1
+          fi

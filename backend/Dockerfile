@@ -10,5 +10,6 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN mkdir -p /tmp/homework-uploads
 COPY --from=build /workspace/backend/target/*.jar app.jar
+ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -XX:MaxRAMPercentage=60.0 -Xss512k"
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
