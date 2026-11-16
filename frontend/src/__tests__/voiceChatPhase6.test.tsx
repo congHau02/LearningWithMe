@@ -524,8 +524,8 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
       expect(createdPeers[0].addIceCandidate).toHaveBeenCalledTimes(1);
     });
 
-    // 2. Cross-shard VOICE_SIGNAL on /topic/table/table_01/workspace from 'main-library-2' is ignored
-    const wsHandler = subscribeTableWorkspace.mock.calls.at(-1)?.[1] as ((raw: string) => void) | undefined;
+    // 2. Cross-shard VOICE_SIGNAL from 'main-library-2' is ignored
+    const wsHandler = subscribeTableWorkspace.mock.calls.at(-1)?.[2] as ((raw: string) => void) | undefined;
     expect(wsHandler).toBeDefined();
     act(() => {
       wsHandler!(

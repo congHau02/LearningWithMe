@@ -104,6 +104,21 @@ public class StompSessionRegistry {
         return activeSessionByUser.get(userId);
     }
 
+    public String getEffectiveUserId(String wsSessionId) {
+        if (wsSessionId == null) {
+            return null;
+        }
+        SessionMeta meta = sessions.get(wsSessionId);
+        if (meta == null) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        if (meta.upgradeTargetUserId() != null && meta.upgradeExpiresAt() >= now) {
+            return meta.upgradeTargetUserId();
+        }
+        return meta.userId();
+    }
+
     public boolean hasActiveSession(String userId) {
         return userId != null && activeSessionByUser.containsKey(userId);
     }

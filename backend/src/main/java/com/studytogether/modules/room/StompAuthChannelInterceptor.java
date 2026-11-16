@@ -4,9 +4,9 @@ import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.auth.JwtTokenService;
 import com.studytogether.modules.table.TableAuthorizationService;
+import com.studytogether.modules.table.TableExceptions;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -23,17 +23,24 @@ import org.springframework.stereotype.Component;
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final Pattern TABLE_WORKSPACE_TOPIC = Pattern.compile("^/topic/table/([^/]+)/workspace$");
+    private static final Pattern LEGACY_TABLE_WORKSPACE_TOPIC =
+            Pattern.compile("^/topic/table/([^/]+)/workspace$");
 
     private final JwtTokenService jwtTokenService;
     private final TableAuthorizationService tableAuthorizationService;
+    private final StompErrorDispatcher errorDispatcher;
+    private final TableWorkspaceSubscriptionGuard subscriptionGuard;
 
     public StompAuthChannelInterceptor(
             JwtTokenService jwtTokenService,
-            TableAuthorizationService tableAuthorizationService
+            TableAuthorizationService tableAuthorizationService,
+            StompErrorDispatcher errorDispatcher,
+            TableWorkspaceSubscriptionGuard subscriptionGuard
     ) {
         this.jwtTokenService = jwtTokenService;
         this.tableAuthorizationService = tableAuthorizationService;
+        this.errorDispatcher = errorDispatcher;
+        this.subscriptionGuard = subscriptionGuard;
     }
 
     @Override
@@ -53,30 +60,46 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             throw new MessageDeliveryException(message, "UNAUTHORIZED: Missing authenticated STOMP session");
         }
 
-        if (command == StompCommand.SUBSCRIBE) {
-            guardTableWorkspaceSubscription(message, accessor);
+        if (command == StompCommand.SUBSCRIBE && !guardTableWorkspaceSubscription(message, accessor)) {
+            return null;
+        }
+        if (command == StompCommand.UNSUBSCRIBE) {
+            subscriptionGuard.removeSubscription(accessor.getSessionId(), accessor.getSubscriptionId());
         }
         return message;
     }
 
-    private void guardTableWorkspaceSubscription(Message<?> message, StompHeaderAccessor accessor) {
+    private boolean guardTableWorkspaceSubscription(Message<?> message, StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
         if (destination == null) {
-            return;
+            return true;
         }
-        Matcher matcher = TABLE_WORKSPACE_TOPIC.matcher(destination);
-        if (!matcher.matches()) {
-            return;
+        if (LEGACY_TABLE_WORKSPACE_TOPIC.matcher(destination).matches()) {
+            return rejectWithBusinessError(
+                    accessor, TableExceptions.forbiddenControl("Table workspace subscription must be scoped to a room shard"));
         }
-        String tableId = matcher.group(1);
+        var target = TableWorkspaceSubscriptionGuard.parseWorkspaceTopic(destination).orElse(null);
+        if (target == null) {
+            return true;
+        }
         AuthPrincipal principal = AuthPrincipal.fromPrincipal(accessor.getUser())
                 .orElseThrow(() -> new MessageDeliveryException(
                         message, "UNAUTHORIZED: Missing authenticated principal for table workspace"));
         try {
-            tableAuthorizationService.requireSeatedAtTable(principal.userId(), tableId);
+            tableAuthorizationService.requireSeatedInRoom(principal.userId(), target.roomId(), target.tableId());
+            subscriptionGuard.recordSubscription(
+                    accessor.getSessionId(), accessor.getSubscriptionId(),
+                    principal.userId(), target.roomId(), target.tableId());
+            return true;
         } catch (BusinessException ex) {
-            throw new MessageDeliveryException(message, "FORBIDDEN: " + ex.getMessage(), ex);
+            return rejectWithBusinessError(accessor, ex);
         }
+    }
+
+    private boolean rejectWithBusinessError(StompHeaderAccessor accessor, BusinessException ex) {
+        errorDispatcher.sendBusinessError(
+                accessor.getUser(), accessor.getSessionId(), TableExceptions.resolveStompErrorCode(ex), ex);
+        return false;
     }
 
     private void authenticateConnect(Message<?> message, StompHeaderAccessor accessor) {

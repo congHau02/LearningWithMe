@@ -117,8 +117,8 @@ class TableChatIntegrationTest {
         outsiderSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "T2_S1"));
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
 
-        BlockingQueue<JsonNode> table1Events = subscribeJson(hostSession, "/topic/table/table_01/workspace");
-        BlockingQueue<JsonNode> table2Events = subscribeJson(outsiderSession, "/topic/table/table_02/workspace");
+        BlockingQueue<JsonNode> table1Events = subscribeJson(hostSession, "/topic/room/main-library/table/table_01/workspace");
+        BlockingQueue<JsonNode> table2Events = subscribeJson(outsiderSession, "/topic/room/main-library/table/table_02/workspace");
 
         // Unseated member cannot chat in table_01
         memberSession.send("/app/table/table_01/chat", Map.of("content", "Hello"));

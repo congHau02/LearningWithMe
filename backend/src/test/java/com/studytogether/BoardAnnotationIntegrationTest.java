@@ -105,7 +105,7 @@ class BoardAnnotationIntegrationTest {
 
             hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
             assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
-            BlockingQueue<JsonNode> tableEvents = subscribeTopic(hostSession, "/topic/table/table_01/workspace");
+            BlockingQueue<JsonNode> tableEvents = subscribeTopic(hostSession, "/topic/room/main-library/table/table_01/workspace");
             Thread.sleep(100);
 
             HomeworkSlide slide1 = uploadSlide(host.token(), "table_01", "slide1.webp");

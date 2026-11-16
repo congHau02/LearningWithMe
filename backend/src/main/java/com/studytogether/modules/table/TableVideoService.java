@@ -47,7 +47,7 @@ public class TableVideoService {
         TableWorkspaceEvent event = TableWorkspaceEvents.videoSynced(
                 tableId, principal.userId(), updated.videoState(), updated, now
         ).withRoomId(roomId);
-        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
+        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(roomId, tableId), event);
         return event;
     }
 

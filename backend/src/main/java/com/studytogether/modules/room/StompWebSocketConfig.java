@@ -19,15 +19,18 @@ public class StompWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final AppProperties appProperties;
     private final StompAuthChannelInterceptor authChannelInterceptor;
+    private final TableWorkspaceSubscriptionGuard subscriptionGuard;
     private final StompSessionRegistry sessionRegistry;
 
     public StompWebSocketConfig(
             AppProperties appProperties,
             StompAuthChannelInterceptor authChannelInterceptor,
+            TableWorkspaceSubscriptionGuard subscriptionGuard,
             StompSessionRegistry sessionRegistry
     ) {
         this.appProperties = appProperties;
         this.authChannelInterceptor = authChannelInterceptor;
+        this.subscriptionGuard = subscriptionGuard;
         this.sessionRegistry = sessionRegistry;
     }
 
@@ -48,6 +51,11 @@ public class StompWebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(authChannelInterceptor);
+    }
+
+    @Override
+    public void configureClientOutboundChannel(ChannelRegistration registration) {
+        registration.interceptors(subscriptionGuard);
     }
 
     @Override

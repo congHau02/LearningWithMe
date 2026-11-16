@@ -57,7 +57,7 @@ class TableVideoServiceTest {
         assertThat(changeFull.type()).isEqualTo("VIDEO_SYNCED");
         assertThat(changeFull.videoState().videoId()).isEqualTo("jfKfPfyJRdk");
         assertThat(changeFull.videoState().isPlaying()).isTrue();
-        verify(messagingTemplate).convertAndSend(eq("/topic/table/table_01/workspace"), eq(changeFull));
+        verify(messagingTemplate).convertAndSend(eq("/topic/room/main-library/table/table_01/workspace"), eq(changeFull));
 
         TableWorkspaceEvent changeShort = videoService.syncVideo(
                 host, "table_01", new VideoSyncRequest(VideoSyncAction.CHANGE_URL, "https://youtu.be/5qap5aO4i9A?si=xyz", 12.5)

@@ -128,7 +128,7 @@ class HomeworkSlideIntegrationTest {
         memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
 
-        BlockingQueue<JsonNode> tableEvents = subscribeJson(memberSession, "/topic/table/table_01/workspace");
+        BlockingQueue<JsonNode> tableEvents = subscribeJson(memberSession, "/topic/room/main-library/table/table_01/workspace");
         Thread.sleep(100);
 
         // Member without control cannot upload -> 403

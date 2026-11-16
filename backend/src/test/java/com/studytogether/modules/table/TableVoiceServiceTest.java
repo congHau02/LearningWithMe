@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -108,7 +109,8 @@ class TableVoiceServiceTest {
     }
 
     @Test
-    void relaysValidVoiceSignalsToScopedTableWorkspaceTopic() {
+    void routesPeerSignalsToPrivateVoiceQueueAndBroadcastsPresenceOrMuteToRoomScopedWorkspaceTopic() {
+        ObjectNode offerSdp = MAPPER.createObjectNode().put("type", "offer").put("sdp", "v=0-offer");
         ObjectNode answerSdp = MAPPER.createObjectNode().put("type", "answer").put("sdp", "v=0-answer");
         ObjectNode ice = MAPPER.createObjectNode().put("candidate", "candidate:1 1 udp 2122260223 192.0.2.1 54400 typ host");
 
@@ -120,6 +122,8 @@ class TableVoiceServiceTest {
         assertThat(joinEvent.voiceSignal().senderUserId()).isEqualTo("u-alice");
         assertThat(joinEvent.voiceSignal().muted()).isFalse();
 
+        TableWorkspaceEvent offerEvent = voiceService.relaySignal(
+                alice, "table_01", new VoiceSignalRequest(VoiceSignalType.SDP_OFFER, "u-bob", null, offerSdp, null));
         TableWorkspaceEvent answerEvent = voiceService.relaySignal(
                 bob, "table_01", new VoiceSignalRequest(VoiceSignalType.SDP_ANSWER, "u-alice", null, answerSdp, null));
         assertThat(answerEvent.targetUserId()).isEqualTo("u-alice");
@@ -133,9 +137,19 @@ class TableVoiceServiceTest {
                 alice, "table_01", new VoiceSignalRequest(VoiceSignalType.MUTE_STATUS, null, true, null, null));
         assertThat(muteEvent.voiceSignal().muted()).isTrue();
 
-        verify(messagingTemplate).convertAndSend(eq("/topic/table/table_01/workspace"), eq(joinEvent));
-        verify(messagingTemplate).convertAndSend(eq("/topic/table/table_01/workspace"), eq(answerEvent));
-        verify(messagingTemplate).convertAndSend(eq("/topic/table/table_01/workspace"), eq(iceEvent));
-        verify(messagingTemplate).convertAndSend(eq("/topic/table/table_01/workspace"), eq(muteEvent));
+        TableWorkspaceEvent leaveEvent = voiceService.relaySignal(
+                alice, "table_01", new VoiceSignalRequest(VoiceSignalType.VOICE_LEAVE, null, null, null, null));
+
+        verify(messagingTemplate).convertAndSend(eq("/topic/room/main-library/table/table_01/workspace"), eq(joinEvent));
+        verify(messagingTemplate).convertAndSend(eq("/topic/room/main-library/table/table_01/workspace"), eq(muteEvent));
+        verify(messagingTemplate).convertAndSend(eq("/topic/room/main-library/table/table_01/workspace"), eq(leaveEvent));
+
+        verify(messagingTemplate).convertAndSendToUser(eq("u-bob"), eq("/queue/voice"), eq(offerEvent));
+        verify(messagingTemplate).convertAndSendToUser(eq("u-alice"), eq("/queue/voice"), eq(answerEvent));
+        verify(messagingTemplate).convertAndSendToUser(eq("u-bob"), eq("/queue/voice"), eq(iceEvent));
+
+        verify(messagingTemplate, never()).convertAndSend(eq("/topic/room/main-library/table/table_01/workspace"), eq(offerEvent));
+        verify(messagingTemplate, never()).convertAndSend(eq("/topic/room/main-library/table/table_01/workspace"), eq(answerEvent));
+        verify(messagingTemplate, never()).convertAndSend(eq("/topic/room/main-library/table/table_01/workspace"), eq(iceEvent));
     }
 }

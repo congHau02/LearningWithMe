@@ -68,7 +68,7 @@ class TableSosServiceTest {
         assertThat(roomEventCaptor.getValue().tableId()).isEqualTo("table_01");
         assertThat(roomEventCaptor.getValue().sosBanner()).isEqualTo("Cần giúp Tích phân từng phần");
 
-        verify(messagingTemplate).convertAndSend(eq("/topic/table/table_01/workspace"), eq(activated));
+        verify(messagingTemplate).convertAndSend(eq("/topic/room/main-library/table/table_01/workspace"), eq(activated));
 
         TableWorkspaceEvent deactivated = sosService.toggleSos(CO_HOST, "table_01", new SosToggleRequest(false, null));
         assertThat(deactivated.sosBanner()).isNull();

@@ -37,10 +37,8 @@ public class TableVoiceService {
         String targetUserId = normalizeTarget(request.targetUserId());
         validateSignalPayload(request, principal.userId(), targetUserId);
 
-        if (targetUserId != null) {
-            stateStore.getPlayer(ctx.roomId(), targetUserId)
-                    .filter(p -> "SEATED".equalsIgnoreCase(p.state()) && tableId.equals(p.tableId()))
-                    .orElseThrow(() -> TableExceptions.targetNotSeatedAtTable(targetUserId, tableId));
+        if (targetUserId != null && !authService.isSeatedInRoom(targetUserId, ctx.roomId(), tableId)) {
+            throw TableExceptions.targetNotSeatedAtTable(targetUserId, tableId);
         }
 
         RedisTableState tableState = stateStore.getTableState(ctx.roomId(), tableId).orElseGet(RedisTableState::empty);
@@ -57,8 +55,22 @@ public class TableVoiceService {
         TableWorkspaceEvent event = TableWorkspaceEvents.voiceSignal(
                 tableId, principal.userId(), targetUserId, payload, tableState, System.currentTimeMillis()
         ).withRoomId(ctx.roomId());
-        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
+        if (isPrivatePeerSignal(request.signalType(), targetUserId)) {
+            messagingTemplate.convertAndSendToUser(targetUserId, "/queue/voice", event);
+        } else {
+            messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(ctx.roomId(), tableId), event);
+        }
         return event;
+    }
+
+    private static boolean isPrivatePeerSignal(VoiceSignalType signalType, String targetUserId) {
+        if (targetUserId == null) {
+            return false;
+        }
+        return signalType == VoiceSignalType.SDP_OFFER
+                || signalType == VoiceSignalType.SDP_ANSWER
+                || signalType == VoiceSignalType.ICE_CANDIDATE
+                || signalType == VoiceSignalType.VOICE_JOIN;
     }
 
     private static String normalizeTarget(String rawTargetUserId) {

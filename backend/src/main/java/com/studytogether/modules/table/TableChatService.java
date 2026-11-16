@@ -80,7 +80,7 @@ public class TableChatService {
         TableWorkspaceEvent event = TableWorkspaceEvents.tableChat(
                 tableId, principal.userId(), message, tableState, now
         ).withRoomId(ctx.roomId());
-        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
+        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(ctx.roomId(), tableId), event);
 
         return message;
     }

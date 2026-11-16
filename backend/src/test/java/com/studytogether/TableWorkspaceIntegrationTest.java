@@ -111,9 +111,15 @@ class TableWorkspaceIntegrationTest {
         assertThat(notSeatedErr).isNotNull();
         assertThat(notSeatedErr.path("code").asText()).isEqualTo("NOT_SEATED_AT_TABLE");
 
-        // Unseated SUBSCRIBE to /topic/table/table_01/workspace must be rejected and receive nothing
+        // Unseated SUBSCRIBE to /topic/room/main-library/table/table_01/workspace must be rejected with structured error and receive nothing
         StompSession outsiderSession = connectStomp(createGuestToken("OutsiderLearner"));
-        BlockingQueue<JsonNode> unauthorizedTableEvents = subscribeJson(outsiderSession, "/topic/table/table_01/workspace");
+        BlockingQueue<JsonNode> outsiderErrors = subscribeJson(outsiderSession, "/user/queue/errors");
+        Thread.sleep(100);
+        BlockingQueue<JsonNode> unauthorizedTableEvents = subscribeJson(
+                outsiderSession, "/topic/room/main-library/table/table_01/workspace");
+        JsonNode unauthSubErr = outsiderErrors.poll(5, TimeUnit.SECONDS);
+        assertThat(unauthSubErr).isNotNull();
+        assertThat(unauthSubErr.path("code").asText()).isEqualTo("NOT_SEATED_AT_TABLE");
 
         // Both sit at table_01
         hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
@@ -121,7 +127,8 @@ class TableWorkspaceIntegrationTest {
         assertThat(sit1.path("type").asText()).isEqualTo("SEAT_LOCKED");
 
         // Host broadcasts a workspace event while outsider is unseated -> unauthorized subscription receives nothing
-        BlockingQueue<JsonNode> hostTableEvents = subscribeJson(hostSession, "/topic/table/table_01/workspace");
+        BlockingQueue<JsonNode> hostTableEvents = subscribeJson(
+                hostSession, "/topic/room/main-library/table/table_01/workspace");
         Thread.sleep(100);
         hostSession.send("/app/table/table_01/permission.respond", Map.of("action", "TOGGLE_FREE_COLLAB", "isFreeCollab", true));
         assertThat(hostTableEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
@@ -153,8 +160,9 @@ class TableWorkspaceIntegrationTest {
         assertThat(snapshotResp.getBody().members()).hasSize(2);
         assertThat(snapshotResp.getBody().isFreeCollab()).isFalse();
 
-        // Subscribe to /topic/table/table_01/workspace now that both are SEATED
-        BlockingQueue<JsonNode> tableEvents = subscribeJson(memberSession, "/topic/table/table_01/workspace");
+        // Subscribe to /topic/room/main-library/table/table_01/workspace now that both are SEATED
+        BlockingQueue<JsonNode> tableEvents = subscribeJson(
+                memberSession, "/topic/room/main-library/table/table_01/workspace");
 
         // Member requests control -> Host DENY -> Member requests again -> Host GRANT -> Host REVOKE -> TOGGLE_FREE_COLLAB -> TRANSFER_HOST
         memberSession.send("/app/table/table_01/permission.request", Map.of("reason", "slide"));
@@ -222,7 +230,8 @@ class TableWorkspaceIntegrationTest {
         memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
 
-        BlockingQueue<JsonNode> tableEvents = subscribeJson(hostSession, "/topic/table/table_01/workspace");
+        BlockingQueue<JsonNode> tableEvents = subscribeJson(
+                hostSession, "/topic/room/main-library/table/table_01/workspace");
         Thread.sleep(150);
 
         memberSession.send("/app/table/table_01/video.sync", Map.of(

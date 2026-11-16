@@ -30,6 +30,8 @@ export interface RoomConnectContext {
 export abstract class RoomStompChannels extends RoomStompPublishers {
   private unsubscribers: Array<() => void> = [];
   private tableUnsubscriber: (() => void) | null = null;
+  private voiceUnsubscriber: (() => void) | null = null;
+  private activeRoomId: string | null = null;
   private activeTableId: string | null = null;
   private readonly channelCallbacks: RoomChannelCallbacks;
 
@@ -105,24 +107,37 @@ export abstract class RoomStompChannels extends RoomStompPublishers {
     return true;
   }
 
-  subscribeTableWorkspace(tableId: string, onRawMessage: (body: string) => void): void {
+  subscribeTableWorkspace(roomId: string, tableId: string, onRawMessage: (body: string) => void): void {
     const transport = this.getActiveTransport();
     if (!transport) return;
-    if (this.activeTableId === tableId && this.tableUnsubscriber) return;
+    if (
+      this.activeRoomId === roomId
+      && this.activeTableId === tableId
+      && this.tableUnsubscriber
+      && this.voiceUnsubscriber
+    ) {
+      return;
+    }
     this.unsubscribeTableWorkspace();
+    this.activeRoomId = roomId;
     this.activeTableId = tableId;
-    this.tableUnsubscriber = transport.subscribe(`/topic/table/${tableId}/workspace`, onRawMessage);
+    this.tableUnsubscriber = transport.subscribe(`/topic/room/${roomId}/table/${tableId}/workspace`, onRawMessage);
+    this.voiceUnsubscriber = transport.subscribe('/user/queue/voice', onRawMessage);
   }
 
   unsubscribeTableWorkspace(): void {
-    if (this.tableUnsubscriber) {
-      try {
-        this.tableUnsubscriber();
-      } catch {
-        // Ignore unsubscribe error
+    for (const unsub of [this.tableUnsubscriber, this.voiceUnsubscriber]) {
+      if (unsub) {
+        try {
+          unsub();
+        } catch {
+          // Ignore unsubscribe error
+        }
       }
-      this.tableUnsubscriber = null;
     }
+    this.tableUnsubscriber = null;
+    this.voiceUnsubscriber = null;
+    this.activeRoomId = null;
     this.activeTableId = null;
   }
 

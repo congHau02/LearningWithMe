@@ -111,7 +111,7 @@ class TableSosIntegrationTest {
         memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
         assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
 
-        BlockingQueue<JsonNode> tableEvents = subscribeJson(hostSession, "/topic/table/table_01/workspace");
+        BlockingQueue<JsonNode> tableEvents = subscribeJson(hostSession, "/topic/room/main-library/table/table_01/workspace");
 
         // Member without permission cannot toggle SOS
         memberSession.send("/app/table/table_01/sos.toggle", Map.of("active", true, "topic", "Giải tích"));

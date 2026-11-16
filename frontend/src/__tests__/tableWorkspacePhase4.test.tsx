@@ -85,12 +85,13 @@ describe('P4-T1 Table Workspace Shell, Scoped STOMP Subscription, Study Timer & 
     vi.useRealTimers();
   });
 
-  it('subscribes to /topic/table/{tableId}/workspace only when SEATED and unsubscribes on leave', async () => {
+  it('subscribes to /topic/room/{roomId}/table/{tableId}/workspace only when SEATED and unsubscribes on leave', async () => {
     render(<SyncHarness />);
     expect(subscribeTableWorkspace).not.toHaveBeenCalled();
 
     act(() => {
       useGameStore.setState({
+        roomId: 'main-library',
         connectionStatus: 'CONNECTED',
         characterState: 'SEATED',
         currentTableId: 'table_01',
@@ -100,7 +101,7 @@ describe('P4-T1 Table Workspace Shell, Scoped STOMP Subscription, Study Timer & 
 
     await waitFor(() => {
       expect(subscribeTableWorkspace).toHaveBeenCalledTimes(1);
-      expect(subscribeTableWorkspace).toHaveBeenCalledWith('table_01', expect.any(Function));
+      expect(subscribeTableWorkspace).toHaveBeenCalledWith('main-library', 'table_01', expect.any(Function));
     });
     expect(screen.getByTestId('table-workspace-shell')).toBeInTheDocument();
 

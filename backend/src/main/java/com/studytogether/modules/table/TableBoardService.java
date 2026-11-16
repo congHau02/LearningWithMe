@@ -122,7 +122,7 @@ public class TableBoardService {
                 tableId, principal.userId(), targetSlideId, request.action(),
                 savedStrokeRef.get(), erasedStrokeIdRef.get(), updatedState, now
         ).withRoomId(roomId);
-        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
+        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(roomId, tableId), event);
         return event;
     }
 
@@ -157,7 +157,7 @@ public class TableBoardService {
         TableWorkspaceEvent event = TableWorkspaceEvents.laserMove(
                 tableId, principal.userId(), nickname, targetSlideId, point, current, now
         ).withRoomId(roomId);
-        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), event);
+        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(roomId, tableId), event);
         return event;
     }
 

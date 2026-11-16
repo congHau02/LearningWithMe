@@ -225,7 +225,7 @@ class HomeworkLifecycleIntegrationTest {
 
         HomeworkSlide memberSlide = uploadSlide(memberCreds.guestToken(), "table_01", "member-slide.webp");
 
-        BlockingQueue<JsonNode> tableEvents = subscribeJson(memberSession, "/topic/table/table_01/workspace");
+        BlockingQueue<JsonNode> tableEvents = subscribeJson(memberSession, "/topic/room/main-library/table/table_01/workspace");
         Thread.sleep(100);
         memberSession.send("/app/table/table_01/board.draw", Map.of(
                 "action", "ADD_STROKE",

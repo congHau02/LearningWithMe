@@ -65,7 +65,7 @@ public class TableWorkspaceService {
         TableWorkspaceEvent event = TableWorkspaceEvents.permissionRequested(
                 tableId, principal.userId(), requesterName, tableState, System.currentTimeMillis()
         ).withRoomId(ctx.roomId());
-        messagingTemplate.convertAndSend(workspaceTopic(tableId), event);
+        messagingTemplate.convertAndSend(workspaceTopic(ctx.roomId(), tableId), event);
         return event;
     }
 
@@ -89,7 +89,7 @@ public class TableWorkspaceService {
         TableWorkspaceEvent event = TableWorkspaceEvents.permissionUpdated(
                 tableId, action, principal.userId(), targetUserId, updated, now
         ).withRoomId(roomId);
-        messagingTemplate.convertAndSend(workspaceTopic(tableId), event);
+        messagingTemplate.convertAndSend(workspaceTopic(roomId, tableId), event);
 
         if (action == PermissionAction.TRANSFER_HOST) {
             long seq = stateStore.incrementEventSeq(roomId);
@@ -99,7 +99,7 @@ public class TableWorkspaceService {
         return event;
     }
 
-    public static String workspaceTopic(String tableId) {
-        return "/topic/table/" + tableId + "/workspace";
+    public static String workspaceTopic(String roomId, String tableId) {
+        return "/topic/room/" + roomId + "/table/" + tableId + "/workspace";
     }
 }

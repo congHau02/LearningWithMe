@@ -83,31 +83,36 @@ class TableVoiceIntegrationTest {
     }
 
     @Test
-    void enforcesSeatedAuthorizationAndRelaysWebRtcSignalingOverStomp() throws Exception {
+    void routesPeerSignalsPrivatelyViaUserVoiceQueueWhileBroadcastingMuteAndPresenceToWorkspace() throws Exception {
         GuestAuth alice = createGuest("VoiceAlice");
         GuestAuth bob = createGuest("VoiceBob");
+        GuestAuth charlie = createGuest("VoiceCharlie");
         GuestAuth outsider = createGuest("VoiceOutsider");
 
         StompSession aliceSession = connectStomp(alice.token());
         StompSession bobSession = connectStomp(bob.token());
+        StompSession charlieSession = connectStomp(charlie.token());
         StompSession outsiderSession = connectStomp(outsider.token());
 
         try {
             BlockingQueue<JsonNode> aliceRoomEvents = subscribeJson(aliceSession, "/topic/room/main-library/events");
             BlockingQueue<JsonNode> bobRoomEvents = subscribeJson(bobSession, "/topic/room/main-library/events");
+            BlockingQueue<JsonNode> charlieRoomEvents = subscribeJson(charlieSession, "/topic/room/main-library/events");
             BlockingQueue<JsonNode> outsiderErrors = subscribeJson(outsiderSession, "/user/queue/errors");
             BlockingQueue<JsonNode> aliceErrors = subscribeJson(aliceSession, "/user/queue/errors");
             Thread.sleep(150);
 
             aliceSession.send("/app/room/main-library/join", "");
-            awaitEventType(aliceRoomEvents, "PLAYER_JOINED");
+            awaitEventForUser(aliceRoomEvents, "PLAYER_JOINED", alice.userId());
             bobSession.send("/app/room/main-library/join", "");
-            awaitEventType(bobRoomEvents, "PLAYER_JOINED");
+            awaitEventForUser(bobRoomEvents, "PLAYER_JOINED", bob.userId());
+            charlieSession.send("/app/room/main-library/join", "");
+            awaitEventForUser(charlieRoomEvents, "PLAYER_JOINED", charlie.userId());
             outsiderSession.send("/app/room/main-library/join", "");
-            awaitEventType(aliceRoomEvents, "PLAYER_JOINED");
+            awaitEventForUser(aliceRoomEvents, "PLAYER_JOINED", outsider.userId());
 
             // Outsider in FREE_ROAM sends voice.signal -> rejected via /user/queue/errors
-            outsiderSession.send("/app/table/table_01/voice.signal", Map.of(
+            outsiderSession.send("/app/table/table_02/voice.signal", Map.of(
                     "signalType", "VOICE_JOIN",
                     "muted", false
             ));
@@ -115,20 +120,27 @@ class TableVoiceIntegrationTest {
             assertThat(outsiderErr).isNotNull();
             assertThat(outsiderErr.path("code").asText()).isEqualTo("NOT_SEATED_AT_TABLE");
 
-            // Alice and Bob sit at table_01; Outsider sits at table_02
-            aliceSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
+            // Alice, Bob, Charlie sit at table_02 (which has 4+ seats); Outsider sits at table_01
+            aliceSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "T2_S1"));
             awaitEventForUser(aliceRoomEvents, "SEAT_LOCKED", alice.userId());
-            bobSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
+            bobSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "T2_S2"));
             awaitEventForUser(bobRoomEvents, "SEAT_LOCKED", bob.userId());
-            outsiderSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "T2_S1"));
+            charlieSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "T2_S3"));
+            awaitEventForUser(charlieRoomEvents, "SEAT_LOCKED", charlie.userId());
+            outsiderSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
             awaitEventForUser(aliceRoomEvents, "SEAT_LOCKED", outsider.userId());
 
-            BlockingQueue<JsonNode> aliceWorkspaceEvents = subscribeJson(aliceSession, "/topic/table/table_01/workspace");
-            BlockingQueue<JsonNode> bobWorkspaceEvents = subscribeJson(bobSession, "/topic/table/table_01/workspace");
+            String workspaceTopic = "/topic/room/main-library/table/table_02/workspace";
+            BlockingQueue<JsonNode> aliceWorkspaceEvents = subscribeJson(aliceSession, workspaceTopic);
+            BlockingQueue<JsonNode> bobWorkspaceEvents = subscribeJson(bobSession, workspaceTopic);
+            BlockingQueue<JsonNode> charlieWorkspaceEvents = subscribeJson(charlieSession, workspaceTopic);
+            BlockingQueue<JsonNode> aliceVoiceQueue = subscribeJson(aliceSession, "/user/queue/voice");
+            BlockingQueue<JsonNode> bobVoiceQueue = subscribeJson(bobSession, "/user/queue/voice");
+            BlockingQueue<JsonNode> charlieVoiceQueue = subscribeJson(charlieSession, "/user/queue/voice");
             Thread.sleep(150);
 
-            // Outsider seated at table_02 cannot signal table_01
-            outsiderSession.send("/app/table/table_01/voice.signal", Map.of(
+            // Outsider seated at table_01 cannot signal table_02
+            outsiderSession.send("/app/table/table_02/voice.signal", Map.of(
                     "signalType", "VOICE_JOIN",
                     "muted", false
             ));
@@ -136,8 +148,8 @@ class TableVoiceIntegrationTest {
             assertThat(wrongTableErr).isNotNull();
             assertThat(wrongTableErr.path("code").asText()).isEqualTo("NOT_SEATED_AT_TABLE");
 
-            // Alice cannot send SDP_OFFER to outsider seated at table_02
-            aliceSession.send("/app/table/table_01/voice.signal", Map.of(
+            // Alice cannot send SDP_OFFER to outsider seated at table_01
+            aliceSession.send("/app/table/table_02/voice.signal", Map.of(
                     "signalType", "SDP_OFFER",
                     "targetUserId", outsider.userId(),
                     "sdp", Map.of("type", "offer", "sdp", "v=0-offer")
@@ -146,69 +158,81 @@ class TableVoiceIntegrationTest {
             assertThat(targetErr).isNotNull();
             assertThat(targetErr.path("code").asText()).isEqualTo("TARGET_NOT_SEATED_AT_TABLE");
 
-            // Valid VOICE_JOIN, SDP_OFFER, SDP_ANSWER, ICE_CANDIDATE, MUTE_STATUS, VOICE_LEAVE relay
-            aliceSession.send("/app/table/table_01/voice.signal", Map.of(
+            // Broadcast VOICE_JOIN arrives on room-scoped workspace topic for all tablemates
+            aliceSession.send("/app/table/table_02/voice.signal", Map.of(
                     "signalType", "VOICE_JOIN",
                     "muted", false
             ));
             JsonNode joinEv = awaitWorkspaceEventType(bobWorkspaceEvents, "VOICE_SIGNAL");
             assertThat(joinEv.path("voiceSignal").path("signalType").asText()).isEqualTo("VOICE_JOIN");
             assertThat(joinEv.path("voiceSignal").path("senderUserId").asText()).isEqualTo(alice.userId());
+            awaitWorkspaceEventType(charlieWorkspaceEvents, "VOICE_SIGNAL");
+            awaitWorkspaceEventType(aliceWorkspaceEvents, "VOICE_SIGNAL");
 
-            aliceSession.send("/app/table/table_01/voice.signal", Map.of(
+            // SDP_OFFER (Alice -> Bob) goes ONLY to Bob's /user/queue/voice, never workspace topic or Charlie
+            aliceSession.send("/app/table/table_02/voice.signal", Map.of(
                     "signalType", "SDP_OFFER",
                     "targetUserId", bob.userId(),
                     "sdp", Map.of("type", "offer", "sdp", "v=0-offer")
             ));
-            JsonNode offerEv = awaitWorkspaceEventType(bobWorkspaceEvents, "VOICE_SIGNAL");
+            JsonNode offerEv = bobVoiceQueue.poll(5, TimeUnit.SECONDS);
+            assertThat(offerEv).isNotNull();
             assertThat(offerEv.path("voiceSignal").path("signalType").asText()).isEqualTo("SDP_OFFER");
             assertThat(offerEv.path("voiceSignal").path("targetUserId").asText()).isEqualTo(bob.userId());
             assertThat(offerEv.path("voiceSignal").path("sdp").path("type").asText()).isEqualTo("offer");
+            assertThat(charlieVoiceQueue.poll(250, TimeUnit.MILLISECONDS)).isNull();
+            assertThat(charlieWorkspaceEvents.poll(150, TimeUnit.MILLISECONDS)).isNull();
 
-            bobSession.send("/app/table/table_01/voice.signal", Map.of(
+            // SDP_ANSWER (Bob -> Alice) goes ONLY to Alice's /user/queue/voice
+            bobSession.send("/app/table/table_02/voice.signal", Map.of(
                     "signalType", "SDP_ANSWER",
                     "targetUserId", alice.userId(),
                     "sdp", Map.of("type", "answer", "sdp", "v=0-answer")
             ));
-            JsonNode answerEv = awaitWorkspaceEventType(aliceWorkspaceEvents, "VOICE_SIGNAL");
-            // First event on aliceWorkspaceEvents might be alice's own VOICE_JOIN or SDP_OFFER; drain until SDP_ANSWER
-            while (!"SDP_ANSWER".equals(answerEv.path("voiceSignal").path("signalType").asText())) {
-                answerEv = awaitWorkspaceEventType(aliceWorkspaceEvents, "VOICE_SIGNAL");
-            }
+            JsonNode answerEv = aliceVoiceQueue.poll(5, TimeUnit.SECONDS);
+            assertThat(answerEv).isNotNull();
+            assertThat(answerEv.path("voiceSignal").path("signalType").asText()).isEqualTo("SDP_ANSWER");
             assertThat(answerEv.path("voiceSignal").path("senderUserId").asText()).isEqualTo(bob.userId());
+            assertThat(charlieVoiceQueue.poll(250, TimeUnit.MILLISECONDS)).isNull();
+            assertThat(charlieWorkspaceEvents.poll(150, TimeUnit.MILLISECONDS)).isNull();
 
-            aliceSession.send("/app/table/table_01/voice.signal", Map.of(
+            // ICE_CANDIDATE (Alice -> Bob) goes ONLY to Bob's /user/queue/voice
+            aliceSession.send("/app/table/table_02/voice.signal", Map.of(
                     "signalType", "ICE_CANDIDATE",
                     "targetUserId", bob.userId(),
                     "candidate", Map.of("candidate", "candidate:1 1 udp 1234 127.0.0.1 5000 typ host", "sdpMid", "0", "sdpMLineIndex", 0)
             ));
-            JsonNode iceEv = awaitWorkspaceEventType(bobWorkspaceEvents, "VOICE_SIGNAL");
-            while (!"ICE_CANDIDATE".equals(iceEv.path("voiceSignal").path("signalType").asText())) {
-                iceEv = awaitWorkspaceEventType(bobWorkspaceEvents, "VOICE_SIGNAL");
-            }
+            JsonNode iceEv = bobVoiceQueue.poll(5, TimeUnit.SECONDS);
+            assertThat(iceEv).isNotNull();
+            assertThat(iceEv.path("voiceSignal").path("signalType").asText()).isEqualTo("ICE_CANDIDATE");
             assertThat(iceEv.path("voiceSignal").path("candidate").path("sdpMid").asText()).isEqualTo("0");
+            assertThat(charlieVoiceQueue.poll(250, TimeUnit.MILLISECONDS)).isNull();
+            assertThat(charlieWorkspaceEvents.poll(150, TimeUnit.MILLISECONDS)).isNull();
 
-            bobSession.send("/app/table/table_01/voice.signal", Map.of(
+            // MUTE_STATUS broadcasts on workspace topic to update all tablemates (Alice & Charlie both receive)
+            bobSession.send("/app/table/table_02/voice.signal", Map.of(
                     "signalType", "MUTE_STATUS",
                     "muted", true
             ));
-            JsonNode muteEv = awaitWorkspaceEventType(aliceWorkspaceEvents, "VOICE_SIGNAL");
-            while (!"MUTE_STATUS".equals(muteEv.path("voiceSignal").path("signalType").asText())) {
-                muteEv = awaitWorkspaceEventType(aliceWorkspaceEvents, "VOICE_SIGNAL");
-            }
-            assertThat(muteEv.path("voiceSignal").path("muted").asBoolean()).isTrue();
+            JsonNode aliceMute = awaitWorkspaceEventType(aliceWorkspaceEvents, "VOICE_SIGNAL");
+            assertThat(aliceMute.path("voiceSignal").path("signalType").asText()).isEqualTo("MUTE_STATUS");
+            assertThat(aliceMute.path("voiceSignal").path("muted").asBoolean()).isTrue();
+            JsonNode charlieMute = awaitWorkspaceEventType(charlieWorkspaceEvents, "VOICE_SIGNAL");
+            assertThat(charlieMute.path("voiceSignal").path("signalType").asText()).isEqualTo("MUTE_STATUS");
+            assertThat(charlieMute.path("voiceSignal").path("muted").asBoolean()).isTrue();
+            awaitWorkspaceEventType(bobWorkspaceEvents, "VOICE_SIGNAL");
 
-            aliceSession.send("/app/table/table_01/voice.signal", Map.of(
+            // VOICE_LEAVE broadcasts on workspace topic
+            aliceSession.send("/app/table/table_02/voice.signal", Map.of(
                     "signalType", "VOICE_LEAVE"
             ));
             JsonNode leaveEv = awaitWorkspaceEventType(bobWorkspaceEvents, "VOICE_SIGNAL");
-            while (!"VOICE_LEAVE".equals(leaveEv.path("voiceSignal").path("signalType").asText())) {
-                leaveEv = awaitWorkspaceEventType(bobWorkspaceEvents, "VOICE_SIGNAL");
-            }
+            assertThat(leaveEv.path("voiceSignal").path("signalType").asText()).isEqualTo("VOICE_LEAVE");
             assertThat(leaveEv.path("voiceSignal").path("senderUserId").asText()).isEqualTo(alice.userId());
         } finally {
             aliceSession.disconnect();
             bobSession.disconnect();
+            charlieSession.disconnect();
             outsiderSession.disconnect();
         }
     }

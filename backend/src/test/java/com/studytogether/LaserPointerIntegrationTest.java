@@ -120,7 +120,7 @@ class LaserPointerIntegrationTest {
             awaitEventType(memberRoomEvents, "SEAT_LOCKED");
 
             HomeworkSlide slide1 = uploadSlide(host.token(), "table_01", "laser-slide.webp");
-            BlockingQueue<JsonNode> memberTableEvents = subscribeTopic(memberSession, "/topic/table/table_01/workspace");
+            BlockingQueue<JsonNode> memberTableEvents = subscribeTopic(memberSession, "/topic/room/main-library/table/table_01/workspace");
             Thread.sleep(100);
             memberTableEvents.clear();
 
@@ -192,7 +192,7 @@ class LaserPointerIntegrationTest {
 
             HomeworkSlide slide1 = uploadSlide(host.token(), "table_02", "laser-slide-2.webp");
 
-            BlockingQueue<JsonNode> tableEvents = subscribeTopic(hostSession, "/topic/table/table_02/workspace");
+            BlockingQueue<JsonNode> tableEvents = subscribeTopic(hostSession, "/topic/room/main-library/table/table_02/workspace");
             BlockingQueue<JsonNode> memberErrors = subscribeTopic(memberSession, "/user/queue/errors");
             Thread.sleep(100);
             tableEvents.clear();

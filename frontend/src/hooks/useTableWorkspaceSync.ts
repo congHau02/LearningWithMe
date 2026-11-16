@@ -21,10 +21,10 @@ export function useTableWorkspaceSync(): void {
 
     let cancelled = false;
 
-    session?.subscribeTableWorkspace?.(currentTableId, (rawBody) => {
+    session?.subscribeTableWorkspace?.(roomId, currentTableId, (rawBody) => {
       try {
         const event = JSON.parse(rawBody) as TableWorkspaceEvent;
-        if (event.roomId && event.roomId !== roomId) {
+        if ((event.roomId && event.roomId !== roomId) || (event.tableId && event.tableId !== currentTableId)) {
           return;
         }
         if (event.type === 'VOICE_SIGNAL' && event.voiceSignal) {

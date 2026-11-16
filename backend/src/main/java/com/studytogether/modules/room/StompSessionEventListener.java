@@ -28,6 +28,7 @@ public class StompSessionEventListener {
     private final StompSessionRegistry sessionRegistry;
     private final RoomPresenceService roomPresenceService;
     private final StompErrorDispatcher errorDispatcher;
+    private final TableWorkspaceSubscriptionGuard subscriptionGuard;
     private final ScheduledExecutorService closeScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread thread = new Thread(r, "stomp-session-close");
         thread.setDaemon(true);
@@ -37,11 +38,13 @@ public class StompSessionEventListener {
     public StompSessionEventListener(
             StompSessionRegistry sessionRegistry,
             RoomPresenceService roomPresenceService,
-            StompErrorDispatcher errorDispatcher
+            StompErrorDispatcher errorDispatcher,
+            TableWorkspaceSubscriptionGuard subscriptionGuard
     ) {
         this.sessionRegistry = sessionRegistry;
         this.roomPresenceService = roomPresenceService;
         this.errorDispatcher = errorDispatcher;
+        this.subscriptionGuard = subscriptionGuard;
     }
 
     @EventListener
@@ -87,6 +90,7 @@ public class StompSessionEventListener {
         if (wsSessionId == null) {
             return;
         }
+        subscriptionGuard.removeSession(wsSessionId);
         DisconnectResult result = sessionRegistry.unregisterOnDisconnect(wsSessionId);
         if (result.kind() == DisconnectKind.ACTIVE_DISCONNECTED) {
             roomPresenceService.handleDisconnect(result.userId(), result.roomId(), wsSessionId);

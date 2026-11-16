@@ -47,7 +47,7 @@ public class TableSosService {
         TableWorkspaceEvent workspaceEvent = TableWorkspaceEvents.sosUpdated(
                 tableId, principal.userId(), nextSosBanner, updated, now
         ).withRoomId(roomId);
-        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(tableId), workspaceEvent);
+        messagingTemplate.convertAndSend(TableWorkspaceService.workspaceTopic(roomId, tableId), workspaceEvent);
 
         long seq = stateStore.incrementEventSeq(roomId);
         RoomEvent roomEvent = RoomEvent.sosUpdated(seq, roomId, tableId, principal.userId(), nextSosBanner, now);
