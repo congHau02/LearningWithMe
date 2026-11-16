@@ -1,8 +1,10 @@
 package com.studytogether.modules.table;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.room.RoomPresenceServiceTest;
@@ -11,6 +13,8 @@ import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomPlayerState;
 import com.studytogether.modules.table.model.BoardDrawAction;
 import com.studytogether.modules.table.model.BoardDrawRequest;
+import com.studytogether.modules.table.model.BoardStroke;
+import com.studytogether.modules.table.model.BoardStrokeTool;
 import com.studytogether.modules.table.model.HomeworkSlide;
 import com.studytogether.modules.table.model.NormalizedPoint;
 import com.studytogether.modules.table.model.TableWorkspaceEvent;
@@ -99,5 +103,25 @@ class TableBoardServiceTest {
         // Seat release clears per-user throttle entry so immediate re-sit works without waiting
         boardService.onSeatReleased(new SeatReleasedEvent("main-library", "table_01", "seat_01", host.userId(), 0L, nowMs.get()));
         assertThat(boardService.handleDraw(host, "table_01", req)).isNotNull();
+    }
+
+    @Test
+    void rejectsStrokeWithMoreThan500PointsAndAllows500Points() {
+        List<NormalizedPoint> exact500 = java.util.Collections.nCopies(500, new NormalizedPoint(0.5, 0.5));
+        BoardStroke validStroke = new BoardStroke(
+                "stroke-500", BoardStrokeTool.PEN, "#ef4444", 3.0, exact500, null, null, 0L);
+        TableWorkspaceEvent okEvent = boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, validStroke, null, null));
+        assertThat(okEvent.stroke()).isNotNull();
+        assertThat(okEvent.stroke().points()).hasSize(500);
+
+        List<NormalizedPoint> over500 = java.util.Collections.nCopies(501, new NormalizedPoint(0.5, 0.5));
+        BoardStroke oversizedStroke = new BoardStroke(
+                "stroke-501", BoardStrokeTool.PEN, "#ef4444", 3.0, over500, null, null, 0L);
+        assertThatThrownBy(() -> boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, oversizedStroke, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getType())
+                .isEqualTo(TableExceptions.INVALID_TABLE_ACTION_TYPE);
     }
 }

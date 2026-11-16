@@ -28,6 +28,28 @@ export interface CanvasRectLike {
 }
 
 const REFERENCE_CANVAS_WIDTH = 800;
+export const MAX_POINTS_PER_STROKE = 500;
+
+export interface BoardStrokeValidationError {
+  code: 'INVALID_TABLE_ACTION';
+  message: string;
+}
+
+export function validateBoardStroke(stroke: BoardStroke): BoardStrokeValidationError | null {
+  if (!stroke.points || stroke.points.length === 0) {
+    return {
+      code: 'INVALID_TABLE_ACTION',
+      message: 'Nét vẽ phải chứa ít nhất 1 điểm hợp lệ.',
+    };
+  }
+  if (stroke.points.length > MAX_POINTS_PER_STROKE) {
+    return {
+      code: 'INVALID_TABLE_ACTION',
+      message: `Nét vẽ vượt quá giới hạn tối đa ${MAX_POINTS_PER_STROKE} điểm.`,
+    };
+  }
+  return null;
+}
 
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0));
 

@@ -3,7 +3,6 @@ package com.studytogether.modules.table;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.table.TableHomeworkService.LoadedEphemeralFile;
 import com.studytogether.modules.table.model.HomeworkSlide;
-import java.util.concurrent.TimeUnit;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -39,11 +38,14 @@ public class HomeworkController {
     }
 
     @GetMapping("/ephemeral-files/{fileName}")
-    public ResponseEntity<byte[]> getEphemeralFile(@PathVariable String fileName) {
-        LoadedEphemeralFile loaded = homeworkService.loadEphemeralFile(fileName);
+    public ResponseEntity<byte[]> getEphemeralFile(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable String fileName
+    ) {
+        LoadedEphemeralFile loaded = homeworkService.loadEphemeralFile(principal, fileName);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(loaded.contentType()))
-                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePrivate())
+                .cacheControl(CacheControl.noStore())
                 .body(loaded.bytes());
     }
 }

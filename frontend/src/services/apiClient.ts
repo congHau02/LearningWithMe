@@ -68,7 +68,7 @@ export function getStoredAuthToken(): string | null {
   );
 }
 
-async function parseErrorResponse(response: Response): Promise<ApiError> {
+export async function parseErrorResponse(response: Response): Promise<ApiError> {
   try {
     const body = (await response.json()) as Partial<ProblemDetail>;
     return new ApiError({

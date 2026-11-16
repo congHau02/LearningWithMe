@@ -34,15 +34,15 @@ public class TableBoardService {
     private final TableAuthorizationService authService;
     private final SimpMessagingTemplate messagingTemplate;
     private final Clock clock;
+    private final TableMutationRateLimiter rateLimiter;
     private final ConcurrentHashMap<String, Long> lastLaserEpochByUserId = new ConcurrentHashMap<>();
 
-    @Autowired
     public TableBoardService(
             RoomStateStore stateStore,
             TableAuthorizationService authService,
             SimpMessagingTemplate messagingTemplate
     ) {
-        this(stateStore, authService, messagingTemplate, Clock.systemUTC());
+        this(stateStore, authService, messagingTemplate, Clock.systemUTC(), TableMutationRateLimiter.noOp());
     }
 
     public TableBoardService(
@@ -51,10 +51,22 @@ public class TableBoardService {
             SimpMessagingTemplate messagingTemplate,
             Clock clock
     ) {
+        this(stateStore, authService, messagingTemplate, clock, TableMutationRateLimiter.noOp());
+    }
+
+    @Autowired
+    public TableBoardService(
+            RoomStateStore stateStore,
+            TableAuthorizationService authService,
+            SimpMessagingTemplate messagingTemplate,
+            Clock clock,
+            TableMutationRateLimiter rateLimiter
+    ) {
         this.stateStore = stateStore;
         this.authService = authService;
         this.messagingTemplate = messagingTemplate;
         this.clock = clock != null ? clock : Clock.systemUTC();
+        this.rateLimiter = rateLimiter != null ? rateLimiter : TableMutationRateLimiter.noOp();
     }
 
     public TableWorkspaceEvent handleDraw(AuthPrincipal principal, String tableId, BoardDrawRequest request) {
@@ -74,6 +86,8 @@ public class TableBoardService {
             }
             return handleLaserMove(principal, roomId, tableId, targetSlideId, request.point(), current, now);
         }
+
+        rateLimiter.enforce(principal.userId(), TableMutationType.BOARD_DRAW);
 
         AtomicReference<BoardStroke> savedStrokeRef = new AtomicReference<>();
         AtomicReference<String> erasedStrokeIdRef = new AtomicReference<>();

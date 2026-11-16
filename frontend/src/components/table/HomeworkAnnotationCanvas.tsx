@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useEphemeralImageUrl } from '../../hooks/useEphemeralImageUrl';
 import { useHomeworkCanvas } from '../../hooks/useHomeworkCanvas';
 import type { BoardStroke, BoardTool } from '../../utils/homeworkCanvasMath';
 import { HomeworkLaserOverlay } from './HomeworkLaserOverlay';
@@ -13,6 +14,7 @@ interface HomeworkAnnotationCanvasProps {
   tool: BoardTool;
   color: string;
   lineWidth: number;
+  onStrokeError?: (message: string | null) => void;
 }
 
 export function HomeworkAnnotationCanvas({
@@ -25,8 +27,10 @@ export function HomeworkAnnotationCanvas({
   tool,
   color,
   lineWidth,
+  onStrokeError,
 }: HomeworkAnnotationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const { objectUrl, error: imageError } = useEphemeralImageUrl(imageUrl);
 
   const {
     pendingText,
@@ -45,6 +49,7 @@ export function HomeworkAnnotationCanvas({
     color,
     lineWidth,
     canvasRef,
+    onStrokeError,
   });
 
   const cursorClass = !canControl
@@ -58,14 +63,31 @@ export function HomeworkAnnotationCanvas({
   return (
     <div className="relative flex min-h-48 items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-950/70 p-2">
       <div className="relative inline-block max-w-full">
-        <img
-          data-testid="homework-active-image"
-          src={imageUrl}
-          alt={`Trang bài tập ${fileName}`}
-          onLoad={syncCanvasSize}
-          draggable={false}
-          className="block max-h-96 w-auto select-none rounded object-contain"
-        />
+        {imageError ? (
+          <div
+            data-testid="homework-image-error"
+            role="alert"
+            className="flex h-48 w-72 items-center justify-center rounded border border-rose-500/40 bg-rose-500/10 px-3 text-center text-xs text-rose-200"
+          >
+            {imageError}
+          </div>
+        ) : objectUrl ? (
+          <img
+            data-testid="homework-active-image"
+            src={objectUrl}
+            alt={`Trang bài tập ${fileName}`}
+            onLoad={syncCanvasSize}
+            draggable={false}
+            className="block max-h-96 w-auto select-none rounded object-contain"
+          />
+        ) : (
+          <div
+            data-testid="homework-image-loading"
+            className="flex h-48 w-72 items-center justify-center rounded bg-slate-900/60 text-xs text-slate-400"
+          >
+            Đang tải trang bài tập...
+          </div>
+        )}
         <canvas
           ref={canvasRef}
           data-testid="homework-annotation-canvas"

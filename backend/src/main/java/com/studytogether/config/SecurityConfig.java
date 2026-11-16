@@ -5,7 +5,6 @@ import com.studytogether.modules.auth.ProblemDetailAuthenticationEntryPoint;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -54,7 +53,6 @@ public class SecurityConfig {
                                 "/ws",
                                 "/ws/**"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/ephemeral-files/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

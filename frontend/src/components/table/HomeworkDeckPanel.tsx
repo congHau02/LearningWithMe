@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { formatApiError } from '../../services/apiClient';
-import { resolveEphemeralFileUrl, uploadHomeworkImage } from '../../services/tableApi';
+import { uploadHomeworkImage } from '../../services/tableApi';
 import { sendBoardDraw, sendHomeworkSlideAction } from '../../services/tableStompClient';
 import { useTableStore } from '../../stores/useTableStore';
 import { compressImageToWebp } from '../../utils/homeworkImageCompression';
@@ -149,9 +149,10 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
           ) : null}
           <HomeworkAnnotationCanvas
             tableId={tableId} slideId={activeSlide.imageId}
-            imageUrl={resolveEphemeralFileUrl(activeSlide.url)} fileName={activeSlide.fileName}
+            imageUrl={activeSlide.url} fileName={activeSlide.fileName}
             strokes={activeSlide.strokes ?? []} canControl={canControl}
             tool={tool} color={color} lineWidth={lineWidth}
+            onStrokeError={setErrorMsg}
           />
         </div>
       ) : (

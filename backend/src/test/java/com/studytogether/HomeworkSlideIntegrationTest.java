@@ -164,17 +164,30 @@ class HomeworkSlideIntegrationTest {
         Long ttlSeconds = redisTemplate.getExpire("ephemeral:img:" + firstSlide.imageId(), TimeUnit.SECONDS);
         assertThat(ttlSeconds).isNotNull().isBetween(21500L, 21600L);
 
-        // Serve file via GET /api/v1/ephemeral-files/{fileName}
-        ResponseEntity<byte[]> fileResp = restTemplate.getForEntity(
+        // Unauthenticated fetch must fail with 401 ProblemDetail
+        ResponseEntity<JsonNode> unauthFileResp = restTemplate.getForEntity(
                 "/api/v1/ephemeral-files/" + firstSlide.fileName(),
+                JsonNode.class
+        );
+        assertThat(unauthFileResp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        // Seated learner serves file via GET /api/v1/ephemeral-files/{fileName}
+        HttpHeaders memberAuthHeaders = new HttpHeaders();
+        memberAuthHeaders.setBearerAuth(memberToken);
+        ResponseEntity<byte[]> fileResp = restTemplate.exchange(
+                "/api/v1/ephemeral-files/" + firstSlide.fileName(),
+                HttpMethod.GET,
+                new HttpEntity<>(memberAuthHeaders),
                 byte[].class
         );
         assertThat(fileResp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(fileResp.getBody()).isEqualTo(validWebp);
 
         // Path traversal rejected
-        ResponseEntity<String> traversalResp = restTemplate.getForEntity(
+        ResponseEntity<String> traversalResp = restTemplate.exchange(
                 "/api/v1/ephemeral-files/..%2Fsecret.txt",
+                HttpMethod.GET,
+                new HttpEntity<>(memberAuthHeaders),
                 String.class
         );
         assertThat(traversalResp.getStatusCode().is4xxClientError()).isTrue();

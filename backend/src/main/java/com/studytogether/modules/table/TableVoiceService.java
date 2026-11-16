@@ -9,6 +9,7 @@ import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import com.studytogether.modules.table.model.VoiceSignalPayload;
 import com.studytogether.modules.table.model.VoiceSignalRequest;
 import com.studytogether.modules.table.model.VoiceSignalType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -18,15 +19,27 @@ public class TableVoiceService {
     private final RoomStateStore stateStore;
     private final TableAuthorizationService authService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TableMutationRateLimiter rateLimiter;
 
     public TableVoiceService(
             RoomStateStore stateStore,
             TableAuthorizationService authService,
             SimpMessagingTemplate messagingTemplate
     ) {
+        this(stateStore, authService, messagingTemplate, TableMutationRateLimiter.noOp());
+    }
+
+    @Autowired
+    public TableVoiceService(
+            RoomStateStore stateStore,
+            TableAuthorizationService authService,
+            SimpMessagingTemplate messagingTemplate,
+            TableMutationRateLimiter rateLimiter
+    ) {
         this.stateStore = stateStore;
         this.authService = authService;
         this.messagingTemplate = messagingTemplate;
+        this.rateLimiter = rateLimiter != null ? rateLimiter : TableMutationRateLimiter.noOp();
     }
 
     public TableWorkspaceEvent relaySignal(AuthPrincipal principal, String tableId, VoiceSignalRequest request) {
@@ -36,6 +49,7 @@ public class TableVoiceService {
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
         String targetUserId = normalizeTarget(request.targetUserId());
         validateSignalPayload(request, principal.userId(), targetUserId);
+        rateLimiter.enforce(principal.userId(), TableMutationType.VOICE_SIGNAL);
 
         if (targetUserId != null && !authService.isSeatedInRoom(targetUserId, ctx.roomId(), tableId)) {
             throw TableExceptions.targetNotSeatedAtTable(targetUserId, tableId);

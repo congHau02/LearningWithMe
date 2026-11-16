@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiRequest } from './apiClient';
+import { API_BASE_URL, apiRequest, getStoredAuthToken, parseErrorResponse } from './apiClient';
 import type { VideoSyncState } from '../stores/useTableStore';
 import type { BoardDrawAction, BoardStroke } from '../utils/homeworkCanvasMath';
 
@@ -162,4 +162,26 @@ export function resolveEphemeralFileUrl(url: string): string {
   }
   const normalized = url.startsWith('/') ? url : `/${url}`;
   return `${API_BASE_URL}${normalized}`;
+}
+
+export async function fetchEphemeralFileBlob(
+  url: string,
+  signal?: AbortSignal,
+  tokenOverride?: string | null,
+): Promise<Blob> {
+  const targetUrl = resolveEphemeralFileUrl(url);
+  const headers = new Headers();
+  const token = tokenOverride ?? getStoredAuthToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  const response = await fetch(targetUrl, {
+    method: 'GET',
+    headers,
+    signal,
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+  return response.blob();
 }

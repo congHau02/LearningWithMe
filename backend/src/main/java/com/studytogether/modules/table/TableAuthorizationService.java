@@ -26,6 +26,17 @@ public class TableAuthorizationService {
         return requireSeatedInRoom(userId, roomId, tableId);
     }
 
+    public SeatedContext requireSeatedAnywhere(String userId) {
+        if (userId == null || userId.isBlank()) {
+            throw TableExceptions.notSeatedAtTable("unknown");
+        }
+        String roomId = stateStore.findUserShard(userId)
+                .orElseThrow(() -> TableExceptions.notSeatedAtTable("unknown"));
+        RoomPlayerState player = findSeatedPlayer(userId, roomId)
+                .orElseThrow(() -> TableExceptions.notSeatedAtTable("unknown"));
+        return new SeatedContext(roomId, player.tableId(), player);
+    }
+
     public SeatedContext requireSeatedInRoom(String userId, String roomId, String tableId) {
         RoomPlayerState player = findSeatedPlayerInRoom(userId, roomId, tableId)
                 .orElseThrow(() -> TableExceptions.notSeatedAtTable(tableId != null ? tableId : "unknown"));
@@ -36,12 +47,22 @@ public class TableAuthorizationService {
         return findSeatedPlayerInRoom(userId, roomId, tableId).isPresent();
     }
 
-    private Optional<RoomPlayerState> findSeatedPlayerInRoom(String userId, String roomId, String tableId) {
-        if (userId == null || userId.isBlank() || roomId == null || roomId.isBlank() || tableId == null || tableId.isBlank()) {
+    private Optional<RoomPlayerState> findSeatedPlayer(String userId, String roomId) {
+        if (userId == null || userId.isBlank() || roomId == null || roomId.isBlank()) {
             return Optional.empty();
         }
         return stateStore.getPlayer(roomId, userId)
-                .filter(player -> "SEATED".equalsIgnoreCase(player.state()) && tableId.equals(player.tableId()));
+                .filter(player -> "SEATED".equalsIgnoreCase(player.state())
+                        && player.tableId() != null
+                        && !player.tableId().isBlank());
+    }
+
+    private Optional<RoomPlayerState> findSeatedPlayerInRoom(String userId, String roomId, String tableId) {
+        if (tableId == null || tableId.isBlank()) {
+            return Optional.empty();
+        }
+        return findSeatedPlayer(userId, roomId)
+                .filter(player -> tableId.equals(player.tableId()));
     }
 
     public boolean canControlTable(RedisTableState tableState, String userId) {

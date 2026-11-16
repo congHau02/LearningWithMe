@@ -15,6 +15,7 @@ import com.studytogether.modules.table.model.TableWorkspaceEvent;
 import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import com.studytogether.modules.table.model.TableWorkspaceSnapshot;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,7 @@ public class TableWorkspaceService {
     private final RoomTopologyService topologyService;
     private final TableAuthorizationService authService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TableMutationRateLimiter rateLimiter;
 
     public TableWorkspaceService(
             RoomStateStore stateStore,
@@ -32,10 +34,22 @@ public class TableWorkspaceService {
             TableAuthorizationService authService,
             SimpMessagingTemplate messagingTemplate
     ) {
+        this(stateStore, topologyService, authService, messagingTemplate, TableMutationRateLimiter.noOp());
+    }
+
+    @Autowired
+    public TableWorkspaceService(
+            RoomStateStore stateStore,
+            RoomTopologyService topologyService,
+            TableAuthorizationService authService,
+            SimpMessagingTemplate messagingTemplate,
+            TableMutationRateLimiter rateLimiter
+    ) {
         this.stateStore = stateStore;
         this.topologyService = topologyService;
         this.authService = authService;
         this.messagingTemplate = messagingTemplate;
+        this.rateLimiter = rateLimiter != null ? rateLimiter : TableMutationRateLimiter.noOp();
     }
 
     public TableWorkspaceSnapshot getWorkspaceSnapshot(AuthPrincipal principal, String roomId, String tableId) {
@@ -60,6 +74,7 @@ public class TableWorkspaceService {
 
     public TableWorkspaceEvent requestControl(AuthPrincipal principal, String tableId, PermissionRequestPayload payload) {
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
+        rateLimiter.enforce(principal.userId(), TableMutationType.PERMISSION_REQUEST);
         RedisTableState tableState = stateStore.getTableState(ctx.roomId(), tableId).orElseGet(RedisTableState::empty);
         String requesterName = ctx.player().nickname() != null ? ctx.player().nickname() : principal.nickname();
         TableWorkspaceEvent event = TableWorkspaceEvents.permissionRequested(

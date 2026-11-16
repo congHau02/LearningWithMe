@@ -9,6 +9,7 @@ import com.studytogether.modules.table.model.TableWorkspaceEvent;
 import com.studytogether.modules.table.model.TableWorkspaceEvents;
 import com.studytogether.modules.table.model.VideoSyncAction;
 import com.studytogether.modules.table.model.VideoSyncRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -18,15 +19,27 @@ public class TableVideoService {
     private final RoomStateStore stateStore;
     private final TableAuthorizationService authService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TableMutationRateLimiter rateLimiter;
 
     public TableVideoService(
             RoomStateStore stateStore,
             TableAuthorizationService authService,
             SimpMessagingTemplate messagingTemplate
     ) {
+        this(stateStore, authService, messagingTemplate, TableMutationRateLimiter.noOp());
+    }
+
+    @Autowired
+    public TableVideoService(
+            RoomStateStore stateStore,
+            TableAuthorizationService authService,
+            SimpMessagingTemplate messagingTemplate,
+            TableMutationRateLimiter rateLimiter
+    ) {
         this.stateStore = stateStore;
         this.authService = authService;
         this.messagingTemplate = messagingTemplate;
+        this.rateLimiter = rateLimiter != null ? rateLimiter : TableMutationRateLimiter.noOp();
     }
 
     public TableWorkspaceEvent syncVideo(AuthPrincipal principal, String tableId, VideoSyncRequest request) {
@@ -34,6 +47,7 @@ public class TableVideoService {
             throw TableExceptions.invalidAction("Video sync action is required");
         }
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
+        rateLimiter.enforce(principal.userId(), TableMutationType.VIDEO_SYNC);
         String roomId = ctx.roomId();
         long now = System.currentTimeMillis();
 

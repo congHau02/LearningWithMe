@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react';
 import { sendBoardDraw } from '../services/tableStompClient';
+import { useTableStore } from '../stores/useTableStore';
 import {
   findHitStrokeId,
   normalizeCanvasPoint,
   renderBoardStrokes,
+  validateBoardStroke,
   type BoardStroke,
   type BoardTool,
   type NormalizedPoint,
@@ -24,6 +26,7 @@ interface UseHomeworkCanvasOptions {
   color: string;
   lineWidth: number;
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  onStrokeError?: (message: string | null) => void;
 }
 
 const generateStrokeId = (): string =>
@@ -40,6 +43,7 @@ export function useHomeworkCanvas({
   color,
   lineWidth,
   canvasRef,
+  onStrokeError,
 }: UseHomeworkCanvasOptions) {
   const draftStrokeRef = useRef<BoardStroke | null>(null);
   const [pendingText, setPendingText] = useState<PendingTextPlacement | null>(null);
@@ -87,9 +91,19 @@ export function useHomeworkCanvas({
 
   const commitStroke = useCallback(
     (stroke: BoardStroke) => {
+      const validationError = validateBoardStroke(stroke);
+      if (validationError) {
+        if (onStrokeError) {
+          onStrokeError(validationError.message);
+        } else {
+          useTableStore.getState().setPermissionToast(validationError.message);
+        }
+        return;
+      }
+      onStrokeError?.(null);
       sendBoardDraw(tableId, { slideId, action: 'ADD_STROKE', stroke });
     },
-    [slideId, tableId],
+    [onStrokeError, slideId, tableId],
   );
 
   const getPointFromEvent = (e: PointerEvent<HTMLCanvasElement>): NormalizedPoint | null => {

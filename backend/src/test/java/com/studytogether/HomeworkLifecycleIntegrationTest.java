@@ -150,10 +150,15 @@ class HomeworkLifecycleIntegrationTest {
         assertThat(redisTemplate.hasKey("ephemeral:img:" + slide2.imageId())).isFalse();
         assertThat(redisTemplate.hasKey("table:main-library:table_01:state")).isFalse();
 
-        ResponseEntity<JsonNode> getAfterPurge = restTemplate.getForEntity(
-                "/api/v1/ephemeral-files/" + slide1.fileName(), JsonNode.class
+        HttpHeaders unseatedHeaders = new HttpHeaders();
+        unseatedHeaders.setBearerAuth(hostToken);
+        ResponseEntity<JsonNode> getAfterPurge = restTemplate.exchange(
+                "/api/v1/ephemeral-files/" + slide1.fileName(),
+                HttpMethod.GET,
+                new HttpEntity<>(unseatedHeaders),
+                JsonNode.class
         );
-        assertThat(getAfterPurge.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(getAfterPurge.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
         session.disconnect();
     }
@@ -189,10 +194,15 @@ class HomeworkLifecycleIntegrationTest {
         assertThat(redisTemplate.hasKey("ephemeral:img:" + slide.imageId())).isFalse();
         assertThat(Files.exists(tempHomeworkDir.resolve(slide.fileName()))).isFalse();
 
-        ResponseEntity<JsonNode> getAfterExpiry = restTemplate.getForEntity(
-                "/api/v1/ephemeral-files/" + slide.fileName(), JsonNode.class
+        HttpHeaders graceHeaders = new HttpHeaders();
+        graceHeaders.setBearerAuth(hostToken);
+        ResponseEntity<JsonNode> getAfterExpiry = restTemplate.exchange(
+                "/api/v1/ephemeral-files/" + slide.fileName(),
+                HttpMethod.GET,
+                new HttpEntity<>(graceHeaders),
+                JsonNode.class
         );
-        assertThat(getAfterExpiry.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(getAfterExpiry.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
@@ -285,8 +295,11 @@ class HomeworkLifecycleIntegrationTest {
         assertThat(snapshot.homeworkSlides().get(0).strokes().get(0).authorUserId()).isEqualTo(registeredUserId);
         assertThat(Files.exists(tempHomeworkDir.resolve(memberSlide.fileName()))).isTrue();
 
-        ResponseEntity<byte[]> fileResp = restTemplate.getForEntity(
-                "/api/v1/ephemeral-files/" + memberSlide.fileName(), byte[].class
+        ResponseEntity<byte[]> fileResp = restTemplate.exchange(
+                "/api/v1/ephemeral-files/" + memberSlide.fileName(),
+                HttpMethod.GET,
+                new HttpEntity<>(regHeaders),
+                byte[].class
         );
         assertThat(fileResp.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -324,8 +337,13 @@ class HomeworkLifecycleIntegrationTest {
         assertThat(Files.exists(tempHomeworkDir.resolve(freshSlide.fileName()))).isTrue();
         assertThat(redisTemplate.hasKey("ephemeral:img:" + freshSlide.imageId())).isTrue();
 
-        ResponseEntity<JsonNode> expiredGet = restTemplate.getForEntity(
-                "/api/v1/ephemeral-files/" + expiredSlide.fileName(), JsonNode.class
+        HttpHeaders hostHeaders = new HttpHeaders();
+        hostHeaders.setBearerAuth(hostToken);
+        ResponseEntity<JsonNode> expiredGet = restTemplate.exchange(
+                "/api/v1/ephemeral-files/" + expiredSlide.fileName(),
+                HttpMethod.GET,
+                new HttpEntity<>(hostHeaders),
+                JsonNode.class
         );
         assertThat(expiredGet.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(expiredGet.getBody().path("status").asInt()).isEqualTo(404);

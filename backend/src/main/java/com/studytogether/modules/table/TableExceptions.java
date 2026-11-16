@@ -16,6 +16,8 @@ public final class TableExceptions {
             URI.create("https://studytogether.com/problems/target-not-seated-at-table");
     public static final URI TABLE_CHAT_RATE_LIMIT_EXCEEDED_TYPE =
             URI.create("https://studytogether.com/problems/table-chat-rate-limit-exceeded");
+    public static final URI TABLE_RATE_LIMIT_EXCEEDED_TYPE =
+            URI.create("https://studytogether.com/problems/table-rate-limit-exceeded");
 
     private TableExceptions() {}
 
@@ -64,15 +66,26 @@ public final class TableExceptions {
         );
     }
 
+    public static BusinessException rateLimitExceeded(String actionLabel) {
+        return new BusinessException(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "Table Rate Limit Exceeded",
+                "Too many '%s' requests. Please wait a moment.".formatted(actionLabel),
+                TABLE_RATE_LIMIT_EXCEEDED_TYPE
+        );
+    }
+
     public static String resolveStompErrorCode(BusinessException ex) {
         if (NOT_SEATED_AT_TABLE_TYPE.equals(ex.getType())) return "NOT_SEATED_AT_TABLE";
         if (TABLE_PERMISSION_DENIED_TYPE.equals(ex.getType())) return "TABLE_PERMISSION_DENIED";
         if (INVALID_TABLE_ACTION_TYPE.equals(ex.getType())) return "INVALID_TABLE_ACTION";
         if (TARGET_NOT_SEATED_AT_TABLE_TYPE.equals(ex.getType())) return "TARGET_NOT_SEATED_AT_TABLE";
         if (TABLE_CHAT_RATE_LIMIT_EXCEEDED_TYPE.equals(ex.getType())) return "TABLE_CHAT_RATE_LIMIT_EXCEEDED";
+        if (TABLE_RATE_LIMIT_EXCEEDED_TYPE.equals(ex.getType())) return "TABLE_RATE_LIMIT_EXCEEDED";
         return switch (ex.getStatus()) {
             case FORBIDDEN -> "TABLE_PERMISSION_DENIED";
             case BAD_REQUEST -> "INVALID_TABLE_ACTION";
+            case TOO_MANY_REQUESTS -> "TABLE_RATE_LIMIT_EXCEEDED";
             default -> "STOMP_BUSINESS_ERROR";
         };
     }

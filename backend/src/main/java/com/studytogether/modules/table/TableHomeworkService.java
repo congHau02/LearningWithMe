@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -37,6 +38,7 @@ public class TableHomeworkService {
     private final TableAuthorizationService authService;
     private final SimpMessagingTemplate messagingTemplate;
     private final TableHomeworkStorage storage;
+    private final TableMutationRateLimiter rateLimiter;
 
     public TableHomeworkService(
             RoomStateStore stateStore,
@@ -44,10 +46,22 @@ public class TableHomeworkService {
             SimpMessagingTemplate messagingTemplate,
             AppProperties appProperties
     ) {
+        this(stateStore, authService, messagingTemplate, appProperties, TableMutationRateLimiter.noOp());
+    }
+
+    @Autowired
+    public TableHomeworkService(
+            RoomStateStore stateStore,
+            TableAuthorizationService authService,
+            SimpMessagingTemplate messagingTemplate,
+            AppProperties appProperties,
+            TableMutationRateLimiter rateLimiter
+    ) {
         this.stateStore = stateStore;
         this.authService = authService;
         this.messagingTemplate = messagingTemplate;
         this.storage = new TableHomeworkStorage(Path.of(appProperties.storage().homeworkDir()));
+        this.rateLimiter = rateLimiter != null ? rateLimiter : TableMutationRateLimiter.noOp();
     }
 
     public HomeworkSlide uploadSlide(AuthPrincipal principal, String tableId, MultipartFile file) {
@@ -55,6 +69,7 @@ public class TableHomeworkService {
         String roomId = ctx.roomId();
         RedisTableState preCheck = stateStore.getTableState(roomId, tableId).orElseGet(RedisTableState::empty);
         authService.requireControlPermission(preCheck, principal.userId());
+        rateLimiter.enforce(principal.userId(), TableMutationType.HOMEWORK_UPLOAD);
 
         if (file == null || file.isEmpty()) {
             throw TableExceptions.invalidAction("Homework image file is required");
@@ -121,6 +136,7 @@ public class TableHomeworkService {
             throw TableExceptions.invalidAction("Homework slide action and imageId are required");
         }
         SeatedContext ctx = authService.requireSeatedAtTable(principal.userId(), tableId);
+        rateLimiter.enforce(principal.userId(), TableMutationType.BOARD_SLIDE);
         String roomId = ctx.roomId();
         String targetImageId = request.imageId().trim();
         long now = System.currentTimeMillis();
@@ -160,11 +176,18 @@ public class TableHomeworkService {
         return event;
     }
 
-    public LoadedEphemeralFile loadEphemeralFile(String fileName) {
+    public LoadedEphemeralFile loadEphemeralFile(AuthPrincipal principal, String fileName) {
+        if (principal == null || principal.userId() == null || principal.userId().isBlank()) {
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Unauthorized", "Valid Bearer token is required");
+        }
         String safeName = HomeworkImageValidator.validateSafeFileName(fileName);
         String imageId = HomeworkImageValidator.extractImageId(safeName);
-        stateStore.getEphemeralImage(imageId)
+        SeatedContext seated = authService.requireSeatedAnywhere(principal.userId());
+        EphemeralImageMetadata metadata = stateStore.getEphemeralImage(imageId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Ephemeral File Not Found", "Homework file expired or not found"));
+        if (!seated.roomId().equals(metadata.roomId()) || !seated.tableId().equals(metadata.tableId())) {
+            throw TableExceptions.notSeatedAtTable(metadata.tableId());
+        }
         byte[] bytes = storage.readExistingFile(safeName);
         return new LoadedEphemeralFile(bytes, HomeworkImageValidator.detectImageContentTypeOrDefault(bytes));
     }

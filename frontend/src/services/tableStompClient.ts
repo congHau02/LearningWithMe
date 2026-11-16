@@ -1,6 +1,7 @@
 import { getActiveRoomStompSession } from './roomStompClient';
 import type { HomeworkSlideAction, VoiceSignalRequest } from './tableApi';
-import type { BoardDrawAction, BoardStroke, NormalizedPoint } from '../utils/homeworkCanvasMath';
+import { useTableStore } from '../stores/useTableStore';
+import { validateBoardStroke, type BoardDrawAction, type BoardStroke, type NormalizedPoint } from '../utils/homeworkCanvasMath';
 
 export function sendTablePermissionRequest(tableId: string, reason?: string): boolean {
   const session = getActiveRoomStompSession();
@@ -60,6 +61,13 @@ export function sendBoardDraw(
   tableId: string,
   payload: { slideId: string; action: BoardDrawAction; stroke?: BoardStroke; strokeId?: string; point?: NormalizedPoint },
 ): boolean {
+  if (payload.action === 'ADD_STROKE' && payload.stroke) {
+    const validationError = validateBoardStroke(payload.stroke);
+    if (validationError) {
+      useTableStore.getState().setPermissionToast(validationError.message);
+      return false;
+    }
+  }
   const session = getActiveRoomStompSession();
   if (!session) return false;
   session.sendBoardDraw(tableId, payload);

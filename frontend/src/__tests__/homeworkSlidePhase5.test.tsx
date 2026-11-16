@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TableWorkspaceShell } from '../components/table/TableWorkspaceShell';
 import {
   setActiveRoomStompSession,
@@ -131,28 +131,58 @@ describe('P5-T1 Homework Slide Upload, Ctrl+V Paste, WebP Compression & Multi-Sl
     expect(compressed.name).toBe('problem.webp');
   });
 
+  const origCreateObjectURL = URL.createObjectURL;
+  const origRevokeObjectURL = URL.revokeObjectURL;
+
+  afterEach(() => {
+    URL.createObjectURL = origCreateObjectURL;
+    URL.revokeObjectURL = origRevokeObjectURL;
+  });
+
+  function mockObjectUrlApis() {
+    let counter = 0;
+    const createObjectURL = vi.fn(() => `blob:homework-${++counter}`);
+    const revokeObjectURL = vi.fn();
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
+    return { createObjectURL, revokeObjectURL };
+  }
+
   it('allows Host to upload via file input and Ctrl+V paste, switch slides, and delete slide', async () => {
     mockCanvasWebpCompression(1200, 800);
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 201,
-      json: async () => ({
-        imageId: 'img-003',
-        fileName: 'img-003.webp',
-        url: '/api/v1/ephemeral-files/img-003.webp',
-        uploadedByUserId: 'u-host',
-        uploadedAtEpoch: 3000,
-      }),
+    const { revokeObjectURL } = mockObjectUrlApis();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/api/v1/ephemeral-files/')) {
+        return {
+          ok: true,
+          status: 200,
+          blob: async () => new Blob(['RIFF1234WEBP'], { type: 'image/webp' }),
+        };
+      }
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({
+          imageId: 'img-003',
+          fileName: 'img-003.webp',
+          url: '/api/v1/ephemeral-files/img-003.webp',
+          uploadedByUserId: 'u-host',
+          uploadedAtEpoch: 3000,
+        }),
+      };
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<TableWorkspaceShell />);
+    const { unmount } = render(<TableWorkspaceShell />);
 
     expect(screen.getByTestId('homework-slide-counter')).toHaveTextContent('2/5');
-    expect(screen.getByTestId('homework-active-image')).toHaveAttribute(
-      'src',
-      expect.stringContaining('/api/v1/ephemeral-files/img-001.webp'),
+    await waitFor(() =>
+      expect(screen.getByTestId('homework-active-image')).toHaveAttribute('src', 'blob:homework-1'),
     );
+    const imgFetchCall = fetchMock.mock.calls.find(([u]) => String(u).includes('/api/v1/ephemeral-files/img-001.webp'));
+    expect(imgFetchCall).toBeDefined();
+    expect(new Headers(imgFetchCall![1]?.headers).get('Authorization')).toBe('Bearer jwt-host');
 
     // File input upload
     const fileInput = screen.getByTestId('homework-file-input') as HTMLInputElement;
@@ -161,8 +191,9 @@ describe('P5-T1 Homework Slide Upload, Ctrl+V Paste, WebP Compression & Multi-Sl
       fireEvent.change(fileInput, { target: { files: [pngFile] } });
     });
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/tables/table_01/homework-image');
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('/homework-image'))).toHaveLength(1),
+    );
 
     // Ctrl+V paste upload
     const pastedFile = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'clip.png', { type: 'image/png' });
@@ -178,7 +209,9 @@ describe('P5-T1 Homework Slide Upload, Ctrl+V Paste, WebP Compression & Multi-Sl
         },
       });
     });
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('/homework-image'))).toHaveLength(2),
+    );
 
     // Switch slide via STOMP
     fireEvent.click(screen.getByTestId('homework-slide-tab-img-002'));
@@ -193,15 +226,32 @@ describe('P5-T1 Homework Slide Upload, Ctrl+V Paste, WebP Compression & Multi-Sl
       action: 'DELETE',
       imageId: 'img-001',
     });
+
+    unmount();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:homework-1');
   });
 
-  it('locks upload, paste, switch and delete controls for unauthorized Member and syncs STOMP events', () => {
-    useAuthStore.setState({ userId: 'u-member' });
-    const fetchMock = vi.fn();
+  it('locks upload, paste, switch and delete controls for unauthorized Member, syncs STOMP events, and revokes ObjectURL on switch/leave', async () => {
+    useAuthStore.setState({ userId: 'u-member', token: 'jwt-member' });
+    const { revokeObjectURL } = mockObjectUrlApis();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/v1/ephemeral-files/')) {
+        return {
+          ok: true,
+          status: 200,
+          blob: async () => new Blob(['RIFF1234WEBP'], { type: 'image/webp' }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<TableWorkspaceShell />);
 
+    await waitFor(() =>
+      expect(screen.getByTestId('homework-active-image')).toHaveAttribute('src', 'blob:homework-1'),
+    );
     expect(screen.queryByTestId('homework-upload-btn')).toBeNull();
     expect(screen.queryByTestId('homework-slide-delete-img-001')).toBeNull();
     expect(screen.getByTestId('homework-slide-tab-img-002')).toBeDisabled();
@@ -213,9 +263,9 @@ describe('P5-T1 Homework Slide Upload, Ctrl+V Paste, WebP Compression & Multi-Sl
         items: [{ type: 'image/png', getAsFile: () => pastedFile }],
       },
     });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('/homework-image'))).toHaveLength(0);
 
-    // STOMP event updates activeSlideId and homeworkSlides in store & UI
+    // STOMP event updates activeSlideId and revokes previous slide ObjectURL
     act(() => {
       useTableStore.getState().applyWorkspaceEvent(
         {
@@ -236,9 +286,16 @@ describe('P5-T1 Homework Slide Upload, Ctrl+V Paste, WebP Compression & Multi-Sl
       );
     });
 
-    expect(screen.getByTestId('homework-active-image')).toHaveAttribute(
-      'src',
-      expect.stringContaining('/api/v1/ephemeral-files/img-002.webp'),
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:homework-1');
+    await waitFor(() =>
+      expect(screen.getByTestId('homework-active-image')).toHaveAttribute('src', 'blob:homework-2'),
     );
+
+    // Leaving table unmounts workspace and revokes active ObjectURL
+    act(() => {
+      useGameStore.getState().leaveSeat();
+      useTableStore.getState().leaveTable();
+    });
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:homework-2');
   });
 });

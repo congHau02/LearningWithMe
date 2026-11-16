@@ -8,6 +8,7 @@ import java.util.UUID;
 final class BoardStrokeValidator {
 
     static final int MAX_TEXT_LENGTH = 300;
+    static final int MAX_POINTS_PER_STROKE = BoardStroke.MAX_POINTS_PER_STROKE;
 
     private BoardStrokeValidator() {}
 
@@ -23,6 +24,9 @@ final class BoardStrokeValidator {
         }
         if (input.points() == null || input.points().isEmpty()) {
             throw TableExceptions.invalidAction("Stroke must contain at least one normalized point");
+        }
+        if (input.points().size() > MAX_POINTS_PER_STROKE) {
+            throw TableExceptions.invalidAction("Stroke cannot exceed 500 normalized points");
         }
         for (NormalizedPoint pt : input.points()) {
             if (pt == null || !isNormalized(pt.x()) || !isNormalized(pt.y())) {
