@@ -93,24 +93,8 @@ export function buildClassroomTilemap(
         fontFamily: 'monospace',
         fontSize: '10px',
         color: '#fef3c7',
-        backgroundColor: '#451a03aa',
+        backgroundColor: '#451a03cc',
         padding: { x: 3, y: 1 },
-      })
-      .setOrigin(0.5);
-  }
-
-  if (topology.afkZone.length > 0) {
-    const avgX =
-      topology.afkZone.reduce((sum, t) => sum + t.tileX + 0.5, 0) /
-      topology.afkZone.length;
-    const avgY =
-      topology.afkZone.reduce((sum, t) => sum + t.tileY + 0.5, 0) /
-      topology.afkZone.length;
-    scene.add
-      .text(avgX * topology.tileSize, avgY * topology.tileSize, 'AFK Lounge', {
-        fontFamily: 'sans-serif',
-        fontSize: '11px',
-        color: '#99f6e4',
       })
       .setOrigin(0.5);
   }

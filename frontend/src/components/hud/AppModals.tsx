@@ -8,6 +8,7 @@ import { LeaveTableConfirmModal } from './LeaveTableConfirmModal';
 import { RoomChatBox } from './RoomChatBox';
 import { StudyLeaderboardModal } from './StudyLeaderboardModal';
 import { StudySessionsModal } from './StudySessionsModal';
+import { VirtualDrinkMenuModal } from './VirtualDrinkMenuModal';
 
 interface AppModalsProps {
   token: string | null;
@@ -81,6 +82,8 @@ export function AppModals({
       {token && isCustomizerOpen ? (
         <CharacterCustomizerModal onClose={onCloseCustomizer} />
       ) : null}
+
+      {token ? <VirtualDrinkMenuModal /> : null}
 
       {token ? <RoomChatBox /> : null}
     </>

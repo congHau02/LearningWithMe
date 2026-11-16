@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
+import type { AmbientNpcManager } from '../cafe/AmbientNpcManager';
 import {
   InputController,
   isTypingInFormElement,
@@ -8,6 +9,21 @@ import {
 import type { ChatBubble } from '../entities/ChatBubble';
 import type { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
 import type { RoomTopology } from '../topology/roomTopology';
+import {
+  handleClassroomPointerDown,
+  resolveClassroomHoverState,
+} from './classroomPointerHandler';
+
+export function subscribeNpcDrinkReactions(ambientNpcManager?: AmbientNpcManager): () => void {
+  let lastSeq = useGameStore.getState().npcBubbleOrder?.seq ?? 0;
+  return useGameStore.subscribe((state) => {
+    const order = state.npcBubbleOrder;
+    if (order && order.seq !== lastSeq) {
+      lastSeq = order.seq;
+      ambientNpcManager?.triggerStaffReaction(order.npcId, order.text);
+    }
+  });
+}
 
 export function subscribeSceneChatBubbles(
   selfChatBubble?: ChatBubble,
@@ -35,24 +51,42 @@ export function bindClassroomSceneInputs(options: {
   scene: Phaser.Scene;
   topology: RoomTopology;
   inputController: InputController;
+  ambientNpcManager?: AmbientNpcManager;
   onHoverSeatChange: (seatId: string | null) => void;
   onShutdownCleanup: () => void;
 }): void {
-  const { scene, topology, inputController, onHoverSeatChange, onShutdownCleanup } = options;
+  const {
+    scene,
+    topology,
+    inputController,
+    ambientNpcManager,
+    onHoverSeatChange,
+    onShutdownCleanup,
+  } = options;
 
   scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-    const tileX = Math.floor(pointer.worldX / topology.tileSize);
-    const tileY = Math.floor(pointer.worldY / topology.tileSize);
-    const seat = inputController.getSeatManager().getSeatAtTile(tileX, tileY);
-    const isOccupied = seat?.seatId ? Boolean(useGameStore.getState().occupiedSeats[seat.seatId]) : false;
-    onHoverSeatChange(seat && !isOccupied ? seat.seatId : null);
+    const hover = resolveClassroomHoverState({
+      worldX: pointer.worldX,
+      worldY: pointer.worldY,
+      topology,
+      inputController,
+      ambientNpcManager,
+    });
+    onHoverSeatChange(hover.hoveredSeatId);
+    scene.input.setDefaultCursor?.(
+      hover.hoveredSeatId || hover.isHoveringCafeInteractive ? 'pointer' : 'default',
+    );
   });
 
   scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
     if (isTypingInFormElement()) return;
-    const tileX = Math.floor(pointer.worldX / topology.tileSize);
-    const tileY = Math.floor(pointer.worldY / topology.tileSize);
-    inputController.handleTileClick(tileX, tileY);
+    handleClassroomPointerDown({
+      worldX: pointer.worldX,
+      worldY: pointer.worldY,
+      topology,
+      inputController,
+      ambientNpcManager,
+    });
   });
 
   const onKeyDown = (event: KeyboardEvent) => {

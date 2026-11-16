@@ -22,6 +22,7 @@ export function App() {
   const currentTableId = useGameStore((s) => s.currentTableId);
   const currentSeatId = useGameStore((s) => s.currentSeatId);
   const isLeaveConfirmOpen = useGameStore((s) => s.isLeaveConfirmOpen);
+  const isDrinkMenuOpen = useGameStore((s) => s.isDrinkMenuOpen);
   const openLeaveConfirm = useGameStore((s) => s.openLeaveConfirm);
   const closeLeaveConfirm = useGameStore((s) => s.closeLeaveConfirm);
   const toastMessage = useGameStore((s) => s.toastMessage);
@@ -41,7 +42,7 @@ export function App() {
 
   useEffect(() => {
     if (characterState !== 'SEATED') return;
-    const hasOpenModal = isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen || isCustomizerOpen;
+    const hasOpenModal = isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen || isCustomizerOpen || isDrinkMenuOpen;
     const onEscape = (event: KeyboardEvent) => {
       if (hasOpenModal) return;
       const active = document.activeElement as HTMLElement | null;
@@ -54,7 +55,7 @@ export function App() {
     };
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
-  }, [characterState, isStudySessionsOpen, isUpgradeModalOpen, isLeaderboardOpen, isCustomizerOpen, openLeaveConfirm]);
+  }, [characterState, isStudySessionsOpen, isUpgradeModalOpen, isLeaderboardOpen, isCustomizerOpen, isDrinkMenuOpen, openLeaveConfirm]);
 
   const nickname = useAuthStore((s) => s.nickname);
   const avatarSpriteId = useAuthStore((s) => s.avatarSpriteId);

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { findVirtualDrink } from '../game/cafe/studyCafeConfig';
 import { applyRoomEvent, reduceSnapshotState } from '../services/roomEventReducer';
 import {
   INITIAL_GAME_STATE,
@@ -62,6 +63,25 @@ export const useGameStore = create<GameState>((set) => ({
       pathQueue: [], isMoving: false, isLeaveConfirmOpen: false,
       occupiedSeats: s.currentSeatId ? Object.fromEntries(Object.entries(s.occupiedSeats).filter(([k]) => k !== s.currentSeatId)) : s.occupiedSeats,
     })),
+  openDrinkMenu: (npcName, npcId) =>
+    set({
+      isDrinkMenuOpen: true,
+      activeCafeNpcName: npcName ?? 'Quầy Study Café',
+      activeCafeNpcId: npcId ?? 'npc_barista',
+    }),
+  closeDrinkMenu: () => set({ isDrinkMenuOpen: false }),
+  selectVirtualDrink: (drinkId) =>
+    set((s) => {
+      const drink = findVirtualDrink(drinkId);
+      const nextSeq = (s.npcBubbleOrder?.seq ?? 0) + 1;
+      return {
+        selectedDrinkId: drink ? drink.id : null,
+        isDrinkMenuOpen: false,
+        npcBubbleOrder: drink
+          ? { npcId: s.activeCafeNpcId ?? 'npc_barista', text: drink.staffReply, seq: nextSeq }
+          : s.npcBubbleOrder,
+      };
+    }),
   clearToast: () => set({ toastMessage: null }),
   setConnectionStatus: (connectionStatus, error) =>
     set((s) => ({ connectionStatus, lastError: error !== undefined ? error : connectionStatus === 'CONNECTED' ? null : s.lastError })),

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { findVirtualDrink } from '../../game/cafe/studyCafeConfig';
 import { MAIN_LIBRARY_TOPOLOGY } from '../../game/topology/roomTopology';
 import { useGameStore } from '../../stores/useGameStore';
 import { ClassroomTelemetryBar } from '../hud/ClassroomTelemetryBar';
@@ -13,6 +14,9 @@ function canBootPhaserCanvas(): boolean {
 
 export function ClassroomCanvas() {
   const roomId = useGameStore((s) => s.roomId);
+  const selectedDrinkId = useGameStore((s) => s.selectedDrinkId);
+  const openDrinkMenu = useGameStore((s) => s.openDrinkMenu);
+  const activeDrink = findVirtualDrink(selectedDrinkId);
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -61,14 +65,30 @@ export function ClassroomCanvas() {
     >
       <div className="flex w-full flex-wrap items-center justify-between gap-2 text-left">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-            3/4 Top-Down 2D Orthogonal Classroom
+          <p className="text-xs font-semibold uppercase tracking-widest text-amber-400">
+            Study Café • 3/4 Top-Down 2D Orthogonal
           </p>
           <h2 className="text-lg font-bold tracking-tight">Phòng học: {roomId}</h2>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Dùng phím <kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">WASD</kbd> / Mũi tên hoặc chạm trực tiếp lên bản đồ / ghế trống để di chuyển.
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            data-testid="open-drink-menu-btn"
+            onClick={() => openDrinkMenu('Quầy Study Café', 'npc_barista')}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/25"
+          >
+            {activeDrink ? (
+              <span data-testid="selected-drink-badge">
+                {activeDrink.icon} {activeDrink.name}
+              </span>
+            ) : (
+              <span>☕ Quầy đồ uống</span>
+            )}
+          </button>
+          <p className="text-xs text-muted-foreground">
+            Dùng <kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">WASD</kbd> / Mũi tên hoặc chạm bản đồ, ghế trống &amp; nhân viên quán.
+          </p>
+        </div>
       </div>
 
       <div
