@@ -2,7 +2,7 @@
 
 - **Tên dự án:** Cùng Nhau Học Bài (Study Together 2D Web Game)
 - **Slogan:** *"Cùng nhau học bài - Không còn cô đơn trên hành trình chinh phục tri thức"*
-- **Phiên bản tài liệu:** 2.0.0 (Đồng bộ thực tế triển khai Phase 1 – Phase 6)
+- **Phiên bản tài liệu:** 2.1.0 (Đồng bộ thực tế triển khai Phase 1 – Phase 7)
 - **Kiến trúc cốt lõi:** Hybrid 2D Canvas (Phaser 3) + Reactive HUD (ReactJS 18 + TailwindCSS v4) + Stateful Realtime Backend (Spring Boot 3.4, STOMP WebSocket, Redis 7, MySQL 8.0)
 - **Tài liệu liên kết:** [GLOSSARY.md](GLOSSARY.md) | [docs/SPEC.md](docs/SPEC.md) | [docs/adr/](docs/adr/) | [AGENTS.md](AGENTS.md)
 
@@ -277,8 +277,11 @@ CREATE TABLE character_items (
   - `GET /api/v1/stats/leaderboard?limit=20`: Xem bảng xếp hạng học tập cộng đồng.
   - `GET /api/v1/items`: Lấy danh mục toàn bộ vật phẩm (`SKIN`, `HAT`, `DESK_PET`), trạng thái mở khóa và trang bị hiện tại.
   - `PATCH /api/v1/users/me/customization`: Thay đổi trang phục, mũ hoặc thú cưng để bàn đang trang bị.
+- **Đàm thoại Âm thanh & ICE/TURN (`Voice`):**
+  - `GET /api/v1/voice/ice-servers`: Cấp danh sách máy chủ STUN + thông tin xác thực TURN ngắn hạn (`HMAC-SHA1` TTL ~1 giờ) cho WebRTC P2P Mesh.
 - **Kiểm tra sức khỏe hệ thống (`Health`):**
   - `GET /api/v1/health`: Kiểm tra trạng thái kết nối thực tế tới MySQL và Redis.
+  - `GET /actuator/health`: Endpoint kiểm tra sức khỏe chuẩn Spring Boot Actuator cho môi trường Production (`prod`).
 
 ---
 
@@ -286,12 +289,23 @@ CREATE TABLE character_items (
 
 ```text
 LearningWithMe/
-├── docker-compose.yml                  # Khởi chạy MySQL 8.0, Redis 7, Backend, Frontend
+├── docker-compose.yml                  # Khởi chạy MySQL 8.0, Redis 7, Backend, Frontend (Local)
+├── docker-compose.prod.yml             # Cấu hình Compose dự phòng cho VPS Linux + Caddy TLS
 ├── .env.example                        # Mẫu cấu hình biến môi trường
 ├── AGENTS.md                           # Quy chuẩn kiến trúc & giới hạn dòng cho AI Agent
 ├── GLOSSARY.md                         # Từ điển miền nghiệp vụ thống nhất (Ubiquitous Language)
+├── .github/workflows/
+│   ├── ci.yml                          # Cổng CI: check-file-limits, Backend Testcontainers + JaCoCo, Frontend Vitest
+│   ├── cd.yml                          # CD: Build & push GHCR image (linux/amd64) + Render / SSH deploy
+│   └── backup-nightly.yml              # Sao lưu đêm tự động MySQL + Redis (.tar.gz, lưu trữ 7 ngày)
+├── scripts/
+│   ├── check-file-limits.mjs           # Kiểm tra giới hạn số dòng theo AGENTS.md
+│   ├── setup-prod-infra.sh             # Wizard tương tác cấp phát hạ tầng Cloud Free Tier
+│   ├── create-backup.sh                # Tạo bản sao lưu nén MySQL + Redis (.tar.gz)
+│   ├── restore-backup.sh               # Khôi phục bản sao lưu MySQL + Redis từ file .tar.gz
+│   └── k6-room-load.js                 # Kịch bản kiểm thử tải k6 (10Hz STOMP move + Room Chat)
 ├── docs/
-│   ├── SPEC.md                         # Đặc tả kỹ thuật tổng thể 6 Phases (47 User Stories)
+│   ├── SPEC.md                         # Đặc tả kỹ thuật tổng thể Phases 1 – 7
 │   └── adr/                            # Architecture Decision Records (ADR-0001 .. ADR-0009)
 ├── shared/
 │   └── maps/
@@ -381,17 +395,43 @@ Ngưỡng áp dụng: `.tsx` $\le 200$, Phaser (`src/game/**/*.ts`) $\le 250$, Z
 
 Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](docs/adr/0007-free-tier-oracle-vercel-topology.md)):
 - **Frontend (Vercel Hobby):** Deploy qua Git integration (Root Directory: `frontend`, cấu hình [frontend/vercel.json](frontend/vercel.json)) với biến build-time `VITE_API_BASE_URL` và `VITE_WS_BASE_URL` (không chứa `localhost` trong bản production).
-- **Backend (Render Free Web Service — `linux/amd64`):** Chạy container Spring Boot từ [backend/Dockerfile](backend/Dockerfile) tối ưu RAM 512MB (`-XX:+UseSerialGC -XX:MaxRAMPercentage=60.0 -Xss512k`), bind cổng động `${PORT}`, bật profile `prod`, kết hợp UptimeRobot ping `/actuator/health` mỗi 5 phút để tránh cold start.
+- **Backend (Render Free Web Service — `linux/amd64`):** Chạy container Spring Boot từ [backend/Dockerfile](backend/Dockerfile) tối ưu RAM 512MB (`-XX:+UseSerialGC -XX:MaxRAMPercentage=60.0 -Xss512k`), bind cổng động `${PORT}`, bật profile `prod`, mở `/actuator/health` *(cấu hình UptimeRobot ping 5 phút/lần tạm thời bỏ ngỏ, có thể bật bổ sung sau khi cần giữ thức 24/7)*.
 - **Hot & Cold Managed Databases (Free Tier):** **Redis Cloud Free** (30MB Fixed, không giới hạn lệnh/tháng, cấu hình qua `SPRING_DATA_REDIS_USERNAME` & `SPRING_DATA_REDIS_SSL_ENABLED`) và **Aiven / TiDB Cloud Free MySQL 8.0** (`SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE=5`).
+- **Managed TURN Relay (`WebRTC Voice`):** Endpoint `GET /api/v1/voice/ice-servers` cấp thông tin xác thực TURN ngắn hạn (`HMAC-SHA1` qua `APP_VOICE_TURN_URLS` & `APP_VOICE_TURN_SECRET`), tự động fallback về STUN công cộng nếu chưa cấu hình TURN.
 - **CD tự động:** Merge vào `main` kích hoạt [.github/workflows/cd.yml](.github/workflows/cd.yml) để build Docker image `linux/amd64`, đẩy lên GHCR, và tùy chọn kích hoạt `RENDER_DEPLOY_HOOK_URL` (cùng xác minh `/actuator/health` trả về `UP`) hoặc SSH fallback tới VPS nếu `VM_HOST` được cấu hình kèm [docker-compose.prod.yml](docker-compose.prod.yml) + [deploy/Caddyfile](deploy/Caddyfile). Nếu dùng Render nối trực tiếp GitHub repo với **Auto-Deploy (`On Commit`)** và `Dockerfile Path = backend/Dockerfile`, có thể bỏ qua `RENDER_DEPLOY_HOOK_URL` để Render tự build & deploy mà workflow CD vẫn xanh.
-- **Wizard cấp phát hạ tầng:** Chạy script tương tác [scripts/setup-prod-infra.sh](scripts/setup-prod-infra.sh) (hỗ trợ WSL/Git Bash/macOS/Linux) để đi từng bước qua Redis Cloud, Aiven/TiDB MySQL, Vercel, Render Free, tạo `.env.prod.local` quyền `0600` và nạp Variable `BACKEND_PUBLIC_URL` (cùng Secret `RENDER_DEPLOY_HOOK_URL` nếu dùng Deploy Hook):
+- **Wizard cấp phát hạ tầng:** Chạy script tương tác [scripts/setup-prod-infra.sh](scripts/setup-prod-infra.sh) (hỗ trợ WSL/Git Bash/macOS/Linux) để đi từng bước qua Redis Cloud, Aiven/TiDB MySQL, Vercel, Render Free, tạo `.env.prod.local` quyền `0600` và nạp các GitHub Variables/Secrets cho CD & Nightly Backup:
   ```bash
   ./scripts/setup-prod-infra.sh
   ```
 
+### 7.4. Sao lưu Đêm, Diễn tập Khôi phục (Restore Drill) & Kiểm thử Tải `k6`
+
+**1. Sao lưu tự động & thủ công (`MySQL + Redis`):**
+- Workflow [.github/workflows/backup-nightly.yml](.github/workflows/backup-nightly.yml) chạy tự động lúc `02:00` sáng (giờ Việt Nam, `19:00 UTC`) hàng đêm hoặc kích hoạt thủ công qua **`workflow_dispatch`**, gọi [scripts/create-backup.sh](scripts/create-backup.sh) để xuất `mysql.sql` (`mysqldump`) cùng toàn bộ khóa và TTL trên Redis (`redis-dump.tsv`), nén thành `.tar.gz` và lưu trữ trên GitHub Actions Artifacts với `retention-days: 7` (kèm tùy chọn đẩy lên S3/Cloudflare R2 nếu cấu hình `BACKUP_S3_BUCKET`).
+- **Quy trình khôi phục (`Restore Procedure`):**
+  ```bash
+  # Tạo bản sao lưu thủ công
+  ./scripts/create-backup.sh backups/manual-backup.tar.gz
+
+  # Khôi phục vào MySQL & Redis đích (--flush-redis để làm sạch Redis trước khi nạp)
+  ./scripts/restore-backup.sh backups/manual-backup.tar.gz --flush-redis
+  ```
+
+**2. Kiểm thử tải thời gian thực với `k6` (`10Hz STOMP Movement + Room Chat`):**
+- Kịch bản [scripts/k6-room-load.js](scripts/k6-room-load.js) mô phỏng nhiều người học đồng thời lấy JWT Guest, tham gia `Room`, kết nối STOMP WebSocket, di chuyển liên tục ở tần suất `10Hz` (`100ms`) và gửi tin nhắn `Room Chat`, đồng thời kiểm định ngưỡng độ trễ phát sóng `stomp_broadcast_latency_ms` ($p95 < 250\text{ms}$) và tỷ lệ lỗi $< 1\%$:
+  ```bash
+  k6 run \
+    -e BASE_URL=http://localhost:8080 \
+    -e ORIGIN=http://localhost:5173 \
+    -e VUS=25 \
+    -e DURATION=30s \
+    -e P95_BROADCAST_MS=250 \
+    scripts/k6-room-load.js
+  ```
+
 ---
 
-## 8. TRẠNG THÁI TRIỂN KHAI (6 PHASES COMPLETED)
+## 8. TRẠNG THÁI TRIỂN KHAI (PHASES 1 – 7 COMPLETED)
 
 - [x] **Phase 1 — Foundation, Docker Infra & Hybrid Auth:** Docker Compose, Flyway migrations, Guest onboarding không rác DB, nâng cấp tài khoản không gián đoạn và hoán đổi định danh nguyên tử trên Redis.
 - [x] **Phase 2 — 2D Classroom Engine & Character State Machine:** Bản đồ Tiled JSON dùng chung, tìm đường $A^*$ (`EasyStar.js`), máy trạng thái `FREE_ROAM` $\leftrightarrow$ `WALKING_TO_SEAT` $\leftrightarrow$ `SEATED`, ưu tiên bàn phím tức thời và khóa di chuyển khi ngồi.
@@ -399,3 +439,4 @@ Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](d
 - [x] **Phase 4 — Table Workspace: Host Permissions, Synced YouTube & SOS:** Phân quyền `TABLE_HOST` / `CO_HOST` / `MEMBER` và `Free Collaboration`, đồng bộ YouTube chống giật ($\Delta t = 2.0\text{s}$), bộ đếm giờ học theo `Epoch`, `Table Chat` và biển báo `SOS Banner`.
 - [x] **Phase 5 — Ephemeral Homework Whiteboard & Auto-Cleanup:** Tải/dán ảnh bài tập `Ctrl + V` nén `.webp`, kiểm tra magic bytes, tối đa 5 slides/bàn, vẽ chú thích chuẩn hóa tọa độ `[0.0, 1.0]`, con trỏ `Laser Pointer` 10Hz và tự động xóa sạch khi bàn trống hoặc sau 6 giờ.
 - [x] **Phase 6 — Study Sessions Persistence, Gamification & WebRTC Voice:** Lưu phiên học $\ge 1\text{ phút}$, bảng xếp hạng học tập, mở khóa & trang bị `SKIN` / `HAT` / `DESK_PET`, và đàm thoại âm thanh `WebRTC P2P Mesh` tại bàn học.
+- [x] **Phase 7 — Production Readiness, CI/CD, Restart Resilience & Cloud Free Tier Ops:** Cổng CI/CD GitHub Actions (`check-file-limits.mjs`, JaCoCo $\ge 70\%$), profile `prod` (rate limit IP, JSON logs, `/actuator/health`), khôi phục `Grace Period` khi khởi động lại, STOMP backoff + jitter, Managed TURN (`GET /api/v1/voice/ice-servers`), sao lưu đêm 7 ngày (`backup-nightly.yml` + `restore-backup.sh`) và kiểm thử tải `k6` 10Hz *(UptimeRobot 5-minute keep-alive tạm để ngỏ)*.

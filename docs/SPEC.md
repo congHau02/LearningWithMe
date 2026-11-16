@@ -1,4 +1,4 @@
-# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (6 Phases)
+# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (Phases 1 – 7)
 
 ## Problem Statement
 
@@ -6,7 +6,7 @@ Người học trực tuyến (học sinh, sinh viên, người tự học) thư
 
 ## Solution
 
-Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **6 Phase (Vertical Slices)**:
+Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **7 Phase (Vertical Slices)**:
 
 - **Phase 1 — Foundation, Docker Infra & Hybrid Auth**: Thiết lập nền tảng cơ sở dữ liệu bền vững (MySQL 8.0) và bộ nhớ trạng thái thời gian thực (Redis 7.x), cho phép người học bước ngay vào **Room** mặc định với tư cách **Guest** không cần đăng ký, và hỗ trợ **Account Upgrade** không gián đoạn lên **Registered User** để bảo toàn toàn bộ thời gian học.
 - **Phase 2 — 2D Classroom Engine & Character State Machine**: Xây dựng bản đồ **Room** 2D tương tác với tìm đường tự động $A^*$, máy trạng thái nhân vật 3 trạng thái bất biến (`FREE_ROAM` $\leftrightarrow$ `WALKING_TO_SEAT` $\leftrightarrow$ `SEATED`), quy tắc ưu tiên bàn phím tức thời và khóa di chuyển khi đang ngồi học.
@@ -14,6 +14,7 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 - **Phase 4 — Table Workspace: Host Permissions, Synced YouTube & SOS**: Cung cấp **Table Workspace** riêng tư cho từng **Table**, hệ thống phân quyền **Table Host** / **Co-Host** / **Table Member** kèm chế độ **Free Collaboration**, trình phát YouTube đồng bộ chống giật ($\Delta t = 2.0\text{s}$), bộ đếm giờ học chính xác cả khi ẩn tab, kênh trò chuyện nội bộ bàn và biển báo **SOS Banner** kêu gọi hỗ trợ giải bài.
 - **Phase 5 — Ephemeral Homework Whiteboard & Auto-Cleanup**: Cho phép tải lên hoặc dán nhanh (`Ctrl + V`) tối đa 5 **Homework Slide** mỗi **Table** (định dạng `.webp`), vẽ hướng dẫn thời gian thực bằng các công cụ **Stroke** (`PEN`, `HIGHLIGHTER`, `TEXT`, `ERASER`) và **Laser Pointer** chuẩn hóa tọa độ `[0.0, 1.0]`, đồng thời tự động xóa sạch dữ liệu tạm ngay khi **Table** về `0` người ngồi.
 - **Phase 6 — Study Sessions Persistence, Gamification & WebRTC Voice**: Ghi nhận các **Study Session** hợp lệ ($\ge 1\text{ phút}$), mở khóa trang phục và thú cưng để bàn theo tổng số phút học tích lũy, hiển thị bảng xếp hạng học tập, và tích hợp đàm thoại âm thanh **WebRTC P2P Mesh** cho các thành viên ngồi cùng **Table**.
+- **Phase 7 — Production Readiness & Zero-Card Cloud Free Tier Operations (ADR-0007)**: Đưa toàn bộ hệ thống lên môi trường Production HTTPS/WSS công khai với chi phí bằng 0 và không cần thẻ tín dụng (**Vercel Hobby** + **Render Free Docker `linux/amd64`** + **Redis Cloud Free** + **Managed MySQL 8.0** + **Managed TURN Free Tier**), kèm cổng kiểm định CI/CD GitHub Actions (kiểm tra giới hạn dòng `AGENTS.md`, độ phủ JaCoCo $\ge 70\%$), khôi phục **Grace Period** sau khi khởi động lại máy chủ, kết nối lại STOMP với backoff + jitter, sao lưu đêm tự động 7 ngày và kiểm thử tải `k6` 10Hz.
 
 ## User Stories
 
@@ -76,10 +77,16 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 46. As a **`SEATED`** learner, I want to opt into voice chat at my **Table** by toggling my microphone (Mute/Unmute) over a low-latency **WebRTC P2P Mesh** connection with my tablemates, so that we can discuss homework verbally without setting up external call links.
 47. As a **`SEATED`** learner in voice chat, I want to see visual speaking indicators next to tablemates who are currently talking and have all audio streams automatically disconnected the moment I leave the **Table**, so that my privacy and audio state are always clear.
 
+### Phase 7: Production Readiness — Zero-Card Free Tier Deploy, CI/CD, Restart Resilience & Ops
+48. As a learner, I want to open the app over HTTPS/WSS from a public URL with short-lived WebRTC TURN relay credentials (`GET /api/v1/voice/ice-servers`), so that microphone permissions and voice chat work reliably across mobile 4G and symmetric NAT networks.
+49. As a **`SEATED`** learner, I want a backend restart to reconcile pending **Grace Period** deadlines on startup and my client to reconnect with exponential backoff + jitter (`1s..15s`), so that short restarts preserve my **Seat** and **Table Host** role while abandoned seats are still reclaimed after 30 seconds.
+50. As the operator, I want a hardened `prod` Spring profile (IP rate limiting `10 req/min` on auth endpoints returning `429 ProblemDetail`, strict CORS/STOMP allowed origins, JSON structured logs, and `/actuator/health` exposure) plus automated GitHub Actions CI (`check-file-limits.mjs`, JaCoCo $\ge 70\%$, Testcontainers, Vitest) and CD (`linux/amd64` GHCR image + Render Free / SSH fallback).
+51. As the operator, I want a scheduled nightly backup workflow (`.github/workflows/backup-nightly.yml`) with a verified restore script (`scripts/restore-backup.sh`) and a parameterized `k6` load test (`scripts/k6-room-load.js`) simulating 10Hz STOMP movement and **Room Chat**, so that database loss is recoverable and broadcast latency ($p95 < 250\text{ms}$) is verifiable. *(UptimeRobot 5-minute keep-alive monitor is supported by `/actuator/health` and currently deferred for later activation.)*
+
 ## Implementation Decisions
 
 ### 1. Phased Vertical-Slice Delivery Architecture
-- The system is divided into 6 sequential/parallelizable vertical slices (**Phase 1** through **Phase 6**), where each phase delivers an end-to-end testable increment across Backend and Frontend while respecting strict module size limits (React components $\le 200$ lines, Phaser modules $\le 250$ lines, Zustand stores $\le 150$ lines, Spring Controllers/Handlers $\le 150$ lines, Spring Services $\le 250$ lines, DTOs/Entities $\le 120$ lines).
+- The system is divided into 7 sequential/parallelizable vertical slices (**Phase 1** through **Phase 7**), where each phase delivers an end-to-end testable increment across Backend and Frontend while respecting strict module size limits (React components $\le 200$ lines, Phaser modules $\le 250$ lines, Zustand stores $\le 150$ lines, Spring Controllers/Handlers $\le 150$ lines, Spring Services $\le 250$ lines, DTOs/Entities $\le 120$ lines).
 
 ### 2. Hybrid Auth & Zero-Interruption Account Upgrade (ADR-0001 & ADR-0004)
 - **Guest Onboarding**: `POST /api/v1/auth/guest` issues a signed 7-day JWT (`guestToken`) with a generated UUID `guestId` without inserting a row into the MySQL `users` table.
@@ -131,6 +138,21 @@ type CharacterState = 'FREE_ROAM' | 'WALKING_TO_SEAT' | 'SEATED';
 - **Character Customizations**: `character_items` defines unlockable `SKIN`, `HAT`, and `DESK_PET` items gated by `required_study_minutes <= users.total_study_minutes`.
 - **WebRTC P2P Mesh Voice Chat**: Seated learners at the same **Table** ($\le 6$ seats) establish direct browser-to-browser `RTCPeerConnection` audio streams using `/app/table/{tableId}/voice.signal` over STOMP to exchange `SDP Offer/Answer` and `ICE Candidates`.
 
+### 8. Production Topology, Restart Resilience & Operations (ADR-0007)
+- **Zero-Card Cloud Free Tier Topology**:
+  - **Frontend**: Deployed on **Vercel Hobby** (`frontend/vercel.json`) via Git integration with `VITE_API_BASE_URL` and `VITE_WS_BASE_URL`.
+  - **Backend**: Deployed as a `linux/amd64` Docker container on **Render Free Web Service** (`-XX:+UseSerialGC -XX:MaxRAMPercentage=60.0 -Xss512k`, dynamic `${PORT}`), with `docker-compose.prod.yml` + `deploy/Caddyfile` retained as a VPS/SSH fallback.
+  - **Hot & Cold Managed Stores**: **Redis Cloud Free** (30MB Fixed, unlimited monthly ops, Redis 7 + Lua scripts) and **Managed MySQL 8.0 Free Tier** (Aiven / TiDB Serverless, `HikariCP max-pool-size = 5`).
+  - **Managed TURN Relay**: `GET /api/v1/voice/ice-servers` issues short-lived HMAC-SHA1 TURN REST API credentials (`<expiryEpoch>:<userId>`) alongside public STUN URLs; the WebRTC mesh falls back to STUN if TURN is unconfigured or unreachable.
+- **Restart Resilience & Reconnect Backoff**:
+  - `GracePeriodStartupReconciler` scans `room:{roomId}:disconnects` and unattached `SEATED` players on `ApplicationReadyEvent`, scheduling `SeatDisconnectWatchdog` tasks for remaining 30s **Grace Period** windows so deploys/restarts never orphan locked **Seats**.
+  - `ReconnectBackoffTimer` on the frontend applies full-jitter exponential backoff (`1s`, `2s`, `4s`... capped at `15s`) and surfaces `RECONNECTING` state in the HUD.
+- **CI/CD, Nightly Backups & Load Testing**:
+  - `.github/workflows/ci.yml` enforces `scripts/check-file-limits.mjs`, Backend Testcontainers + JaCoCo $\ge 70\%$ line coverage on `modules/**`, and Frontend ESLint + `tsc` + Vitest.
+  - `.github/workflows/cd.yml` builds and pushes `linux/amd64` backend images to GHCR and triggers Render Deploy Hook (or lets Render GitHub Auto-Deploy handle commits) with `/actuator/health` verification.
+  - `.github/workflows/backup-nightly.yml` runs `scripts/create-backup.sh` nightly (and via `workflow_dispatch`) to archive `mysql.sql` + binary-safe `redis-dump.tsv` into `.tar.gz` artifacts with `retention-days: 7` (restorable via `scripts/restore-backup.sh`).
+  - `scripts/k6-room-load.js` load-tests concurrent STOMP learners moving at 10Hz and sending **Room Chat** messages, asserting $p95 < 250\text{ms}$ broadcast latency. *(5-minute UptimeRobot keep-alive ping on `/actuator/health` is deferred for later setup.)*
+
 ## Testing Decisions
 
 ### Philosophy: External Behavior at the Highest Seams
@@ -161,7 +183,7 @@ Tests verify observable behavior across two primary seams without coupling to in
 
 ## Further Notes
 
-- Related Domain Documentation: `GLOSSARY.md` and `docs/adr/0001` through `docs/adr/0005`.
+- Related Domain Documentation: `GLOSSARY.md` and `docs/adr/0001` through `docs/adr/0009`.
 - Delivery Order:
   - **Phase 1**: Foundation, Docker Infra & Hybrid Auth
   - **Phase 2**: 2D Classroom Engine & Character State Machine (Local)
@@ -169,3 +191,4 @@ Tests verify observable behavior across two primary seams without coupling to in
   - **Phase 4**: Table Workspace — Host Permissions, Synced YouTube & SOS (depends on Phase 3)
   - **Phase 5**: Ephemeral Homework Whiteboard & Auto-Cleanup Lifecycle (depends on Phase 4)
   - **Phase 6**: Study Sessions Persistence, Gamification & WebRTC Voice Chat (depends on Phase 4 & Phase 5)
+  - **Phase 7**: Production Readiness — Free Infra Deploy, CI/CD, Restart Resilience & Ops (depends on Phases 1–6)

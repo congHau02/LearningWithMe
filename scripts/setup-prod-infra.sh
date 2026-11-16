@@ -260,6 +260,12 @@ write_env SPRING_DATA_REDIS_USERNAME "$SPRING_DATA_REDIS_USERNAME"
 write_env SPRING_DATA_REDIS_PASSWORD "$SPRING_DATA_REDIS_PASSWORD"
 write_env SPRING_DATA_REDIS_SSL_ENABLED "$SPRING_DATA_REDIS_SSL_ENABLED"
 
+set_secret SPRING_DATA_REDIS_HOST "$SPRING_DATA_REDIS_HOST"
+set_secret SPRING_DATA_REDIS_PORT "$SPRING_DATA_REDIS_PORT"
+set_secret SPRING_DATA_REDIS_USERNAME "$SPRING_DATA_REDIS_USERNAME"
+set_secret SPRING_DATA_REDIS_PASSWORD "$SPRING_DATA_REDIS_PASSWORD"
+set_secret SPRING_DATA_REDIS_SSL_ENABLED "$SPRING_DATA_REDIS_SSL_ENABLED"
+
 # ── Stage 2: Managed Free MySQL 8.0 (Aiven or TiDB Serverless) ───────────
 stage "Managed Free MySQL 8.0 (Aiven or TiDB Serverless)"
 say "Provision the persistent MySQL 8.0 database (no credit card required)."
@@ -275,6 +281,10 @@ write_env SPRING_DATASOURCE_URL "$SPRING_DATASOURCE_URL"
 write_env SPRING_DATASOURCE_USERNAME "$SPRING_DATASOURCE_USERNAME"
 write_env SPRING_DATASOURCE_PASSWORD "$SPRING_DATASOURCE_PASSWORD"
 write_env SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE "5"
+
+set_secret SPRING_DATASOURCE_URL "$SPRING_DATASOURCE_URL"
+set_secret SPRING_DATASOURCE_USERNAME "$SPRING_DATASOURCE_USERNAME"
+set_secret SPRING_DATASOURCE_PASSWORD "$SPRING_DATASOURCE_PASSWORD"
 
 # ── Stage 3: Vercel Frontend & Allowed Origins ───────────────────────────
 stage "Vercel Frontend Project & Allowed Origins"
@@ -344,15 +354,14 @@ else
 fi
 chmod 600 "$ENV_FILE"
 
-# ── Stage 5: Link Vercel Env, UptimeRobot Keep-Alive & Verify ────────────
-stage "Link Vercel Env, UptimeRobot Keep-Alive & Verify"
-say "Finalize frontend build variables and 5-minute keep-alive ping."
+# ── Stage 5: Link Vercel Env & Verify Deployment ─────────────────────────
+stage "Link Vercel Env & Verify Deployment"
+say "Finalize frontend build variables and verify production endpoints."
 step "In Vercel → Project Settings → Environment Variables (Production & Preview), set:"
 note "  - VITE_API_BASE_URL = ${BACKEND_PUBLIC_URL}"
 note "  - VITE_WS_BASE_URL  = ${BACKEND_PUBLIC_URL/#https:/wss:}/ws"
 note "  - VITE_GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID:-<optional>}"
-step "In UptimeRobot (https://uptimerobot.com/), create an HTTP(s) monitor every 5 minutes for:"
-note "  ${BACKEND_PUBLIC_URL}/actuator/health"
+note "  (Optional / Deferred for later: UptimeRobot 5-minute ping on ${BACKEND_PUBLIC_URL}/actuator/health)"
 step "Merge to main to trigger CD (.github/workflows/cd.yml), then verify:"
 note "  curl -fsS ${BACKEND_PUBLIC_URL}/actuator/health"
 note "  Open ${VERCEL_PROD_ORIGIN} → join as Guest → walk, sit, chat, and open Table Workspace."

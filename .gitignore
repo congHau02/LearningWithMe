@@ -18,10 +18,11 @@ frontend/coverage/
 node_modules/
 *.tsbuildinfo
 
-# Ephemeral Homework Uploads
+# Ephemeral Homework Uploads & Local Backups
 /tmp/homework-uploads
 tmp/homework-uploads/
 homework-uploads/
+backups/
 
 # IDEs & Editors
 .idea/

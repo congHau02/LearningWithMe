@@ -20,8 +20,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Run file-limit checker tests
-        run: node --test scripts/check-file-limits.test.mjs
+      - name: Run script unit tests
+        run: node --test scripts/check-file-limits.test.mjs scripts/ops-phase7.test.mjs
 
       - name: Enforce AGENTS.md file-size limits
         run: node scripts/check-file-limits.mjs
