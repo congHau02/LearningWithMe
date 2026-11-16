@@ -278,6 +278,75 @@ class TableWorkspaceIntegrationTest {
         memberSession.disconnect();
     }
 
+    @Test
+    void syncsFocusCycleOverStompAndHydratesLateJoinerSnapshot() throws Exception {
+        String hostToken = createGuestToken("FocusHost");
+        String memberToken = createGuestToken("FocusMember");
+
+        StompSession hostSession = connectStomp(hostToken);
+        StompSession memberSession = connectStomp(memberToken);
+
+        BlockingQueue<JsonNode> roomEvents = subscribeJson(hostSession, "/topic/room/main-library/events");
+        BlockingQueue<JsonNode> memberErrors = subscribeJson(memberSession, "/user/queue/errors");
+        Thread.sleep(150);
+
+        hostSession.send("/app/room/main-library/join", "");
+        assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
+        memberSession.send("/app/room/main-library/join", "");
+        assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
+
+        hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
+        assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
+
+        BlockingQueue<JsonNode> tableEvents = subscribeJson(
+                hostSession, "/topic/room/main-library/table/table_01/workspace");
+        Thread.sleep(150);
+
+        // Host starts Focus Cycle before member sits
+        hostSession.send("/app/table/table_01/focus.sync", Map.of("action", "START"));
+        JsonNode startEv = tableEvents.poll(5, TimeUnit.SECONDS);
+        assertThat(startEv).isNotNull();
+        assertThat(startEv.path("type").asText()).isEqualTo("FOCUS_CYCLE_UPDATED");
+        assertThat(startEv.path("focusCycleState").path("phase").asText()).isEqualTo("FOCUS");
+        assertThat(startEv.path("focusCycleState").path("isRunning").asBoolean()).isTrue();
+        assertThat(startEv.path("focusCycleState").path("remainingSeconds").asInt()).isEqualTo(1500);
+
+        // Late joiner sits down and fetches workspace snapshot
+        memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S2"));
+        assertThat(roomEvents.poll(5, TimeUnit.SECONDS).path("type").asText()).isEqualTo("SEAT_LOCKED");
+
+        HttpHeaders memberHeaders = new HttpHeaders();
+        memberHeaders.setBearerAuth(memberToken);
+        ResponseEntity<TableWorkspaceSnapshot> snapshotResp = restTemplate.exchange(
+                "/api/v1/rooms/main-library/tables/table_01/state",
+                HttpMethod.GET,
+                new HttpEntity<>(memberHeaders),
+                TableWorkspaceSnapshot.class
+        );
+        assertThat(snapshotResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(snapshotResp.getBody()).isNotNull();
+        assertThat(snapshotResp.getBody().focusCycleState().isRunning()).isTrue();
+        assertThat(snapshotResp.getBody().focusCycleState().remainingSeconds()).isEqualTo(1500);
+        assertThat(snapshotResp.getBody().focusCycleState().lastUpdatedEpoch()).isPositive();
+
+        // Unauthorized member cannot pause or switch phase
+        memberSession.send("/app/table/table_01/focus.sync", Map.of("action", "PAUSE"));
+        JsonNode forbiddenErr = memberErrors.poll(5, TimeUnit.SECONDS);
+        assertThat(forbiddenErr).isNotNull();
+        assertThat(forbiddenErr.path("code").asText()).isEqualTo("TABLE_PERMISSION_DENIED");
+
+        // Host switches to SHORT_BREAK
+        hostSession.send("/app/table/table_01/focus.sync", Map.of("action", "SWITCH_PHASE", "phase", "SHORT_BREAK"));
+        JsonNode breakEv = tableEvents.poll(5, TimeUnit.SECONDS);
+        assertThat(breakEv).isNotNull();
+        assertThat(breakEv.path("focusCycleState").path("phase").asText()).isEqualTo("SHORT_BREAK");
+        assertThat(breakEv.path("focusCycleState").path("isRunning").asBoolean()).isFalse();
+        assertThat(breakEv.path("focusCycleState").path("remainingSeconds").asInt()).isEqualTo(300);
+
+        hostSession.disconnect();
+        memberSession.disconnect();
+    }
+
     private String createGuestToken(String nickname) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

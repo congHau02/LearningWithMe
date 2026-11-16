@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { HostPermissionToast } from './HostPermissionToast';
+import { FocusCycleBar } from './FocusCycleBar';
 import { HomeworkDeckPanel } from './HomeworkDeckPanel';
 import { SosBannerControl } from './SosBannerControl';
 import { SyncedYouTubePlayer } from './SyncedYouTubePlayer';
@@ -113,6 +114,12 @@ export function TableWorkspaceShell() {
         tableId={activeTableId}
         sosBanner={sosBanner}
         canControl={canControl}
+      />
+
+      <FocusCycleBar
+        tableId={activeTableId}
+        canControl={canControl}
+        isSeated={isSeated}
       />
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">

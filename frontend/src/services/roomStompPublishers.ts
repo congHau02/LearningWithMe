@@ -1,4 +1,5 @@
 import type { BoardDrawAction, BoardStroke, NormalizedPoint } from '../utils/homeworkCanvasMath';
+import type { FocusCycleSyncPayload } from '../utils/focusCycle';
 import type { PlayerMoveRequest } from './roomApi';
 import type { StompTransport } from './roomStompTransport';
 import type { HomeworkSlideAction, VoiceSignalRequest } from './tableApi';
@@ -68,5 +69,9 @@ export abstract class RoomStompPublishers {
 
   sendVoiceSignal(tableId: string, payload: VoiceSignalRequest): void {
     this.publishJson(`/app/table/${tableId}/voice.signal`, payload);
+  }
+
+  sendFocusCycleSync(tableId: string, payload: FocusCycleSyncPayload): void {
+    this.publishJson(`/app/table/${tableId}/focus.sync`, payload);
   }
 }

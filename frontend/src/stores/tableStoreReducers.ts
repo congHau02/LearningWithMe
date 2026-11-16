@@ -31,6 +31,12 @@ export function reduceWorkspaceEvent(
     };
   }
   if (event.type === 'VIDEO_SYNCED' && event.videoState) return { videoState: event.videoState };
+  if (event.type === 'FOCUS_CYCLE_UPDATED' && event.focusCycleState) {
+    return {
+      focusCycleState: event.focusCycleState,
+      focusCycleResetSeq: event.focusCycleAction === 'RESET' ? s.focusCycleResetSeq + 1 : s.focusCycleResetSeq,
+    };
+  }
   if (event.type === 'SOS_UPDATED') return { sosBanner: event.sosBanner ?? null };
   if (event.type === 'TABLE_CHAT' && event.chatMessage) {
     const msg = event.chatMessage;

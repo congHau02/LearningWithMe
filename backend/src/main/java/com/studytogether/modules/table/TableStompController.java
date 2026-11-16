@@ -3,6 +3,7 @@ package com.studytogether.modules.table;
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.room.StompErrorDispatcher;
 import com.studytogether.modules.table.model.BoardDrawRequest;
+import com.studytogether.modules.table.model.FocusCycleSyncRequest;
 import com.studytogether.modules.table.model.HomeworkSlideActionRequest;
 import com.studytogether.modules.table.model.PermissionRequestPayload;
 import com.studytogether.modules.table.model.PermissionRespondRequest;
@@ -31,13 +32,15 @@ public class TableStompController {
     private final TableHomeworkService homeworkService;
     private final TableBoardService boardService;
     private final TableVoiceService voiceService;
+    private final TableFocusCycleService focusCycleService;
     private final StompErrorDispatcher errorDispatcher;
 
     public TableStompController(
             TableWorkspaceService workspaceService, TableVideoService videoService,
             TableSosService sosService, TableChatService tableChatService,
             TableHomeworkService homeworkService, TableBoardService boardService,
-            TableVoiceService voiceService, StompErrorDispatcher errorDispatcher
+            TableVoiceService voiceService, TableFocusCycleService focusCycleService,
+            StompErrorDispatcher errorDispatcher
     ) {
         this.workspaceService = workspaceService;
         this.videoService = videoService;
@@ -46,6 +49,7 @@ public class TableStompController {
         this.homeworkService = homeworkService;
         this.boardService = boardService;
         this.voiceService = voiceService;
+        this.focusCycleService = focusCycleService;
         this.errorDispatcher = errorDispatcher;
     }
 
@@ -92,6 +96,11 @@ public class TableStompController {
     @MessageMapping("/table/{tableId}/voice.signal")
     public void handleVoiceSignal(@DestinationVariable String tableId, @Valid @Payload VoiceSignalRequest request, Principal user) {
         voiceService.relaySignal(StompErrorDispatcher.requirePrincipal(user), tableId, request);
+    }
+
+    @MessageMapping("/table/{tableId}/focus.sync")
+    public void syncFocusCycle(@DestinationVariable String tableId, @Valid @Payload FocusCycleSyncRequest request, Principal user) {
+        focusCycleService.syncFocusCycle(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageExceptionHandler(MethodArgumentNotValidException.class)

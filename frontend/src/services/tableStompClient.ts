@@ -2,6 +2,7 @@ import { getActiveRoomStompSession } from './roomStompClient';
 import type { HomeworkSlideAction, VoiceSignalRequest } from './tableApi';
 import { useTableStore } from '../stores/useTableStore';
 import { validateBoardStroke, type BoardDrawAction, type BoardStroke, type NormalizedPoint } from '../utils/homeworkCanvasMath';
+import type { FocusCycleSyncPayload } from '../utils/focusCycle';
 
 export function sendTablePermissionRequest(tableId: string, reason?: string): boolean {
   const session = getActiveRoomStompSession();
@@ -78,5 +79,12 @@ export function sendTableVoiceSignal(tableId: string, payload: VoiceSignalReques
   const session = getActiveRoomStompSession();
   if (!session) return false;
   session.sendVoiceSignal(tableId, payload);
+  return true;
+}
+
+export function sendTableFocusCycleSync(tableId: string, payload: FocusCycleSyncPayload): boolean {
+  const session = getActiveRoomStompSession();
+  if (!session) return false;
+  session.sendFocusCycleSync(tableId, payload);
   return true;
 }
