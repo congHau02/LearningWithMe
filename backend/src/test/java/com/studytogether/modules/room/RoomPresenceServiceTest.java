@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AccountIdentityUpgradedEvent;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.auth.AuthProvider;
@@ -18,6 +19,7 @@ import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomEvent;
 import com.studytogether.modules.room.model.RoomJoinResponse;
+import com.studytogether.modules.room.model.StudyGoalUpdateRequest;
 import com.studytogether.modules.table.model.EphemeralImageMetadata;
 import com.studytogether.modules.table.model.TableChatMessage;
 import com.studytogether.modules.room.model.RoomPlayerState;
@@ -202,6 +204,44 @@ public class RoomPresenceServiceTest {
         assertThat(disconnect.kind()).isEqualTo(StompSessionRegistry.DisconnectKind.IGNORED_UPGRADE_RECONNECT);
         assertThat(stateStore.getPlayer("main-library", "reg-42")).isPresent();
         verify(messagingTemplate, never()).convertAndSend(eq("/user/queue/errors"), any(Object.class));
+    }
+
+    @Test
+    void updatesStudyGoalAndCompletedStateInFreeRoamAndSeatedWithoutDroppingSeat() {
+        AuthPrincipal seatedUser = guest("u-seated", "Linh");
+        stateStore.savePlayer("main-library", playerState("u-seated", "Linh", "SEATED", 3, 4, "table_01", "T1_S1", "ws-1", true));
+
+        RoomEvent updatedEvent = service.updateStudyGoal(
+                seatedUser,
+                "main-library",
+                new StudyGoalUpdateRequest("  Hoàn thành đề thi thử  ", true)
+        );
+
+        assertThat(updatedEvent.type()).isEqualTo("PLAYER_UPDATED");
+        assertThat(updatedEvent.player().state()).isEqualTo("SEATED");
+        assertThat(updatedEvent.player().tableId()).isEqualTo("table_01");
+        assertThat(updatedEvent.player().seatId()).isEqualTo("T1_S1");
+        assertThat(updatedEvent.player().studyGoal()).isEqualTo("Hoàn thành đề thi thử");
+        assertThat(updatedEvent.player().studyGoalCompleted()).isTrue();
+
+        RoomPlayerState stored = stateStore.getPlayer("main-library", "u-seated").orElseThrow();
+        assertThat(stored.studyGoal()).isEqualTo("Hoàn thành đề thi thử");
+        assertThat(stored.studyGoalCompleted()).isTrue();
+
+        // Blank goal forces completed = false
+        RoomEvent cleared = service.updateStudyGoal(
+                seatedUser,
+                "main-library",
+                new StudyGoalUpdateRequest("   ", true)
+        );
+        assertThat(cleared.player().studyGoal()).isEmpty();
+        assertThat(cleared.player().studyGoalCompleted()).isFalse();
+
+        // Over 60 chars is rejected
+        String tooLong = "a".repeat(61);
+        assertThatThrownBy(() -> service.updateStudyGoal(
+                seatedUser, "main-library", new StudyGoalUpdateRequest(tooLong, false)
+        )).isInstanceOf(BusinessException.class);
     }
 
     private static AuthPrincipal guest(String id, String nickname) {

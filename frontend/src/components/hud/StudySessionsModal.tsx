@@ -14,6 +14,7 @@ export interface StudySessionsModalProps {
 
 export function StudySessionsModal({ authProvider, onClose }: StudySessionsModalProps) {
   const storeTotalMinutes = useAuthStore((s) => s.totalStudyMinutes);
+  const storeStreakDays = useAuthStore((s) => s.studyStreakDays);
   const [stats, setStats] = useState<PersonalStudyStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -25,6 +26,9 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
       const response = await fetchPersonalStudyStats();
       setStats(response);
       useAuthStore.getState().setTotalStudyMinutes(response.totalStudyMinutes);
+      if (typeof response.studyStreakDays === 'number') {
+        useAuthStore.getState().setStudyStreakDays(response.studyStreakDays);
+      }
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Không thể tải lịch sử phiên học.';
@@ -42,6 +46,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
 
   const totalMinutes = stats?.totalStudyMinutes ?? storeTotalMinutes;
   const totalSessions = stats?.totalSessions ?? 0;
+  const studyStreakDays = stats?.studyStreakDays ?? storeStreakDays;
   const sessions = stats?.recentSessions ?? [];
 
   return (
@@ -86,7 +91,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-3 gap-3">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
             <p className="text-[11px] font-medium text-emerald-300/90">
               Tổng thời gian tích lũy
@@ -107,6 +112,17 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
               className="mt-1 font-mono text-xl font-bold text-foreground"
             >
               {totalSessions} phiên
+            </p>
+          </div>
+          <div className="rounded-lg border border-orange-500/35 bg-orange-500/10 p-3">
+            <p className="text-[11px] font-medium text-orange-200/90">
+              Chuỗi ngày học
+            </p>
+            <p
+              data-testid="study-sessions-streak"
+              className="mt-1 font-mono text-xl font-bold text-orange-200"
+            >
+              🔥 {studyStreakDays} ngày
             </p>
           </div>
         </div>

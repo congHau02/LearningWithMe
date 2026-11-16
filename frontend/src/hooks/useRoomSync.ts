@@ -109,6 +109,12 @@ export function useRoomSync(): void {
           useGameStore.getState().applyRoomSnapshot(snapshot, selfUserId);
           const selfPlayer = snapshot.players.find((p) => p.userId === selfUserId);
           if (selfPlayer && selfPlayer.state === 'SEATED' && selfPlayer.tableId) {
+            if (typeof selfPlayer.studyGoal === 'string') {
+              useAuthStore.getState().setStudyGoalState({
+                studyGoal: selfPlayer.studyGoal,
+                studyGoalCompleted: Boolean(selfPlayer.studyGoalCompleted),
+              });
+            }
             const table = snapshot.tables.find((t) => t.tableId === selfPlayer.tableId);
             useTableStore.getState().setTableState({
               tableId: selfPlayer.tableId,
@@ -120,6 +126,18 @@ export function useRoomSync(): void {
             });
           } else {
             useTableStore.getState().leaveTable();
+            const auth = useAuthStore.getState();
+            if (
+              selfPlayer &&
+              selfPlayer.studyGoal !== undefined &&
+              (auth.studyGoal !== (selfPlayer.studyGoal ?? '') ||
+                auth.studyGoalCompleted !== Boolean(selfPlayer.studyGoalCompleted))
+            ) {
+              session.sendStudyGoalUpdate(snapshot.roomId, {
+                studyGoal: auth.studyGoal,
+                completed: auth.studyGoalCompleted,
+              });
+            }
           }
         },
         onEvent: (event) => {
@@ -148,10 +166,20 @@ export function useRoomSync(): void {
                 current.abortSeatWalk('Ghế vừa có người ngồi!');
               }
             }
-          } else if (event.type === 'SEAT_RELEASED' || event.type === 'TABLE_HOST_CHANGED') {
+          } else if (event.type === 'SEAT_RELEASED' || event.type === 'TABLE_HOST_CHANGED' || event.type === 'PLAYER_UPDATED') {
             useTableStore.getState().syncFromRoomSeatEvent(event);
             if (event.type === 'SEAT_RELEASED' && event.userId === selfUserId) {
               void refreshPersonalStudyStats();
+            } else if (
+              event.type === 'PLAYER_UPDATED' &&
+              event.userId === selfUserId &&
+              event.player &&
+              typeof event.player.studyGoal === 'string'
+            ) {
+              useAuthStore.getState().setStudyGoalState({
+                studyGoal: event.player.studyGoal,
+                studyGoalCompleted: Boolean(event.player.studyGoalCompleted),
+              });
             }
           }
         },

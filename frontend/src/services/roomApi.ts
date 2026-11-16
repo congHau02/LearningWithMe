@@ -23,6 +23,8 @@ export interface RoomPlayerDto {
   connected: boolean;
   isMoving?: boolean;
   sitStartTimeEpoch?: number;
+  studyGoal?: string | null;
+  studyGoalCompleted?: boolean;
 }
 
 export interface PlayerMoveRequest {

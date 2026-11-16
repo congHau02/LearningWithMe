@@ -9,5 +9,18 @@ public record StudyLeaderboardEntryDto(
         String avatarSpriteId,
         AuthRole role,
         long totalStudyMinutes,
-        int totalSessions
-) {}
+        int totalSessions,
+        int studyStreakDays
+) {
+    public StudyLeaderboardEntryDto(
+            Integer rank,
+            String userId,
+            String nickname,
+            String avatarSpriteId,
+            AuthRole role,
+            long totalStudyMinutes,
+            int totalSessions
+    ) {
+        this(rank, userId, nickname, avatarSpriteId, role, totalStudyMinutes, totalSessions, 0);
+    }
+}

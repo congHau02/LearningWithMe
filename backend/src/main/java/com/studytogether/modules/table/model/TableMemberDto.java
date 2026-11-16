@@ -11,8 +11,24 @@ public record TableMemberDto(
         String seatId,
         TableRole tableRole,
         long sitStartTimeEpoch,
-        boolean connected
+        boolean connected,
+        String studyGoal,
+        boolean studyGoalCompleted
 ) {
+    public TableMemberDto(
+            String userId,
+            String nickname,
+            String avatarId,
+            String hatId,
+            String deskPetId,
+            String seatId,
+            TableRole tableRole,
+            long sitStartTimeEpoch,
+            boolean connected
+    ) {
+        this(userId, nickname, avatarId, hatId, deskPetId, seatId, tableRole, sitStartTimeEpoch, connected, null, false);
+    }
+
     public TableMemberDto(
             String userId,
             String nickname,
@@ -31,7 +47,9 @@ public record TableMemberDto(
                 seatId,
                 tableRole,
                 sitStartTimeEpoch,
-                connected
+                connected,
+                null,
+                false
         );
     }
 }

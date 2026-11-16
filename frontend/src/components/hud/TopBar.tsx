@@ -1,6 +1,7 @@
 import type { CharacterState } from '../../stores/useGameStore';
 import type { AuthProvider } from '../../stores/useAuthStore';
 import { DEFAULT_AVATAR_ID } from '../auth/starterAvatars';
+import { StudyGoalControl } from './StudyGoalControl';
 import { TopBarActions } from './TopBarActions';
 
 export type BackendConnectionStatus = 'CHECKING' | 'UP' | 'OFFLINE';
@@ -14,11 +15,15 @@ export interface TopBarProps {
   deskPetId?: string;
   authProvider: AuthProvider;
   studyGoal: string;
+  studyGoalCompleted?: boolean;
   totalStudyMinutes?: number;
+  studyStreakDays?: number;
   backendStatus: BackendConnectionStatus;
   currentTableId: string | null;
   currentSeatId?: string | null;
   isTableHost?: boolean;
+  canEditStudyGoal?: boolean;
+  onUpdateStudyGoal?: (studyGoal: string, completed: boolean) => void;
   onLeaveSeat?: () => void;
   onOpenUpgrade?: () => void;
   onOpenStudySessions?: () => void;
@@ -35,11 +40,15 @@ export function TopBar({
   deskPetId,
   authProvider,
   studyGoal,
+  studyGoalCompleted = false,
   totalStudyMinutes = 0,
+  studyStreakDays = 0,
   backendStatus,
   currentTableId,
   currentSeatId,
   isTableHost,
+  canEditStudyGoal = false,
+  onUpdateStudyGoal,
   onLeaveSeat,
   onOpenUpgrade,
   onOpenStudySessions,
@@ -67,9 +76,12 @@ export function TopBar({
               {roomId}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {studyGoal || 'Chưa đặt mục tiêu học tập hôm nay'}
-          </p>
+          <StudyGoalControl
+            studyGoal={studyGoal}
+            studyGoalCompleted={studyGoalCompleted}
+            canEdit={canEditStudyGoal}
+            onUpdateGoal={onUpdateStudyGoal}
+          />
         </div>
       </div>
 
@@ -81,6 +93,7 @@ export function TopBar({
         deskPetId={deskPetId}
         authProvider={authProvider}
         totalStudyMinutes={totalStudyMinutes}
+        studyStreakDays={studyStreakDays}
         backendStatus={backendStatus}
         currentTableId={currentTableId}
         currentSeatId={currentSeatId}

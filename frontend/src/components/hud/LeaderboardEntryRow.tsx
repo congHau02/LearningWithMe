@@ -3,6 +3,7 @@ import {
   type StudyLeaderboardEntry,
 } from '../../services/statsApi';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
+import { StudyStreakBadge } from './StudyStreakBadge';
 
 const PODIUM_BADGES: Record<number, { icon: string; style: string; rowStyle: string }> = {
   1: {
@@ -72,9 +73,12 @@ export function LeaderboardEntryRow({
           <p className="text-[11px] text-muted-foreground">{entry.totalSessions} phiên học</p>
         </div>
       </div>
-      <span className="shrink-0 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-mono text-xs font-semibold text-emerald-300">
-        {formatStudyDuration(entry.totalStudyMinutes)}
-      </span>
+      <div className="flex shrink-0 items-center gap-2">
+        <StudyStreakBadge days={entry.studyStreakDays} testId={`leaderboard-streak-${entry.userId}`} />
+        <span className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-mono text-xs font-semibold text-emerald-300">
+          {formatStudyDuration(entry.totalStudyMinutes)}
+        </span>
+      </div>
     </li>
   );
 }

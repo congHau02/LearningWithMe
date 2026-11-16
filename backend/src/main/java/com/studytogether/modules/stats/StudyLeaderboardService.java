@@ -5,10 +5,14 @@ import com.studytogether.modules.auth.AuthProvider;
 import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.auth.UserEntity;
 import com.studytogether.modules.auth.UserRepository;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,15 +25,36 @@ public class StudyLeaderboardService {
     private final UserRepository userRepository;
     private final StudySessionRepository studySessionRepository;
     private final GuestStudySessionStagingService guestStagingService;
+    private final Clock clock;
 
     public StudyLeaderboardService(
             UserRepository userRepository,
             StudySessionRepository studySessionRepository,
             GuestStudySessionStagingService guestStagingService
     ) {
+        this(userRepository, studySessionRepository, guestStagingService, Clock.systemUTC());
+    }
+
+    public StudyLeaderboardService(
+            UserRepository userRepository,
+            StudySessionRepository studySessionRepository,
+            GuestStudySessionStagingService guestStagingService,
+            Clock clock
+    ) {
         this.userRepository = userRepository;
         this.studySessionRepository = studySessionRepository;
         this.guestStagingService = guestStagingService;
+        this.clock = clock != null ? clock : Clock.systemUTC();
+    }
+
+    @Autowired
+    public StudyLeaderboardService(
+            UserRepository userRepository,
+            StudySessionRepository studySessionRepository,
+            GuestStudySessionStagingService guestStagingService,
+            ObjectProvider<Clock> clockProvider
+    ) {
+        this(userRepository, studySessionRepository, guestStagingService, clockProvider.getIfAvailable(Clock::systemUTC));
     }
 
     @Transactional(readOnly = true)
@@ -40,6 +65,7 @@ public class StudyLeaderboardService {
         long totalRankedLearners = userRepository.countByAuthProviderNot(AuthProvider.GUEST);
 
         Map<String, Integer> sessionCounts = loadSessionCounts(topUsers);
+        Map<String, Integer> streaks = loadUserStreaks(topUsers);
         List<StudyLeaderboardEntryDto> entries = new ArrayList<>(topUsers.size());
         for (int i = 0; i < topUsers.size(); i++) {
             UserEntity user = topUsers.get(i);
@@ -50,7 +76,8 @@ public class StudyLeaderboardService {
                     user.getAvatarSpriteId(),
                     AuthRole.REGISTERED,
                     user.getTotalStudyMinutes(),
-                    sessionCounts.getOrDefault(user.getId(), 0)
+                    sessionCounts.getOrDefault(user.getId(), 0),
+                    streaks.getOrDefault(user.getId(), 0)
             ));
         }
 
@@ -72,6 +99,24 @@ public class StudyLeaderboardService {
         return counts;
     }
 
+    private Map<String, Integer> loadUserStreaks(List<UserEntity> users) {
+        if (users.isEmpty()) {
+            return Map.of();
+        }
+        List<String> userIds = users.stream().map(UserEntity::getId).toList();
+        Map<String, List<Instant>> timestampsByUser = new HashMap<>(userIds.size());
+        for (Object[] row : studySessionRepository.findValidEndedAtByUserIds(userIds)) {
+            String userId = (String) row[0];
+            Instant endedAt = (Instant) row[1];
+            timestampsByUser.computeIfAbsent(userId, ignored -> new ArrayList<>()).add(endedAt);
+        }
+        Map<String, Integer> streaks = new HashMap<>(userIds.size());
+        for (Map.Entry<String, List<Instant>> entry : timestampsByUser.entrySet()) {
+            streaks.put(entry.getKey(), StudyStreakCalculator.calculateFromInstants(entry.getValue(), clock));
+        }
+        return streaks;
+    }
+
     private StudyLeaderboardEntryDto resolveMyEntry(
             AuthPrincipal principal,
             List<StudyLeaderboardEntryDto> topEntries
@@ -79,6 +124,7 @@ public class StudyLeaderboardService {
         if (principal.role() != AuthRole.REGISTERED) {
             List<StagedGuestStudySession> staged = guestStagingService.readStagedSessions(principal.userId());
             long totalMinutes = GuestStudySessionStagingService.sumMinutes(staged);
+            int streakDays = StudyStreakCalculator.calculateForStagedSessions(staged, clock);
             return new StudyLeaderboardEntryDto(
                     null,
                     principal.userId(),
@@ -86,7 +132,8 @@ public class StudyLeaderboardService {
                     principal.avatarId(),
                     AuthRole.GUEST,
                     totalMinutes,
-                    staged.size()
+                    staged.size(),
+                    streakDays
             );
         }
 
@@ -105,6 +152,7 @@ public class StudyLeaderboardService {
                     principal.avatarId(),
                     principal.role(),
                     0L,
+                    0,
                     0
             );
         }
@@ -116,6 +164,10 @@ public class StudyLeaderboardService {
                         AuthProvider.GUEST, user.getTotalStudyMinutes());
         int rank = (int) Math.min(ahead + 1L, Integer.MAX_VALUE);
         int totalSessions = (int) Math.min(studySessionRepository.countByUserId(user.getId()), Integer.MAX_VALUE);
+        int streakDays = StudyStreakCalculator.calculateFromInstants(
+                studySessionRepository.findValidEndedAtByUserId(user.getId()),
+                clock
+        );
         return new StudyLeaderboardEntryDto(
                 rank,
                 user.getId(),
@@ -123,7 +175,8 @@ public class StudyLeaderboardService {
                 user.getAvatarSpriteId(),
                 AuthRole.REGISTERED,
                 user.getTotalStudyMinutes(),
-                totalSessions
+                totalSessions,
+                streakDays
         );
     }
 }

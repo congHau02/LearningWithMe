@@ -25,21 +25,24 @@ export function useAppBootstrap(): BackendConnectionStatus {
           return;
         }
         const authProvider = resolveAuthProvider(me);
-        const currentMinutes = useAuthStore.getState().totalStudyMinutes;
+        const currentAuth = useAuthStore.getState();
+        const isSameUser = currentAuth.userId === me.userId;
         useAuthStore.getState().setSession({
           userId: me.userId,
           nickname: me.nickname,
           avatarSpriteId: me.avatarId,
           hatId: me.hatId,
           deskPetId: me.deskPetId,
-          studyGoal: me.studyGoal,
+          studyGoal: isSameUser ? currentAuth.studyGoal : me.studyGoal,
+          studyGoalCompleted: isSameUser ? currentAuth.studyGoalCompleted : false,
           authProvider,
           email: me.email ?? null,
           // /api/v1/auth/me intentionally returns 0 for Guests (ADR-0001); keep stats fetched from /api/v1/stats/me.
           totalStudyMinutes:
             authProvider === 'GUEST'
-              ? Math.max(currentMinutes, me.totalStudyMinutes ?? 0)
+              ? Math.max(currentAuth.totalStudyMinutes, me.totalStudyMinutes ?? 0)
               : (me.totalStudyMinutes ?? 0),
+          studyStreakDays: currentAuth.studyStreakDays,
           token: restoredToken,
         });
       })

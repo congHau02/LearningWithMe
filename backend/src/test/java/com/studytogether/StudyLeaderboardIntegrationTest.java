@@ -160,13 +160,14 @@ class StudyLeaderboardIntegrationTest {
         recordMysqlSession(existingTop.userId(), 120);
 
         GuestLogin guest = createGuest("Khách Chăm", "student_hoodie");
+        Instant now = Instant.now();
         guestStagingService.stageSession(guest.guestId(), new StagedGuestStudySession(
                 "main-library", "table_01", "Giải tích",
-                Instant.parse("2026-11-14T08:00:00Z"), Instant.parse("2026-11-14T08:45:00Z"), 45
+                now.minusSeconds(45 * 60L), now, 45
         ));
         guestStagingService.stageSession(guest.guestId(), new StagedGuestStudySession(
                 "main-library", "table_02", "Spring Boot",
-                Instant.parse("2026-11-14T09:00:00Z"), Instant.parse("2026-11-14T09:25:00Z"), 25
+                now.minusSeconds(25 * 60L), now, 25
         ));
 
         ResponseEntity<JsonNode> guestLeaderboard = getLeaderboard(guest.token(), "");
@@ -184,6 +185,7 @@ class StudyLeaderboardIntegrationTest {
         assertThat(guestMyEntry.get("role").asText()).isEqualTo("GUEST");
         assertThat(guestMyEntry.get("totalStudyMinutes").asLong()).isEqualTo(70L);
         assertThat(guestMyEntry.get("totalSessions").asInt()).isEqualTo(2);
+        assertThat(guestMyEntry.get("studyStreakDays").asInt()).isEqualTo(1);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(guest.token());
@@ -208,6 +210,7 @@ class StudyLeaderboardIntegrationTest {
         assertThat(afterUpgrade.getBody().get("myEntry").get("role").asText()).isEqualTo("REGISTERED");
         assertThat(afterUpgrade.getBody().get("myEntry").get("totalStudyMinutes").asLong()).isEqualTo(70L);
         assertThat(afterUpgrade.getBody().get("myEntry").get("totalSessions").asInt()).isEqualTo(2);
+        assertThat(afterUpgrade.getBody().get("myEntry").get("studyStreakDays").asInt()).isEqualTo(1);
     }
 
     @Test

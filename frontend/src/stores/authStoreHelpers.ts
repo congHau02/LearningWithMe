@@ -18,9 +18,11 @@ export interface SetSessionPayload {
   hatId?: string;
   deskPetId?: string;
   studyGoal?: string;
+  studyGoalCompleted?: boolean;
   authProvider?: AuthProvider;
   email?: string | null;
   totalStudyMinutes?: number;
+  studyStreakDays?: number;
   token: string;
 }
 
@@ -33,8 +35,10 @@ export interface UpgradeAccountPayload {
   hatId?: string;
   deskPetId?: string;
   studyGoal?: string;
+  studyGoalCompleted?: boolean;
   email?: string | null;
   totalStudyMinutes?: number;
+  studyStreakDays?: number;
 }
 
 export interface AuthState {
@@ -44,13 +48,17 @@ export interface AuthState {
   hatId: string;
   deskPetId: string;
   studyGoal: string;
+  studyGoalCompleted: boolean;
   authProvider: AuthProvider;
   email: string | null;
   totalStudyMinutes: number;
+  studyStreakDays: number;
   token: string | null;
   setSession: (payload: SetSessionPayload) => void;
   setTotalStudyMinutes: (totalStudyMinutes: number) => void;
-  updateProfile: (payload: { nickname?: string; avatarSpriteId?: string; studyGoal?: string }) => void;
+  setStudyStreakDays: (studyStreakDays: number) => void;
+  setStudyGoalState: (payload: { studyGoal: string; studyGoalCompleted: boolean }) => void;
+  updateProfile: (payload: { nickname?: string; avatarSpriteId?: string; studyGoal?: string; studyGoalCompleted?: boolean }) => void;
   updateCustomization: (payload: { skinId?: string; hatId?: string; deskPetId?: string }) => void;
   upgradeAccount: (payload: UpgradeAccountPayload) => void;
   hydrateSession: () => boolean;
@@ -64,9 +72,11 @@ export const DEFAULT_AUTH_STATE = {
   hatId: DEFAULT_HAT_ID,
   deskPetId: DEFAULT_DESK_PET_ID,
   studyGoal: DEFAULT_STUDY_GOAL,
+  studyGoalCompleted: false,
   authProvider: 'GUEST' as AuthProvider,
   email: null as string | null,
   totalStudyMinutes: 0,
+  studyStreakDays: 0,
   token: null,
 };
 
@@ -88,9 +98,11 @@ export function persistAuthState(
     hatId: patch.hatId ?? state.hatId,
     deskPetId: patch.deskPetId ?? state.deskPetId,
     studyGoal: patch.studyGoal ?? state.studyGoal,
+    studyGoalCompleted: patch.studyGoalCompleted ?? state.studyGoalCompleted,
     authProvider: patch.authProvider ?? state.authProvider,
     email: patch.email !== undefined ? patch.email : state.email,
     totalStudyMinutes: patch.totalStudyMinutes ?? state.totalStudyMinutes,
+    studyStreakDays: patch.studyStreakDays ?? state.studyStreakDays,
     token,
   });
 }

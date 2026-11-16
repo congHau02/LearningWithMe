@@ -5,11 +5,14 @@ import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.auth.UserEntity;
 import com.studytogether.modules.auth.UserRepository;
 import com.studytogether.modules.room.SeatReleasedEvent;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,15 +27,36 @@ public class StudySessionService {
     private final StudySessionRepository studySessionRepository;
     private final UserRepository userRepository;
     private final GuestStudySessionStagingService guestStagingService;
+    private final Clock clock;
 
     public StudySessionService(
             StudySessionRepository studySessionRepository,
             UserRepository userRepository,
             GuestStudySessionStagingService guestStagingService
     ) {
+        this(studySessionRepository, userRepository, guestStagingService, Clock.systemUTC());
+    }
+
+    public StudySessionService(
+            StudySessionRepository studySessionRepository,
+            UserRepository userRepository,
+            GuestStudySessionStagingService guestStagingService,
+            Clock clock
+    ) {
         this.studySessionRepository = studySessionRepository;
         this.userRepository = userRepository;
         this.guestStagingService = guestStagingService;
+        this.clock = clock != null ? clock : Clock.systemUTC();
+    }
+
+    @Autowired
+    public StudySessionService(
+            StudySessionRepository studySessionRepository,
+            UserRepository userRepository,
+            GuestStudySessionStagingService guestStagingService,
+            ObjectProvider<Clock> clockProvider
+    ) {
+        this(studySessionRepository, userRepository, guestStagingService, clockProvider.getIfAvailable(Clock::systemUTC));
     }
 
     @EventListener
@@ -107,11 +131,13 @@ public class StudySessionService {
                     .limit(MAX_RECENT_SESSIONS)
                     .map(StudySessionDto::fromStaged)
                     .toList();
+            int streakDays = StudyStreakCalculator.calculateForStagedSessions(staged, clock);
             return new PersonalStudyStatsResponse(
                     principal.userId(),
                     AuthRole.GUEST,
                     totalMinutes,
                     staged.size(),
+                    streakDays,
                     recent
             );
         }
@@ -120,6 +146,10 @@ public class StudySessionService {
                 .map(UserEntity::getTotalStudyMinutes)
                 .orElse(0L);
         long totalSessions = studySessionRepository.countByUserId(principal.userId());
+        int streakDays = StudyStreakCalculator.calculateFromInstants(
+                studySessionRepository.findValidEndedAtByUserId(principal.userId()),
+                clock
+        );
         List<StudySessionDto> recent = studySessionRepository
                 .findTop50ByUserIdOrderByStartedAtDescIdDesc(principal.userId())
                 .stream()
@@ -130,6 +160,7 @@ public class StudySessionService {
                 AuthRole.REGISTERED,
                 totalMinutes,
                 (int) Math.min(totalSessions, Integer.MAX_VALUE),
+                streakDays,
                 recent
         );
     }

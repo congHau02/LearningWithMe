@@ -13,7 +13,10 @@ import com.studytogether.config.AppProperties;
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.stats.GuestStudySessionStagingService;
 import com.studytogether.modules.stats.StagedGuestStudySession;
+import com.studytogether.modules.stats.StudySessionRepository;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -127,5 +130,47 @@ class AccountUpgradeServiceTest {
 
         verify(redisIdentitySwapService, never()).swapIdentity(any(), any(), any(), any());
         verify(guestSessionStagingService, never()).persistAndScheduleRedisCleanup(any(), any(), any());
+    }
+
+    @Test
+    void upgradeRecalculatesCombinedStudyStreakAcrossGuestAndRegisteredSessionHistory() {
+        StudySessionRepository studySessionRepository = mock(StudySessionRepository.class);
+        Clock fixedNov16 = Clock.fixed(Instant.parse("2026-11-16T12:00:00Z"), ZoneOffset.UTC);
+        AccountUpgradeService timedService = new AccountUpgradeService(
+                userRepository, passwordEncoder, jwtTokenService, googleTokenVerifier,
+                guestSessionStagingService, redisIdentitySwapService, studySessionRepository, fixedNov16
+        );
+
+        String guestId = UUID.randomUUID().toString();
+        String registeredId = UUID.randomUUID().toString();
+        AuthPrincipal guest = new AuthPrincipal(guestId, AuthRole.GUEST, "Khách", "default_student", "Ôn Java");
+
+        UserEntity existing = new UserEntity(registeredId, "Cựu Học Viên", "skin_hoodie_blue", AuthProvider.LOCAL);
+        existing.setEmail("streak@example.com");
+        existing.setPasswordHash(passwordEncoder.encode("CorrectPass123!"));
+        existing.setTotalStudyMinutes(60L);
+
+        List<StagedGuestStudySession> staged = List.of(
+                new StagedGuestStudySession("main-library", "table_01", "Day 3",
+                        Instant.parse("2026-11-15T10:00:00Z"), Instant.parse("2026-11-15T10:20:00Z"), 20),
+                new StagedGuestStudySession("main-library", "table_01", "Day 4",
+                        Instant.parse("2026-11-16T09:00:00Z"), Instant.parse("2026-11-16T09:30:00Z"), 30)
+        );
+
+        when(userRepository.existsById(guestId)).thenReturn(false);
+        when(userRepository.findByEmail("streak@example.com")).thenReturn(Optional.of(existing));
+        when(guestSessionStagingService.readStagedSessions(guestId)).thenReturn(staged);
+        when(guestSessionStagingService.persistAndScheduleRedisCleanup(guestId, registeredId, staged)).thenReturn(2);
+        when(studySessionRepository.findValidEndedAtByUserId(registeredId)).thenReturn(List.of(
+                Instant.parse("2026-11-13T08:00:00Z"),
+                Instant.parse("2026-11-14T08:00:00Z")
+        ));
+
+        UpgradeAccountResponse response = timedService.upgradeAccount(
+                guest,
+                new UpgradeAccountRequest(AuthProvider.LOCAL, "streak@example.com", "CorrectPass123!", null, null, true)
+        );
+
+        assertThat(response.studyStreakDays()).isEqualTo(4);
     }
 }

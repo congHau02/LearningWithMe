@@ -7,6 +7,7 @@ import com.studytogether.modules.room.model.RoomJoinResponse;
 import com.studytogether.modules.room.model.RoomPlayerDto;
 import com.studytogether.modules.room.model.RoomPlayerState;
 import com.studytogether.modules.room.model.RoomSnapshotResponse;
+import com.studytogether.modules.room.model.StudyGoalUpdateRequest;
 import com.studytogether.modules.stats.CharacterCustomizationLookup;
 import com.studytogether.modules.stats.EquippedCustomizationDto;
 import java.util.Optional;
@@ -186,5 +187,25 @@ public class RoomPresenceService {
                 stateStore, messagingTemplate, roomId, "PLAYER_UPDATED", userId, null, updated.toDto(), now
         );
         return Optional.of(roomId);
+    }
+
+    public RoomEvent updateStudyGoal(AuthPrincipal principal, String roomId, StudyGoalUpdateRequest request) {
+        if (principal == null || principal.userId() == null || principal.userId().isBlank()) {
+            throw RoomExceptions.invalidStudyGoal("Valid authenticated principal required");
+        }
+        topologyService.getRoomTopology(roomId);
+        String rawGoal = request != null && request.studyGoal() != null ? request.studyGoal().trim() : "";
+        if (rawGoal.length() > 60) {
+            throw RoomExceptions.invalidStudyGoal("studyGoal must be at most 60 characters");
+        }
+        boolean completed = !rawGoal.isEmpty() && request != null && Boolean.TRUE.equals(request.completed());
+        RoomPlayerState current = stateStore.getPlayer(roomId, principal.userId())
+                .orElseThrow(() -> RoomExceptions.invalidMove("Player is not in room: " + roomId));
+        long now = System.currentTimeMillis();
+        RoomPlayerState updated = current.withStudyGoal(rawGoal, completed, now);
+        stateStore.savePlayer(roomId, updated);
+        return RoomPresenceHelper.broadcastRoomEvent(
+                stateStore, messagingTemplate, roomId, "PLAYER_UPDATED", principal.userId(), null, updated.toDto(), now
+        );
     }
 }

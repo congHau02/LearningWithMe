@@ -86,6 +86,19 @@ export function TableMembersPanel({
                     <p className="font-mono text-[10px] text-muted-foreground">
                       {member.seatId} {!member.connected ? '• Grace' : ''}
                     </p>
+                    {member.studyGoal?.trim() ? (
+                      <p
+                        data-testid={`member-goal-${member.userId}`}
+                        className={`mt-0.5 flex items-center gap-1 text-[11px] ${
+                          member.studyGoalCompleted ? 'font-medium text-emerald-300' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {member.studyGoalCompleted ? (
+                          <span data-testid={`member-goal-completed-${member.userId}`}>✅</span>
+                        ) : null}
+                        <span className="truncate">{member.studyGoal.trim()}</span>
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 

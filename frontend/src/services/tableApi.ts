@@ -59,6 +59,8 @@ export interface TableMemberDto {
   tableRole: TableRole;
   sitStartTimeEpoch: number;
   connected: boolean;
+  studyGoal?: string | null;
+  studyGoalCompleted?: boolean;
 }
 
 export interface TableChatMessage {

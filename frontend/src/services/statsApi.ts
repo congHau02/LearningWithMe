@@ -17,6 +17,7 @@ export interface PersonalStudyStatsResponse {
   role: AuthRole;
   totalStudyMinutes: number;
   totalSessions: number;
+  studyStreakDays?: number;
   recentSessions: StudySessionDto[];
 }
 
@@ -28,6 +29,7 @@ export interface StudyLeaderboardEntry {
   role: AuthRole;
   totalStudyMinutes: number;
   totalSessions: number;
+  studyStreakDays?: number;
 }
 
 export interface StudyLeaderboardResponse {
@@ -75,6 +77,9 @@ export async function refreshPersonalStudyStats(): Promise<PersonalStudyStatsRes
     const stats = await fetchPersonalStudyStats();
     if (requestSeq === latestRefreshSeq && useAuthStore.getState().token === token) {
       useAuthStore.getState().setTotalStudyMinutes(stats.totalStudyMinutes);
+      if (typeof stats.studyStreakDays === 'number') {
+        useAuthStore.getState().setStudyStreakDays(stats.studyStreakDays);
+      }
     }
     return stats;
   } catch {

@@ -19,9 +19,11 @@ export interface NormalizedAuthSession {
   hatId: string;
   deskPetId: string;
   studyGoal: string;
+  studyGoalCompleted: boolean;
   authProvider: AuthProvider;
   email: string | null;
   totalStudyMinutes: number;
+  studyStreakDays: number;
   token: string;
 }
 
@@ -32,9 +34,11 @@ export interface PersistedAuthSession {
   hatId?: string;
   deskPetId?: string;
   studyGoal: string;
+  studyGoalCompleted?: boolean;
   authProvider: AuthProvider;
   email?: string | null;
   totalStudyMinutes?: number;
+  studyStreakDays?: number;
   token: string;
 }
 
@@ -141,11 +145,16 @@ export function loadPersistedAuthSession(): NormalizedAuthSession | null {
           hatId: parsed.hatId ?? DEFAULT_HAT_ID,
           deskPetId: parsed.deskPetId ?? DEFAULT_DESK_PET_ID,
           studyGoal: parsed.studyGoal ?? '',
+          studyGoalCompleted: Boolean(parsed.studyGoalCompleted),
           authProvider: parsed.authProvider ?? 'GUEST',
           email: parsed.email ?? null,
           totalStudyMinutes:
             typeof parsed.totalStudyMinutes === 'number'
               ? parsed.totalStudyMinutes
+              : 0,
+          studyStreakDays:
+            typeof parsed.studyStreakDays === 'number'
+              ? parsed.studyStreakDays
               : 0,
           token: parsed.token,
         };
@@ -197,9 +206,11 @@ export function loadPersistedAuthSession(): NormalizedAuthSession | null {
     deskPetId: DEFAULT_DESK_PET_ID,
     studyGoal:
       typeof jwtPayload.studyGoal === 'string' ? jwtPayload.studyGoal : '',
+    studyGoalCompleted: false,
     authProvider,
     email: typeof jwtPayload.email === 'string' ? jwtPayload.email : null,
     totalStudyMinutes: 0,
+    studyStreakDays: 0,
     token: bareToken,
   };
 }

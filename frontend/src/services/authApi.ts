@@ -81,6 +81,7 @@ export interface UpgradeAccountResponse {
   studyGoal: string;
   totalStudyMinutes: number;
   mergedSessionCount: number;
+  studyStreakDays?: number;
 }
 
 export function roleToAuthProvider(role: AuthRole): AuthProvider {

@@ -35,6 +35,7 @@ export interface TableWorkspaceState {
   setFreeCollab: (isFreeCollab: boolean) => void;
   grantCoHost: (userId: string) => void;
   pruneExpiredLaserPointers: (nowEpoch: number, ttlMs: number) => void;
+  updateMemberStudyGoal: (userId: string, studyGoal: string, studyGoalCompleted: boolean) => void;
   swapParticipantIdentity: (oldUserId: string, newUserId: string) => void;
   leaveTable: () => void;
 }
@@ -91,6 +92,12 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
       }
       return changed ? { laserPointers: next } : s;
     }),
+  updateMemberStudyGoal: (userId, studyGoal, studyGoalCompleted) =>
+    set((s) => ({
+      members: s.members.map((m) =>
+        m.userId === userId ? { ...m, studyGoal, studyGoalCompleted } : m,
+      ),
+    })),
   swapParticipantIdentity: (oldUserId, newUserId) =>
     set((s) => {
       if (!oldUserId || !newUserId || oldUserId === newUserId) return s;

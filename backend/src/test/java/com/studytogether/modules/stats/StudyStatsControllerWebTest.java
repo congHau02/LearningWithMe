@@ -69,6 +69,7 @@ class StudyStatsControllerWebTest {
                 AuthRole.GUEST,
                 40L,
                 2,
+                3,
                 List.of(
                         new StudySessionDto(null, "main-library", "table_02", "Học React",
                                 Instant.parse("2026-11-14T10:00:00Z"), Instant.parse("2026-11-14T10:25:00Z"), 25),
@@ -84,6 +85,7 @@ class StudyStatsControllerWebTest {
                 .andExpect(jsonPath("$.role").value("GUEST"))
                 .andExpect(jsonPath("$.totalStudyMinutes").value(40))
                 .andExpect(jsonPath("$.totalSessions").value(2))
+                .andExpect(jsonPath("$.studyStreakDays").value(3))
                 .andExpect(jsonPath("$.recentSessions[0].tableId").value("table_02"))
                 .andExpect(jsonPath("$.recentSessions[0].durationMinutes").value(25));
 
@@ -145,10 +147,10 @@ class StudyStatsControllerWebTest {
                         20,
                         1L,
                         List.of(new StudyLeaderboardEntryDto(
-                                1, "reg-1", "An", "student_glasses", AuthRole.REGISTERED, 150L, 4
+                                1, "reg-1", "An", "student_glasses", AuthRole.REGISTERED, 150L, 4, 5
                         )),
                         new StudyLeaderboardEntryDto(
-                                null, "guest-9", "Khách Học", "student_sprout", AuthRole.GUEST, 35L, 2
+                                null, "guest-9", "Khách Học", "student_sprout", AuthRole.GUEST, 35L, 2, 2
                         )
                 ));
 
@@ -160,8 +162,10 @@ class StudyStatsControllerWebTest {
                 .andExpect(jsonPath("$.entries[0].rank").value(1))
                 .andExpect(jsonPath("$.entries[0].nickname").value("An"))
                 .andExpect(jsonPath("$.entries[0].totalSessions").value(4))
+                .andExpect(jsonPath("$.entries[0].studyStreakDays").value(5))
                 .andExpect(jsonPath("$.myEntry.role").value("GUEST"))
                 .andExpect(jsonPath("$.myEntry.rank").isEmpty())
-                .andExpect(jsonPath("$.myEntry.totalStudyMinutes").value(35));
+                .andExpect(jsonPath("$.myEntry.totalStudyMinutes").value(35))
+                .andExpect(jsonPath("$.myEntry.studyStreakDays").value(2));
     }
 }

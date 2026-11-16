@@ -97,6 +97,7 @@ export class ClassroomScene extends Phaser.Scene {
         color: '#f8fafc',
         backgroundColor: '#0f172acc',
         padding: { x: 4, y: 2 },
+        align: 'center',
       })
       .setOrigin(0.5, 1)
       .setDepth(12);
@@ -173,6 +174,8 @@ export class ClassroomScene extends Phaser.Scene {
         isHost,
         isSeated: game.characterState === 'SEATED',
         drinkId: game.selectedDrinkId,
+        studyGoal: auth.studyGoal,
+        studyGoalCompleted: auth.studyGoalCompleted,
       });
       this.nicknameLabel.setText(nextLabel);
       this.nicknameLabel.setPosition(pos.x, pos.y - 20);

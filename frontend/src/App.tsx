@@ -9,6 +9,7 @@ import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { useRoomSync } from './hooks/useRoomSync';
 import { useTableWorkspaceSync } from './hooks/useTableWorkspaceSync';
 import type { UpgradeAccountResponse } from './services/authApi';
+import { getActiveRoomStompSession } from './services/roomStompClient';
 import { refreshPersonalStudyStats } from './services/statsApi';
 import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
@@ -63,7 +64,9 @@ export function App() {
   const deskPetId = useAuthStore((s) => s.deskPetId);
   const authProvider = useAuthStore((s) => s.authProvider);
   const studyGoal = useAuthStore((s) => s.studyGoal);
+  const studyGoalCompleted = useAuthStore((s) => s.studyGoalCompleted);
   const totalStudyMinutes = useAuthStore((s) => s.totalStudyMinutes);
+  const studyStreakDays = useAuthStore((s) => s.studyStreakDays);
   const token = useAuthStore((s) => s.token);
   const selfUserId = useAuthStore((s) => s.userId);
 
@@ -80,8 +83,17 @@ export function App() {
 
   const handleLeaveSeat = () => requestLeaveSeat();
 
+  const handleUpdateStudyGoal = (nextStudyGoal: string, completed: boolean) => {
+    useAuthStore.getState().setStudyGoalState({ studyGoal: nextStudyGoal, studyGoalCompleted: completed });
+    if (characterState === 'SEATED' && selfUserId) {
+      useTableStore.getState().updateMemberStudyGoal(selfUserId, nextStudyGoal, completed);
+    }
+    getActiveRoomStompSession()?.sendStudyGoalUpdate(roomId, { studyGoal: nextStudyGoal, completed });
+  };
+
   const handleAccountUpgraded = (response: UpgradeAccountResponse) => {
-    const previousUserId = useAuthStore.getState().userId;
+    const authSnapshot = useAuthStore.getState();
+    const previousUserId = authSnapshot.userId;
     useAuthStore.getState().upgradeAccount({
       userId: response.userId,
       authProvider: response.authProvider,
@@ -90,9 +102,11 @@ export function App() {
       avatarSpriteId: response.avatarId,
       hatId: response.hatId,
       deskPetId: response.deskPetId,
-      studyGoal: response.studyGoal,
+      studyGoal: authSnapshot.studyGoal || response.studyGoal,
+      studyGoalCompleted: authSnapshot.studyGoalCompleted,
       email: response.email,
       totalStudyMinutes: response.totalStudyMinutes,
+      studyStreakDays: response.studyStreakDays ?? authSnapshot.studyStreakDays,
     });
     if (previousUserId && previousUserId !== response.userId) {
       useTableStore.getState().swapParticipantIdentity(previousUserId, response.userId);
@@ -111,11 +125,15 @@ export function App() {
         deskPetId={deskPetId}
         authProvider={authProvider}
         studyGoal={studyGoal}
+        studyGoalCompleted={studyGoalCompleted}
         totalStudyMinutes={totalStudyMinutes}
+        studyStreakDays={studyStreakDays}
         backendStatus={backendStatus}
         currentTableId={currentTableId}
         currentSeatId={currentSeatId}
         isTableHost={isTableHost}
+        canEditStudyGoal={Boolean(token)}
+        onUpdateStudyGoal={token ? handleUpdateStudyGoal : undefined}
         onLeaveSeat={handleLeaveSeat}
         onOpenUpgrade={token && authProvider === 'GUEST' ? () => setIsUpgradeModalOpen(true) : undefined}
         onOpenStudySessions={token ? () => setIsStudySessionsOpen(true) : undefined}

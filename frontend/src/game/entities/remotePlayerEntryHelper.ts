@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { RoomPlayerDto } from '../../services/roomApi';
 import { useGameStore } from '../../stores/useGameStore';
+import { appendGoalCompletionBadge } from '../cafe/studyCafeConfig';
 import { CharacterAccessoriesOverlay } from './CharacterAccessoriesOverlay';
 import { ChatBubble } from './ChatBubble';
 import { PlayerSprite, tileToWorldCenter } from './PlayerSprite';
@@ -24,12 +25,17 @@ export function isPlayerTableHost(player: RoomPlayerDto): boolean {
 
 export function formatRemoteLabel(player: RoomPlayerDto, isHost = false): string {
   const crown = isHost ? '👑 ' : '';
+  let base: string;
   if (!player.connected) {
-    return player.state === 'SEATED'
+    base = player.state === 'SEATED'
       ? `${crown}${player.nickname} (Đang giữ chỗ)`
       : `${crown}${player.nickname} (Mất kết nối)`;
+  } else {
+    base = player.state === 'SEATED'
+      ? `${crown}${player.nickname} • Đang học`
+      : `${crown}${player.nickname}`;
   }
-  return player.state === 'SEATED' ? `${crown}${player.nickname} • Đang học` : `${crown}${player.nickname}`;
+  return appendGoalCompletionBadge(base, player.studyGoal, player.studyGoalCompleted);
 }
 
 export function createRemotePlayerEntry(
@@ -85,6 +91,7 @@ export function createRemotePlayerEntry(
         color: '#e2e8f0',
         backgroundColor: '#0f172acc',
         padding: { x: 4, y: 2 },
+        align: 'center',
       })
       .setOrigin(0.5, 1)
       .setDepth(11);

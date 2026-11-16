@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studytogether.config.BusinessException;
 import com.studytogether.modules.auth.AuthPrincipal;
+import com.studytogether.modules.auth.AuthProvider;
 import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.room.RoomPresenceServiceTest;
 import com.studytogether.modules.room.RoomTopologyService;
@@ -132,5 +133,24 @@ class TableWorkspaceServiceTest {
         );
         assertThat(transferEvent.hostUserId()).isEqualTo("u-member");
         verify(messagingTemplate).convertAndSend(eq("/topic/room/main-library/events"), any(RoomEvent.class));
+    }
+
+    @Test
+    void workspaceSnapshotIncludesMemberStudyGoalAndCompletedBadge() {
+        RoomPlayerState hostState = stateStore.getPlayer("main-library", "u-host").orElseThrow()
+                .withStudyGoal("Ôn Spring Security", true, 1_700_000_000_000L);
+        stateStore.savePlayer("main-library", hostState);
+
+        var snapshot = service.getWorkspaceSnapshot(
+                new AuthPrincipal("u-host", AuthRole.GUEST, AuthProvider.GUEST, null, "Host", "avatar_01", ""),
+                "main-library",
+                "table_01"
+        );
+
+        assertThat(snapshot.members()).anySatisfy(member -> {
+            assertThat(member.userId()).isEqualTo("u-host");
+            assertThat(member.studyGoal()).isEqualTo("Ôn Spring Security");
+            assertThat(member.studyGoalCompleted()).isTrue();
+        });
     }
 }

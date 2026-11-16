@@ -8,5 +8,16 @@ public record PersonalStudyStatsResponse(
         AuthRole role,
         long totalStudyMinutes,
         int totalSessions,
+        int studyStreakDays,
         List<StudySessionDto> recentSessions
-) {}
+) {
+    public PersonalStudyStatsResponse(
+            String userId,
+            AuthRole role,
+            long totalStudyMinutes,
+            int totalSessions,
+            List<StudySessionDto> recentSessions
+    ) {
+        this(userId, role, totalStudyMinutes, totalSessions, 0, recentSessions);
+    }
+}

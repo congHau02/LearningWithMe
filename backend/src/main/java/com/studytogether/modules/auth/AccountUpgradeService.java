@@ -6,8 +6,13 @@ import com.studytogether.modules.stats.EquippedCustomizationDto;
 import com.studytogether.modules.stats.GuestCustomizationStore;
 import com.studytogether.modules.stats.GuestStudySessionStagingService;
 import com.studytogether.modules.stats.StagedGuestStudySession;
+import com.studytogether.modules.stats.StudySessionRepository;
+import com.studytogether.modules.stats.StudyStreakCalculator;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -27,6 +32,8 @@ public class AccountUpgradeService {
     private final RedisIdentitySwapService redisIdentitySwapService;
     private final ApplicationEventPublisher eventPublisher;
     private final GuestCustomizationStore guestCustomizationStore;
+    private final StudySessionRepository studySessionRepository;
+    private final Clock clock;
 
     public AccountUpgradeService(
             UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenService jwtTokenService,
@@ -34,7 +41,18 @@ public class AccountUpgradeService {
             RedisIdentitySwapService redisIdentitySwapService
     ) {
         this(userRepository, passwordEncoder, jwtTokenService, googleTokenVerifier,
-                guestSessionStagingService, redisIdentitySwapService, event -> {}, null);
+                guestSessionStagingService, redisIdentitySwapService, event -> {}, null, null, Clock.systemUTC());
+    }
+
+    public AccountUpgradeService(
+            UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenService jwtTokenService,
+            GoogleTokenVerifier googleTokenVerifier, GuestStudySessionStagingService guestSessionStagingService,
+            RedisIdentitySwapService redisIdentitySwapService, StudySessionRepository studySessionRepository,
+            Clock clock
+    ) {
+        this(userRepository, passwordEncoder, jwtTokenService, googleTokenVerifier,
+                guestSessionStagingService, redisIdentitySwapService, event -> {}, null,
+                studySessionRepository, clock);
     }
 
     @Autowired
@@ -42,7 +60,30 @@ public class AccountUpgradeService {
             UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenService jwtTokenService,
             GoogleTokenVerifier googleTokenVerifier, GuestStudySessionStagingService guestSessionStagingService,
             RedisIdentitySwapService redisIdentitySwapService, ApplicationEventPublisher eventPublisher,
-            GuestCustomizationStore guestCustomizationStore
+            GuestCustomizationStore guestCustomizationStore,
+            ObjectProvider<StudySessionRepository> studySessionRepositoryProvider,
+            ObjectProvider<Clock> clockProvider
+    ) {
+        this(
+                userRepository,
+                passwordEncoder,
+                jwtTokenService,
+                googleTokenVerifier,
+                guestSessionStagingService,
+                redisIdentitySwapService,
+                eventPublisher,
+                guestCustomizationStore,
+                studySessionRepositoryProvider.getIfAvailable(),
+                clockProvider.getIfAvailable(Clock::systemUTC)
+        );
+    }
+
+    private AccountUpgradeService(
+            UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenService jwtTokenService,
+            GoogleTokenVerifier googleTokenVerifier, GuestStudySessionStagingService guestSessionStagingService,
+            RedisIdentitySwapService redisIdentitySwapService, ApplicationEventPublisher eventPublisher,
+            GuestCustomizationStore guestCustomizationStore, StudySessionRepository studySessionRepository,
+            Clock clock
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -52,6 +93,8 @@ public class AccountUpgradeService {
         this.redisIdentitySwapService = redisIdentitySwapService;
         this.eventPublisher = eventPublisher;
         this.guestCustomizationStore = guestCustomizationStore;
+        this.studySessionRepository = studySessionRepository;
+        this.clock = clock != null ? clock : Clock.systemUTC();
     }
 
     @Transactional
@@ -116,7 +159,7 @@ public class AccountUpgradeService {
         if (guestCustomizationStore != null) {
             guestCustomizationStore.scheduleDeleteAfterCommit(guestId);
         }
-        return issueUpgradeResponse(guestId, user, effectiveStudyGoal, mergedSessionCount);
+        return issueUpgradeResponse(guestId, user, effectiveStudyGoal, mergedSessionCount, stagedSessions);
     }
 
     private UpgradeAccountResponse mergeIntoExistingAccount(
@@ -143,12 +186,14 @@ public class AccountUpgradeService {
                 existingUser.getEquippedHatId(), existingUser.getEquippedDeskPetId()
         );
 
-        return issueUpgradeResponse(guestId, existingUser, effectiveStudyGoal, mergedSessionCount);
+        return issueUpgradeResponse(guestId, existingUser, effectiveStudyGoal, mergedSessionCount, stagedSessions);
     }
 
     private UpgradeAccountResponse issueUpgradeResponse(
-            String previousGuestId, UserEntity user, String effectiveStudyGoal, int mergedSessionCount
+            String previousGuestId, UserEntity user, String effectiveStudyGoal,
+            int mergedSessionCount, List<StagedGuestStudySession> stagedSessions
     ) {
+        int studyStreakDays = computeCombinedStreakDays(user.getId(), stagedSessions);
         eventPublisher.publishEvent(new AccountIdentityUpgradedEvent(
                 previousGuestId, user.getId(), user.getNickname(), user.getAvatarSpriteId(),
                 user.getEquippedHatId(), user.getEquippedDeskPetId(), effectiveStudyGoal
@@ -162,7 +207,14 @@ public class AccountUpgradeService {
                 user.getId(), accessToken, AuthRole.REGISTERED, user.getAuthProvider(),
                 user.getEmail(), user.getNickname(), user.getAvatarSpriteId(),
                 user.getEquippedHatId(), user.getEquippedDeskPetId(),
-                effectiveStudyGoal, user.getTotalStudyMinutes(), mergedSessionCount
+                effectiveStudyGoal, user.getTotalStudyMinutes(), mergedSessionCount, studyStreakDays
         );
+    }
+
+    private int computeCombinedStreakDays(String userId, List<StagedGuestStudySession> stagedSessions) {
+        List<Instant> persistedInstants = studySessionRepository != null
+                ? studySessionRepository.findValidEndedAtByUserId(userId)
+                : List.of();
+        return StudyStreakCalculator.calculateWithCombined(persistedInstants, stagedSessions, clock);
     }
 }

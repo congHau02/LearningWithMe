@@ -29,9 +29,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       hatId: p.hatId ?? DEFAULT_HAT_ID,
       deskPetId: p.deskPetId ?? DEFAULT_DESK_PET_ID,
       studyGoal: p.studyGoal ?? '',
+      studyGoalCompleted: p.studyGoalCompleted ?? false,
       authProvider: p.authProvider ?? ('GUEST' as AuthProvider),
       email: p.email ?? null,
       totalStudyMinutes: p.totalStudyMinutes ?? 0,
+      studyStreakDays: p.studyStreakDays ?? 0,
       token: p.token,
     };
     savePersistedAuthSession(session);
@@ -44,7 +46,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         nickname: payload.nickname ?? state.nickname,
         avatarSpriteId: payload.avatarSpriteId ?? state.avatarSpriteId,
         studyGoal: payload.studyGoal ?? state.studyGoal,
+        studyGoalCompleted: payload.studyGoalCompleted ?? state.studyGoalCompleted,
       };
+      if (state.userId) persistAuthState(state, next);
+      return next;
+    }),
+
+  setStudyGoalState: ({ studyGoal, studyGoalCompleted }) =>
+    set((state) => {
+      const normalizedGoal = studyGoal.trim();
+      const effectiveCompleted = normalizedGoal.length > 0 && studyGoalCompleted;
+      const next = { studyGoal: normalizedGoal, studyGoalCompleted: effectiveCompleted };
       if (state.userId) persistAuthState(state, next);
       return next;
     }),
@@ -69,9 +81,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       hatId: payload.hatId ?? state.hatId,
       deskPetId: payload.deskPetId ?? state.deskPetId,
       studyGoal: payload.studyGoal ?? state.studyGoal,
+      studyGoalCompleted: payload.studyGoalCompleted ?? state.studyGoalCompleted,
       authProvider: payload.authProvider,
       email: payload.email !== undefined ? payload.email : state.email,
       totalStudyMinutes: payload.totalStudyMinutes ?? state.totalStudyMinutes,
+      studyStreakDays: payload.studyStreakDays ?? state.studyStreakDays,
       token: payload.token,
     };
     persistAuthState(state, next);
@@ -89,6 +103,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set((state) => {
       persistAuthState(state, { totalStudyMinutes });
       return { totalStudyMinutes };
+    }),
+
+  setStudyStreakDays: (studyStreakDays) =>
+    set((state) => {
+      persistAuthState(state, { studyStreakDays });
+      return { studyStreakDays };
     }),
 
   clearSession: () => {

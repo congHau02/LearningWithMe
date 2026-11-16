@@ -1,6 +1,7 @@
 import type { CharacterState } from '../../stores/useGameStore';
 import type { AuthProvider } from '../../stores/useAuthStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
+import { StudyStreakBadge } from './StudyStreakBadge';
 import type { BackendConnectionStatus } from './TopBar';
 
 const STATE_LABELS: Record<CharacterState, string> = {
@@ -23,6 +24,7 @@ interface TopBarActionsProps {
   deskPetId?: string;
   authProvider: AuthProvider;
   totalStudyMinutes: number;
+  studyStreakDays?: number;
   backendStatus: BackendConnectionStatus;
   currentTableId: string | null;
   currentSeatId?: string | null;
@@ -43,6 +45,7 @@ export function TopBarActions({
   deskPetId,
   authProvider,
   totalStudyMinutes,
+  studyStreakDays = 0,
   backendStatus,
   currentTableId,
   currentSeatId,
@@ -111,22 +114,28 @@ export function TopBarActions({
       ) : null}
 
       {onOpenStudySessions ? (
-        <button
-          type="button"
-          data-testid="study-minutes-badge"
-          onClick={onOpenStudySessions}
-          title="Xem Lịch sử Phiên học"
-          className="min-h-8 rounded-md border border-border bg-secondary px-2.5 py-1 font-mono font-medium text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          ⏱ {totalStudyMinutes} phút
-        </button>
+        <>
+          <button
+            type="button"
+            data-testid="study-minutes-badge"
+            onClick={onOpenStudySessions}
+            title="Xem Lịch sử Phiên học"
+            className="min-h-8 rounded-md border border-border bg-secondary px-2.5 py-1 font-mono font-medium text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            ⏱ {totalStudyMinutes} phút
+          </button>
+          <StudyStreakBadge days={studyStreakDays} testId="study-streak-badge" />
+        </>
       ) : authProvider !== 'GUEST' ? (
-        <span
-          data-testid="study-minutes-badge"
-          className="rounded-md border border-border bg-secondary px-2.5 py-1 font-mono font-medium text-foreground"
-        >
-          {totalStudyMinutes} phút
-        </span>
+        <>
+          <span
+            data-testid="study-minutes-badge"
+            className="rounded-md border border-border bg-secondary px-2.5 py-1 font-mono font-medium text-foreground"
+          >
+            {totalStudyMinutes} phút
+          </span>
+          <StudyStreakBadge days={studyStreakDays} testId="study-streak-badge" />
+        </>
       ) : null}
 
       {onOpenLeaderboard ? (

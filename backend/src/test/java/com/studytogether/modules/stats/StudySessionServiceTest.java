@@ -19,8 +19,10 @@ import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.auth.UserEntity;
 import com.studytogether.modules.auth.UserRepository;
 import com.studytogether.modules.room.SeatReleasedEvent;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -167,5 +169,46 @@ class StudySessionServiceTest {
         assertThat(guestStats.recentSessions()).hasSize(2);
         assertThat(guestStats.recentSessions().get(0).studyGoal()).isEqualTo("Mới hơn");
         assertThat(guestStats.recentSessions().get(1).studyGoal()).isEqualTo("Cũ hơn");
+    }
+
+    @Test
+    void computesConsecutiveStudyStreakDaysForGuestAndRegisteredInPersonalStats() throws Exception {
+        Clock fixedNov16 = Clock.fixed(Instant.parse("2026-11-16T12:00:00Z"), ZoneOffset.UTC);
+        StudySessionService timedService = new StudySessionService(
+                studySessionRepository, userRepository, guestStagingService, fixedNov16
+        );
+
+        String regId = "reg-streak";
+        UserEntity regUser = new UserEntity(regId, "Minh", "default_student", AuthProvider.LOCAL);
+        regUser.setTotalStudyMinutes(90L);
+        when(userRepository.findById(regId)).thenReturn(Optional.of(regUser));
+        when(studySessionRepository.countByUserId(regId)).thenReturn(4L);
+        when(studySessionRepository.findTop50ByUserIdOrderByStartedAtDescIdDesc(regId)).thenReturn(List.of());
+        when(studySessionRepository.findValidEndedAtByUserId(regId)).thenReturn(List.of(
+                Instant.parse("2026-11-14T10:00:00Z"),
+                Instant.parse("2026-11-15T08:00:00Z"),
+                Instant.parse("2026-11-15T20:00:00Z"),
+                Instant.parse("2026-11-16T09:00:00Z")
+        ));
+
+        PersonalStudyStatsResponse regStats = timedService.getPersonalStats(new AuthPrincipal(
+                regId, AuthRole.REGISTERED, AuthProvider.LOCAL, "minh@example.com", "Minh", "default_student", ""
+        ));
+        assertThat(regStats.studyStreakDays()).isEqualTo(3);
+
+        String guestId = "guest-streak";
+        when(listOps.range("guest:guest-streak:sessions", 0, -1)).thenReturn(List.of(
+                objectMapper.writeValueAsString(new StagedGuestStudySession(
+                        "main-library", "table_01", "Day 1",
+                        Instant.parse("2026-11-15T09:00:00Z"), Instant.parse("2026-11-15T09:20:00Z"), 20)),
+                objectMapper.writeValueAsString(new StagedGuestStudySession(
+                        "main-library", "table_01", "Day 2",
+                        Instant.parse("2026-11-16T09:00:00Z"), Instant.parse("2026-11-16T09:15:00Z"), 15))
+        ));
+
+        PersonalStudyStatsResponse guestStats = timedService.getPersonalStats(new AuthPrincipal(
+                guestId, AuthRole.GUEST, "Khách", "default_student", "Day 2"
+        ));
+        assertThat(guestStats.studyStreakDays()).isEqualTo(2);
     }
 }

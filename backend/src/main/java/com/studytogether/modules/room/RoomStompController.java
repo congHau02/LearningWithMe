@@ -4,12 +4,15 @@ import com.studytogether.config.BusinessException;
 import com.studytogether.modules.room.model.PlayerMoveRequest;
 import com.studytogether.modules.room.model.RoomChatSendRequest;
 import com.studytogether.modules.room.model.SeatSitRequest;
+import com.studytogether.modules.room.model.StudyGoalUpdateRequest;
+import jakarta.validation.Valid;
 import java.security.Principal;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
@@ -81,6 +84,28 @@ public class RoomStompController {
             Principal user
     ) {
         roomChatService.sendChatMessage(StompErrorDispatcher.requirePrincipal(user), roomId, request);
+    }
+
+    @MessageMapping("/room/{roomId}/goal.update")
+    public void updateStudyGoal(
+            @DestinationVariable String roomId,
+            @Payload @Valid StudyGoalUpdateRequest request,
+            Principal user
+    ) {
+        roomPresenceService.updateStudyGoal(StompErrorDispatcher.requirePrincipal(user), roomId, request);
+    }
+
+    @MessageExceptionHandler(MethodArgumentNotValidException.class)
+    public void handleValidationException(
+            MethodArgumentNotValidException ex,
+            Principal user,
+            @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId
+    ) {
+        String detail = ex.getBindingResult() != null && ex.getBindingResult().getFieldError() != null
+                ? ex.getBindingResult().getFieldError().getDefaultMessage()
+                : "Invalid STOMP payload";
+        BusinessException businessEx = RoomExceptions.invalidStudyGoal(detail);
+        errorDispatcher.sendBusinessError(user, sessionId, RoomExceptions.resolveStompErrorCode(businessEx), businessEx);
     }
 
     @MessageExceptionHandler(BusinessException.class)

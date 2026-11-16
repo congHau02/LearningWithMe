@@ -30,6 +30,10 @@ export abstract class RoomStompPublishers {
     this.publishJson(`/app/room/${roomId}/chat`, { content });
   }
 
+  sendStudyGoalUpdate(roomId: string, payload: { studyGoal: string; completed: boolean }): void {
+    this.publishJson(`/app/room/${roomId}/goal.update`, payload);
+  }
+
   sendPermissionRequest(tableId: string, reason?: string): void {
     this.publishJson(`/app/table/${tableId}/permission.request`, { reason: reason ?? null });
   }

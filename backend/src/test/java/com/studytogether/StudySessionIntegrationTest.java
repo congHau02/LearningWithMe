@@ -14,6 +14,8 @@ import com.studytogether.modules.stats.StudySessionEntity;
 import com.studytogether.modules.stats.StudySessionRepository;
 import java.lang.reflect.Type;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -302,6 +304,104 @@ class StudySessionIntegrationTest {
         assertThat(sessions.getFirst().getTableId()).isEqualTo("table_01");
 
         observer.disconnect();
+    }
+
+    @Test
+    void liveStudyGoalUpdateBroadcastsPlayerUpdatedAndReflectsInTableSnapshotWithoutLosingSeat() throws Exception {
+        GuestIdentity guest = createGuest("GoalLearner", "Mục tiêu ban đầu");
+        StompSession ws = connectStomp(guest.token());
+        BlockingQueue<JsonNode> roomEvents = subscribeJson(ws, "/topic/room/main-library/events");
+        Thread.sleep(100);
+
+        ws.send("/app/room/main-library/join", "");
+        assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
+
+        ws.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_01", "seatId", "T1_S1"));
+        JsonNode sitEvent = roomEvents.poll(5, TimeUnit.SECONDS);
+        assertThat(sitEvent).isNotNull();
+        assertThat(sitEvent.get("type").asText()).isEqualTo("SEAT_LOCKED");
+
+        ws.send("/app/room/main-library/goal.update", Map.of(
+                "studyGoal", "Hoàn thành 20 câu Toán",
+                "completed", true
+        ));
+        JsonNode updatedEvent = roomEvents.poll(5, TimeUnit.SECONDS);
+        assertThat(updatedEvent).isNotNull();
+        assertThat(updatedEvent.get("type").asText()).isEqualTo("PLAYER_UPDATED");
+        assertThat(updatedEvent.get("player").get("state").asText()).isEqualTo("SEATED");
+        assertThat(updatedEvent.get("player").get("seatId").asText()).isEqualTo("T1_S1");
+        assertThat(updatedEvent.get("player").get("studyGoal").asText()).isEqualTo("Hoàn thành 20 câu Toán");
+        assertThat(updatedEvent.get("player").get("studyGoalCompleted").asBoolean()).isTrue();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(guest.token());
+        ResponseEntity<JsonNode> tableSnapshot = restTemplate.exchange(
+                baseUrl("/api/v1/rooms/main-library/tables/table_01/state"),
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                JsonNode.class
+        );
+        assertThat(tableSnapshot.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode member = tableSnapshot.getBody().get("members").get(0);
+        assertThat(member.get("studyGoal").asText()).isEqualTo("Hoàn thành 20 câu Toán");
+        assertThat(member.get("studyGoalCompleted").asBoolean()).isTrue();
+
+        ws.disconnect();
+    }
+
+    @Test
+    void upgradeMergesGuestAndRegisteredSessionsAndRecalculatesConsecutiveStreak() throws Exception {
+        Instant now = Instant.now();
+        Instant dayMinus3 = now.minus(3, ChronoUnit.DAYS);
+        Instant dayMinus2 = now.minus(2, ChronoUnit.DAYS);
+        Instant dayMinus1 = now.minus(1, ChronoUnit.DAYS);
+
+        UserLoginIdentity existing = createRegisteredUser("streak.merge@example.com", "StreakUser", "Ôn tập", 60L);
+        studySessionRepository.save(new StudySessionEntity(
+                existing.userId(), "main-library", "table_01", "Day 1",
+                dayMinus3.minusSeconds(1800), dayMinus3, 30
+        ));
+        studySessionRepository.save(new StudySessionEntity(
+                existing.userId(), "main-library", "table_01", "Day 2",
+                dayMinus2.minusSeconds(1800), dayMinus2, 30
+        ));
+
+        GuestIdentity guest = createGuest("GuestStreak", "Day 3-4");
+        String stagingKey = GuestStudySessionStagingService.sessionListKey(guest.guestId());
+        redisTemplate.opsForList().rightPush(stagingKey, objectMapper.writeValueAsString(
+                new com.studytogether.modules.stats.StagedGuestStudySession(
+                        "main-library", "table_01", "Day 3",
+                        dayMinus1.minusSeconds(900), dayMinus1, 15
+                )
+        ));
+        redisTemplate.opsForList().rightPush(stagingKey, objectMapper.writeValueAsString(
+                new com.studytogether.modules.stats.StagedGuestStudySession(
+                        "main-library", "table_01", "Day 4",
+                        now.minusSeconds(900), now, 15
+                )
+        ));
+
+        assertThat(fetchStatsMe(guest.token()).get("studyStreakDays").asInt()).isEqualTo(2);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(guest.token());
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<JsonNode> upgradeRes = restTemplate.exchange(
+                baseUrl("/api/v1/auth/upgrade"),
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of(
+                        "provider", "LOCAL",
+                        "email", "streak.merge@example.com",
+                        "password", "StrongPassword123!",
+                        "existingAccount", true
+                ), headers),
+                JsonNode.class
+        );
+        assertThat(upgradeRes.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(upgradeRes.getBody().get("studyStreakDays").asInt()).isEqualTo(4);
+
+        String upgradedToken = upgradeRes.getBody().get("accessToken").asText();
+        assertThat(fetchStatsMe(upgradedToken).get("studyStreakDays").asInt()).isEqualTo(4);
     }
 
     private void backdateSitStartTime(String roomId, String userId, Duration duration) throws Exception {

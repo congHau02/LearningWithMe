@@ -5,8 +5,10 @@ import {
   formatStudyDuration,
   type StudyLeaderboardResponse,
 } from '../../services/statsApi';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
 import { LeaderboardEntryRow } from './LeaderboardEntryRow';
+import { StudyStreakBadge } from './StudyStreakBadge';
 
 export interface StudyLeaderboardModalProps {
   onClose: () => void;
@@ -27,6 +29,9 @@ export function StudyLeaderboardModal({
     try {
       const response = await fetchStudyLeaderboard(20);
       setData(response);
+      if (typeof response.myEntry?.studyStreakDays === 'number') {
+        useAuthStore.getState().setStudyStreakDays(response.myEntry.studyStreakDays);
+      }
     } catch (err) {
       setErrorMessage(
         err instanceof Error ? err.message : 'Không thể tải bảng xếp hạng giờ học.',
@@ -135,9 +140,12 @@ export function StudyLeaderboardModal({
                   </p>
                 </div>
               </div>
-              <span className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-mono text-xs font-semibold text-emerald-300">
-                {formatStudyDuration(myEntry.totalStudyMinutes)}
-              </span>
+              <div className="flex items-center gap-2">
+                <StudyStreakBadge days={myEntry.studyStreakDays} testId="leaderboard-my-streak" />
+                <span className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-mono text-xs font-semibold text-emerald-300">
+                  {formatStudyDuration(myEntry.totalStudyMinutes)}
+                </span>
+              </div>
             </div>
 
             {myEntry.role === 'GUEST' && onRequestUpgrade ? (

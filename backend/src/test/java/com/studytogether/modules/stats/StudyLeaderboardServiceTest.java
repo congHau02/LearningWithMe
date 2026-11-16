@@ -14,7 +14,9 @@ import com.studytogether.modules.auth.AuthProvider;
 import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.auth.UserEntity;
 import com.studytogether.modules.auth.UserRepository;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -134,5 +136,52 @@ class StudyLeaderboardServiceTest {
         assertThat(response.myEntry().totalSessions()).isZero();
         assertThat(response.myEntry().rank()).isNull();
         verifyNoInteractions(studySessionRepository);
+    }
+
+    @Test
+    void includesConsecutiveStudyStreakDaysForRankedEntriesAndGuestMyEntry() throws Exception {
+        Clock fixedNov16 = Clock.fixed(Instant.parse("2026-11-16T12:00:00Z"), ZoneOffset.UTC);
+        GuestStudySessionStagingService staging = new GuestStudySessionStagingService(
+                mockRedisWithListOps(), objectMapper, studySessionRepository
+        );
+        StudyLeaderboardService timedService = new StudyLeaderboardService(
+                userRepository, studySessionRepository, staging, fixedNov16
+        );
+
+        UserEntity top1 = new UserEntity("user-1", "Minh Anh", "student_glasses", AuthProvider.LOCAL);
+        top1.setTotalStudyMinutes(240L);
+        when(userRepository.findLeaderboardUsers(eq(AuthProvider.GUEST), eq(PageRequest.of(0, 20))))
+                .thenReturn(List.of(top1));
+        when(userRepository.countByAuthProviderNot(AuthProvider.GUEST)).thenReturn(1L);
+        when(studySessionRepository.countSessionsByUserIds(List.of("user-1")))
+                .thenReturn(List.<Object[]>of(new Object[]{"user-1", 3L}));
+        when(studySessionRepository.findValidEndedAtByUserIds(List.of("user-1")))
+                .thenReturn(List.of(
+                        new Object[]{"user-1", Instant.parse("2026-11-14T08:00:00Z")},
+                        new Object[]{"user-1", Instant.parse("2026-11-15T08:00:00Z")},
+                        new Object[]{"user-1", Instant.parse("2026-11-16T08:00:00Z")}
+                ));
+
+        when(listOps.range("guest:guest-77:sessions", 0, -1)).thenReturn(List.of(
+                objectMapper.writeValueAsString(new StagedGuestStudySession(
+                        "main-library", "table_01", "Day 1",
+                        Instant.parse("2026-11-15T09:00:00Z"), Instant.parse("2026-11-15T09:15:00Z"), 15)),
+                objectMapper.writeValueAsString(new StagedGuestStudySession(
+                        "main-library", "table_01", "Day 2",
+                        Instant.parse("2026-11-16T09:00:00Z"), Instant.parse("2026-11-16T09:15:00Z"), 15))
+        ));
+
+        AuthPrincipal guest = new AuthPrincipal("guest-77", AuthRole.GUEST, "Khách", "default_student", "");
+        StudyLeaderboardResponse response = timedService.getLeaderboard(guest, 20);
+
+        assertThat(response.entries()).hasSize(1);
+        assertThat(response.entries().get(0).studyStreakDays()).isEqualTo(3);
+        assertThat(response.myEntry().studyStreakDays()).isEqualTo(2);
+    }
+
+    private StringRedisTemplate mockRedisWithListOps() {
+        StringRedisTemplate template = mock(StringRedisTemplate.class);
+        when(template.opsForList()).thenReturn(listOps);
+        return template;
     }
 }

@@ -55,7 +55,9 @@ final class TablePermissionCoordinator {
                         p.seatId(),
                         resolveRole(p.userId(), tableState),
                         p.sitStartTimeEpoch(),
-                        p.connected()
+                        p.connected(),
+                        p.studyGoal(),
+                        p.studyGoalCompleted()
                 ))
                 .toList();
     }

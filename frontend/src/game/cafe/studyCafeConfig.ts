@@ -79,17 +79,32 @@ export function findVirtualDrink(drinkId: string | null | undefined): VirtualDri
   return VIRTUAL_DRINKS.find((drink) => drink.id === drinkId) ?? null;
 }
 
+export function appendGoalCompletionBadge(
+  base: string,
+  studyGoal?: string | null,
+  studyGoalCompleted?: boolean,
+): string {
+  if (!studyGoalCompleted) {
+    return base;
+  }
+  const goal = studyGoal?.trim() ?? '';
+  return goal ? `${base}\n✅ ${goal}` : `${base} ✅`;
+}
+
 export function formatSelfCharacterLabel(params: {
   nickname: string;
   isHost: boolean;
   isSeated: boolean;
   drinkId?: string | null;
+  studyGoal?: string;
+  studyGoalCompleted?: boolean;
 }): string {
   const crownPrefix = params.isHost ? '👑 ' : '';
   const drink = findVirtualDrink(params.drinkId);
   const drinkBadge = drink ? ` ${drink.icon}` : '';
   const seatedSuffix = params.isSeated ? ' • Đang học' : '';
-  return `${crownPrefix}${params.nickname}${drinkBadge}${seatedSuffix}`;
+  const base = `${crownPrefix}${params.nickname}${drinkBadge}${seatedSuffix}`;
+  return appendGoalCompletionBadge(base, params.studyGoal, params.studyGoalCompleted);
 }
 
 export const AMBIENT_NPC_DEFINITIONS: readonly AmbientNpcDefinition[] = [
