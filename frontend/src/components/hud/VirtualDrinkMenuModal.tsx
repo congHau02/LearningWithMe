@@ -17,7 +17,7 @@ export function VirtualDrinkMenuModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/75 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/75 p-3 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={closeDrinkMenu}
     >
       <div
@@ -26,7 +26,7 @@ export function VirtualDrinkMenuModal() {
         aria-labelledby="drink-menu-title"
         data-testid="virtual-drink-menu-modal"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-xl border border-amber-500/30 bg-card p-5 text-card-foreground shadow-2xl"
+        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-amber-500/30 bg-card p-5 text-card-foreground shadow-2xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
           <div>

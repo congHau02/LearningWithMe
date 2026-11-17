@@ -13,13 +13,13 @@ export function LeaveTableConfirmModal({
 }: LeaveTableConfirmModalProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/75 p-3 backdrop-blur-xs sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Xác nhận rời bàn học"
       data-testid="leave-seat-confirm-dialog"
     >
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl">
+      <div className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xl sm:p-6">
         <h3 className="text-base font-semibold text-foreground">
           Xác nhận đứng dậy rời bàn?
         </h3>

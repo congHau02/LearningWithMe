@@ -98,7 +98,7 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
         maxLength={MAX_SOS_TOPIC_LENGTH}
         placeholder="VD: Cần giúp Tích phân từng phần"
         aria-label="Chủ đề cần hỗ trợ SOS"
-        className="min-w-[220px] flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+        className="min-w-[220px] flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none"
       />
       <button
         type="submit"

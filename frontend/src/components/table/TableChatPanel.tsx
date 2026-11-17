@@ -68,7 +68,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
 
       <div className="flex-1 space-y-2 overflow-y-auto p-3 text-xs">
         {recentMessages.length === 0 ? (
-          <p className="mt-6 text-center text-[11px] text-slate-500">
+          <p className="mt-6 text-center text-[11px] text-slate-400">
             Trao đổi riêng với các bạn cùng bàn tại đây.
           </p>
         ) : (
@@ -139,7 +139,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
               }
             }}
             placeholder="Nhắn tin trong bàn (tối đa 200 ký tự)..."
-            className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
+            className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none"
           />
           <button
             type="submit"

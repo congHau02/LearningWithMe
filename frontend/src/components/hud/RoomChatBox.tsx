@@ -53,7 +53,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
           <span>Phòng học ({recentMessages.length})</span>
         </button>
       ) : (
-        <div className="w-80 sm:w-88 h-96 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-200">
+        <div className="flex h-96 max-h-[calc(100dvh-5rem)] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900/95 text-slate-200 shadow-2xl backdrop-blur-md">
           {/* Header */}
           <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-800/80 border-b border-slate-700/60">
             <div className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="text-slate-400 hover:text-slate-100 p-1 text-xs cursor-pointer rounded hover:bg-slate-700/50"
+              className="inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded text-xs text-slate-300 hover:bg-slate-700/50 hover:text-slate-100"
               aria-label="Thu nhỏ chat"
             >
               ✕
@@ -76,7 +76,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
           {/* Messages list */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs">
             {recentMessages.length === 0 ? (
-              <p className="text-center text-slate-500 text-[11px] mt-8">Chưa có tin nhắn nào trong phòng. Hãy gửi lời chào nhé!</p>
+              <p className="mt-8 text-center text-[11px] text-slate-400">Chưa có tin nhắn nào trong phòng. Hãy gửi lời chào nhé!</p>
             ) : (
               recentMessages.map((msg) => {
                 const isSelf = selfUserId && msg.userId === selfUserId;
@@ -117,7 +117,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
                 key={emoji}
                 type="button"
                 onClick={() => handleSendMessage(emoji)}
-                className="hover:scale-125 transition-transform text-sm cursor-pointer p-0.5"
+                className="inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded text-sm transition-transform hover:scale-125 sm:min-h-7 sm:min-w-7"
                 aria-label={emoji}
               >
                 {emoji}
@@ -140,7 +140,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
                   }
                 }}
                 placeholder="Nhập tin nhắn (tối đa 200 ký tự)..."
-                className="flex-1 bg-slate-900 text-slate-100 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-sky-500 placeholder:text-slate-500"
+                className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none"
               />
               <button
                 type="submit"

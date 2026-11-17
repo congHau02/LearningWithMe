@@ -50,12 +50,12 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
   const sessions = stats?.recentSessions ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="study-sessions-modal-title"
-        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-border bg-card p-6 text-card-foreground shadow-2xl"
+        className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-2xl sm:max-h-[85dvh] sm:p-6"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -91,7 +91,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
             <p className="text-[11px] font-medium text-emerald-300/90">
               Tổng thời gian tích lũy

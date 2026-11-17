@@ -6,6 +6,7 @@ import {
   type UpgradeAccountResponse,
 } from '../../services/authApi';
 import { localLoginResolver, type LocalLoginFormValues } from './loginSchema';
+import { PasswordField } from './PasswordField';
 
 interface ExistingLocalMergeFormProps {
   onSuccess: (response: UpgradeAccountResponse) => void;
@@ -63,25 +64,14 @@ export function ExistingLocalMergeForm({ onSuccess }: ExistingLocalMergeFormProp
         ) : null}
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="merge-password" className="block text-sm font-medium text-foreground">
-          Mật khẩu <span className="text-destructive">*</span>
-        </label>
-        <input
-          id="merge-password"
-          type="password"
-          autoComplete="current-password"
-          placeholder="Nhập mật khẩu tài khoản hiện có"
-          aria-invalid={Boolean(errors.password)}
-          {...register('password')}
-          className="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        {errors.password ? (
-          <p role="alert" className="text-xs font-medium text-rose-400">
-            {errors.password.message}
-          </p>
-        ) : null}
-      </div>
+      <PasswordField
+        id="merge-password"
+        label="Mật khẩu"
+        placeholder="Nhập mật khẩu tài khoản hiện có"
+        autoComplete="current-password"
+        registration={register('password')}
+        error={errors.password}
+      />
 
       {submitError ? (
         <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/15 px-3 py-2 text-xs text-rose-300">
@@ -92,7 +82,7 @@ export function ExistingLocalMergeForm({ onSuccess }: ExistingLocalMergeFormProp
       <button
         type="submit"
         disabled={isSubmitting}
-        className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       >
         {isSubmitting ? 'Đang đăng nhập & gộp phiên...' : 'Đăng nhập & gộp phiên học'}
       </button>

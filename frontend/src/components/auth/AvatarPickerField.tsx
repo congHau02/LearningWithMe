@@ -17,7 +17,7 @@ export function AvatarPickerField({
       <div
         role="radiogroup"
         aria-label="Chọn ngoại hình nhân vật"
-        className="grid grid-cols-2 gap-2.5"
+        className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
       >
         {STARTER_AVATARS.map((avatar) => {
           const isSelected = selectedAvatarId === avatar.id;
@@ -36,10 +36,10 @@ export function AvatarPickerField({
             >
               <StarterAvatarPortrait avatarId={avatar.id} size={40} />
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-foreground">
+                <p className="text-xs font-semibold text-foreground sm:truncate">
                   {avatar.label}
                 </p>
-                <p className="truncate text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground sm:truncate">
                   {avatar.subtitle}
                 </p>
               </div>

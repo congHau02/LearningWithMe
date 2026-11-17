@@ -93,13 +93,13 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
   const tabItems = items.filter((item) => item.itemType === activeTab);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="customizer-title"
         data-testid="character-customizer-modal"
-        className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-card p-6 text-card-foreground shadow-2xl"
+        className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-2xl sm:max-h-[88dvh] sm:p-6"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div className="flex items-center gap-4">

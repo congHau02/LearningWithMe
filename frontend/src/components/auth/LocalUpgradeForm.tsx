@@ -10,6 +10,7 @@ import {
   type LocalUpgradeFormValues,
 } from './accountUpgradeSchema';
 import { ExistingLocalMergeForm } from './ExistingLocalMergeForm';
+import { PasswordField } from './PasswordField';
 
 interface LocalUpgradeFormProps {
   onSuccess: (response: UpgradeAccountResponse) => void;
@@ -98,47 +99,25 @@ function NewLocalUpgradeForm({ onSuccess }: LocalUpgradeFormProps) {
         ) : null}
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="upgrade-password" className="block text-sm font-medium text-foreground">
-          Mật khẩu <span className="text-destructive">*</span>
-        </label>
-        <input
-          id="upgrade-password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="Ít nhất 8 ký tự"
-          aria-invalid={Boolean(errors.password)}
-          aria-describedby={errors.password ? 'upgrade-password-error' : undefined}
-          {...register('password')}
-          className="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        {errors.password ? (
-          <p id="upgrade-password-error" role="alert" className="text-xs font-medium text-rose-400">
-            {errors.password.message}
-          </p>
-        ) : null}
-      </div>
+      <PasswordField
+        id="upgrade-password"
+        label="Mật khẩu"
+        placeholder="Ít nhất 8 ký tự"
+        autoComplete="new-password"
+        errorId="upgrade-password-error"
+        registration={register('password')}
+        error={errors.password}
+      />
 
-      <div className="space-y-1.5">
-        <label htmlFor="upgrade-confirm-password" className="block text-sm font-medium text-foreground">
-          Xác nhận mật khẩu <span className="text-destructive">*</span>
-        </label>
-        <input
-          id="upgrade-confirm-password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="Nhập lại mật khẩu"
-          aria-invalid={Boolean(errors.confirmPassword)}
-          aria-describedby={errors.confirmPassword ? 'upgrade-confirm-error' : undefined}
-          {...register('confirmPassword')}
-          className="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        {errors.confirmPassword ? (
-          <p id="upgrade-confirm-error" role="alert" className="text-xs font-medium text-rose-400">
-            {errors.confirmPassword.message}
-          </p>
-        ) : null}
-      </div>
+      <PasswordField
+        id="upgrade-confirm-password"
+        label="Xác nhận mật khẩu"
+        placeholder="Nhập lại mật khẩu"
+        autoComplete="new-password"
+        errorId="upgrade-confirm-error"
+        registration={register('confirmPassword')}
+        error={errors.confirmPassword}
+      />
 
       {submitError ? (
         <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/15 px-3 py-2 text-xs text-rose-300">
@@ -149,7 +128,7 @@ function NewLocalUpgradeForm({ onSuccess }: LocalUpgradeFormProps) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       >
         {isSubmitting ? 'Đang nâng cấp tài khoản...' : 'Hoàn tất nâng cấp'}
       </button>

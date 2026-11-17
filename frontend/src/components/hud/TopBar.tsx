@@ -109,7 +109,7 @@ export function TopBar({
             aria-controls="topbar-actions-drawer"
             aria-label={isMobileDrawerOpen ? 'Đóng menu phòng học' : 'Mở menu phòng học'}
             onClick={() => setIsMobileDrawerOpen((prev) => !prev)}
-            className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-border bg-secondary px-2 text-xs font-semibold text-foreground transition hover:bg-secondary/80"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-border bg-secondary px-2 text-xs font-semibold text-foreground transition hover:bg-secondary/80"
           >
             {isMobileDrawerOpen ? '✕' : '☰'}
           </button>

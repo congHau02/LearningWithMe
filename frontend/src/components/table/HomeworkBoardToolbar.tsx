@@ -68,7 +68,7 @@ export function HomeworkBoardToolbar({
               aria-pressed={color === swatch}
               onClick={() => onColorChange(swatch)}
               style={{ backgroundColor: swatch }}
-              className={`h-4 w-4 rounded-full border transition ${
+              className={`h-6 w-6 rounded-full border transition sm:h-5 sm:w-5 ${
                 color === swatch ? 'scale-110 border-white ring-2 ring-sky-400' : 'border-slate-600'
               }`}
             />

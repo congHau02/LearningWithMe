@@ -1,6 +1,7 @@
 import type { UpgradeAccountResponse } from '../../services/authApi';
 import type { AuthProvider } from '../../stores/useAuthStore';
 import type { CharacterState } from '../../stores/useGameStore';
+import { useTableStore } from '../../stores/useTableStore';
 import { AccountUpgradeModal } from '../auth/AccountUpgradeModal';
 import { GuestOnboardingModal } from '../auth/GuestOnboardingModal';
 import { CharacterCustomizerModal } from './CharacterCustomizerModal';
@@ -52,6 +53,9 @@ export function AppModals({
   onCloseLeaderboard,
   onCloseCustomizer,
 }: AppModalsProps) {
+  const isWorkspaceMinimized = useTableStore((s) => s.isWorkspaceMinimized);
+  const showFloatingRoomChat = Boolean(token) && (characterState !== 'SEATED' || isWorkspaceMinimized);
+
   return (
     <>
       {characterState === 'SEATED' && isLeaveConfirmOpen ? (
@@ -85,7 +89,7 @@ export function AppModals({
 
       {token ? <VirtualDrinkMenuModal /> : null}
 
-      {token ? <RoomChatBox /> : null}
+      {showFloatingRoomChat ? <RoomChatBox /> : null}
     </>
   );
 }

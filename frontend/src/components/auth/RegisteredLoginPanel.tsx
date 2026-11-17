@@ -6,6 +6,7 @@ import { requestGoogleIdTokenPopup } from '../../services/googleIdentityPopup';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { GoogleLogoMark } from './GoogleLogoMark';
 import { localLoginResolver, type LocalLoginFormValues } from './loginSchema';
+import { PasswordField } from './PasswordField';
 
 export function RegisteredLoginPanel() {
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -119,26 +120,15 @@ export function RegisteredLoginPanel() {
           ) : null}
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="login-password" className="block text-sm font-medium text-foreground">
-            Mật khẩu <span className="text-destructive">*</span>
-          </label>
-          <input
-            id="login-password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="Nhập mật khẩu của bạn"
-            aria-invalid={Boolean(errors.password)}
-            aria-describedby={errors.password ? 'login-password-error' : undefined}
-            {...register('password')}
-            className="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          {errors.password ? (
-            <p id="login-password-error" role="alert" className="text-xs font-medium text-rose-400">
-              {errors.password.message}
-            </p>
-          ) : null}
-        </div>
+        <PasswordField
+          id="login-password"
+          label="Mật khẩu"
+          placeholder="Nhập mật khẩu của bạn"
+          autoComplete="current-password"
+          errorId="login-password-error"
+          registration={register('password')}
+          error={errors.password}
+        />
 
         {submitError ? (
           <div
@@ -152,7 +142,7 @@ export function RegisteredLoginPanel() {
         <button
           type="submit"
           disabled={isSubmitting || isGoogleLoading}
-          className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
         >
           {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </button>

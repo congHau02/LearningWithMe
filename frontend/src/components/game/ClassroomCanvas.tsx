@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { findVirtualDrink } from '../../game/cafe/studyCafeConfig';
 import {
   CAMERA_ZOOM_STEP,
@@ -29,6 +29,7 @@ export function ClassroomCanvas() {
   const toggleCameraFollow = useGameStore((s) => s.toggleCameraFollow);
   const activeDrink = findVirtualDrink(selectedDrinkId);
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
+  const [isCanvasReady, setIsCanvasReady] = useState(false);
 
   useEffect(() => {
     const syncViewportPreset = () => {
@@ -44,8 +45,10 @@ export function ClassroomCanvas() {
   useEffect(() => {
     let isDisposed = false;
     let destroyPhaserGame: (() => void) | null = null;
+    let resizeObserver: ResizeObserver | null = null;
 
     if (canBootPhaserCanvas() && canvasMountRef.current) {
+      const hostEl = canvasMountRef.current;
       void Promise.all([
         import('phaser'),
         import('../../game/scenes/ClassroomScene'),
@@ -54,7 +57,7 @@ export function ClassroomCanvas() {
         const scene = new ClassroomScene(MAIN_LIBRARY_TOPOLOGY);
         const game = new Phaser.Game({
           type: Phaser.CANVAS,
-          parent: canvasMountRef.current,
+          parent: hostEl,
           width: MAIN_LIBRARY_TOPOLOGY.width * MAIN_LIBRARY_TOPOLOGY.tileSize,
           height: MAIN_LIBRARY_TOPOLOGY.height * MAIN_LIBRARY_TOPOLOGY.tileSize,
           scale: {
@@ -68,12 +71,25 @@ export function ClassroomCanvas() {
           audio: { noAudio: true },
           banner: false,
         });
-        destroyPhaserGame = () => game.destroy(true);
+        setIsCanvasReady(true);
+        if (typeof ResizeObserver !== 'undefined') {
+          resizeObserver = new ResizeObserver(() => {
+            requestAnimationFrame(() => {
+              if (!isDisposed) game.scale.refresh();
+            });
+          });
+          resizeObserver.observe(hostEl);
+        }
+        destroyPhaserGame = () => {
+          resizeObserver?.disconnect();
+          game.destroy(true);
+        };
       });
     }
 
     return () => {
       isDisposed = true;
+      resizeObserver?.disconnect();
       destroyPhaserGame?.();
     };
   }, []);
@@ -97,7 +113,7 @@ export function ClassroomCanvas() {
             type="button"
             data-testid="open-drink-menu-btn"
             onClick={() => openDrinkMenu('Quầy Study Café', 'npc_barista')}
-            className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/25"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/25 sm:min-h-8"
           >
             {activeDrink ? (
               <span data-testid="selected-drink-badge">
@@ -113,12 +129,18 @@ export function ClassroomCanvas() {
         </div>
       </div>
 
-      <div className="relative w-full">
+      <div className="relative flex w-full flex-1 flex-col">
         <div
           ref={canvasMountRef}
           data-testid="phaser-canvas-host"
-          className="relative flex min-h-[280px] w-full touch-manipulation items-center justify-center overflow-hidden rounded-lg border border-border bg-slate-950/90 sm:min-h-[320px]"
-        />
+          className="relative block min-h-[280px] w-full flex-1 touch-manipulation overflow-hidden rounded-lg border border-border bg-slate-950/90 sm:min-h-[380px]"
+        >
+          {!isCanvasReady ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+              Đang tải bản đồ Study Café 2D...
+            </div>
+          ) : null}
+        </div>
         <div
           data-testid="camera-controls"
           aria-label="Điều khiển góc nhìn bản đồ"
@@ -130,7 +152,7 @@ export function ClassroomCanvas() {
             aria-label="Thu nhỏ bản đồ"
             disabled={cameraZoom <= MIN_CAMERA_ZOOM}
             onClick={() => adjustCameraZoom(-CAMERA_ZOOM_STEP)}
-            className="flex min-h-8 min-w-8 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-7 sm:min-w-7"
+            className="flex min-h-10 min-w-10 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-8 sm:min-w-8"
           >
             −
           </button>
@@ -146,7 +168,7 @@ export function ClassroomCanvas() {
             aria-label="Phóng to bản đồ"
             disabled={cameraZoom >= MAX_CAMERA_ZOOM}
             onClick={() => adjustCameraZoom(CAMERA_ZOOM_STEP)}
-            className="flex min-h-8 min-w-8 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-7 sm:min-w-7"
+            className="flex min-h-10 min-w-10 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-8 sm:min-w-8"
           >
             +
           </button>
@@ -157,7 +179,7 @@ export function ClassroomCanvas() {
             aria-label="Theo dõi nhân vật"
             title={cameraFollowEnabled ? 'Đang theo dõi nhân vật' : 'Bật theo dõi nhân vật'}
             onClick={() => toggleCameraFollow()}
-            className={`ml-0.5 flex min-h-8 items-center gap-1 rounded border px-2 font-medium transition sm:min-h-7 ${
+            className={`ml-0.5 flex min-h-10 min-w-10 items-center justify-center gap-1 rounded border px-2.5 font-medium transition sm:min-h-8 sm:min-w-0 sm:px-2 ${
               cameraFollowEnabled
                 ? 'border-sky-500/50 bg-sky-500/20 text-sky-200'
                 : 'border-border bg-secondary text-muted-foreground hover:text-foreground'

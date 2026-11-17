@@ -115,7 +115,7 @@ export function App() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
       <TopBar
         roomId={roomId}
         characterState={characterState}

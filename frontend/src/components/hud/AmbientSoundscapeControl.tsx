@@ -67,7 +67,7 @@ export function AmbientSoundscapeControl() {
         aria-expanded={isOpen}
         aria-label="Mở bảng trộn âm thanh nền cá nhân"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`inline-flex min-h-8 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 ${
           activeCount > 0 && !isMuted
             ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25'
             : 'border-border bg-secondary text-foreground hover:bg-secondary/80'
