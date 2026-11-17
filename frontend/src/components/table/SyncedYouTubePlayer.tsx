@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSyncedYouTubePlayer } from '../../hooks/useSyncedYouTubePlayer';
 import { sendTableVideoSync } from '../../services/tableStompClient';
@@ -9,9 +9,10 @@ import { youtubeUrlResolver, type YouTubeUrlFormValues } from './tableFormSchema
 interface SyncedYouTubePlayerProps {
   tableId: string;
   canControl: boolean;
+  dragHandle?: ReactNode;
 }
 
-export function SyncedYouTubePlayer({ tableId, canControl }: SyncedYouTubePlayerProps) {
+export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedYouTubePlayerProps) {
   const videoState = useTableStore((s) => s.videoState);
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
@@ -70,9 +71,12 @@ export function SyncedYouTubePlayer({ tableId, canControl }: SyncedYouTubePlayer
   return (
     <div data-testid="synced-youtube-player" className="flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Synced YouTube Player {videoState.videoId ? `• ${videoState.videoId}` : ''}
-        </p>
+        <div className="flex items-center gap-2">
+          {dragHandle}
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Synced YouTube Player {videoState.videoId ? `• ${videoState.videoId}` : ''}
+          </p>
+        </div>
         <span className="text-xs text-muted-foreground">
           {canControl ? 'Quyền điều khiển chung: BẬT' : 'Chế độ xem (khóa điều khiển chung)'}
         </span>

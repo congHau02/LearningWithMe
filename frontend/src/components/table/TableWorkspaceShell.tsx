@@ -8,14 +8,13 @@ import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { HostPermissionToast } from './HostPermissionToast';
 import { FocusCycleBar } from './FocusCycleBar';
-import { HomeworkDeckPanel } from './HomeworkDeckPanel';
 import { MinimizedTableWorkspaceBar } from './MinimizedTableWorkspaceBar';
 import { SosBannerControl } from './SosBannerControl';
-import { SyncedYouTubePlayer } from './SyncedYouTubePlayer';
 import { TableChatPanel } from './TableChatPanel';
 import { TableMembersPanel } from './TableMembersPanel';
 import { TableWorkspaceHeader } from './TableWorkspaceHeader';
 import { VoiceChatBar } from './VoiceChatBar';
+import { WorkspacePrimaryPanels } from './WorkspacePrimaryPanels';
 
 export function TableWorkspaceShell() {
   const characterState = useGameStore((s) => s.characterState);
@@ -135,10 +134,7 @@ export function TableWorkspaceShell() {
           />
 
           <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="flex flex-col gap-4 lg:col-span-2">
-              <SyncedYouTubePlayer tableId={activeTableId} canControl={canControl} />
-              <HomeworkDeckPanel tableId={activeTableId} canControl={canControl} />
-            </div>
+            <WorkspacePrimaryPanels activeTableId={activeTableId} canControl={canControl} />
 
             <div className="flex flex-col gap-4">
               <VoiceChatBar

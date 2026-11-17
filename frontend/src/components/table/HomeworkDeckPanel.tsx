@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { formatApiError } from '../../services/apiClient';
 import { uploadHomeworkImage } from '../../services/tableApi';
 import { sendBoardDraw, sendHomeworkSlideAction } from '../../services/tableStompClient';
@@ -19,9 +19,10 @@ const extractImageFile = (data: DataTransfer | null | undefined): File | null =>
 interface HomeworkDeckPanelProps {
   tableId: string;
   canControl: boolean;
+  dragHandle?: ReactNode;
 }
 
-export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProps) {
+export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkDeckPanelProps) {
   const slides = useTableStore((s) => s.homeworkSlides);
   const activeSlideId = useTableStore((s) => s.activeSlideId);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -85,6 +86,7 @@ export function HomeworkDeckPanel({ tableId, canControl }: HomeworkDeckPanelProp
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
+          {dragHandle}
           <h3 className="text-sm font-semibold text-slate-100">Bảng bài tập</h3>
           <span
             data-testid="homework-slide-counter"
