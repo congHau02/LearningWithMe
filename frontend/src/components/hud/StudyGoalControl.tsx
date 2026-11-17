@@ -117,7 +117,7 @@ export function StudyGoalControl({
   }
 
   return (
-    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
+    <div className="mt-0.5 flex items-center gap-1.5 text-xs">
       {hasGoal && onUpdateGoal ? (
         <button
           type="button"
@@ -125,7 +125,7 @@ export function StudyGoalControl({
           aria-pressed={isCompleted}
           title={isCompleted ? 'Bỏ đánh dấu hoàn thành mục tiêu' : 'Đánh dấu hoàn thành mục tiêu'}
           onClick={() => onUpdateGoal(trimmedGoal, !isCompleted)}
-          className={`inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[11px] font-medium transition ${
+          className={`inline-flex h-5 shrink-0 items-center gap-1 rounded border px-1.5 text-[11px] font-medium transition ${
             isCompleted
               ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
               : 'border-border bg-secondary/70 text-muted-foreground hover:text-foreground'
@@ -139,7 +139,10 @@ export function StudyGoalControl({
 
       <p
         data-testid="study-goal-text"
-        className={isCompleted ? 'font-medium text-emerald-300' : 'text-muted-foreground'}
+        title={trimmedGoal || undefined}
+        className={`max-w-[180px] truncate sm:max-w-[260px] ${
+          isCompleted ? 'font-medium text-emerald-300' : 'text-muted-foreground'
+        }`}
       >
         {trimmedGoal || 'Chưa đặt mục tiêu học tập hôm nay'}
       </p>
@@ -153,7 +156,7 @@ export function StudyGoalControl({
             setIsEditing(true);
           }}
           title="Chỉnh sửa mục tiêu học tập"
-          className="rounded border border-border/80 bg-secondary/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+          className="shrink-0 rounded border border-border/80 bg-secondary/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"
         >
           ✏️ Sửa
         </button>

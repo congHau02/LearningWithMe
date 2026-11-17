@@ -17,7 +17,7 @@ export interface TableChatPanelProps {
 const TABLE_QUICK_EMOJIS = ['👍', '💡', '🔥', '👏', '❓', '☕'] as const;
 
 export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend }) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesListRef = useRef<HTMLDivElement>(null);
   const recentMessages = useTableStore((s) => s.recentMessages);
   const selfUserId = useAuthStore((s) => s.userId);
 
@@ -35,8 +35,9 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
   const currentContent = watch('content') ?? '';
 
   useEffect(() => {
-    if (typeof messagesEndRef.current?.scrollIntoView === 'function') {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesListRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [recentMessages]);
 
@@ -66,7 +67,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
         </span>
       </div>
 
-      <div className="flex-1 space-y-2 overflow-y-auto p-3 text-xs">
+      <div ref={messagesListRef} className="flex-1 space-y-2 overflow-y-auto p-3 text-xs">
         {recentMessages.length === 0 ? (
           <p className="mt-6 text-center text-[11px] text-slate-400">
             Trao đổi riêng với các bạn cùng bàn tại đây.
@@ -104,7 +105,6 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
             );
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       <div className="flex items-center justify-between gap-1 border-t border-slate-800/80 bg-slate-800/40 px-3 py-1">

@@ -41,7 +41,7 @@ export function MinimizedTableWorkspaceBar({
     <aside
       data-testid="minimized-table-workspace-bar"
       aria-label={`Thanh thu gọn bàn học ${activeTableId}`}
-      className="fixed bottom-16 inset-x-3 z-30 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-slate-950/95 px-3 py-2 text-xs shadow-2xl backdrop-blur-lg sm:inset-x-auto sm:bottom-4 sm:left-4 sm:max-w-[calc(100vw-11rem)]"
+      className="z-30 mx-2 mt-1 mb-14 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/90 bg-slate-950/95 px-3 py-2 text-xs shadow-2xl ring-1 ring-white/10 backdrop-blur-lg sm:mx-4 sm:my-0 sm:mb-3 sm:mr-44 sm:self-start"
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-md bg-primary/20 px-2 py-1 font-mono font-bold text-primary">

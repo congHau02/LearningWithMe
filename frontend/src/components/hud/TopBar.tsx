@@ -71,48 +71,50 @@ export function TopBar({
 
   return (
     <header
-      className="relative z-40 flex w-full max-w-full flex-wrap items-center justify-between gap-2 border-b border-border bg-card/90 px-3 py-2 backdrop-blur-md sm:gap-3 sm:px-4 sm:py-3"
+      className="relative z-40 flex w-full max-w-full shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border/80 bg-card/92 px-3 py-2 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)] backdrop-blur-md sm:px-4 sm:py-2.5"
       aria-label="Thanh trạng thái phòng học"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-xs font-bold text-primary sm:h-9 sm:w-9 sm:text-sm">
-          2D
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <h1 className="truncate text-sm font-semibold tracking-tight text-foreground sm:text-base">
-              Cùng Nhau Học Bài
-            </h1>
-            <span
-              data-testid="room-badge"
-              className="shrink-0 rounded-md border border-border bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground sm:text-xs"
-            >
-              {roomId}
-            </span>
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-2 sm:flex-initial sm:justify-start sm:gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/15 text-xs font-bold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:h-9 sm:w-9 sm:text-sm">
+            2D
           </div>
-          <StudyGoalControl
-            studyGoal={studyGoal}
-            studyGoalCompleted={studyGoalCompleted}
-            canEdit={canEditStudyGoal}
-            onUpdateGoal={onUpdateStudyGoal}
-          />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="whitespace-nowrap text-sm font-semibold tracking-tight text-foreground sm:text-base">
+                Cùng Nhau Học Bài
+              </h1>
+              <span
+                data-testid="room-badge"
+                className="shrink-0 rounded-md border border-border bg-secondary/90 px-2 py-0.5 font-mono text-[11px] text-secondary-foreground"
+              >
+                {roomId}
+              </span>
+            </div>
+            <StudyGoalControl
+              studyGoal={studyGoal}
+              studyGoalCompleted={studyGoalCompleted}
+              canEdit={canEditStudyGoal}
+              onUpdateGoal={onUpdateStudyGoal}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <AmbientSoundscapeControl />
         {isMobile ? (
-          <button
-            type="button"
-            data-testid="topbar-mobile-menu-btn"
-            aria-expanded={isMobileDrawerOpen}
-            aria-controls="topbar-actions-drawer"
-            aria-label={isMobileDrawerOpen ? 'Đóng menu phòng học' : 'Mở menu phòng học'}
-            onClick={() => setIsMobileDrawerOpen((prev) => !prev)}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-border bg-secondary px-2 text-xs font-semibold text-foreground transition hover:bg-secondary/80"
-          >
-            {isMobileDrawerOpen ? '✕' : '☰'}
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <AmbientSoundscapeControl />
+            <button
+              type="button"
+              data-testid="topbar-mobile-menu-btn"
+              aria-expanded={isMobileDrawerOpen}
+              aria-controls="topbar-actions-drawer"
+              aria-label={isMobileDrawerOpen ? 'Đóng menu phòng học' : 'Mở menu phòng học'}
+              onClick={() => setIsMobileDrawerOpen((prev) => !prev)}
+              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border bg-secondary px-2 text-xs font-semibold text-foreground transition hover:bg-secondary/80"
+            >
+              {isMobileDrawerOpen ? '✕' : '☰'}
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -124,10 +126,11 @@ export function TopBar({
           isDrawerCollapsed
             ? 'hidden'
             : isMobile
-              ? 'w-full rounded-xl border border-border bg-slate-900/90 p-2.5 shadow-lg'
-              : 'flex items-center'
+              ? 'w-full rounded-xl border border-border bg-slate-900/95 p-2.5 shadow-lg'
+              : 'flex flex-1 flex-wrap items-center justify-end gap-1.5'
         }
       >
+        {!isMobile ? <AmbientSoundscapeControl /> : null}
         <TopBarActions
           characterState={characterState}
           nickname={nickname}
@@ -147,6 +150,7 @@ export function TopBar({
           onOpenLeaderboard={onOpenLeaderboard}
           onOpenCustomizer={onOpenCustomizer}
           onActionExecuted={() => setIsMobileDrawerOpen(false)}
+          inlineOnDesktop={!isMobile}
         />
       </div>
     </header>

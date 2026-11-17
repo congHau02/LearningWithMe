@@ -89,7 +89,7 @@ export function TableWorkspaceShell() {
         className={
           isWorkspaceMinimized
             ? 'hidden'
-            : 'fixed inset-x-2 bottom-4 top-[4.5rem] z-30 flex max-h-[calc(100dvh-5.5rem)] flex-col gap-3 overflow-y-auto rounded-2xl border border-border bg-slate-950/92 p-3 shadow-2xl backdrop-blur-lg sm:inset-x-4 sm:top-20 sm:p-4 md:inset-x-8'
+            : 'absolute inset-2 z-30 flex flex-col overflow-hidden rounded-2xl border border-border/90 bg-slate-950/96 shadow-2xl ring-1 ring-white/5 sm:inset-3 md:inset-x-6 md:inset-y-3'
         }
       >
         <TableWorkspaceHeader
@@ -104,59 +104,61 @@ export function TableWorkspaceShell() {
           onRequestLeaveSeat={requestLeaveSeat}
         />
 
-      {permissionToast ? (
-        <div
-          role="status"
-          data-testid="table-permission-toast"
-          className="rounded-lg border border-sky-500/40 bg-sky-500/15 px-3 py-2 text-xs font-medium text-sky-200"
-        >
-          {permissionToast}
-        </div>
-      ) : null}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 sm:p-4">
+          {permissionToast ? (
+            <div
+              role="status"
+              data-testid="table-permission-toast"
+              className="rounded-lg border border-sky-500/40 bg-sky-500/15 px-3 py-2 text-xs font-medium text-sky-200"
+            >
+              {permissionToast}
+            </div>
+          ) : null}
 
-      {isHost ? (
-        <HostPermissionToast
-          requests={pendingPermissionRequests}
-          onRespond={handleToastRespond}
-        />
-      ) : null}
+          {isHost ? (
+            <HostPermissionToast
+              requests={pendingPermissionRequests}
+              onRespond={handleToastRespond}
+            />
+          ) : null}
 
-      <SosBannerControl
-        tableId={activeTableId}
-        sosBanner={sosBanner}
-        canControl={canControl}
-      />
-
-      <FocusCycleBar
-        tableId={activeTableId}
-        canControl={canControl}
-        isSeated={isSeated}
-      />
-
-      <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-2">
-          <SyncedYouTubePlayer tableId={activeTableId} canControl={canControl} />
-          <HomeworkDeckPanel tableId={activeTableId} canControl={canControl} />
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <VoiceChatBar
-            members={members}
-            selfUserId={selfUserId}
-            onJoinVoice={() => void joinVoice()}
-            onLeaveVoice={leaveVoice}
-            onToggleMute={toggleMute}
+          <SosBannerControl
+            tableId={activeTableId}
+            sosBanner={sosBanner}
+            canControl={canControl}
           />
-          <TableMembersPanel
-            members={members}
-            selfUserId={selfUserId}
-            isSelfHost={isHost}
-            onAction={(action, targetUserId) => handlePermissionAction(action, targetUserId)}
+
+          <FocusCycleBar
+            tableId={activeTableId}
+            canControl={canControl}
+            isSeated={isSeated}
           />
-          <TableChatPanel tableId={activeTableId} />
+
+          <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="flex flex-col gap-4 lg:col-span-2">
+              <SyncedYouTubePlayer tableId={activeTableId} canControl={canControl} />
+              <HomeworkDeckPanel tableId={activeTableId} canControl={canControl} />
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <VoiceChatBar
+                members={members}
+                selfUserId={selfUserId}
+                onJoinVoice={() => void joinVoice()}
+                onLeaveVoice={leaveVoice}
+                onToggleMute={toggleMute}
+              />
+              <TableMembersPanel
+                members={members}
+                selfUserId={selfUserId}
+                isSelfHost={isHost}
+                onAction={(action, targetUserId) => handlePermissionAction(action, targetUserId)}
+              />
+              <TableChatPanel tableId={activeTableId} />
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
       {isWorkspaceMinimized ? (
         <MinimizedTableWorkspaceBar

@@ -62,7 +62,7 @@ export function ClassroomCanvas() {
           height: MAIN_LIBRARY_TOPOLOGY.height * MAIN_LIBRARY_TOPOLOGY.tileSize,
           scale: {
             mode: Phaser.Scale.FIT,
-            autoCenter: Phaser.Scale.CENTER_BOTH,
+            autoCenter: Phaser.Scale.NO_CENTER,
           },
           backgroundColor: '#0f172a',
           pixelArt: true,
@@ -99,21 +99,21 @@ export function ClassroomCanvas() {
       id="phaser-classroom-viewport"
       data-testid="classroom-viewport"
       aria-label="Không gian bản đồ phòng học 2D"
-      className="relative flex w-full max-w-5xl flex-1 flex-col items-center justify-between gap-3 rounded-xl border border-border bg-card/60 p-2.5 text-center shadow-lg sm:gap-4 sm:p-5"
+      className="relative flex w-full max-w-5xl flex-col items-center justify-start gap-2.5 rounded-2xl border border-border/90 bg-card/70 p-2.5 text-center shadow-xl ring-1 ring-white/5 sm:gap-2.5 sm:p-3"
     >
       <div className="flex w-full flex-wrap items-center justify-between gap-2 text-left">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-amber-400">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-400">
             Study Café • 3/4 Top-Down 2D Orthogonal
           </p>
-          <h2 className="text-lg font-bold tracking-tight">Phòng học: {roomId}</h2>
+          <h2 className="text-base font-bold tracking-tight sm:text-lg">Phòng học: {roomId}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             data-testid="open-drink-menu-btn"
             onClick={() => openDrinkMenu('Quầy Study Café', 'npc_barista')}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/25 sm:min-h-8"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/25 sm:min-h-8"
           >
             {activeDrink ? (
               <span data-testid="selected-drink-badge">
@@ -129,11 +129,11 @@ export function ClassroomCanvas() {
         </div>
       </div>
 
-      <div className="relative flex w-full flex-1 flex-col">
+      <div className="relative flex w-full flex-col items-center justify-center">
         <div
           ref={canvasMountRef}
           data-testid="phaser-canvas-host"
-          className="relative block min-h-[280px] w-full flex-1 touch-manipulation overflow-hidden rounded-lg border border-border bg-slate-950/90 sm:min-h-[380px]"
+          className="relative flex aspect-[3/2] w-full touch-manipulation items-center justify-center overflow-hidden rounded-xl border border-border/90 bg-slate-950/90 sm:aspect-auto sm:h-[min(430px,calc(100dvh-19.5rem))] sm:min-h-[260px] [&_canvas]:!m-0 [&_canvas]:!max-h-full [&_canvas]:!max-w-full"
         >
           {!isCanvasReady ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
@@ -144,7 +144,7 @@ export function ClassroomCanvas() {
         <div
           data-testid="camera-controls"
           aria-label="Điều khiển góc nhìn bản đồ"
-          className="absolute bottom-2.5 left-2.5 z-10 flex items-center gap-1 rounded-lg border border-border/80 bg-slate-900/90 p-1 text-xs shadow-lg backdrop-blur-md"
+          className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-lg border border-border/80 bg-slate-900/90 p-1 text-xs shadow-lg backdrop-blur-md"
         >
           <button
             type="button"
@@ -152,13 +152,13 @@ export function ClassroomCanvas() {
             aria-label="Thu nhỏ bản đồ"
             disabled={cameraZoom <= MIN_CAMERA_ZOOM}
             onClick={() => adjustCameraZoom(-CAMERA_ZOOM_STEP)}
-            className="flex min-h-10 min-w-10 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-8 sm:min-w-8"
+            className="flex min-h-9 min-w-9 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-8 sm:min-w-8"
           >
             −
           </button>
           <span
             data-testid="camera-zoom-readout"
-            className="min-w-10 text-center font-mono text-[11px] font-semibold text-slate-200"
+            className="min-w-9 text-center font-mono text-[11px] font-semibold text-slate-200"
           >
             {Number.isInteger(cameraZoom) ? cameraZoom.toFixed(1) : cameraZoom}x
           </span>
@@ -168,7 +168,7 @@ export function ClassroomCanvas() {
             aria-label="Phóng to bản đồ"
             disabled={cameraZoom >= MAX_CAMERA_ZOOM}
             onClick={() => adjustCameraZoom(CAMERA_ZOOM_STEP)}
-            className="flex min-h-10 min-w-10 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-8 sm:min-w-8"
+            className="flex min-h-9 min-w-9 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-8 sm:min-w-8"
           >
             +
           </button>
@@ -179,7 +179,7 @@ export function ClassroomCanvas() {
             aria-label="Theo dõi nhân vật"
             title={cameraFollowEnabled ? 'Đang theo dõi nhân vật' : 'Bật theo dõi nhân vật'}
             onClick={() => toggleCameraFollow()}
-            className={`ml-0.5 flex min-h-10 min-w-10 items-center justify-center gap-1 rounded border px-2.5 font-medium transition sm:min-h-8 sm:min-w-0 sm:px-2 ${
+            className={`ml-0.5 flex min-h-9 min-w-9 items-center justify-center gap-1 rounded border px-2 font-medium transition sm:min-h-8 sm:min-w-0 sm:px-2 ${
               cameraFollowEnabled
                 ? 'border-sky-500/50 bg-sky-500/20 text-sky-200'
                 : 'border-border bg-secondary text-muted-foreground hover:text-foreground'

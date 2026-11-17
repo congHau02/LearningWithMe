@@ -21,8 +21,9 @@ export function createNpcVisualParts(
   sprite.play(animKey, true);
   const apron = scene.add.graphics().setDepth(9);
   drawNpcApron(apron, x, y, def.apronColor, facingDir);
+  const isCounterStaff = def.role === 'BARISTA' || def.role === 'CASHIER';
   const label = scene.add
-    .text(x, y - 20, def.displayName, {
+    .text(x, isCounterStaff ? y + 18 : y - 20, def.displayName, {
       fontFamily: 'sans-serif',
       fontSize: '10px',
       fontStyle: 'bold',
@@ -30,7 +31,7 @@ export function createNpcVisualParts(
       backgroundColor: '#78350fdd',
       padding: { x: 4, y: 2 },
     })
-    .setOrigin(0.5, 1)
+    .setOrigin(0.5, isCounterStaff ? 0 : 1)
     .setDepth(10);
   return { sprite, apron, label };
 }

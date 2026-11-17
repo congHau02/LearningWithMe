@@ -115,8 +115,8 @@ export const AMBIENT_NPC_DEFINITIONS: readonly AmbientNpcDefinition[] = [
     avatarKey: 'default_student',
     apronColor: 0xb45309,
     waypoints: [
-      { tileX: 16, tileY: 13, facingDir: 'UP', pauseMs: 3200 },
-      { tileX: 18, tileY: 13, facingDir: 'UP', pauseMs: 2800 },
+      { tileX: 16, tileY: 13, facingDir: 'UP', pauseMs: 3600 },
+      { tileX: 17, tileY: 13, facingDir: 'UP', pauseMs: 2800 },
     ],
     ambientLines: [
       'Cà phê rang mộc vừa pha xong thơm nức ☕',
@@ -124,7 +124,7 @@ export const AMBIENT_NPC_DEFINITIONS: readonly AmbientNpcDefinition[] = [
       'Chúc cả quán hôm nay hoàn thành hết Study Goal 💪',
     ],
     greetingLine: 'Chào bạn! Hôm nay muốn nhâm nhi món gì khi học bài nào? ☕',
-    bubbleIntervalMs: 14000,
+    bubbleIntervalMs: 16000,
     initialBubbleDelayMs: 2500,
   },
   {
@@ -134,8 +134,7 @@ export const AMBIENT_NPC_DEFINITIONS: readonly AmbientNpcDefinition[] = [
     avatarKey: 'student_glasses',
     apronColor: 0x0f766e,
     waypoints: [
-      { tileX: 19, tileY: 13, facingDir: 'UP', pauseMs: 3600 },
-      { tileX: 20, tileY: 13, facingDir: 'UP', pauseMs: 2600 },
+      { tileX: 20, tileY: 13, facingDir: 'UP', pauseMs: 4200 },
     ],
     ambientLines: [
       'Quán Study Café luôn mở 24/7 cho mọi bạn học 📚',
@@ -143,8 +142,8 @@ export const AMBIENT_NPC_DEFINITIONS: readonly AmbientNpcDefinition[] = [
       'Góc Chill Lounge bên trái rất êm cho giờ nghỉ giải lao!',
     ],
     greetingLine: 'Mời bạn xem menu đồ uống của Study Café nhé! 🧋',
-    bubbleIntervalMs: 17000,
-    initialBubbleDelayMs: 7500,
+    bubbleIntervalMs: 16000,
+    initialBubbleDelayMs: 10500,
   },
   {
     npcId: 'npc_server',

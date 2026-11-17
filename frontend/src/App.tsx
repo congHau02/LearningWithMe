@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
 import { AppModals } from './components/hud/AppModals';
 import { ReconnectingBanner } from './components/hud/ReconnectingBanner';
@@ -6,11 +6,9 @@ import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
 import { TopBar } from './components/hud/TopBar';
 import { TableWorkspaceShell } from './components/table/TableWorkspaceShell';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
+import { useAppHudEffects } from './hooks/useAppHudEffects';
 import { useRoomSync } from './hooks/useRoomSync';
 import { useTableWorkspaceSync } from './hooks/useTableWorkspaceSync';
-import type { UpgradeAccountResponse } from './services/authApi';
-import { getActiveRoomStompSession } from './services/roomStompClient';
-import { refreshPersonalStudyStats } from './services/statsApi';
 import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
 import { useTableStore } from './stores/useTableStore';
@@ -35,29 +33,6 @@ export function App() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
 
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timer = setTimeout(() => clearToast(), 3500);
-    return () => clearTimeout(timer);
-  }, [toastMessage, clearToast]);
-
-  useEffect(() => {
-    if (characterState !== 'SEATED') return;
-    const hasOpenModal = isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen || isCustomizerOpen || isDrinkMenuOpen;
-    const onEscape = (event: KeyboardEvent) => {
-      if (hasOpenModal) return;
-      const active = document.activeElement as HTMLElement | null;
-      const tag = active?.tagName;
-      const isFormField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || Boolean(active?.isContentEditable);
-      if ((event.key === 'Escape' || event.key === 'Esc') && !isFormField) {
-        event.preventDefault();
-        openLeaveConfirm();
-      }
-    };
-    window.addEventListener('keydown', onEscape);
-    return () => window.removeEventListener('keydown', onEscape);
-  }, [characterState, isStudySessionsOpen, isUpgradeModalOpen, isLeaderboardOpen, isCustomizerOpen, isDrinkMenuOpen, openLeaveConfirm]);
-
   const nickname = useAuthStore((s) => s.nickname);
   const avatarSpriteId = useAuthStore((s) => s.avatarSpriteId);
   const hatId = useAuthStore((s) => s.hatId);
@@ -71,51 +46,39 @@ export function App() {
   const selfUserId = useAuthStore((s) => s.userId);
 
   const tableHostUserId = useTableStore((s) => s.hostUserId);
-  const isTableHost = characterState === 'SEATED' && Boolean(tableHostUserId && selfUserId && tableHostUserId === selfUserId);
+  const isWorkspaceMinimized = useTableStore((s) => s.isWorkspaceMinimized);
+  const isSeated = characterState === 'SEATED' && Boolean(currentTableId);
+  const isExpandedWorkspace = isSeated && !isWorkspaceMinimized;
+  const isMinimizedSeated = isSeated && isWorkspaceMinimized;
+  const isTableHost = isSeated && Boolean(tableHostUserId && selfUserId && tableHostUserId === selfUserId);
 
   const backendStatus = useAppBootstrap();
   useRoomSync();
   useTableWorkspaceSync();
 
-  useEffect(() => {
-    if (token) void refreshPersonalStudyStats();
-  }, [token]);
+  const hasOpenModal = isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen || isCustomizerOpen || isDrinkMenuOpen;
+  const { handleUpdateStudyGoal, handleAccountUpgraded } = useAppHudEffects({
+    roomId,
+    token,
+    selfUserId,
+    characterState,
+    toastMessage,
+    hasOpenModal,
+    clearToast,
+    openLeaveConfirm,
+    closeUpgradeModal: () => setIsUpgradeModalOpen(false),
+  });
 
   const handleLeaveSeat = () => requestLeaveSeat();
 
-  const handleUpdateStudyGoal = (nextStudyGoal: string, completed: boolean) => {
-    useAuthStore.getState().setStudyGoalState({ studyGoal: nextStudyGoal, studyGoalCompleted: completed });
-    if (characterState === 'SEATED' && selfUserId) {
-      useTableStore.getState().updateMemberStudyGoal(selfUserId, nextStudyGoal, completed);
-    }
-    getActiveRoomStompSession()?.sendStudyGoalUpdate(roomId, { studyGoal: nextStudyGoal, completed });
-  };
-
-  const handleAccountUpgraded = (response: UpgradeAccountResponse) => {
-    const authSnapshot = useAuthStore.getState();
-    const previousUserId = authSnapshot.userId;
-    useAuthStore.getState().upgradeAccount({
-      userId: response.userId,
-      authProvider: response.authProvider,
-      token: response.accessToken,
-      nickname: response.nickname,
-      avatarSpriteId: response.avatarId,
-      hatId: response.hatId,
-      deskPetId: response.deskPetId,
-      studyGoal: authSnapshot.studyGoal || response.studyGoal,
-      studyGoalCompleted: authSnapshot.studyGoalCompleted,
-      email: response.email,
-      totalStudyMinutes: response.totalStudyMinutes,
-      studyStreakDays: response.studyStreakDays ?? authSnapshot.studyStreakDays,
-    });
-    if (previousUserId && previousUserId !== response.userId) {
-      useTableStore.getState().swapParticipantIdentity(previousUserId, response.userId);
-    }
-    setIsUpgradeModalOpen(false);
-  };
-
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
+    <div
+      className={
+        isExpandedWorkspace
+          ? 'flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground'
+          : 'flex min-h-[100dvh] flex-col bg-background text-foreground'
+      }
+    >
       <TopBar
         roomId={roomId}
         characterState={characterState}
@@ -155,11 +118,30 @@ export function App() {
         </aside>
       ) : null}
 
-      <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-2 sm:p-6">
-        <ClassroomCanvas />
-      </main>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <main
+          className={
+            isExpandedWorkspace
+              ? 'relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden p-2 sm:p-4'
+              : isMinimizedSeated
+                ? 'relative flex flex-1 flex-col items-center justify-start p-2 sm:justify-center sm:p-3'
+                : 'relative flex flex-1 flex-col items-center justify-start p-2 pb-14 sm:justify-center sm:p-3 sm:pb-14'
+          }
+        >
+          <div
+            className={
+              isExpandedWorkspace
+                ? 'pointer-events-none flex h-full w-full items-center justify-center overflow-hidden opacity-25'
+                : 'flex w-full flex-1 flex-col items-center justify-center'
+            }
+            aria-hidden={isExpandedWorkspace || undefined}
+          >
+            <ClassroomCanvas />
+          </div>
+        </main>
 
-      <TableWorkspaceShell />
+        <TableWorkspaceShell />
+      </div>
 
       <AppModals
         token={token}

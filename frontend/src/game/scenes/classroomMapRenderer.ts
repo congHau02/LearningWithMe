@@ -91,12 +91,13 @@ export function buildClassroomTilemap(
     scene.add
       .text(cx, cy, table.tableId, {
         fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#fef3c7',
-        backgroundColor: '#451a03cc',
+        fontSize: '9px',
+        color: '#fde68a',
+        backgroundColor: '#451a0399',
         padding: { x: 3, y: 1 },
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(4);
   }
 }
 

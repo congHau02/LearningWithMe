@@ -25,11 +25,11 @@ export function TableWorkspaceHeader({
   onRequestLeaveSeat,
 }: TableWorkspaceHeaderProps) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <span className="rounded-lg bg-primary/20 px-3 py-1 font-mono text-sm font-bold text-primary">
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border/80 bg-slate-900/90 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-4 sm:py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="rounded-lg border border-primary/30 bg-primary/15 px-2.5 py-1 font-mono text-xs font-bold text-primary sm:text-sm">
           Table Workspace • {activeTableId}
-        </span>
+        </h2>
         <span
           data-testid="study-timer-display"
           className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 font-mono text-sm font-semibold text-emerald-300"

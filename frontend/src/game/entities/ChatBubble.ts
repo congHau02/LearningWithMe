@@ -25,7 +25,7 @@ export class ChatBubble {
       }).setOrigin(0.5, 0.5);
 
       this.container = this.scene.add.container(0, 0, [this.bg, this.label]);
-      this.container.setDepth(20);
+      this.container.setDepth(25);
       this.container.setVisible(false);
     }
   }
@@ -70,7 +70,13 @@ export class ChatBubble {
     }
 
     if (this.active && this.container) {
-      this.container.setPosition(this.x, this.y);
+      const worldWidth = Number(this.scene?.scale?.width) || 768;
+      const worldHeight = Number(this.scene?.scale?.height) || 512;
+      const halfW = Math.min(76, ((this.label?.width ?? 64) + 16) / 2);
+      const halfH = Math.min(48, ((this.label?.height ?? 20) + 14) / 2);
+      const clampedX = Math.max(halfW + 6, Math.min(worldWidth - halfW - 6, this.x));
+      const clampedY = Math.max(halfH + 6, Math.min(worldHeight - halfH - 8, this.y));
+      this.container.setPosition(clampedX, clampedY);
       this.container.setVisible(true);
     }
   }

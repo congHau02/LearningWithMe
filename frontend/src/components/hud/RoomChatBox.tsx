@@ -13,15 +13,16 @@ const QUICK_EMOJIS = ['👋', '🎉', '☕', '🔥', '💡', '❤️'] as const;
 export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, onSend }) => {
   const [isOpen, setIsOpen] = useState(initialOpen);
   const [text, setText] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesListRef = useRef<HTMLDivElement>(null);
 
   const roomId = useGameStore((s) => s.roomId);
   const recentMessages = useGameStore((s) => s.recentMessages);
   const selfUserId = useAuthStore((s) => s.userId);
 
   useEffect(() => {
-    if (isOpen && typeof messagesEndRef.current?.scrollIntoView === 'function') {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesListRef.current;
+    if (isOpen && el) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [recentMessages, isOpen]);
 
@@ -42,7 +43,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-30 font-sans select-none">
+    <div className="fixed bottom-3 right-3 z-30 select-none font-sans sm:right-4">
       {!isOpen ? (
         <button
           type="button"
@@ -74,7 +75,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
           </div>
 
           {/* Messages list */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs">
+          <div ref={messagesListRef} className="flex-1 overflow-y-auto p-3 space-y-2 text-xs">
             {recentMessages.length === 0 ? (
               <p className="mt-8 text-center text-[11px] text-slate-400">Chưa có tin nhắn nào trong phòng. Hãy gửi lời chào nhé!</p>
             ) : (
@@ -107,7 +108,6 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
                 );
               })
             )}
-            <div ref={messagesEndRef} />
           </div>
 
           {/* Quick emoji reactions */}

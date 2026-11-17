@@ -66,7 +66,7 @@ export function GuestOnboardingModal() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="guest-onboarding-title"
-        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-2xl sm:p-6"
+        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl sm:p-5"
       >
         <div
           role="tablist"
@@ -125,7 +125,7 @@ export function GuestOnboardingModal() {
         </div>
 
         {activeTab === 'GUEST' ? (
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-5 space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-3.5 space-y-3.5">
             <AvatarPickerField
               selectedAvatarId={selectedAvatarId}
               onSelect={(avatarId) =>

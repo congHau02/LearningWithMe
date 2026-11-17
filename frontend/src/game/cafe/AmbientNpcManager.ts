@@ -117,8 +117,9 @@ export class AmbientNpcManager {
       }
 
       drawNpcApron(entry.apron, entry.pixelX, entry.pixelY, entry.def.apronColor, entry.facingDir);
-      entry.label?.setPosition(entry.pixelX, entry.pixelY - 20);
-      entry.chatBubble.update(nowMs, entry.pixelX, entry.pixelY - 42);
+      const isCounterStaff = entry.def.role === 'BARISTA' || entry.def.role === 'CASHIER';
+      entry.label?.setPosition(entry.pixelX, isCounterStaff ? entry.pixelY + 18 : entry.pixelY - 20);
+      entry.chatBubble.update(nowMs, entry.pixelX, isCounterStaff ? entry.pixelY - 76 : entry.pixelY - 42);
     }
   }
 

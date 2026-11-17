@@ -10,37 +10,37 @@ export function ClassroomTelemetryBar() {
   const sosBanner = useTableStore((s) => s.sosBanner);
 
   return (
-    <div className="grid w-full grid-cols-1 gap-3 text-left text-xs sm:grid-cols-4">
-      <div className="rounded-lg border border-border bg-secondary/50 p-2.5">
-        <span className="text-muted-foreground">Tọa độ lưới:</span>
+    <div className="grid w-full grid-cols-2 gap-2 text-left text-xs sm:grid-cols-4 sm:gap-2.5">
+      <div className="rounded-lg border border-border/80 bg-secondary/50 p-2">
+        <span className="text-[11px] text-muted-foreground">Tọa độ lưới:</span>
         <p
           data-testid="grid-position-readout"
-          className="mt-0.5 font-mono font-semibold text-foreground"
+          className="mt-0.5 truncate font-mono font-semibold text-foreground"
         >
           ({position.x}, {position.y}) • {facingDir}
         </p>
       </div>
-      <div className="rounded-lg border border-border bg-secondary/50 p-2.5">
-        <span className="text-muted-foreground">Lộ trình A*:</span>
+      <div className="rounded-lg border border-border/80 bg-secondary/50 p-2">
+        <span className="text-[11px] text-muted-foreground">Lộ trình A*:</span>
         <p
           data-testid="path-queue-readout"
-          className="mt-0.5 font-mono font-semibold text-foreground"
+          className="mt-0.5 truncate font-mono font-semibold text-foreground"
         >
           {pathLength > 0 ? `Còn ${pathLength} bước` : 'Thủ công / Đứng yên'}
         </p>
       </div>
-      <div className="rounded-lg border border-border bg-secondary/50 p-2.5">
-        <span className="text-muted-foreground">Chỗ ngồi hiện tại:</span>
+      <div className="rounded-lg border border-border/80 bg-secondary/50 p-2">
+        <span className="text-[11px] text-muted-foreground">Chỗ ngồi hiện tại:</span>
         <p
           data-testid="active-seat-readout"
-          className="mt-0.5 font-mono font-semibold text-foreground"
+          className="mt-0.5 truncate font-mono font-semibold text-foreground"
         >
           {currentSeatId ? `${currentTableId} / ${currentSeatId}` : 'Chưa ngồi ghế'}
         </p>
       </div>
-      <div className="rounded-lg border border-border bg-secondary/50 p-2.5">
-        <span className="text-muted-foreground">Tín hiệu SOS bàn:</span>
-        <p className="mt-0.5 font-medium text-foreground">
+      <div className="rounded-lg border border-border/80 bg-secondary/50 p-2">
+        <span className="text-[11px] text-muted-foreground">Tín hiệu SOS bàn:</span>
+        <p className="mt-0.5 truncate font-medium text-foreground">
           {sosBanner || 'Không có tín hiệu cầu cứu'}
         </p>
       </div>
