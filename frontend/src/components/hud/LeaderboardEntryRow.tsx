@@ -16,8 +16,8 @@ const PODIUM_BADGES: Record<number, { style: string; rowStyle: string }> = {
     rowStyle: 'border-border/60 bg-secondary/30',
   },
   3: {
-    style: 'border-[#d48b30]/60 bg-[#d48b30]/20 text-[#e9a65a]',
-    rowStyle: 'border-[#d48b30]/35 bg-[#d48b30]/10',
+    style: 'border-primary/50 bg-primary/20 text-primary',
+    rowStyle: 'border-primary/30 bg-primary/10',
   },
 };
 

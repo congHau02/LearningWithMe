@@ -36,7 +36,7 @@ export function WorkspaceLayoutControls({
       data-testid="workspace-layout-controls"
       role="group"
       aria-label="Bố cục Video và Bảng bài tập"
-      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-[#16221E]/80 px-3 py-2 text-xs"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card/80 px-3 py-2 text-xs"
     >
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 font-medium text-muted-foreground">Bố cục:</span>
@@ -52,8 +52,8 @@ export function WorkspaceLayoutControls({
               onClick={() => onChangeLayout(option.mode)}
               className={`${visibilityClass} min-h-[44px] items-center rounded-lg border px-2.5 py-1 font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[32px] ${
                 isActive
-                  ? 'border-primary/60 bg-primary/20 text-primary-foreground font-semibold'
-                  : 'border-border bg-[#0F1714]/80 text-muted-foreground hover:bg-[#243630] hover:text-foreground'
+                  ? 'border-primary bg-primary text-primary-foreground font-semibold shadow-sm'
+                  : 'border-border bg-background/80 text-muted-foreground hover:bg-accent hover:text-foreground'
               }`}
             >
               <span className="hidden sm:inline">{option.label}</span>

@@ -58,7 +58,7 @@ export function StudyGoalControl({
     }
   }, [studyGoal, isEditing, reset]);
 
-  const trimmedGoal = studyGoal.trim();
+  const trimmedGoal = (studyGoal ?? '').trim();
   const hasGoal = trimmedGoal.length > 0;
   const isCompleted = hasGoal && studyGoalCompleted;
   const draftLength = (watch('studyGoal') ?? '').trim().length;

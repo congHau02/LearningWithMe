@@ -58,19 +58,19 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
       data-testid="table-chat-panel"
       className="flex h-72 flex-col overflow-hidden rounded-xl border border-border bg-[#16221E]/95 text-[#E6ECE8]"
     >
-      <div className="flex items-center justify-between border-b border-border bg-[#0F1714]/85 px-3 py-2">
+      <div className="flex items-center justify-between border-b border-border bg-background/85 px-3 py-2">
         <div className="flex items-center gap-2">
           <ChatIcon className="h-4 w-4 text-primary" aria-hidden="true" />
-          <h3 className="text-xs font-semibold text-[#E6ECE8]">Table Chat</h3>
+          <h3 className="text-xs font-semibold text-foreground">Table Chat</h3>
         </div>
-        <span className="rounded border border-border bg-[#16221E] px-1.5 py-0.5 font-mono text-[10px] text-[#8FA399]">
+        <span className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
           {recentMessages.length}/50
         </span>
       </div>
 
       <div ref={messagesListRef} className="flex-1 space-y-2 overflow-y-auto p-3 text-xs">
         {recentMessages.length === 0 ? (
-          <p className="mt-6 text-center text-[11px] text-[#8FA399]">
+          <p className="mt-6 text-center text-[11px] text-muted-foreground">
             Trao đổi riêng với các bạn cùng bàn tại đây.
           </p>
         ) : (
@@ -87,7 +87,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
                 key={msg.id}
                 className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}
               >
-                <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-[#8FA399]">
+                <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
                   <span className={isSelf ? 'font-semibold text-primary' : 'font-semibold text-emerald-400'}>
                     {isSelf ? 'Bạn' : msg.nickname}
                   </span>
@@ -96,8 +96,8 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
                 <div
                   className={`max-w-[85%] break-words rounded-xl px-2.5 py-1.5 text-xs ${
                     isSelf
-                      ? 'rounded-tr-none border border-primary/40 bg-primary/20 text-[#E6ECE8]'
-                      : 'rounded-tl-none border border-border bg-[#0F1714]/80 text-[#E6ECE8]'
+                      ? 'rounded-tr-none border border-primary/40 bg-primary/20 text-foreground'
+                      : 'rounded-tl-none border border-border bg-background/80 text-foreground'
                   }`}
                 >
                   {msg.content}
@@ -108,7 +108,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-1 border-t border-border bg-[#0F1714]/60 px-3 py-1">
+      <div className="flex items-center justify-between gap-1 border-t border-border bg-background/60 px-3 py-1">
         {TABLE_QUICK_EMOJIS.map((emoji) => (
           <button
             key={emoji}
@@ -125,7 +125,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
       <form
         onSubmit={handleSubmit((values) => dispatchMessage(values.content))}
         noValidate
-        className="flex flex-col gap-1 border-t border-border bg-[#0F1714]/85 p-2"
+        className="flex flex-col gap-1 border-t border-border bg-background/85 p-2"
       >
         <div className="flex items-center gap-1.5">
           <input
@@ -140,7 +140,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
               }
             }}
             placeholder="Nhắn tin trong bàn (tối đa 200 ký tự)..."
-            className="flex-1 rounded-lg border border-border bg-[#16221E] px-2.5 py-1.5 text-xs text-[#E6ECE8] placeholder:text-[#8FA399] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="flex-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <button
             type="submit"
@@ -151,7 +151,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
             Gửi
           </button>
         </div>
-        <div className="text-right text-[10px] text-[#8FA399]">{currentContent.length}/200</div>
+        <div className="text-right text-[10px] text-muted-foreground">{currentContent.length}/200</div>
       </form>
     </div>
   );

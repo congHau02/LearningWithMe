@@ -1,0 +1,219 @@
+{
+  "timestamp": "2026-11-17T17:10:17.207Z",
+  "desktop": {
+    "overflow": {
+      "docWidth": 1440,
+      "viewWidth": 1440,
+      "bodyWidth": 1440,
+      "hasOverflow": false,
+      "overflowCount": 0,
+      "samples": []
+    }
+  },
+  "mobile": {
+    "docWidth": 375,
+    "viewWidth": 375,
+    "hasOverflow": false,
+    "interactiveCount": 16,
+    "under44Count": 0,
+    "samples": [
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "testId": "ambient-soundscape-toggle-btn",
+        "ariaLabel": "Mở bảng trộn âm thanh nền cá nhân",
+        "width": 44,
+        "height": 44,
+        "adequate": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "testId": "topbar-mobile-menu-btn",
+        "ariaLabel": "Mở menu phòng học",
+        "width": 44,
+        "height": 44,
+        "adequate": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "testId": "open-drink-menu-btn",
+        "ariaLabel": null,
+        "width": 131,
+        "height": 44,
+        "adequate": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "testId": "camera-zoom-out-btn",
+        "ariaLabel": "Thu nhỏ bản đồ",
+        "width": 44,
+        "height": 44,
+        "adequate": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "testId": "camera-zoom-in-btn",
+        "ariaLabel": "Phóng to bản đồ",
+        "width": 44,
+        "height": 44,
+        "adequate": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "testId": "camera-follow-toggle-btn",
+        "ariaLabel": "Theo dõi nhân vật",
+        "width": 44,
+        "height": 44,
+        "adequate": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "testId": null,
+        "ariaLabel": null,
+        "width": 134,
+        "height": 44,
+        "adequate": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "entry-tab-guest",
+        "testId": null,
+        "ariaLabel": null,
+        "width": 143,
+        "height": 44,
+        "adequate": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "entry-tab-login",
+        "testId": null,
+        "ariaLabel": null,
+        "width": 143,
+        "height": 44,
+        "adequate": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "testId": null,
+        "ariaLabel": null,
+        "width": 303,
+        "height": 62,
+        "adequate": true
+      }
+    ]
+  },
+  "contrast": {
+    "tokensContrast": {
+      "amberToDarkInk": 8.74,
+      "mistToLeaf": 13.68,
+      "sageToLeaf": 6.14,
+      "emeraldToPine": 9.47
+    },
+    "amberInkMeetsAAA": true,
+    "mistMeetsAAA": true,
+    "sageMeetsAA": true,
+    "sampledCount": 50,
+    "samples": [
+      {
+        "tag": "H1",
+        "text": "Cùng Nhau Học Bài",
+        "color": "rgb(230, 236, 232)",
+        "bgColor": "rgba(0, 0, 0, 0)",
+        "fontSize": "16px",
+        "fontWeight": "600"
+      },
+      {
+        "tag": "SPAN",
+        "text": "main-library",
+        "color": "rgb(230, 236, 232)",
+        "bgColor": "oklab(0.23914 -0.0183498 0.0025598 / 0.9)",
+        "fontSize": "11px",
+        "fontWeight": "400"
+      },
+      {
+        "tag": "SPAN",
+        "text": "Backend: OFFLINE",
+        "color": "oklch(0.81 0.117 11.638)",
+        "bgColor": "oklab(0.645 0.235944 0.0696166 / 0.15)",
+        "fontSize": "11px",
+        "fontWeight": "600"
+      },
+      {
+        "tag": "P",
+        "text": "Tập trung ôn tập 45 phút",
+        "color": "rgb(143, 163, 153)",
+        "bgColor": "rgba(0, 0, 0, 0)",
+        "fontSize": "12px",
+        "fontWeight": "400"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Âm thanh nền",
+        "color": "rgb(230, 236, 232)",
+        "bgColor": "rgb(22, 34, 30)",
+        "fontSize": "11px",
+        "fontWeight": "500"
+      },
+      {
+        "tag": "SPAN",
+        "text": "Âm thanh nền",
+        "color": "rgb(230, 236, 232)",
+        "bgColor": "rgba(0, 0, 0, 0)",
+        "fontSize": "11px",
+        "fontWeight": "500"
+      }
+    ]
+  },
+  "a11y": {
+    "keyboardFocus": {
+      "hasFocusedElement": true,
+      "tagName": "INPUT",
+      "id": "guest-study-goal",
+      "outlineStyle": "none",
+      "outlineWidth": "2px",
+      "outlineColor": "rgb(52, 211, 153)"
+    }
+  },
+  "consoleAndNetwork": {
+    "consoleErrors": [],
+    "exceptions": [],
+    "failedRequests": []
+  },
+  "zeroCls": {
+    "baselineClsScore": 0.050023873168777856,
+    "interactionClsScore": 0,
+    "totalClsScore": 0.050023873168777856,
+    "clsScore": 0.050023873168777856,
+    "entriesCount": 2,
+    "entries": [
+      {
+        "value": 0.04927850246350951,
+        "sources": [
+          "DIV",
+          "DIV",
+          "DIV",
+          "DIV"
+        ]
+      },
+      {
+        "value": 0.0007453707052683471,
+        "sources": [
+          "DIV",
+          "DIV",
+          "DIV",
+          "SPAN",
+          "SPAN"
+        ]
+      }
+    ]
+  },
+  "status": "PASSED",
+  "violations": []
+}

@@ -6,7 +6,7 @@ import {
   formatFocusCountdown,
   getFocusPhaseDurationSeconds,
 } from '../../utils/focusCycle';
-import { CoffeeIcon, TargetIcon } from '../icons';
+import { BellIcon, CoffeeIcon, TargetIcon } from '../icons';
 
 interface FocusCycleBarProps {
   tableId: string;
@@ -94,9 +94,10 @@ export function FocusCycleBar({ tableId, canControl, isSeated }: FocusCycleBarPr
             role="status"
             data-testid="focus-cycle-notice"
             onClick={dismissCompletionNotice}
-            className="rounded-lg border border-primary/50 bg-primary/20 px-2.5 py-1 font-medium text-primary transition hover:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/50 bg-primary/20 px-2.5 py-1 font-medium text-primary transition hover:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            🔔 {completionNotice}
+            <BellIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>{completionNotice}</span>
           </button>
         ) : null}
       </div>

@@ -60,7 +60,7 @@ export function TableMembersPanel({
               <li
                 key={member.userId}
                 data-testid={`table-member-${member.userId}`}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-[#0F1714]/60 px-2.5 py-2 text-xs"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-background/60 px-2.5 py-2 text-xs"
               >
                 <div className="flex items-center gap-2">
                   <StarterAvatarPortrait
@@ -117,9 +117,9 @@ export function TableMembersPanel({
                     className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold ${badge.cls}`}
                   >
                     {member.tableRole === 'TABLE_HOST' ? (
-                      <CrownIcon className="h-3 w-3 text-[#0F1714]" aria-hidden="true" />
+                      <CrownIcon className="h-3 w-3 text-primary-foreground" aria-hidden="true" />
                     ) : member.tableRole === 'CO_HOST' ? (
-                      <ZapIcon className="h-3 w-3 text-[#0F1714]" aria-hidden="true" />
+                      <ZapIcon className="h-3 w-3 text-primary-foreground" aria-hidden="true" />
                     ) : null}
                     <span>{badge.label}</span>
                   </span>
