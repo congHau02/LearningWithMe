@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDismissiblePopover } from '../../hooks/useDismissiblePopover';
 import { AMBIENT_CHANNEL_DEFS } from '../../services/ambientSoundscapeEngine';
 import { useAmbientSoundscapeStore } from '../../stores/useAmbientSoundscapeStore';
 
@@ -9,6 +10,7 @@ import { useAmbientSoundscapeStore } from '../../stores/useAmbientSoundscapeStor
 export function AmbientSoundscapeControl() {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const closePopover = useCallback(() => setIsOpen(false), []);
 
   const isMuted = useAmbientSoundscapeStore((s) => s.isMuted);
   const channels = useAmbientSoundscapeStore((s) => s.channels);
@@ -36,28 +38,7 @@ export function AmbientSoundscapeControl() {
     };
   }, [activeCount, syncAudioEngine]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const onCaptureEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' || event.key === 'Esc') {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        setIsOpen(false);
-      }
-    };
-    const onOutsidePointerDown = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    window.addEventListener('keydown', onCaptureEscape, true);
-    window.addEventListener('mousedown', onOutsidePointerDown);
-    return () => {
-      window.removeEventListener('keydown', onCaptureEscape, true);
-      window.removeEventListener('mousedown', onOutsidePointerDown);
-    };
-  }, [isOpen]);
+  useDismissiblePopover(isOpen, containerRef, closePopover);
 
   return (
     <div ref={containerRef} className="relative">
@@ -67,7 +48,7 @@ export function AmbientSoundscapeControl() {
         aria-expanded={isOpen}
         aria-label="Mở bảng trộn âm thanh nền cá nhân"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`inline-flex min-h-10 min-w-10 items-center justify-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 ${
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 ${
           activeCount > 0 && !isMuted
             ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25'
             : 'border-border bg-secondary text-foreground hover:bg-secondary/80'

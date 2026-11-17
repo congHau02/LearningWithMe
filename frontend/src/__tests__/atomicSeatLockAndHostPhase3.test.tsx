@@ -182,6 +182,6 @@ describe('P3-T3 (#17): Atomic Seat Lock, Mid-Walk Abort & Initial Table Host Ass
 
     rerender(<App />);
     expect(screen.queryByTestId('table-host-crown')).toBeNull();
-    expect(screen.getByTestId('character-state-badge')).toHaveTextContent('FREE_ROAM');
+    expect(screen.queryByTestId('seated-table-badge')).toBeNull();
   });
 });

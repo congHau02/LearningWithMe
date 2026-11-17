@@ -115,8 +115,9 @@ describe('P1-T4 Registered User Login & Existing-Account Upgrade Swap', () => {
     expect(useAuthStore.getState().userId).toBe(userId);
     expect(useAuthStore.getState().totalStudyMinutes).toBe(245);
     expect(screen.getByText('Thành Viên Cũ')).toBeInTheDocument();
-    expect(screen.getByTestId('auth-provider-badge')).toHaveTextContent('LOCAL');
     expect(screen.getByTestId('study-minutes-badge')).toHaveTextContent('245 phút');
+    fireEvent.click(screen.getByTestId('profile-menu-trigger'));
+    expect(screen.getByTestId('auth-provider-badge')).toHaveTextContent('LOCAL');
   });
 
   it('keeps login dialog open and surfaces 401 RFC 7807 error on invalid credentials', async () => {
@@ -312,8 +313,10 @@ describe('P1-T4 Registered User Login & Existing-Account Upgrade Swap', () => {
 
     render(<App />);
 
+    await screen.findByTestId('study-minutes-badge');
+    fireEvent.click(screen.getByTestId('profile-menu-trigger'));
     fireEvent.click(
-      await screen.findByRole('button', { name: /Nâng cấp tài khoản/i }),
+      await screen.findByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     );
     fireEvent.click(
       screen.getByRole('button', { name: /Đã có tài khoản\? Đăng nhập & gộp/i }),

@@ -429,9 +429,7 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
 
       render(<App />);
       await waitFor(() => {
-        expect(screen.getByTestId('backend-status-badge')).toHaveTextContent(
-          'Backend: UP',
-        );
+        expect(screen.queryByTestId('backend-status-badge')).not.toBeInTheDocument();
       });
 
       // Transition to SEATED via Zustand bridge (Phaser ClassroomScene -> useGameStore)
@@ -444,8 +442,8 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
       expect(useGameStore.getState().characterState).toBe('SEATED');
       expect(useGameStore.getState().currentTableId).toBe('table_01');
       expect(useGameStore.getState().currentSeatId).toBe('T1_S1');
-      expect(screen.getByTestId('character-state-badge')).toHaveTextContent(
-        'SEATED',
+      expect(screen.getByTestId('seated-table-badge')).toHaveTextContent(
+        'Bàn: table_01 (T1_S1)',
       );
       expect(screen.getByTestId('active-seat-readout')).toHaveTextContent(
         'table_01 / T1_S1',
@@ -484,6 +482,7 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
           .sitAtSeat('table_01', 'T1_S1', { x: 3, y: 4 }, 'RIGHT');
       });
       expect(useGameStore.getState().characterState).toBe('SEATED');
+      fireEvent.click(screen.getByTestId('profile-menu-trigger'));
       fireEvent.click(screen.getByTestId('leave-seat-btn'));
       expect(useGameStore.getState().characterState).toBe('FREE_ROAM');
       expect(useGameStore.getState().currentSeatId).toBeNull();

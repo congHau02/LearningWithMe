@@ -96,7 +96,8 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
 
     render(<App />);
 
-    const upgradeTrigger = await screen.findByRole('button', {
+    fireEvent.click(await screen.findByTestId('profile-menu-trigger'));
+    const upgradeTrigger = await screen.findByRole('menuitem', {
       name: /Nâng cấp tài khoản/i,
     });
     expect(upgradeTrigger).toBeInTheDocument();
@@ -157,8 +158,9 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
     expect(await screen.findByTestId('study-minutes-badge')).toHaveTextContent(
       /95 phút/i,
     );
+    fireEvent.click(screen.getByTestId('profile-menu-trigger'));
     expect(
-      screen.queryByRole('button', { name: /Nâng cấp tài khoản/i }),
+      screen.queryByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -195,8 +197,9 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
     });
 
     render(<App />);
+    fireEvent.click(await screen.findByTestId('profile-menu-trigger'));
     fireEvent.click(
-      await screen.findByRole('button', { name: /Nâng cấp tài khoản/i }),
+      await screen.findByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     );
 
     const emailInput = screen.getByLabelText(/^Email/i);
@@ -327,8 +330,9 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
 
     render(<App />);
 
+    fireEvent.click(await screen.findByTestId('profile-menu-trigger'));
     fireEvent.click(
-      await screen.findByRole('button', { name: /Nâng cấp tài khoản/i }),
+      await screen.findByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     );
     fireEvent.change(screen.getByLabelText(/^Email/i), {
       target: { value: 'Student.New@Example.com' },
@@ -376,10 +380,11 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
     expect(useTableStore.getState().tableId).toBe('table_01');
     expect(useTableStore.getState().hostUserId).toBe(guestId);
 
-    expect(screen.getByTestId('auth-provider-badge')).toHaveTextContent('LOCAL');
     expect(screen.getByTestId('study-minutes-badge')).toHaveTextContent('60 phút');
+    fireEvent.click(screen.getByTestId('profile-menu-trigger'));
+    expect(screen.getByTestId('auth-provider-badge')).toHaveTextContent('LOCAL');
     expect(
-      screen.queryByRole('button', { name: /Nâng cấp tài khoản/i }),
+      screen.queryByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -443,8 +448,9 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
     });
 
     render(<App />);
+    fireEvent.click(await screen.findByTestId('profile-menu-trigger'));
     fireEvent.click(
-      await screen.findByRole('button', { name: /Nâng cấp tài khoản/i }),
+      await screen.findByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     );
 
     fireEvent.change(screen.getByLabelText(/^Email/i), {
@@ -580,8 +586,9 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
 
     render(<App />);
 
+    fireEvent.click(await screen.findByTestId('profile-menu-trigger'));
     fireEvent.click(
-      await screen.findByRole('button', { name: /Nâng cấp tài khoản/i }),
+      await screen.findByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     );
     fireEvent.click(screen.getByRole('tab', { name: /Google/i }));
     fireEvent.click(
@@ -619,8 +626,9 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
     expect(useAuthStore.getState().totalStudyMinutes).toBe(40);
     expect(useGameStore.getState().characterState).toBe('SEATED');
     expect(useGameStore.getState().currentTableId).toBe('table_02');
-    expect(screen.getByTestId('auth-provider-badge')).toHaveTextContent('GOOGLE');
     expect(screen.getByTestId('study-minutes-badge')).toHaveTextContent('40 phút');
+    fireEvent.click(screen.getByTestId('profile-menu-trigger'));
+    expect(screen.getByTestId('auth-provider-badge')).toHaveTextContent('GOOGLE');
   });
 
   it('shows clear configuration error if Google upgrade is clicked without VITE_GOOGLE_CLIENT_ID', async () => {
@@ -657,8 +665,9 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
     });
 
     render(<App />);
+    fireEvent.click(await screen.findByTestId('profile-menu-trigger'));
     fireEvent.click(
-      await screen.findByRole('button', { name: /Nâng cấp tài khoản/i }),
+      await screen.findByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     );
     fireEvent.click(screen.getByRole('tab', { name: /Google/i }));
     fireEvent.click(
@@ -708,16 +717,17 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('auth-provider-badge')).toHaveTextContent(
-        'GOOGLE',
-      );
       expect(screen.getByTestId('study-minutes-badge')).toHaveTextContent(
         '40 phút',
       );
     });
+    fireEvent.click(screen.getByTestId('profile-menu-trigger'));
+    expect(screen.getByTestId('auth-provider-badge')).toHaveTextContent(
+      'GOOGLE',
+    );
     expect(useAuthStore.getState().email).toBe('giabao.study@gmail.com');
     expect(
-      screen.queryByRole('button', { name: /Nâng cấp tài khoản/i }),
+      screen.queryByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -793,8 +803,9 @@ describe('P1-T3 Zero-Interruption Account Upgrade', () => {
 
     render(<App />);
 
+    fireEvent.click(await screen.findByTestId('profile-menu-trigger'));
     fireEvent.click(
-      await screen.findByRole('button', { name: /Nâng cấp tài khoản/i }),
+      await screen.findByRole('menuitem', { name: /Nâng cấp tài khoản/i }),
     );
     fireEvent.change(screen.getByLabelText(/^Email/i), {
       target: { value: 'race@example.com' },

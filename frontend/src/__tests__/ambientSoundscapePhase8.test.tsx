@@ -117,7 +117,7 @@ describe('P8-T8 Slice 1: Personal Ambient Soundscape Mixer', () => {
 
     const firstMount = render(<App />);
     await waitFor(() => {
-      expect(screen.getByTestId('backend-status-badge')).toHaveTextContent('Backend: UP');
+      expect(screen.queryByTestId('backend-status-badge')).not.toBeInTheDocument();
     });
 
     // Open Ambient Soundscape popover from HUD in FREE_ROAM
@@ -168,7 +168,7 @@ describe('P8-T8 Slice 1: Personal Ambient Soundscape Mixer', () => {
     audioSpy.createdSources.length = 0;
     const secondMount = render(<App />);
     await waitFor(() => {
-      expect(screen.getByTestId('backend-status-badge')).toHaveTextContent('Backend: UP');
+      expect(screen.queryByTestId('backend-status-badge')).not.toBeInTheDocument();
     });
     expect(useAmbientSoundscapeStore.getState().channels.rain.volume).toBe(80);
     expect(useAmbientSoundscapeStore.getState().channels.cafe.enabled).toBe(true);
@@ -196,7 +196,7 @@ describe('P8-T8 Slice 1: Personal Ambient Soundscape Mixer', () => {
 
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByTestId('backend-status-badge')).toHaveTextContent('Backend: UP');
+      expect(screen.queryByTestId('backend-status-badge')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId('ambient-soundscape-toggle-btn'));

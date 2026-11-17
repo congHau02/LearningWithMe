@@ -136,13 +136,11 @@ describe('P1-T1 Frontend Foundation', () => {
 
     expect(screen.getByText('Cùng Nhau Học Bài')).toBeInTheDocument();
     expect(screen.getByTestId('room-badge')).toHaveTextContent('main-library');
-    expect(screen.getByTestId('character-state-badge')).toHaveTextContent('FREE_ROAM');
+    expect(screen.queryByTestId('character-state-badge')).not.toBeInTheDocument();
     expect(screen.getByTestId('classroom-viewport')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByTestId('backend-status-badge')).toHaveTextContent(
-        'Backend: UP',
-      );
+      expect(screen.queryByTestId('backend-status-badge')).not.toBeInTheDocument();
     });
   });
 });

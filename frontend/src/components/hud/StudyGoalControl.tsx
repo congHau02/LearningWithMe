@@ -64,68 +64,17 @@ export function StudyGoalControl({
     setIsEditing(false);
   };
 
-  if (isEditing) {
-    return (
-      <form
-        className="mt-0.5 flex flex-wrap items-center gap-1.5"
-        onSubmit={(e) => void handleSubmit(onSubmit)(e)}
-      >
-        <input
-          type="text"
-          data-testid="study-goal-input"
-          aria-label="Mục tiêu học tập"
-          {...register('studyGoal')}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape' || e.key === 'Esc') {
-              e.stopPropagation();
-              reset({ studyGoal });
-              setIsEditing(false);
-            }
-          }}
-          placeholder="Nhập mục tiêu hôm nay (≤ 60 ký tự)"
-          className="h-7 w-44 max-w-full rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary sm:w-56"
-          autoFocus
-        />
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {draftLength}/{MAX_STUDY_GOAL_LENGTH}
-        </span>
-        <button
-          type="submit"
-          data-testid="study-goal-save-btn"
-          className="h-7 rounded border border-emerald-500/40 bg-emerald-500/20 px-2 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/30"
-        >
-          Lưu
-        </button>
-        <button
-          type="button"
-          data-testid="study-goal-cancel-btn"
-          onClick={() => {
-            reset({ studyGoal });
-            setIsEditing(false);
-          }}
-          className="h-7 rounded border border-border bg-secondary px-2 text-[11px] text-secondary-foreground hover:bg-accent"
-        >
-          Hủy
-        </button>
-        {errors.studyGoal?.message ? (
-          <span data-testid="study-goal-error" className="w-full text-[11px] text-rose-400">
-            {errors.studyGoal.message}
-          </span>
-        ) : null}
-      </form>
-    );
-  }
-
   return (
-    <div className="mt-0.5 flex items-center gap-1.5 text-xs">
+    <div className="relative flex min-w-0 items-center gap-1.5 rounded-lg border border-border/70 bg-secondary/50 px-2 py-1 text-xs sm:min-h-8">
       {hasGoal && onUpdateGoal ? (
         <button
           type="button"
           data-testid="study-goal-toggle-btn"
           aria-pressed={isCompleted}
+          aria-label={isCompleted ? 'Bỏ đánh dấu hoàn thành mục tiêu' : 'Đánh dấu hoàn thành mục tiêu'}
           title={isCompleted ? 'Bỏ đánh dấu hoàn thành mục tiêu' : 'Đánh dấu hoàn thành mục tiêu'}
           onClick={() => onUpdateGoal(trimmedGoal, !isCompleted)}
-          className={`inline-flex h-5 shrink-0 items-center gap-1 rounded border px-1.5 text-[11px] font-medium transition ${
+          className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center gap-1 rounded border px-1.5 text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             isCompleted
               ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
               : 'border-border bg-secondary/70 text-muted-foreground hover:text-foreground'
@@ -140,7 +89,7 @@ export function StudyGoalControl({
       <p
         data-testid="study-goal-text"
         title={trimmedGoal || undefined}
-        className={`max-w-[180px] truncate sm:max-w-[260px] ${
+        className={`max-w-[180px] truncate sm:max-w-[200px] lg:max-w-[240px] ${
           isCompleted ? 'font-medium text-emerald-300' : 'text-muted-foreground'
         }`}
       >
@@ -151,15 +100,69 @@ export function StudyGoalControl({
         <button
           type="button"
           data-testid="study-goal-edit-btn"
+          aria-expanded={isEditing}
           onClick={() => {
             reset({ studyGoal });
-            setIsEditing(true);
+            setIsEditing((prev) => !prev);
           }}
           title="Chỉnh sửa mục tiêu học tập"
-          className="shrink-0 rounded border border-border/80 bg-secondary/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+          aria-label="Chỉnh sửa mục tiêu học tập"
+          className="shrink-0 rounded border border-border/80 bg-secondary/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           ✏️ Sửa
         </button>
+      ) : null}
+
+      {isEditing ? (
+        <form
+          className="absolute left-0 top-full z-50 mt-2 flex w-72 max-w-[calc(100vw-1.5rem)] flex-wrap items-center gap-1.5 rounded-xl border border-border bg-slate-900/95 p-2.5 shadow-2xl backdrop-blur-md sm:left-1/2 sm:-translate-x-1/2"
+          onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+        >
+          <input
+            type="text"
+            data-testid="study-goal-input"
+            aria-label="Mục tiêu học tập"
+            {...register('studyGoal')}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' || e.key === 'Esc') {
+                e.stopPropagation();
+                reset({ studyGoal });
+                setIsEditing(false);
+              }
+            }}
+            placeholder="Nhập mục tiêu hôm nay (≤ 60 ký tự)"
+            className="h-8 min-w-0 flex-1 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            autoFocus
+          />
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {draftLength}/{MAX_STUDY_GOAL_LENGTH}
+          </span>
+          <div className="flex w-full items-center justify-end gap-1.5">
+            <button
+              type="button"
+              data-testid="study-goal-cancel-btn"
+              onClick={() => {
+                reset({ studyGoal });
+                setIsEditing(false);
+              }}
+              className="min-h-11 rounded border border-border bg-secondary px-2.5 text-[11px] text-secondary-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:px-2"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              data-testid="study-goal-save-btn"
+              className="min-h-11 rounded border border-emerald-500/40 bg-emerald-500/20 px-2.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:px-2"
+            >
+              Lưu
+            </button>
+          </div>
+          {errors.studyGoal?.message ? (
+            <span data-testid="study-goal-error" className="w-full text-[11px] text-rose-400">
+              {errors.studyGoal.message}
+            </span>
+          ) : null}
+        </form>
       ) : null}
     </div>
   );
