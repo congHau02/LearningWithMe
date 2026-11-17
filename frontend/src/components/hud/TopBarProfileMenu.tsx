@@ -3,6 +3,7 @@ import { useDismissiblePopover } from '../../hooks/useDismissiblePopover';
 import type { AuthProvider } from '../../stores/useAuthStore';
 import type { CharacterState } from '../../stores/useGameStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
+import { ChevronDownIcon, CrownIcon, DoorIcon, ExternalLinkIcon } from '../icons';
 
 export interface TopBarProfileMenuProps {
   nickname: string;
@@ -64,7 +65,7 @@ export function TopBarProfileMenu({
         aria-controls="topbar-profile-menu"
         aria-label={`Mở menu tài khoản ${nickname}${isTableHost ? ', Trưởng bàn' : ''}`}
         onClick={() => setIsOpen((prev) => !prev)}
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-secondary/80 px-2 py-1 text-xs transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-card/85 px-2 py-1 text-xs text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
       >
         <span className="relative inline-flex shrink-0">
           <StarterAvatarPortrait
@@ -79,20 +80,23 @@ export function TopBarProfileMenu({
               data-testid="guest-upgrade-indicator"
               title="Tài khoản khách chưa nâng cấp"
               aria-hidden="true"
-              className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-card"
+              className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-card"
             />
           ) : null}
         </span>
 
         {isTableHost ? (
-          <span data-testid="table-host-crown" className="font-bold text-amber-400" title="Trưởng bàn">
-            👑
+          <span
+            data-testid="table-host-crown"
+            className="inline-flex items-center text-primary"
+            title="Trưởng bàn"
+          >
+            <span className="sr-only">👑</span>
+            <CrownIcon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
           </span>
         ) : null}
         <span className="max-w-[96px] truncate font-medium text-foreground">{nickname}</span>
-        <span className="text-[10px] text-muted-foreground" aria-hidden="true">
-          ▾
-        </span>
+        <ChevronDownIcon className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
       </button>
 
       {isOpen ? (
@@ -101,7 +105,7 @@ export function TopBarProfileMenu({
           role="menu"
           aria-label="Menu tài khoản"
           data-testid="profile-dropdown-menu"
-          className="absolute right-0 top-full z-50 mt-2 w-60 max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-slate-900/95 p-2.5 text-xs text-slate-100 shadow-2xl backdrop-blur-md"
+          className="absolute right-0 top-full z-50 mt-2 w-60 max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-card/98 p-2.5 text-xs text-card-foreground shadow-2xl backdrop-blur-md"
         >
           <div className="mb-2 flex items-center justify-between gap-2 border-b border-border/70 pb-2">
             <div className="min-w-0">
@@ -110,7 +114,7 @@ export function TopBarProfileMenu({
             </div>
             <span
               data-testid="auth-provider-badge"
-              className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground"
+              className="shrink-0 rounded border border-border bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground"
             >
               {authProvider}
             </span>
@@ -125,7 +129,7 @@ export function TopBarProfileMenu({
                 className="flex min-h-11 w-full items-center justify-between rounded-lg border border-primary/50 bg-primary/15 px-2.5 py-1.5 text-left font-semibold text-primary transition hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
               >
                 <span>Nâng cấp tài khoản</span>
-                <span aria-hidden="true">↗</span>
+                <ExternalLinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             ) : null}
 
@@ -138,7 +142,7 @@ export function TopBarProfileMenu({
                 className="flex min-h-11 w-full items-center justify-between rounded-lg border border-destructive/50 bg-destructive/20 px-2.5 py-1.5 text-left font-medium text-destructive-foreground transition hover:bg-destructive/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
               >
                 <span>Đứng dậy rời bàn</span>
-                <span aria-hidden="true">🚪</span>
+                <DoorIcon className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             ) : null}
 

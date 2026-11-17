@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { AuthProvider } from '../../stores/useAuthStore';
+import { ClockIcon, PaletteIcon, TrophyIcon } from '../icons';
 import { StudyStreakBadge } from './StudyStreakBadge';
 
 interface TopBarActionsProps {
@@ -46,9 +47,11 @@ export function TopBarActions({
             data-testid="study-minutes-badge"
             onClick={runAction(onOpenStudySessions)}
             title="Xem Lịch sử Phiên học"
-            className="min-h-11 rounded-lg border border-border bg-secondary px-2.5 py-1 font-mono font-medium text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:px-2"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-card/85 px-2.5 py-1 font-mono font-medium text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:px-2"
           >
-            ⏱ {totalStudyMinutes} phút
+            <span className="sr-only">⏱ </span>
+            <ClockIcon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <span>{totalStudyMinutes} phút</span>
           </button>
           <StudyStreakBadge days={studyStreakDays} testId="study-streak-badge" />
         </>
@@ -56,9 +59,11 @@ export function TopBarActions({
         <>
           <span
             data-testid="study-minutes-badge"
-            className="rounded-lg border border-border bg-secondary px-2 py-1 font-mono font-medium text-foreground"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-card/85 px-2.5 py-1 font-mono font-medium text-foreground sm:min-h-8 sm:px-2"
           >
-            {totalStudyMinutes} phút
+            <span className="sr-only">⏱ </span>
+            <ClockIcon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <span>{totalStudyMinutes} phút</span>
           </span>
           <StudyStreakBadge days={studyStreakDays} testId="study-streak-badge" />
         </>
@@ -71,9 +76,11 @@ export function TopBarActions({
           onClick={runAction(onOpenLeaderboard)}
           aria-label="Xem Bảng Xếp Hạng Giờ Học"
           title="Xem Bảng Xếp Hạng Giờ Học"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 font-medium text-amber-200 transition hover:bg-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 sm:px-2"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg border border-primary/40 bg-primary/15 px-2.5 py-1 font-medium text-primary transition hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 sm:px-2"
         >
-          🏆 <span className={inlineOnDesktop ? 'hidden lg:inline' : 'inline'}>Xếp hạng</span>
+          <span className="sr-only">🏆 </span>
+          <TrophyIcon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+          <span className={inlineOnDesktop ? 'hidden lg:inline' : 'inline'}>Xếp hạng</span>
         </button>
       ) : null}
 
@@ -84,9 +91,11 @@ export function TopBarActions({
           onClick={runAction(onOpenCustomizer)}
           aria-label="Tùy chỉnh Nhân vật & Thú cưng"
           title="Tùy chỉnh Nhân vật & Thú cưng"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 font-medium text-sky-200 transition hover:bg-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 sm:px-2"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/80 px-2.5 py-1 font-medium text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 sm:px-2"
         >
-          🎨 <span className={inlineOnDesktop ? 'hidden lg:inline' : 'inline'}>Tủ đồ</span>
+          <span className="sr-only">🎨 </span>
+          <PaletteIcon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+          <span className={inlineOnDesktop ? 'hidden lg:inline' : 'inline'}>Tủ đồ</span>
         </button>
       ) : null}
 

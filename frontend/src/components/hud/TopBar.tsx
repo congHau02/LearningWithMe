@@ -3,6 +3,7 @@ import { useViewportIsMobile } from '../../hooks/useViewportIsMobile';
 import type { AuthProvider } from '../../stores/useAuthStore';
 import type { CharacterState } from '../../stores/useGameStore';
 import { DEFAULT_AVATAR_ID } from '../auth/starterAvatars';
+import { MenuIcon, XIcon } from '../icons';
 import { AmbientSoundscapeControl } from './AmbientSoundscapeControl';
 import { StudyGoalControl } from './StudyGoalControl';
 import { TopBarActions } from './TopBarActions';
@@ -41,28 +42,11 @@ export interface TopBarProps {
 }
 
 export function TopBar({
-  roomId,
-  characterState,
-  nickname,
-  avatarSpriteId = DEFAULT_AVATAR_ID,
-  hatId,
-  deskPetId,
-  authProvider,
-  studyGoal,
-  studyGoalCompleted = false,
-  totalStudyMinutes = 0,
-  studyStreakDays = 0,
-  backendStatus,
-  currentTableId,
-  currentSeatId,
-  isTableHost,
-  canEditStudyGoal = false,
-  onUpdateStudyGoal,
-  onLeaveSeat,
-  onOpenUpgrade,
-  onOpenStudySessions,
-  onOpenLeaderboard,
-  onOpenCustomizer,
+  roomId, characterState, nickname, avatarSpriteId = DEFAULT_AVATAR_ID,
+  hatId, deskPetId, authProvider, studyGoal, studyGoalCompleted = false,
+  totalStudyMinutes = 0, studyStreakDays = 0, backendStatus, currentTableId,
+  currentSeatId, isTableHost, canEditStudyGoal = false, onUpdateStudyGoal,
+  onLeaveSeat, onOpenUpgrade, onOpenStudySessions, onOpenLeaderboard, onOpenCustomizer,
 }: TopBarProps) {
   const isMobile = useViewportIsMobile();
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
@@ -102,7 +86,7 @@ export function TopBar({
           {isSeated ? (
             <span
               data-testid="seated-table-badge"
-              className="inline-flex max-w-[130px] shrink-0 truncate rounded-lg border border-primary/30 bg-primary/15 px-2 py-1 font-mono text-[11px] font-semibold text-primary sm:max-w-none"
+              className="inline-flex max-w-[130px] shrink-0 truncate rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-1 font-mono text-[11px] font-semibold text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.12)] sm:max-w-none"
             >
               Bàn: {currentTableId}
               {currentSeatId ? ` (${currentSeatId})` : ''}
@@ -129,9 +113,13 @@ export function TopBar({
               aria-controls="topbar-actions-drawer"
               aria-label={isMobileDrawerOpen ? 'Đóng menu phòng học' : 'Mở menu phòng học'}
               onClick={() => setIsMobileDrawerOpen((prev) => !prev)}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-border bg-secondary px-2 text-xs font-semibold text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-border bg-secondary p-2 text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {isMobileDrawerOpen ? '✕' : '☰'}
+              {isMobileDrawerOpen ? (
+                <XIcon className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <MenuIcon className="h-4 w-4" aria-hidden="true" />
+              )}
             </button>
           </div>
         ) : null}
@@ -160,7 +148,7 @@ export function TopBar({
           isDrawerCollapsed
             ? 'hidden'
             : isMobile
-              ? 'w-full rounded-xl border border-border bg-slate-900/95 p-2.5 shadow-lg'
+              ? 'w-full rounded-xl border border-border bg-card/95 p-2.5 shadow-xl backdrop-blur-md'
               : 'shrink-0'
         }
       >

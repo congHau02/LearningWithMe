@@ -11,37 +11,49 @@ export function ClassroomTelemetryBar() {
 
   return (
     <div className="grid w-full grid-cols-2 gap-2 text-left text-xs sm:grid-cols-4 sm:gap-2.5">
-      <div className="rounded-lg border border-border/80 bg-secondary/50 p-2">
-        <span className="text-[11px] text-muted-foreground">Tọa độ lưới:</span>
+      <div className="rounded-lg border border-[#243630] bg-[#16221E] p-2 shadow-sm">
+        <span className="text-[11px] text-[#8FA399]">Tọa độ lưới:</span>
         <p
           data-testid="grid-position-readout"
-          className="mt-0.5 truncate font-mono font-semibold text-foreground"
+          className="mt-0.5 truncate font-mono font-semibold text-[#E6ECE8]"
         >
           ({position.x}, {position.y}) • {facingDir}
         </p>
       </div>
-      <div className="rounded-lg border border-border/80 bg-secondary/50 p-2">
-        <span className="text-[11px] text-muted-foreground">Lộ trình A*:</span>
+      <div className="rounded-lg border border-[#243630] bg-[#16221E] p-2 shadow-sm">
+        <span className="text-[11px] text-[#8FA399]">Lộ trình A*:</span>
         <p
           data-testid="path-queue-readout"
-          className="mt-0.5 truncate font-mono font-semibold text-foreground"
+          className="mt-0.5 truncate font-mono font-semibold text-[#E6ECE8]"
         >
-          {pathLength > 0 ? `Còn ${pathLength} bước` : 'Thủ công / Đứng yên'}
+          {pathLength > 0 ? (
+            <span className="text-emerald-400">Còn {pathLength} bước</span>
+          ) : (
+            'Thủ công / Đứng yên'
+          )}
         </p>
       </div>
-      <div className="rounded-lg border border-border/80 bg-secondary/50 p-2">
-        <span className="text-[11px] text-muted-foreground">Chỗ ngồi hiện tại:</span>
+      <div className="rounded-lg border border-[#243630] bg-[#16221E] p-2 shadow-sm">
+        <span className="text-[11px] text-[#8FA399]">Chỗ ngồi hiện tại:</span>
         <p
           data-testid="active-seat-readout"
-          className="mt-0.5 truncate font-mono font-semibold text-foreground"
+          className="mt-0.5 truncate font-mono font-semibold text-[#E6ECE8]"
         >
-          {currentSeatId ? `${currentTableId} / ${currentSeatId}` : 'Chưa ngồi ghế'}
+          {currentSeatId ? (
+            <span className="text-emerald-400 font-semibold">{currentTableId} / {currentSeatId}</span>
+          ) : (
+            'Chưa ngồi ghế'
+          )}
         </p>
       </div>
-      <div className="rounded-lg border border-border/80 bg-secondary/50 p-2">
-        <span className="text-[11px] text-muted-foreground">Tín hiệu SOS bàn:</span>
-        <p className="mt-0.5 truncate font-medium text-foreground">
-          {sosBanner || 'Không có tín hiệu cầu cứu'}
+      <div className="rounded-lg border border-[#243630] bg-[#16221E] p-2 shadow-sm">
+        <span className="text-[11px] text-[#8FA399]">Tín hiệu SOS bàn:</span>
+        <p className="mt-0.5 truncate font-medium text-[#E6ECE8]">
+          {sosBanner ? (
+            <span className="text-primary font-semibold">{sosBanner}</span>
+          ) : (
+            'Không có tín hiệu cầu cứu'
+          )}
         </p>
       </div>
     </div>

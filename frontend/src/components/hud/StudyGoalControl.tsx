@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useDismissiblePopover } from '../../hooks/useDismissiblePopover';
 import { createZodResolver } from '../../utils/zodResolver';
+import { CheckIcon, EditIcon } from '../icons';
 
 export interface StudyGoalControlProps {
   studyGoal: string;
@@ -77,7 +78,7 @@ export function StudyGoalControl({
   return (
     <div
       ref={containerRef}
-      className="relative flex min-w-0 items-center gap-1.5 rounded-lg border border-border/70 bg-secondary/50 px-2 py-1 text-xs sm:min-h-8"
+      className="relative flex min-w-0 items-center gap-1.5 rounded-lg border border-border bg-card/85 px-2 py-1 text-xs shadow-sm sm:min-h-8"
     >
       {hasGoal && onUpdateGoal ? (
         <button
@@ -89,14 +90,24 @@ export function StudyGoalControl({
           onClick={() => onUpdateGoal(trimmedGoal, !isCompleted)}
           className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded border px-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-7 sm:min-h-0 sm:min-w-7 sm:px-1.5 sm:text-[11px] ${
             isCompleted
-              ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
-              : 'border-border bg-secondary/70 text-slate-200 hover:text-foreground'
+              ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+              : 'border-border bg-secondary/80 text-muted-foreground hover:text-foreground'
           }`}
         >
-          {isCompleted ? <span data-testid="study-goal-completed-badge">✅</span> : <span>○</span>}
+          {isCompleted ? (
+            <span data-testid="study-goal-completed-badge" className="inline-flex items-center">
+              <span className="sr-only">✅</span>
+              <CheckIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+            </span>
+          ) : (
+            <span className="h-3 w-3 rounded-full border border-muted-foreground/60" aria-hidden="true" />
+          )}
         </button>
       ) : isCompleted ? (
-        <span data-testid="study-goal-completed-badge">✅</span>
+        <span data-testid="study-goal-completed-badge" className="inline-flex items-center">
+          <span className="sr-only">✅</span>
+          <CheckIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+        </span>
       ) : null}
 
       <p
@@ -122,16 +133,17 @@ export function StudyGoalControl({
           }}
           title="Chỉnh sửa mục tiêu học tập"
           aria-label="Chỉnh sửa mục tiêu học tập"
-          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded border border-border/80 bg-secondary/60 px-2.5 py-1 text-[11px] font-medium text-slate-200 transition hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:min-w-0 sm:px-2 sm:py-0.5 sm:text-[10px]"
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded border border-border bg-secondary/80 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:min-w-0 sm:px-2 sm:py-0.5 sm:text-[10px]"
         >
-          ✏️ Sửa
+          <EditIcon className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+          <span>Sửa</span>
         </button>
       ) : null}
 
       {isEditing ? (
         <form
           id="study-goal-popover"
-          className="absolute left-0 top-full z-50 mt-2 flex w-72 max-w-[calc(100vw-1.5rem)] flex-wrap items-center gap-1.5 rounded-xl border border-border bg-slate-900/95 p-2.5 shadow-2xl backdrop-blur-md sm:left-1/2 sm:-translate-x-1/2"
+          className="absolute left-0 top-full z-50 mt-2 flex w-72 max-w-[calc(100vw-1.5rem)] flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card/95 p-2.5 shadow-2xl backdrop-blur-md sm:left-1/2 sm:-translate-x-1/2"
           onSubmit={(e) => void handleSubmit(onSubmit)(e)}
         >
           <input
@@ -140,7 +152,7 @@ export function StudyGoalControl({
             aria-label="Mục tiêu học tập"
             {...register('studyGoal')}
             placeholder="Nhập mục tiêu hôm nay (≤ 60 ký tự)"
-            className="min-h-11 min-w-0 flex-1 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary sm:h-8 sm:min-h-0"
+            className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary sm:h-8 sm:min-h-0"
             autoFocus
           />
           <span className="font-mono text-[10px] text-muted-foreground">
@@ -154,14 +166,14 @@ export function StudyGoalControl({
                 reset({ studyGoal });
                 setIsEditing(false);
               }}
-              className="min-h-11 rounded border border-border bg-secondary px-2.5 text-[11px] text-secondary-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:px-2"
+              className="min-h-11 rounded-lg border border-border bg-secondary px-2.5 text-[11px] text-secondary-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:px-2"
             >
               Hủy
             </button>
             <button
               type="submit"
               data-testid="study-goal-save-btn"
-              className="min-h-11 rounded border border-emerald-500/40 bg-emerald-500/20 px-2.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:px-2"
+              className="min-h-11 rounded-lg border border-primary/40 bg-primary px-2.5 text-[11px] font-semibold text-primary-foreground hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:px-2"
             >
               Lưu
             </button>

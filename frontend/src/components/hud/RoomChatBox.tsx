@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { sendRoomChatMessage } from '../../services/roomStompClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
+import { ChatIcon, XIcon } from '../icons';
 
 export interface RoomChatBoxProps {
   initialOpen?: boolean;
@@ -48,36 +49,38 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="flex min-h-11 items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/90 px-3.5 py-2 text-xs font-medium text-slate-100 shadow-lg transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 cursor-pointer sm:min-h-9"
+          className="flex min-h-11 items-center gap-2 rounded-full border border-[#243630] bg-[#16221E]/95 px-3.5 py-2 text-xs font-medium text-[#E6ECE8] shadow-lg transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-primary/50 hover:bg-[#243630] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 cursor-pointer sm:min-h-9"
         >
-          <span>💬</span>
+          <ChatIcon className="h-4 w-4 text-primary" aria-hidden="true" />
           <span>Phòng học ({recentMessages.length})</span>
         </button>
       ) : (
-        <div className="flex h-96 max-h-[calc(100dvh-5rem)] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900/95 text-slate-200 shadow-2xl backdrop-blur-md">
+        <div className="flex h-96 max-h-[calc(100dvh-5rem)] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-[#243630] bg-[#16221E]/95 text-[#E6ECE8] shadow-2xl backdrop-blur-md">
           {/* Header */}
-          <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-800/80 border-b border-slate-700/60">
+          <div className="flex items-center justify-between border-b border-[#243630] bg-[#0F1714]/85 px-3.5 py-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-sm">💬</span>
+              <ChatIcon className="h-4 w-4 text-primary" aria-hidden="true" />
               <div>
-                <h3 className="text-xs font-semibold text-slate-100">Room Chat</h3>
-                <p className="text-[10px] text-slate-400 font-mono">{roomId}</p>
+                <h3 className="text-xs font-semibold text-[#E6ECE8]">Room Chat</h3>
+                <p className="font-mono text-[10px] text-[#8FA399]">{roomId}</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded text-xs text-slate-300 hover:bg-slate-700/50 hover:text-slate-100"
+              className="inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded-lg text-xs text-[#8FA399] transition hover:bg-[#243630] hover:text-[#E6ECE8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Thu nhỏ chat"
             >
-              ✕
+              <XIcon className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
 
           {/* Messages list */}
           <div ref={messagesListRef} className="flex-1 overflow-y-auto p-3 space-y-2 text-xs">
             {recentMessages.length === 0 ? (
-              <p className="mt-8 text-center text-[11px] text-slate-400">Chưa có tin nhắn nào trong phòng. Hãy gửi lời chào nhé!</p>
+              <p className="mt-8 text-center text-[11px] text-[#8FA399]">
+                Chưa có tin nhắn nào trong phòng. Hãy gửi lời chào nhé!
+              </p>
             ) : (
               recentMessages.map((msg) => {
                 const isSelf = selfUserId && msg.userId === selfUserId;
@@ -89,17 +92,17 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
                     key={msg.id}
                     className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}
                   >
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-0.5">
-                      <span className={isSelf ? 'text-sky-400 font-medium' : 'text-emerald-400 font-medium'}>
+                    <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-[#8FA399]">
+                      <span className={isSelf ? 'font-semibold text-primary' : 'font-semibold text-emerald-400'}>
                         {isSelf ? 'Bạn' : msg.nickname}
                       </span>
                       {timeStr && <span>• {timeStr}</span>}
                     </div>
                     <div
-                      className={`max-w-[85%] px-3 py-1.5 rounded-xl text-xs break-words ${
+                      className={`max-w-[85%] rounded-xl px-3 py-1.5 text-xs break-words shadow-sm ${
                         isSelf
-                          ? 'bg-sky-600 text-white rounded-tr-none'
-                          : 'bg-slate-800 text-slate-100 border border-slate-700/60 rounded-tl-none'
+                          ? 'rounded-tr-none border border-primary/40 bg-primary/20 text-[#E6ECE8]'
+                          : 'rounded-tl-none border border-[#243630] bg-[#0F1714]/80 text-[#E6ECE8]'
                       }`}
                     >
                       {msg.content}
@@ -111,13 +114,13 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
           </div>
 
           {/* Quick emoji reactions */}
-          <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800/40 border-t border-slate-800/80 gap-1">
+          <div className="flex items-center justify-between gap-1 border-t border-[#243630] bg-[#0F1714]/60 px-3 py-1.5">
             {QUICK_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
                 onClick={() => handleSendMessage(emoji)}
-                className="inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded text-sm transition-transform hover:scale-125 sm:min-h-7 sm:min-w-7"
+                className="inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded text-sm transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary sm:min-h-7 sm:min-w-7"
                 aria-label={emoji}
               >
                 {emoji}
@@ -126,7 +129,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
           </div>
 
           {/* Input form */}
-          <form onSubmit={onSubmit} className="p-2.5 bg-slate-800/80 border-t border-slate-700/60 flex flex-col gap-1">
+          <form onSubmit={onSubmit} className="flex flex-col gap-1 border-t border-[#243630] bg-[#0F1714]/85 p-2.5">
             <div className="flex items-center gap-1.5">
               <input
                 type="text"
@@ -140,17 +143,17 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
                   }
                 }}
                 placeholder="Nhập tin nhắn (tối đa 200 ký tự)..."
-                className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-[#243630] bg-[#16221E] px-2.5 py-1.5 text-xs text-[#E6ECE8] placeholder:text-[#8FA399] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <button
                 type="submit"
                 disabled={!text.trim()}
-                className="bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:hover:bg-sky-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
+                className="cursor-pointer rounded-lg border border-primary/40 bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Gửi
               </button>
             </div>
-            <div className="text-right text-[10px] text-slate-400">
+            <div className="text-right font-mono text-[10px] text-[#8FA399]">
               {text.length}/200
             </div>
           </form>

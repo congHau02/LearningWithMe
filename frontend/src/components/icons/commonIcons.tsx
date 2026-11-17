@@ -150,3 +150,11 @@ export function EyeOffIcon(props: StudioIconProps) {
     </StudioIconWrapper>
   );
 }
+
+export function MenuIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </StudioIconWrapper>
+  );
+}
