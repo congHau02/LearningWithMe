@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { BOTANICAL_2D_SCENE } from '../../game/botanicalPalette';
 import { findVirtualDrink } from '../../game/cafe/studyCafeConfig';
 import {
   CAMERA_ZOOM_STEP,
@@ -66,7 +67,7 @@ export function ClassroomCanvas() {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.NO_CENTER,
           },
-          backgroundColor: '#0f172a',
+          backgroundColor: BOTANICAL_2D_SCENE.canvasBackground,
           pixelArt: true,
           scene: [scene],
           fps: { target: 60, forceSetTimeOut: false },
