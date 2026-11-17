@@ -99,6 +99,8 @@ export function TableWorkspaceShell() {
           canControl={canControl}
           onToggleFreeCollab={() => handlePermissionAction('TOGGLE_FREE_COLLAB', undefined, !isFreeCollab)}
           onRequestControl={handleRequestControl}
+          onJoinVoice={() => void joinVoice()}
+          onToggleMute={toggleMute}
           onMinimize={() => setWorkspaceMinimized(true)}
           onRequestLeaveSeat={requestLeaveSeat}
         />

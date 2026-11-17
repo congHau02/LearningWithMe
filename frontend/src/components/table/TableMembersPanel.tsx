@@ -3,6 +3,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useVoiceStore } from '../../stores/useVoiceStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
+import { SpeakingEqualizer } from './SpeakingEqualizer';
 
 export interface TableMembersPanelProps {
   members: TableMemberDto[];
@@ -71,17 +72,12 @@ export function TableMembersPanel({
                     <p className="flex items-center gap-1.5 font-medium text-foreground">
                       <span>{member.nickname}</span>
                       {isSelf ? <span className="text-muted-foreground">(Bạn)</span> : null}
-                      {memberSpeaking ? (
-                        <span
-                          data-testid={`speaking-indicator-${member.userId}`}
-                          aria-label={`${member.nickname} đang nói`}
-                          className="inline-flex items-end gap-0.5 rounded bg-emerald-500/20 px-1 py-0.5"
-                        >
-                          <span className="h-2 w-0.5 animate-pulse rounded bg-emerald-400" />
-                          <span className="h-3 w-0.5 animate-pulse rounded bg-emerald-300" />
-                          <span className="h-1.5 w-0.5 animate-pulse rounded bg-emerald-400" />
-                        </span>
-                      ) : null}
+                      <SpeakingEqualizer
+                        testId={`speaking-indicator-${member.userId}`}
+                        speaking={memberSpeaking}
+                        micLive={memberInVoice && !memberMuted}
+                        label={`${member.nickname} đang nói`}
+                      />
                     </p>
                     <p className="font-mono text-[10px] text-muted-foreground">
                       {member.seatId} {!member.connected ? '• Grace' : ''}
@@ -106,7 +102,7 @@ export function TableMembersPanel({
                   {memberInVoice ? (
                     <span
                       data-testid={`voice-mute-badge-${member.userId}`}
-                      className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+                      className={`min-w-[4.25rem] rounded border px-1.5 py-0.5 text-center text-[10px] font-semibold ${
                         memberMuted
                           ? 'border-amber-500/40 bg-amber-500/15 text-amber-300'
                           : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'

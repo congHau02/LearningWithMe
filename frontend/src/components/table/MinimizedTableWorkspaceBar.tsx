@@ -3,6 +3,7 @@ import { formatStudyDuration } from '../../hooks/useStudyTimer';
 import { useTableStore } from '../../stores/useTableStore';
 import { useVoiceStore } from '../../stores/useVoiceStore';
 import { formatFocusCountdown } from '../../utils/focusCycle';
+import { getMicControlMeta } from './SpeakingEqualizer';
 
 interface MinimizedTableWorkspaceBarProps {
   activeTableId: string;
@@ -36,6 +37,7 @@ export function MinimizedTableWorkspaceBar({
 
   const { remainingSeconds } = useFocusCycleTimer(focusCycleState, focusCycleResetSeq, isSeated);
   const isFocusPhase = focusCycleState.phase === 'FOCUS';
+  const micMeta = getMicControlMeta(isMuted);
 
   return (
     <aside
@@ -72,15 +74,12 @@ export function MinimizedTableWorkspaceBar({
           <button
             type="button"
             data-testid="minimized-voice-mute-btn"
-            aria-pressed={isMuted}
+            aria-pressed={micMeta.ariaPressed}
+            aria-label={micMeta.ariaLabel}
             onClick={onToggleMute}
-            className={`rounded-lg border px-2.5 py-1 font-semibold transition ${
-              isMuted
-                ? 'border-amber-500/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
-                : 'border-sky-500/40 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25'
-            }`}
+            className={`min-w-[8rem] rounded-lg border px-2.5 py-1 text-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${micMeta.toneClass}`}
           >
-            {isMuted ? '🔇 Bật Mic' : '🎙️ Tắt Mic'}
+            {micMeta.label}
           </button>
         ) : (
           <button

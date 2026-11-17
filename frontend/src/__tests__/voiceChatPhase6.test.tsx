@@ -320,7 +320,7 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
     expect(screen.getByTestId('voice-peer-status-u-bob')).toHaveTextContent('Đã kết nối');
 
     await waitFor(() => {
-      expect(screen.getByTestId('speaking-indicator-u-bob')).toBeInTheDocument();
+      expect(screen.getByTestId('speaking-indicator-u-bob')).toHaveAttribute('data-speaking', 'true');
     });
 
     // Bob mutes -> speaking indicator clears & mute badge updates immediately
@@ -333,7 +333,7 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
       });
     });
     expect(screen.getByTestId('voice-mute-badge-u-bob')).toHaveTextContent('Mic tắt');
-    expect(screen.queryByTestId('speaking-indicator-u-bob')).not.toBeInTheDocument();
+    expect(screen.getByTestId('speaking-indicator-u-bob')).toHaveAttribute('data-speaking', 'false');
 
     // Alice toggles her own mic mute
     fireEvent.click(screen.getByTestId('voice-mute-btn'));

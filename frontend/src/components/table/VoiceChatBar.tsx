@@ -1,5 +1,6 @@
 import type { TableMemberDto } from '../../services/tableApi';
 import { useVoiceStore, type VoicePeerConnectionState } from '../../stores/useVoiceStore';
+import { getMicControlMeta, SpeakingEqualizer } from './SpeakingEqualizer';
 
 export interface VoiceChatBarProps {
   members: TableMemberDto[];
@@ -34,6 +35,7 @@ export function VoiceChatBar({
 
   const remoteMembers = members.filter((m) => m.userId !== selfUserId);
   const activeCount = Object.keys(peers).length + (inVoice ? 1 : 0);
+  const micMeta = getMicControlMeta(isMuted);
 
   return (
     <section
@@ -52,15 +54,12 @@ export function VoiceChatBar({
           >
             {activeCount} đang bật thoại
           </span>
-          {inVoice && isSelfSpeaking && !isMuted ? (
-            <span
-              data-testid="self-speaking-indicator"
-              className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300"
-            >
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-              Bạn đang nói
-            </span>
-          ) : null}
+          <SpeakingEqualizer
+            testId="self-speaking-indicator"
+            speaking={inVoice && isSelfSpeaking && !isMuted}
+            micLive={inVoice && !isMuted}
+            label="Bạn đang nói"
+          />
         </div>
 
         <div className="flex items-center gap-2 text-xs">
@@ -70,7 +69,7 @@ export function VoiceChatBar({
               data-testid="voice-join-btn"
               disabled={isJoining}
               onClick={onJoinVoice}
-              className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-[44px] rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 font-semibold text-emerald-200 transition hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[36px]"
             >
               {isJoining ? 'Đang bật mic...' : 'Tham gia Voice'}
             </button>
@@ -79,21 +78,18 @@ export function VoiceChatBar({
               <button
                 type="button"
                 data-testid="voice-mute-btn"
-                aria-pressed={isMuted}
+                aria-pressed={micMeta.ariaPressed}
+                aria-label={micMeta.ariaLabel}
                 onClick={onToggleMute}
-                className={`rounded-lg border px-3 py-1.5 font-semibold transition ${
-                  isMuted
-                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
-                    : 'border-sky-500/40 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25'
-                }`}
+                className={`min-h-[44px] min-w-[8.25rem] rounded-lg border px-3 py-1.5 text-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 sm:min-h-[36px] ${micMeta.toneClass}`}
               >
-                {isMuted ? 'Bật Micro' : 'Tắt Micro'}
+                {micMeta.label}
               </button>
               <button
                 type="button"
                 data-testid="voice-leave-btn"
                 onClick={onLeaveVoice}
-                className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 font-semibold text-rose-200 transition hover:bg-rose-500/25"
+                className="min-h-[44px] rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 font-semibold text-rose-200 transition hover:bg-rose-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 sm:min-h-[36px]"
               >
                 Rời kênh thoại
               </button>
