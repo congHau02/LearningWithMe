@@ -1,6 +1,7 @@
 import { formatStudyDuration } from '../../hooks/useStudyTimer';
 import { useVoiceStore } from '../../stores/useVoiceStore';
-import { getMicControlMeta, SpeakingEqualizer } from './SpeakingEqualizer';
+import { SpeakingEqualizer } from './SpeakingEqualizer';
+import { getMicControlMeta } from './voiceControlMeta';
 
 interface TableWorkspaceHeaderProps {
   activeTableId: string;

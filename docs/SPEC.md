@@ -1,4 +1,4 @@
-# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (Phases 1 – 7)
+# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (Phases 1 – 9)
 
 ## Problem Statement
 
@@ -6,7 +6,7 @@ Người học trực tuyến (học sinh, sinh viên, người tự học) thư
 
 ## Solution
 
-Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **7 Phase (Vertical Slices)**:
+Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **9 Phase (Vertical Slices)**:
 
 - **Phase 1 — Foundation, Docker Infra & Hybrid Auth**: Thiết lập nền tảng cơ sở dữ liệu bền vững (MySQL 8.0) và bộ nhớ trạng thái thời gian thực (Redis 7.x), cho phép người học bước ngay vào **Room** mặc định với tư cách **Guest** không cần đăng ký, và hỗ trợ **Account Upgrade** không gián đoạn lên **Registered User** để bảo toàn toàn bộ thời gian học.
 - **Phase 2 — 2D Classroom Engine & Character State Machine**: Xây dựng bản đồ **Room** 2D tương tác với tìm đường tự động $A^*$, máy trạng thái nhân vật 3 trạng thái bất biến (`FREE_ROAM` $\leftrightarrow$ `WALKING_TO_SEAT` $\leftrightarrow$ `SEATED`), quy tắc ưu tiên bàn phím tức thời và khóa di chuyển khi đang ngồi học.
@@ -15,6 +15,8 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 - **Phase 5 — Ephemeral Homework Whiteboard & Auto-Cleanup**: Cho phép tải lên hoặc dán nhanh (`Ctrl + V`) tối đa 5 **Homework Slide** mỗi **Table** (định dạng `.webp`), vẽ hướng dẫn thời gian thực bằng các công cụ **Stroke** (`PEN`, `HIGHLIGHTER`, `TEXT`, `ERASER`) và **Laser Pointer** chuẩn hóa tọa độ `[0.0, 1.0]`, đồng thời tự động xóa sạch dữ liệu tạm ngay khi **Table** về `0` người ngồi.
 - **Phase 6 — Study Sessions Persistence, Gamification & WebRTC Voice**: Ghi nhận các **Study Session** hợp lệ ($\ge 1\text{ phút}$), mở khóa trang phục và thú cưng để bàn theo tổng số phút học tích lũy, hiển thị bảng xếp hạng học tập, và tích hợp đàm thoại âm thanh **WebRTC P2P Mesh** cho các thành viên ngồi cùng **Table**.
 - **Phase 7 — Production Readiness & Zero-Card Cloud Free Tier Operations (ADR-0007)**: Đưa toàn bộ hệ thống lên môi trường Production HTTPS/WSS công khai với chi phí bằng 0 và không cần thẻ tín dụng (**Vercel Hobby** + **Render Free Docker `linux/amd64`** + **Redis Cloud Free** + **Managed MySQL 8.0** + **Managed TURN Free Tier**), kèm cổng kiểm định CI/CD GitHub Actions (kiểm tra giới hạn dòng `AGENTS.md`, độ phủ JaCoCo $\ge 70\%$), khôi phục **Grace Period** sau khi khởi động lại máy chủ, kết nối lại STOMP với backoff + jitter, sao lưu đêm tự động 7 ngày và kiểm thử tải `k6` 10Hz.
+- **Phase 8 — Realtime Hardening, Study Café & Focus Motivation (ADR-0008 & ADR-0009)**: Cô lập kênh STOMP theo `(roomId, tableId)`, bảo mật tín hiệu thoại riêng tư qua `/user/queue/voice`, khóa trạng thái bàn nguyên tử, xác thực tải ảnh bài tập, nâng cấp không gian **Study Café** với **Ambient NPCs**, **Focus Cycle** đồng bộ, check-off **Study Goal**, **Study Streak**, **Ambient Soundscape** và thu gọn **Table Workspace**.
+- **Phase 9 — UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening**: Kéo thả/hoán đổi bố cục Video & Bảng bài tập trong **Table Workspace** không làm reload YouTube iframe, chỉ báo Mic không giật (`CLS = 0`) kèm nút trạng thái cố định ở Header bàn, tinh gọn thanh `TopBar` về 1 hàng gọn gàng, thông báo đợi **Render** Cold Start kèm tự động ping lại `/api/v1/health`, nút chụp ảnh bài tập trực tiếp bằng camera điện thoại, nhân viên `Phục vụ An` tìm đường $A^*$ mang đồ uống tới chỗ người học (`Drink Delivery`), và sửa lỗi CI/CD + `backup-nightly.yml` + test phân mảnh **Room Shard**.
 
 ## User Stories
 
@@ -82,6 +84,19 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 49. As a **`SEATED`** learner, I want a backend restart to reconcile pending **Grace Period** deadlines on startup and my client to reconnect with exponential backoff + jitter (`1s..15s`), so that short restarts preserve my **Seat** and **Table Host** role while abandoned seats are still reclaimed after 30 seconds.
 50. As the operator, I want a hardened `prod` Spring profile (IP rate limiting `10 req/min` on auth endpoints returning `429 ProblemDetail`, strict CORS/STOMP allowed origins, JSON structured logs, and `/actuator/health` exposure) plus automated GitHub Actions CI (`check-file-limits.mjs`, JaCoCo $\ge 70\%$, Testcontainers, Vitest) and CD (`linux/amd64` GHCR image + Render Free / SSH fallback).
 51. As the operator, I want a scheduled nightly backup workflow (`.github/workflows/backup-nightly.yml`) with a verified restore script (`scripts/restore-backup.sh`) and a parameterized `k6` load test (`scripts/k6-room-load.js`) simulating 10Hz STOMP movement and **Room Chat**, so that database loss is recoverable and broadcast latency ($p95 < 250\text{ms}$) is verifiable. *(UptimeRobot 5-minute keep-alive monitor is supported by `/actuator/health` and currently deferred for later activation.)*
+
+### Phase 8: Realtime Hardening, Study Café & Focus Motivation
+52. As a **`SEATED`** learner, I want **Table Workspace** channels isolated by `(roomId, tableId)`, private WebRTC signaling over `/user/queue/voice`, and authenticated **Homework Slide** delivery, so that cross-shard leaks and unauthorized workspace mutations are prevented.
+53. As a learner in the **Study Café**, I want **Ambient NPCs**, **Ambient Soundscape**, synchronized **Focus Cycle**, live **Study Goal** check-off, daily **Study Streak**, and a collapsible **Table Workspace** bar, so that solo or group studying feels warm, structured, and responsive across desktop and mobile.
+
+### Phase 9: UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening
+54. As a **`SEATED`** learner, I want to drag-and-drop (or quick-swap) the YouTube video player and **Homework Slide** board between top/bottom or side-by-side layouts persisted to my browser without reloading the video iframe, so that I can arrange my study view comfortably.
+55. As a **`SEATED`** learner using voice chat, I want a fixed-size, zero-CLS speaking indicator, explicit current mic state labels, and a persistent mic pill in the **Table Workspace** header, so that the UI never jumps when I talk and I always know if my mic is live.
+56. As a learner, I want a decluttered single-row `TopBar` that keeps essential context and actions visible while tucking secondary account details into a profile dropdown and hiding noisy healthy-state technical badges, so that the **Room** feels calm and spacious.
+57. As a learner arriving when the Render backend is sleeping, I want automatic `/api/v1/health` polling with a reassuring cold-start notice and elapsed timer while still being able to fill in my character setup, so that I know the server is waking up instead of assuming the app is broken.
+58. As a mobile learner with control permissions, I want a direct camera capture button in the **Homework Slide** panel that opens my rear camera and feeds into `.webp` compression, so that I can snap and share paper exercises in one tap.
+59. As a learner ordering a virtual drink in the **Study Café**, I want the server **Ambient NPC** (`Phục vụ An`) to walk via $A^*$ pathfinding to the counter and then to my current location to deliver my drink bubble before equipping the drink badge, so that ordering feels alive and grounded in the 2D space.
+60. As the operator, I want valid GitHub Actions workflows (`ci.yml`, `cd.yml`, `backup-nightly.yml`) without illegal `secrets.*` expressions in `if:` conditionals, graceful handling when cloud backup secrets are unconfigured, TiDB/Redis TLS backup compatibility, and a deterministic **Room Shard** concurrency test, so that CI/CD and nightly backups stay trustworthy.
 
 ## Implementation Decisions
 
@@ -153,6 +168,15 @@ type CharacterState = 'FREE_ROAM' | 'WALKING_TO_SEAT' | 'SEATED';
   - `.github/workflows/backup-nightly.yml` runs `scripts/create-backup.sh` nightly (and via `workflow_dispatch`) to archive `mysql.sql` + binary-safe `redis-dump.tsv` into `.tar.gz` artifacts with `retention-days: 7` (restorable via `scripts/restore-backup.sh`).
   - `scripts/k6-room-load.js` load-tests concurrent STOMP learners moving at 10Hz and sending **Room Chat** messages, asserting $p95 < 250\text{ms}$ broadcast latency. *(5-minute UptimeRobot keep-alive ping on `/actuator/health` is deferred for later setup.)*
 
+### 9. Phase 9 UX Ergonomics, Study Café Delivery & CI/CD Hardening
+- **Flexible Table Workspace Layout**: `TableWorkspaceShell` persists personal layout mode (`VIDEO_FIRST`, `HOMEWORK_FIRST`, `SPLIT_HORIZONTAL`) in `localStorage` and reorders panels via CSS Grid/Flex `order` + HTML5/pointer drag-and-drop and 1-click toggle so the YouTube IFrame never reloads on swap.
+- **Zero-CLS Voice Indicators**: `VoiceChatBar` and `TableMembersPanel` reserve fixed-size slots for live speaking indicators (`opacity`/color transitions only, zero text mount/unmount reflow), pair explicit mic state labels (`Mic đang BẬT` / `Mic đang TẮT`), and expose a persistent mic status/toggle pill in `TableWorkspaceHeader`.
+- **Streamlined Single-Row `TopBar`**: Consolidates `TopBar` into 3 clean zones on one row, moves account details and Guest upgrade CTA into a profile dropdown, removes raw enum badges (`FREE_ROAM` / `WALKING_TO_SEAT`), and hides `Backend: UP` when healthy.
+- **Render Cold-Start Recovery**: `useAppBootstrap` polls `/api/v1/health` every 3–4 seconds while waking/offline with a manual retry control, surfaces a cold-start wait notice with elapsed seconds inside `GuestOnboardingModal` (allowing pre-filling nickname, avatar, and **Study Goal** while waiting) and a non-blocking wake-up banner for returning sessions.
+- **Mobile Camera Homework Upload**: `HomeworkDeckPanel` adds a direct camera capture trigger (`accept="image/*" capture="environment"`) feeding into the existing `.webp` compression and magic-byte-validated upload pipeline.
+- **Study Café Drink Delivery (`ADR-0009`)**: Selecting a drink routes `Phục vụ An` (`npc_server`) via client-side $A^*$ pathfinding (`GridPathfinder`) through the service counter to an adjacent walkable tile near the learner (`FREE_ROAM` or `SEATED`), plays a delivery **Chat Bubble**, and equips the drink badge upon arrival (with timeout fallback).
+- **CI/CD & Backup Hardening**: Removes illegal `secrets.*` conditionals from `if:` blocks in `.github/workflows/cd.yml` and `.github/workflows/backup-nightly.yml`, skips nightly cloud dumps with `::warning::` when DB/Redis secrets are unconfigured while verifying TiDB Cloud / Redis Labs TLS support, and fixes the **Room Shard** concurrent spillover integration test flake.
+
 ## Testing Decisions
 
 ### Philosophy: External Behavior at the Highest Seams
@@ -174,6 +198,12 @@ Tests verify observable behavior across two primary seams without coupling to in
      - *YouTube Drift & Background Timer*: Verifies `seekTo` is skipped when drift $< 2.0\text{s}$ and triggered when drift $\ge 2.0\text{s}$ using epoch timestamps.
      - *Normalized Canvas Coordinates*: Verifies lossless round-trip mapping between viewport pixel coordinates and `[0.0, 1.0]` normalized coordinates across desktop and mobile aspect ratios.
 
+3. **Seam 3 — Live Browser Verification Seam (Chrome DevTools MCP)**:
+   - For all Frontend UI/UX, layout, responsive, or performance changes, verify against the running app using Chrome DevTools MCP (`chrome-devtools`, `/debug-optimize-lcp`, `/a11y-debugging`):
+     - Zero Cumulative Layout Shift (`CLS`) during live state toggles (e.g., voice speaking indicator), zero horizontal overflow at `375px` mobile and desktop widths.
+     - Performance trace & LCP subpart breakdown without console/network errors.
+     - Accessibility tree, keyboard `Tab` / `Escape` navigation, accessible labels, contrast, and $\ge 44\times 44\text{px}$ tap targets.
+
 ## Out of Scope
 
 - **Multi-Room CRUD / Custom User-Created Rooms**: Learners join the shared default **Room** (`main-library`) with automatic capacity sharding; custom room creation and map editors are excluded.
@@ -192,3 +222,5 @@ Tests verify observable behavior across two primary seams without coupling to in
   - **Phase 5**: Ephemeral Homework Whiteboard & Auto-Cleanup Lifecycle (depends on Phase 4)
   - **Phase 6**: Study Sessions Persistence, Gamification & WebRTC Voice Chat (depends on Phase 4 & Phase 5)
   - **Phase 7**: Production Readiness — Free Infra Deploy, CI/CD, Restart Resilience & Ops (depends on Phases 1–6)
+  - **Phase 8**: Realtime Hardening, Study Café & Focus Motivation (depends on Phases 1–6)
+  - **Phase 9**: UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening (depends on Phases 7–8)

@@ -85,7 +85,6 @@ export function GuestOnboardingModal({
         {isBackendWaiting ? (
           <ServerWakeUpNotice
             variant="card"
-            backendStatus={backendStatus}
             elapsedSeconds={coldStartElapsedSeconds}
             onRetry={onRetryBackendHealth}
           />

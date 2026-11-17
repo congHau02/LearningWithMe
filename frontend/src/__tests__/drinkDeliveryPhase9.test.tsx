@@ -6,7 +6,7 @@ import {
 } from '../game/cafe/studyCafeConfig';
 import { InputController } from '../game/controllers/InputController';
 import { GridPathfinder } from '../game/pathfinding/GridPathfinder';
-import { MAIN_LIBRARY_TOPOLOGY, isTileWalkable } from '../game/topology/roomTopology';
+import { MAIN_LIBRARY_TOPOLOGY, findSeatAtTile, isTileWalkable } from '../game/topology/roomTopology';
 import { useGameStore } from '../stores/useGameStore';
 
 describe('Phase 9 P9-T7: Study Café Waiter NPC Pathfinding Drink Delivery', () => {
@@ -75,6 +75,8 @@ describe('Phase 9 P9-T7: Study Café Waiter NPC Pathfinding Drink Delivery', () 
         now += 32;
         manager.update(32, now);
         const server = manager.getSnapshots().find((n) => n.npcId === 'npc_server')!;
+        expect(isTileWalkable(MAIN_LIBRARY_TOPOLOGY, server.tileX, server.tileY)).toBe(true);
+        expect(findSeatAtTile(MAIN_LIBRARY_TOPOLOGY, server.tileX, server.tileY)).toBeNull();
         if (
           SERVICE_COUNTER_TILES.some(
             (c) => Math.abs(server.tileX - c.tileX) + Math.abs(server.tileY - c.tileY) === 1,
@@ -84,10 +86,10 @@ describe('Phase 9 P9-T7: Study Café Waiter NPC Pathfinding Drink Delivery', () 
         }
         if (onDelivered.mock.calls.length > 0 && deliveredAtMs === null) {
           deliveredAtMs = now;
-          // At delivery moment, server must be adjacent (or on) learner tile, facing learner, and showing delivery bubble
+          // At delivery moment, server must be adjacent (never on Seat), facing learner, and showing delivery bubble
           const dx = learnerTile.tileX - server.tileX;
           const dy = learnerTile.tileY - server.tileY;
-          expect(Math.abs(dx) + Math.abs(dy)).toBeLessThanOrEqual(1);
+          expect(Math.abs(dx) + Math.abs(dy)).toBe(1);
           const expectedFacing = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'RIGHT' : 'LEFT') : dy > 0 ? 'DOWN' : 'UP';
           expect(server.facingDir).toBe(expectedFacing);
           expect(server.isMoving).toBe(false);
@@ -109,6 +111,15 @@ describe('Phase 9 P9-T7: Study Café Waiter NPC Pathfinding Drink Delivery', () 
       now += 32;
       manager.update(32, now);
       expect(manager.getSnapshots().find((n) => n.npcId === 'npc_server')?.isMoving).toBe(true);
+
+      // Verify return-to-patrol uses A* around furniture/seats (never clips obstacles)
+      for (let i = 0; i < 300; i += 1) {
+        now += 64;
+        manager.update(64, now);
+        const server = manager.getSnapshots().find((n) => n.npcId === 'npc_server')!;
+        expect(isTileWalkable(MAIN_LIBRARY_TOPOLOGY, server.tileX, server.tileY)).toBe(true);
+        expect(findSeatAtTile(MAIN_LIBRARY_TOPOLOGY, server.tileX, server.tileY)).toBeNull();
+      }
 
       expect(visitedCounterPickup).toBe(true);
       expect(deliveredAtMs).not.toBeNull();
@@ -188,6 +199,9 @@ describe('Phase 9 P9-T7: Study Café Waiter NPC Pathfinding Drink Delivery', () 
       for (let i = 0; i < 200; i += 1) {
         now += 32;
         manager.update(32, now);
+        const s = manager.getSnapshots().find((n) => n.npcId === 'npc_server')!;
+        expect(isTileWalkable(MAIN_LIBRARY_TOPOLOGY, s.tileX, s.tileY)).toBe(true);
+        expect(findSeatAtTile(MAIN_LIBRARY_TOPOLOGY, s.tileX, s.tileY)).toBeNull();
       }
       expect(onDelivered).not.toHaveBeenCalled();
 
@@ -195,6 +209,9 @@ describe('Phase 9 P9-T7: Study Café Waiter NPC Pathfinding Drink Delivery', () 
       for (let i = 0; i < 200; i += 1) {
         now += 32;
         manager.update(32, now);
+        const s = manager.getSnapshots().find((n) => n.npcId === 'npc_server')!;
+        expect(isTileWalkable(MAIN_LIBRARY_TOPOLOGY, s.tileX, s.tileY)).toBe(true);
+        expect(findSeatAtTile(MAIN_LIBRARY_TOPOLOGY, s.tileX, s.tileY)).toBeNull();
       }
       expect(onDelivered).toHaveBeenCalledTimes(1);
       expect(onDelivered).toHaveBeenCalledWith('matcha_latte', 4);
@@ -231,6 +248,9 @@ describe('Phase 9 P9-T7: Study Café Waiter NPC Pathfinding Drink Delivery', () 
       for (let i = 0; i < 200; i += 1) {
         now += 32;
         manager.update(32, now);
+        const s = manager.getSnapshots().find((n) => n.npcId === 'npc_server')!;
+        expect(isTileWalkable(MAIN_LIBRARY_TOPOLOGY, s.tileX, s.tileY)).toBe(true);
+        expect(findSeatAtTile(MAIN_LIBRARY_TOPOLOGY, s.tileX, s.tileY)).toBeNull();
       }
       expect(onDelivered).not.toHaveBeenCalled();
 

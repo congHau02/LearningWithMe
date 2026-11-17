@@ -131,3 +131,7 @@ _Avoid_: Attendance Streak, Login Streak, Combo
 **Ambient Soundscape (Âm thanh nền học tập)**:
 Lớp âm thanh môi trường phát lặp nhẹ nhàng (tiếng mưa, quán nước, tiếng ồn trắng) do từng người học tự bật và điều chỉnh cho không gian nghe cá nhân của mình.
 _Avoid_: Background Music, BGM, Audio Track
+
+**Drink Delivery (Giao đồ uống tại quán)**:
+Hành trình một Ambient NPC di chuyển qua quầy pha chế tới vị trí của người học trong Study Café để trao biểu tượng đồ uống đồng hành sau khi người học chọn món.
+_Avoid_: Beverage Spawn, Instant Drink, Order Dispatch

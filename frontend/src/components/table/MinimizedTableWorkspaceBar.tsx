@@ -3,7 +3,7 @@ import { formatStudyDuration } from '../../hooks/useStudyTimer';
 import { useTableStore } from '../../stores/useTableStore';
 import { useVoiceStore } from '../../stores/useVoiceStore';
 import { formatFocusCountdown } from '../../utils/focusCycle';
-import { getMicControlMeta } from './SpeakingEqualizer';
+import { getMicControlMeta } from './voiceControlMeta';
 
 interface MinimizedTableWorkspaceBarProps {
   activeTableId: string;
@@ -77,7 +77,7 @@ export function MinimizedTableWorkspaceBar({
             aria-pressed={micMeta.ariaPressed}
             aria-label={micMeta.ariaLabel}
             onClick={onToggleMute}
-            className={`min-w-[8rem] rounded-lg border px-2.5 py-1 text-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${micMeta.toneClass}`}
+            className={`inline-flex min-h-11 min-w-[8rem] items-center justify-center rounded-lg border px-2.5 py-1 text-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 sm:min-h-8 ${micMeta.toneClass}`}
           >
             {micMeta.label}
           </button>
@@ -87,7 +87,7 @@ export function MinimizedTableWorkspaceBar({
             data-testid="minimized-voice-join-btn"
             disabled={isJoining}
             onClick={onJoinVoice}
-            className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-60"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-semibold text-emerald-200 transition hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 sm:min-h-8"
           >
             {isJoining ? 'Đang bật...' : '🎙️ Voice'}
           </button>
@@ -99,7 +99,7 @@ export function MinimizedTableWorkspaceBar({
             data-testid="minimized-unread-chat-badge"
             aria-label={`${unreadChatCount} tin nhắn bàn học chưa đọc`}
             onClick={onExpand}
-            className="inline-flex items-center gap-1 rounded-lg border border-amber-400/50 bg-amber-500/20 px-2 py-1 font-mono font-bold text-amber-200 transition hover:bg-amber-500/30"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-amber-400/50 bg-amber-500/20 px-2 py-1 font-mono font-bold text-amber-200 transition hover:bg-amber-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0"
           >
             💬 {unreadChatCount}
           </button>
@@ -109,7 +109,7 @@ export function MinimizedTableWorkspaceBar({
           type="button"
           data-testid="expand-workspace-btn"
           onClick={onExpand}
-          className="rounded-lg border border-primary/50 bg-primary/20 px-2.5 py-1 font-semibold text-primary transition hover:bg-primary/30"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary/50 bg-primary/20 px-2.5 py-1 font-semibold text-primary transition hover:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
         >
           Mở rộng
         </button>
@@ -118,7 +118,7 @@ export function MinimizedTableWorkspaceBar({
           type="button"
           data-testid="minimized-leave-seat-btn"
           onClick={onRequestLeaveSeat}
-          className="rounded-lg border border-destructive/50 bg-destructive/20 px-2.5 py-1 font-semibold text-destructive-foreground transition hover:bg-destructive/30"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-destructive/50 bg-destructive/20 px-2.5 py-1 font-semibold text-destructive-foreground transition hover:bg-destructive/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
         >
           Rời bàn
         </button>

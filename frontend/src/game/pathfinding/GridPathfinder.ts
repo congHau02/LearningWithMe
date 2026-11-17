@@ -13,9 +13,19 @@ export class GridPathfinder {
   private readonly topology: RoomTopology;
   private readonly grid: number[][];
 
-  constructor(topology: RoomTopology = MAIN_LIBRARY_TOPOLOGY) {
+  constructor(
+    topology: RoomTopology = MAIN_LIBRARY_TOPOLOGY,
+    options?: { blockSeats?: boolean },
+  ) {
     this.topology = topology;
     this.grid = buildCollisionGrid(topology);
+    if (options?.blockSeats) {
+      for (const seat of topology.seats) {
+        if (this.grid[seat.tileY]?.[seat.tileX] !== undefined) {
+          this.grid[seat.tileY][seat.tileX] = 1;
+        }
+      }
+    }
   }
 
   public getTopology(): RoomTopology {
@@ -23,7 +33,10 @@ export class GridPathfinder {
   }
 
   public isWalkable(tileX: number, tileY: number): boolean {
-    return isTileWalkable(this.topology, tileX, tileY);
+    return (
+      isTileWalkable(this.topology, tileX, tileY) &&
+      this.grid[tileY]?.[tileX] === WALKABLE_TILE
+    );
   }
 
   /**

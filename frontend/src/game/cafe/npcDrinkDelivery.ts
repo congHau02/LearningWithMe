@@ -1,6 +1,11 @@
-import { tileToWorldCenter } from '../entities/PlayerSprite';
 import { GridPathfinder } from '../pathfinding/GridPathfinder';
-import type { FacingDirection, TileCoordinate } from '../topology/roomTopology';
+import type { TileCoordinate } from '../topology/roomTopology';
+import {
+  findShortestPathToCandidates,
+  resolveFacingTowardTile,
+  stepAlongPath,
+  type NpcMotionActor,
+} from './npcPathMovement';
 import { SERVICE_COUNTER_TILES, findVirtualDrink, type VirtualDrinkOption } from './studyCafeConfig';
 
 const DELIVERY_SPEED_PX_PER_SEC = 80;
@@ -24,50 +29,51 @@ export interface ActiveDrinkDelivery {
   onDelivered: (drinkId: string, seq: number) => void;
 }
 
-export interface DeliveryActorState {
-  pixelX: number;
-  pixelY: number;
-  facingDir: FacingDirection;
-  isMoving: boolean;
-}
-
-export function resolveMoveDirection(dx: number, dy: number, fallback: FacingDirection): FacingDirection {
-  if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > 0.1) return dx > 0 ? 'RIGHT' : 'LEFT';
-  if (Math.abs(dy) > 0.1) return dy > 0 ? 'DOWN' : 'UP';
-  return fallback;
-}
-
-function resolveFacingTowardTile(from: TileCoordinate, to: TileCoordinate, fallback: FacingDirection): FacingDirection {
-  const dx = to.tileX - from.tileX;
-  const dy = to.tileY - from.tileY;
-  if (dx === 0 && dy === 0) return fallback;
-  return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'RIGHT' : 'LEFT') : dy > 0 ? 'DOWN' : 'UP';
-}
-
-function findShortestPathToCandidates(
-  pathfinder: GridPathfinder,
-  start: TileCoordinate,
-  candidates: TileCoordinate[],
-): TileCoordinate[] | null {
-  let bestPath: TileCoordinate[] | null = null;
-  for (const target of candidates) {
-    if (!pathfinder.isWalkable(target.tileX, target.tileY)) continue;
-    if (start.tileX === target.tileX && start.tileY === target.tileY) {
-      return [];
-    }
-    const path = pathfinder.findPath(start, target);
-    if (path.length > 0 && (!bestPath || path.length < bestPath.length)) {
-      bestPath = path;
-    }
-  }
-  return bestPath;
-}
-
 function findCounterPickupPath(pathfinder: GridPathfinder, start: TileCoordinate): TileCoordinate[] {
   const counterFrontTiles = SERVICE_COUNTER_TILES.map((t) => ({ tileX: t.tileX, tileY: t.tileY - 1 }));
   return findShortestPathToCandidates(pathfinder, start, counterFrontTiles) ?? [];
 }
 
+function findAdjacentLearnerPath(
+  pathfinder: GridPathfinder,
+  start: TileCoordinate,
+  learnerTile: TileCoordinate,
+): { status: 'AT_TARGET' | 'PATH' | 'UNREACHABLE'; path: TileCoordinate[] } {
+  const neighbors: TileCoordinate[] = [
+    { tileX: learnerTile.tileX, tileY: learnerTile.tileY + 1 },
+    { tileX: learnerTile.tileX, tileY: learnerTile.tileY - 1 },
+    { tileX: learnerTile.tileX - 1, tileY: learnerTile.tileY },
+    { tileX: learnerTile.tileX + 1, tileY: learnerTile.tileY },
+  ];
+  const adjacentPath = findShortestPathToCandidates(pathfinder, start, neighbors);
+  if (adjacentPath !== null) {
+    return { status: adjacentPath.length === 0 ? 'AT_TARGET' : 'PATH', path: adjacentPath };
+  }
+  // Fallback only applies when learnerTile itself is non-seat walkable (e.g. FREE_ROAM dead-end tile)
+  if (pathfinder.isWalkable(learnerTile.tileX, learnerTile.tileY)) {
+    const fallback = pathfinder.findPath(start, learnerTile);
+    if (fallback.length > 0) return { status: 'PATH', path: fallback };
+    if (start.tileX === learnerTile.tileX && start.tileY === learnerTile.tileY) {
+      return { status: 'AT_TARGET', path: [] };
+    }
+  }
+  return { status: 'UNREACHABLE', path: [] };
+}
+
+function syncLearnerDeliveryPath(
+  delivery: ActiveDrinkDelivery,
+  pathfinder: GridPathfinder,
+  startTile: TileCoordinate,
+): 'AT_TARGET' | 'PATH' | 'UNREACHABLE' {
+  const learnerTile = delivery.getLearnerTile();
+  delivery.lastLearnerTile = { ...learnerTile };
+  const res = findAdjacentLearnerPath(pathfinder, startTile, learnerTile);
+  delivery.path = res.path;
+  delivery.unreachable = res.status === 'UNREACHABLE';
+  return res.status;
+}
+
+/** Creates an A* drink delivery state starting from the server NPC's current pixel position. */
 export function createDrinkDeliveryState(params: {
   drinkId: string;
   seq: number;
@@ -100,70 +106,10 @@ export function createDrinkDeliveryState(params: {
   };
 }
 
-function findAdjacentLearnerPath(
-  pathfinder: GridPathfinder,
-  start: TileCoordinate,
-  learnerTile: TileCoordinate,
-): { status: 'AT_TARGET' | 'PATH' | 'UNREACHABLE'; path: TileCoordinate[] } {
-  const neighbors: TileCoordinate[] = [
-    { tileX: learnerTile.tileX, tileY: learnerTile.tileY + 1 },
-    { tileX: learnerTile.tileX, tileY: learnerTile.tileY - 1 },
-    { tileX: learnerTile.tileX - 1, tileY: learnerTile.tileY },
-    { tileX: learnerTile.tileX + 1, tileY: learnerTile.tileY },
-  ];
-  const adjacentPath = findShortestPathToCandidates(pathfinder, start, neighbors);
-  if (adjacentPath !== null) {
-    return { status: adjacentPath.length === 0 ? 'AT_TARGET' : 'PATH', path: adjacentPath };
-  }
-  if (pathfinder.isWalkable(learnerTile.tileX, learnerTile.tileY)) {
-    const fallback = pathfinder.findPath(start, learnerTile);
-    if (fallback.length > 0) return { status: 'PATH', path: fallback };
-    if (start.tileX === learnerTile.tileX && start.tileY === learnerTile.tileY) {
-      return { status: 'AT_TARGET', path: [] };
-    }
-  }
-  return { status: 'UNREACHABLE', path: [] };
-}
-
-function stepAlongPath(
-  actor: DeliveryActorState,
-  path: TileCoordinate[],
-  deltaMs: number,
-  tileSize: number,
-): boolean {
-  if (path.length === 0) {
-    actor.isMoving = false;
-    return true;
-  }
-  let remainingStep = (DELIVERY_SPEED_PX_PER_SEC * deltaMs) / 1000;
-  while (path.length > 0 && remainingStep > 0) {
-    const nextTile = path[0];
-    const targetPos = tileToWorldCenter(nextTile.tileX, nextTile.tileY, tileSize);
-    const dx = targetPos.x - actor.pixelX;
-    const dy = targetPos.y - actor.pixelY;
-    const dist = Math.hypot(dx, dy);
-
-    if (dist <= remainingStep || dist < 0.5) {
-      actor.pixelX = targetPos.x;
-      actor.pixelY = targetPos.y;
-      actor.facingDir = resolveMoveDirection(dx, dy, actor.facingDir);
-      path.shift();
-      remainingStep -= dist;
-    } else {
-      actor.pixelX += (dx / dist) * remainingStep;
-      actor.pixelY += (dy / dist) * remainingStep;
-      actor.facingDir = resolveMoveDirection(dx, dy, actor.facingDir);
-      actor.isMoving = true;
-      return false;
-    }
-  }
-  actor.isMoving = path.length > 0;
-  return path.length === 0;
-}
-
+/** Advances the active drink delivery state machine for one animation tick. */
 export function advanceDrinkDelivery(params: {
   delivery: ActiveDrinkDelivery;
-  actor: DeliveryActorState;
+  actor: NpcMotionActor;
   pathfinder: GridPathfinder;
   tileSize: number;
   deltaMs: number;
@@ -195,7 +141,7 @@ export function advanceDrinkDelivery(params: {
   }
 
   if (delivery.phase === 'TO_COUNTER') {
-    const reachedCounter = stepAlongPath(actor, delivery.path, deltaMs, tileSize);
+    const reachedCounter = stepAlongPath(actor, delivery.path, deltaMs, tileSize, DELIVERY_SPEED_PX_PER_SEC);
     if (reachedCounter) {
       delivery.phase = 'PICKUP_PAUSE';
       delivery.pauseRemainingMs = COUNTER_PICKUP_PAUSE_MS;
@@ -210,13 +156,8 @@ export function advanceDrinkDelivery(params: {
     actor.facingDir = 'DOWN';
     actor.isMoving = false;
     if (delivery.pauseRemainingMs <= 0) {
-      const learnerTile = delivery.getLearnerTile();
-      delivery.lastLearnerTile = { ...learnerTile };
-      const res = findAdjacentLearnerPath(pathfinder, currentTile(), learnerTile);
-      delivery.path = res.path;
-      delivery.unreachable = res.status === 'UNREACHABLE';
       delivery.phase = 'TO_LEARNER';
-      if (res.status === 'AT_TARGET') {
+      if (syncLearnerDeliveryPath(delivery, pathfinder, currentTile()) === 'AT_TARGET') {
         triggerArrival();
       }
     }
@@ -229,11 +170,7 @@ export function advanceDrinkDelivery(params: {
       learnerTile.tileX !== delivery.lastLearnerTile.tileX ||
       learnerTile.tileY !== delivery.lastLearnerTile.tileY
     ) {
-      delivery.lastLearnerTile = { ...learnerTile };
-      const res = findAdjacentLearnerPath(pathfinder, currentTile(), learnerTile);
-      delivery.path = res.path;
-      delivery.unreachable = res.status === 'UNREACHABLE';
-      if (res.status === 'AT_TARGET') {
+      if (syncLearnerDeliveryPath(delivery, pathfinder, currentTile()) === 'AT_TARGET') {
         triggerArrival();
         return { finished: false };
       }
@@ -242,7 +179,7 @@ export function advanceDrinkDelivery(params: {
       actor.isMoving = false;
       return { finished: false };
     }
-    if (stepAlongPath(actor, delivery.path, deltaMs, tileSize)) {
+    if (stepAlongPath(actor, delivery.path, deltaMs, tileSize, DELIVERY_SPEED_PX_PER_SEC)) {
       triggerArrival();
     }
     return { finished: false };

@@ -1,19 +1,10 @@
-import type { BackendConnectionStatus } from './TopBar';
-
 export interface ServerWakeUpNoticeProps {
   variant: 'card' | 'banner';
-  backendStatus: BackendConnectionStatus;
   elapsedSeconds: number;
   onRetry?: () => void;
 }
 
-function RetryButton({
-  onRetry,
-  className,
-}: {
-  onRetry?: () => void;
-  className: string;
-}) {
+function RetryButton({ onRetry }: { onRetry?: () => void }) {
   if (!onRetry) {
     return null;
   }
@@ -21,7 +12,7 @@ function RetryButton({
     <button
       type="button"
       onClick={onRetry}
-      className={`inline-flex min-h-11 shrink-0 items-center rounded-lg border border-amber-400/50 bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${className}`}
+      className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-amber-400/50 bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
     >
       Thử kết nối lại ngay
     </button>
@@ -39,7 +30,7 @@ export function ServerWakeUpNotice({
         role="status"
         aria-live="polite"
         data-testid="server-wakeup-banner"
-        className="relative z-40 flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/40 bg-amber-950/90 px-4 py-2 text-xs text-amber-100 shadow-md"
+        className="relative z-30 flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/40 bg-amber-950/90 px-4 py-2 text-xs text-amber-100 shadow-md"
       >
         <div className="flex min-w-0 items-center gap-2">
           <span
@@ -52,7 +43,7 @@ export function ServerWakeUpNotice({
             <strong className="font-mono text-amber-200">Đã chờ {elapsedSeconds}s</strong>
           </span>
         </div>
-        <RetryButton onRetry={onRetry} className="" />
+        <RetryButton onRetry={onRetry} />
       </div>
     );
   }
@@ -81,7 +72,7 @@ export function ServerWakeUpNotice({
         chọn nhân vật và mục tiêu học tập trong lúc chờ.
       </p>
       <div className="mt-2.5 flex justify-end">
-        <RetryButton onRetry={onRetry} className="" />
+        <RetryButton onRetry={onRetry} />
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { DEFAULT_AVATAR_ID } from '../auth/starterAvatars';
 import { AmbientSoundscapeControl } from './AmbientSoundscapeControl';
 import { StudyGoalControl } from './StudyGoalControl';
 import { TopBarActions } from './TopBarActions';
+import { TopBarProfileMenu } from './TopBarProfileMenu';
 
 export type BackendConnectionStatus = 'CHECKING' | 'UP' | 'OFFLINE';
 
@@ -77,15 +78,15 @@ export function TopBar({
 
   return (
     <header
-      className="relative z-40 flex w-full max-w-full shrink-0 flex-col gap-2 border-b border-border/80 bg-card/92 px-3 py-2 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)] backdrop-blur-md sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between sm:gap-3 sm:px-4"
+      className="relative z-40 flex w-full max-w-full shrink-0 flex-col gap-2 border-b border-border/80 bg-card/92 px-3 py-2 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)] backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-4 lg:flex-nowrap"
       aria-label="Thanh trạng thái phòng học"
     >
       {/* Left Zone: Brand mark, Room badge, compact Table/Seat pill (when SEATED), warning-only Backend badge */}
       <div
         data-testid="topbar-left-zone"
-        className="flex min-w-0 items-center justify-between gap-2 sm:shrink sm:justify-start"
+        className="flex min-w-0 items-start justify-between gap-2 sm:shrink sm:items-center sm:justify-start"
       >
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:flex-initial sm:gap-2">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/15 text-xs font-bold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:h-9 sm:w-9 sm:text-sm">
             2D
           </div>
@@ -165,23 +166,29 @@ export function TopBar({
       >
         <div data-testid="topbar-right-zone" className={isMobile ? 'w-full' : 'flex items-center justify-end'}>
           <TopBarActions
-            characterState={characterState}
-            nickname={nickname}
-            avatarSpriteId={avatarSpriteId}
-            hatId={hatId}
-            deskPetId={deskPetId}
             authProvider={authProvider}
             totalStudyMinutes={totalStudyMinutes}
             studyStreakDays={studyStreakDays}
-            currentTableId={currentTableId}
-            isTableHost={isTableHost}
-            onLeaveSeat={onLeaveSeat}
-            onOpenUpgrade={onOpenUpgrade}
             onOpenStudySessions={onOpenStudySessions}
             onOpenLeaderboard={onOpenLeaderboard}
             onOpenCustomizer={onOpenCustomizer}
             onActionExecuted={() => setIsMobileDrawerOpen(false)}
             inlineOnDesktop={!isMobile}
+            profileMenu={
+              <TopBarProfileMenu
+                nickname={nickname}
+                avatarSpriteId={avatarSpriteId}
+                hatId={hatId}
+                deskPetId={deskPetId}
+                authProvider={authProvider}
+                characterState={characterState}
+                currentTableId={currentTableId}
+                isTableHost={isTableHost}
+                onOpenUpgrade={onOpenUpgrade}
+                onLeaveSeat={onLeaveSeat}
+                onActionExecuted={() => setIsMobileDrawerOpen(false)}
+              />
+            }
           />
         </div>
       </div>

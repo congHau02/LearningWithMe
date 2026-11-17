@@ -115,7 +115,6 @@ export function App() {
       {token && showColdStartNotice && backendStatus !== 'UP' && connectionStatus !== 'REPLACED' ? (
         <ServerWakeUpNotice
           variant="banner"
-          backendStatus={backendStatus}
           elapsedSeconds={coldStartElapsedSeconds}
           onRetry={retryHealthCheck}
         />
@@ -139,7 +138,7 @@ export function App() {
               ? 'relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden p-2 sm:p-4'
               : isMinimizedSeated
                 ? 'relative flex flex-1 flex-col items-center justify-start p-2 sm:justify-center sm:p-3'
-                : 'relative flex flex-1 flex-col items-center justify-start p-2 pb-14 sm:justify-center sm:p-3 sm:pb-14'
+                : 'relative flex flex-1 flex-col items-center justify-start p-2 pb-20 sm:justify-center sm:p-3 sm:pb-16'
           }
         >
           <div

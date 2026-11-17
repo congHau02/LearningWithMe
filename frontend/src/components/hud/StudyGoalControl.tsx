@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useDismissiblePopover } from '../../hooks/useDismissiblePopover';
 import { createZodResolver } from '../../utils/zodResolver';
 
 export interface StudyGoalControlProps {
@@ -29,6 +30,8 @@ export function StudyGoalControl({
   onUpdateGoal,
 }: StudyGoalControlProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editTriggerRef = useRef<HTMLButtonElement>(null);
 
   const {
     register,
@@ -40,6 +43,13 @@ export function StudyGoalControl({
     resolver: createZodResolver<StudyGoalFormValues>(studyGoalSchema),
     defaultValues: { studyGoal },
   });
+
+  const closeEditor = useCallback(() => {
+    reset({ studyGoal });
+    setIsEditing(false);
+  }, [reset, studyGoal]);
+
+  useDismissiblePopover(isEditing, containerRef, closeEditor, editTriggerRef);
 
   useEffect(() => {
     if (!isEditing) {
@@ -65,7 +75,10 @@ export function StudyGoalControl({
   };
 
   return (
-    <div className="relative flex min-w-0 items-center gap-1.5 rounded-lg border border-border/70 bg-secondary/50 px-2 py-1 text-xs sm:min-h-8">
+    <div
+      ref={containerRef}
+      className="relative flex min-w-0 items-center gap-1.5 rounded-lg border border-border/70 bg-secondary/50 px-2 py-1 text-xs sm:min-h-8"
+    >
       {hasGoal && onUpdateGoal ? (
         <button
           type="button"
@@ -74,10 +87,10 @@ export function StudyGoalControl({
           aria-label={isCompleted ? 'Bỏ đánh dấu hoàn thành mục tiêu' : 'Đánh dấu hoàn thành mục tiêu'}
           title={isCompleted ? 'Bỏ đánh dấu hoàn thành mục tiêu' : 'Đánh dấu hoàn thành mục tiêu'}
           onClick={() => onUpdateGoal(trimmedGoal, !isCompleted)}
-          className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center gap-1 rounded border px-1.5 text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded border px-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-7 sm:min-h-0 sm:min-w-7 sm:px-1.5 sm:text-[11px] ${
             isCompleted
               ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
-              : 'border-border bg-secondary/70 text-muted-foreground hover:text-foreground'
+              : 'border-border bg-secondary/70 text-slate-200 hover:text-foreground'
           }`}
         >
           {isCompleted ? <span data-testid="study-goal-completed-badge">✅</span> : <span>○</span>}
@@ -98,16 +111,18 @@ export function StudyGoalControl({
 
       {canEdit && onUpdateGoal ? (
         <button
+          ref={editTriggerRef}
           type="button"
           data-testid="study-goal-edit-btn"
           aria-expanded={isEditing}
+          aria-controls="study-goal-popover"
           onClick={() => {
             reset({ studyGoal });
             setIsEditing((prev) => !prev);
           }}
           title="Chỉnh sửa mục tiêu học tập"
           aria-label="Chỉnh sửa mục tiêu học tập"
-          className="shrink-0 rounded border border-border/80 bg-secondary/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded border border-border/80 bg-secondary/60 px-2.5 py-1 text-[11px] font-medium text-slate-200 transition hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:min-w-0 sm:px-2 sm:py-0.5 sm:text-[10px]"
         >
           ✏️ Sửa
         </button>
@@ -115,6 +130,7 @@ export function StudyGoalControl({
 
       {isEditing ? (
         <form
+          id="study-goal-popover"
           className="absolute left-0 top-full z-50 mt-2 flex w-72 max-w-[calc(100vw-1.5rem)] flex-wrap items-center gap-1.5 rounded-xl border border-border bg-slate-900/95 p-2.5 shadow-2xl backdrop-blur-md sm:left-1/2 sm:-translate-x-1/2"
           onSubmit={(e) => void handleSubmit(onSubmit)(e)}
         >
@@ -123,15 +139,8 @@ export function StudyGoalControl({
             data-testid="study-goal-input"
             aria-label="Mục tiêu học tập"
             {...register('studyGoal')}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape' || e.key === 'Esc') {
-                e.stopPropagation();
-                reset({ studyGoal });
-                setIsEditing(false);
-              }
-            }}
             placeholder="Nhập mục tiêu hôm nay (≤ 60 ký tự)"
-            className="h-8 min-w-0 flex-1 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className="min-h-11 min-w-0 flex-1 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary sm:h-8 sm:min-h-0"
             autoFocus
           />
           <span className="font-mono text-[10px] text-muted-foreground">

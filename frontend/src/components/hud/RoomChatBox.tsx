@@ -48,7 +48,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2 bg-slate-900/90 hover:bg-slate-800 text-slate-100 px-3.5 py-2 rounded-full border border-slate-700/80 shadow-lg transition active:scale-95 text-xs font-medium cursor-pointer"
+          className="flex min-h-11 items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/90 px-3.5 py-2 text-xs font-medium text-slate-100 shadow-lg transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 cursor-pointer sm:min-h-9"
         >
           <span>💬</span>
           <span>Phòng học ({recentMessages.length})</span>

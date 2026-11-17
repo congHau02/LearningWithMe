@@ -12,9 +12,12 @@ import { createNpcVisualParts, syncNpcVisuals } from './ambientNpcRenderHelper';
 import {
   advanceDrinkDelivery,
   createDrinkDeliveryState,
-  resolveMoveDirection,
   type ActiveDrinkDelivery,
 } from './npcDrinkDelivery';
+import {
+  advancePatrolMovement,
+  findPatrolReturnTarget,
+} from './npcPathMovement';
 import {
   AMBIENT_NPC_DEFINITIONS,
   type AmbientNpcDefinition,
@@ -49,6 +52,8 @@ interface NpcRuntimeEntry {
   sprite?: Phaser.GameObjects.Sprite;
   apron?: Phaser.GameObjects.Graphics;
   label?: Phaser.GameObjects.Text;
+  returnPath?: TileCoordinate[];
+  returnWaypointIndex?: number;
 }
 
 const NPC_SPEED_PX_PER_SEC = 48;
@@ -69,7 +74,7 @@ export class AmbientNpcManager {
   } = {}) {
     const topology = options.topology ?? MAIN_LIBRARY_TOPOLOGY;
     this.tileSize = options.tileSize ?? topology.tileSize;
-    this.pathfinder = new GridPathfinder(topology);
+    this.pathfinder = new GridPathfinder(topology, { blockSeats: true });
     const defs = options.definitions ?? AMBIENT_NPC_DEFINITIONS;
     const nowMs = options.nowMs ?? Date.now();
 
@@ -112,11 +117,11 @@ export class AmbientNpcManager {
           showBubble: (text, ts) => this.showNpcBubble(entry, text, ts),
         });
         if (result.finished) {
-          entry.pauseRemainingMs = 0;
+          this.scheduleReturnToPatrol(entry);
           this.activeDelivery = null;
         }
       } else {
-        this.advanceMovement(entry, safeDelta);
+        advancePatrolMovement(entry, safeDelta, this.tileSize, NPC_SPEED_PX_PER_SEC);
 
         if (nowMs >= entry.nextBubbleAtMs && entry.def.ambientLines.length > 0) {
           const line = entry.def.ambientLines[entry.lineCursor % entry.def.ambientLines.length];
@@ -170,15 +175,16 @@ export class AmbientNpcManager {
       nowMs: params.nowMs ?? Date.now(),
     });
     if (!state) return false;
+    serverEntry.returnPath = undefined;
+    serverEntry.returnWaypointIndex = undefined;
     this.activeDelivery = { entry: serverEntry, state };
     return true;
   }
 
   public cancelDrinkDelivery(): void {
-    if (this.activeDelivery) {
-      this.activeDelivery.entry.pauseRemainingMs = 0;
-      this.activeDelivery = null;
-    }
+    if (!this.activeDelivery) return;
+    this.scheduleReturnToPatrol(this.activeDelivery.entry);
+    this.activeDelivery = null;
   }
 
   public getSnapshots(): AmbientNpcSnapshot[] {
@@ -195,30 +201,12 @@ export class AmbientNpcManager {
     this.entries.length = 0;
   }
 
-  private advanceMovement(entry: NpcRuntimeEntry, deltaMs: number): void {
-    const waypoints = entry.def.waypoints;
-    if (waypoints.length <= 1) { entry.isMoving = false; return; }
-    if (entry.pauseRemainingMs > 0) {
-      entry.pauseRemainingMs = Math.max(0, entry.pauseRemainingMs - deltaMs);
-      entry.isMoving = false;
-      entry.facingDir = waypoints[entry.waypointIndex].facingDir;
-      return;
-    }
-    const nextIndex = (entry.waypointIndex + 1) % waypoints.length;
-    const targetWp = waypoints[nextIndex];
-    const targetPos = tileToWorldCenter(targetWp.tileX, targetWp.tileY, this.tileSize);
-    const dx = targetPos.x - entry.pixelX;
-    const dy = targetPos.y - entry.pixelY;
-    const dist = Math.hypot(dx, dy);
-    const maxStep = (NPC_SPEED_PX_PER_SEC * deltaMs) / 1000;
-    if (dist <= maxStep || dist < 0.5) {
-      Object.assign(entry, { pixelX: targetPos.x, pixelY: targetPos.y, waypointIndex: nextIndex, pauseRemainingMs: targetWp.pauseMs, facingDir: targetWp.facingDir, isMoving: false });
-      return;
-    }
-    entry.pixelX += (dx / dist) * maxStep;
-    entry.pixelY += (dy / dist) * maxStep;
-    entry.facingDir = resolveMoveDirection(dx, dy, entry.facingDir);
-    entry.isMoving = true;
+  private scheduleReturnToPatrol(entry: NpcRuntimeEntry): void {
+    entry.pauseRemainingMs = 0;
+    const startTile: TileCoordinate = { tileX: Math.floor(entry.pixelX / this.tileSize), tileY: Math.floor(entry.pixelY / this.tileSize) };
+    const plan = findPatrolReturnTarget(this.pathfinder, startTile, entry.def.waypoints, entry.waypointIndex);
+    entry.returnWaypointIndex = plan?.waypointIndex;
+    entry.returnPath = plan?.path;
   }
 
   private showNpcBubble(entry: NpcRuntimeEntry, text: string, nowMs: number): void {

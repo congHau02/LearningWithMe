@@ -85,6 +85,7 @@ export function useAppBootstrap(): AppBootstrapState {
   const activeAbortRef = useRef<AbortController | null>(null);
   const probeSeqRef = useRef(0);
   const needsSessionRecoveryRef = useRef(false);
+  const runHealthProbeRef = useRef<() => void>(() => {});
 
   const clearTimers = useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -118,7 +119,7 @@ export function useAppBootstrap(): AppBootstrapState {
     setBackendStatus('OFFLINE');
     setShowColdStartNotice(true);
     ensureElapsedTicker();
-    pollTimerRef.current = window.setTimeout(runHealthProbe, HEALTH_POLL_INTERVAL_MS);
+    pollTimerRef.current = window.setTimeout(() => runHealthProbeRef.current(), HEALTH_POLL_INTERVAL_MS);
   }, [ensureElapsedTicker]);
 
   const runHealthProbe = useCallback(() => {
@@ -172,6 +173,10 @@ export function useAppBootstrap(): AppBootstrapState {
         handleProbeFailure();
       });
   }, [clearTimers, handleProbeFailure]);
+
+  useEffect(() => {
+    runHealthProbeRef.current = runHealthProbe;
+  }, [runHealthProbe]);
 
   useEffect(() => {
     isMountedRef.current = true;

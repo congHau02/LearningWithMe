@@ -1,47 +1,30 @@
+import type { ReactNode } from 'react';
 import type { AuthProvider } from '../../stores/useAuthStore';
-import type { CharacterState } from '../../stores/useGameStore';
 import { StudyStreakBadge } from './StudyStreakBadge';
-import { TopBarProfileMenu } from './TopBarProfileMenu';
 
 interface TopBarActionsProps {
-  characterState: CharacterState;
-  nickname: string;
-  avatarSpriteId: string;
-  hatId?: string;
-  deskPetId?: string;
   authProvider: AuthProvider;
   totalStudyMinutes: number;
   studyStreakDays?: number;
-  currentTableId: string | null;
-  isTableHost?: boolean;
-  onLeaveSeat?: () => void;
-  onOpenUpgrade?: () => void;
   onOpenStudySessions?: () => void;
   onOpenLeaderboard?: () => void;
   onOpenCustomizer?: () => void;
   onActionExecuted?: () => void;
   inlineOnDesktop?: boolean;
+  profileMenu: ReactNode;
 }
 
-/** Right-zone learner stats, primary HUD modal triggers, and Profile dropdown in {@link TopBar}. */
+/** Right-zone learner stats and primary HUD modal triggers in {@link TopBar}. */
 export function TopBarActions({
-  characterState,
-  nickname,
-  avatarSpriteId,
-  hatId,
-  deskPetId,
   authProvider,
   totalStudyMinutes,
   studyStreakDays = 0,
-  currentTableId,
-  isTableHost,
-  onLeaveSeat,
-  onOpenUpgrade,
   onOpenStudySessions,
   onOpenLeaderboard,
   onOpenCustomizer,
   onActionExecuted,
   inlineOnDesktop = false,
+  profileMenu,
 }: TopBarActionsProps) {
   const runAction = (cb?: () => void) => () => {
     cb?.();
@@ -107,19 +90,7 @@ export function TopBarActions({
         </button>
       ) : null}
 
-      <TopBarProfileMenu
-        nickname={nickname}
-        avatarSpriteId={avatarSpriteId}
-        hatId={hatId}
-        deskPetId={deskPetId}
-        authProvider={authProvider}
-        characterState={characterState}
-        currentTableId={currentTableId}
-        isTableHost={isTableHost}
-        onOpenUpgrade={onOpenUpgrade}
-        onLeaveSeat={onLeaveSeat}
-        onActionExecuted={onActionExecuted}
-      />
+      {profileMenu}
     </div>
   );
 }

@@ -59,7 +59,20 @@ jobs:
       contents: read
       packages: read
     steps:
+      - name: Detect deployment target
+        id: deploy-mode
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ] && [ -n "$VM_HOST" ]; then
+            echo "ssh_fallback=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ssh_fallback=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout fallback Compose config when using SSH fallback
+        if: steps.deploy-mode.outputs.ssh_fallback == 'true'
         uses: actions/checkout@v4
         with:
           sparse-checkout: |

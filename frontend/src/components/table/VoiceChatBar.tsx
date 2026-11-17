@@ -1,6 +1,7 @@
 import type { TableMemberDto } from '../../services/tableApi';
 import { useVoiceStore, type VoicePeerConnectionState } from '../../stores/useVoiceStore';
-import { getMicControlMeta, SpeakingEqualizer } from './SpeakingEqualizer';
+import { SpeakingEqualizer } from './SpeakingEqualizer';
+import { getMicControlMeta } from './voiceControlMeta';
 
 export interface VoiceChatBarProps {
   members: TableMemberDto[];

@@ -29,6 +29,7 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
   - Hiệu năng & cấu trúc Component: `.agents/skills/vercel-react-best-practices/SKILL.md` và `.agents/skills/vercel-composition-patterns/SKILL.md`.
   - Hệ thống Design Token & Tailwind: `.agents/skills/tailwind-design-system/SKILL.md`.
   - Thẩm mỹ UI/UX & HUD chống "AI-slop": `.agents/skills/design-taste-frontend/SKILL.md`, `.agents/skills/ui-ux-pro-max/SKILL.md`, và `.agents/skills/web-design-guidelines/SKILL.md`.
+  - Kiểm chứng trình duyệt bằng **Chrome DevTools MCP** (bắt buộc khi chỉnh sửa giao diện, bố cục, hiệu năng tải trang hoặc khả năng tiếp cận Frontend): plugin `chrome-devtools-plugin` (`chrome-devtools`, `debug-optimize-lcp`, `a11y-debugging`, `troubleshooting`).
 - **Quy trình TDD, Debug & Review**: `.agents/skills/tdd/SKILL.md`, `.agents/skills/diagnosing-bugs/SKILL.md`, `.agents/skills/code-review/SKILL.md`, và `.agents/skills/ponytail-review/SKILL.md`.
 
 ---
@@ -107,3 +108,8 @@ Thiết kế theo triết lý **Deep Modules** (`codebase-design`): giao diện 
   - Không lưu biến nhạy cảm (DB password, JWT secret, OAuth2 client secret) trong code; luôn đọc từ biến môi trường qua `@ConfigurationProperties`.
 - **Kiểm thử bắt buộc cho Logic Rủi ro cao**:
   - Mọi thay đổi liên quan đến: (1) Khóa ghế nguyên tử Redis, (2) Chuyển giao quyền `TABLE_HOST` / Grace Period 30s, (3) Gộp giờ học Guest $\rightarrow$ Registered User, và (4) Tự động xóa ảnh bài tập tạm thời đều phải có Unit Test hoặc Integration Test đi kèm.
+- **Kiểm chứng Trình duyệt Thực tế cho Frontend (Chrome DevTools MCP)**:
+  - Với mọi công việc chỉnh sửa Frontend (giao diện HUD, responsive layout, animation, trạng thái loading, hoặc khả năng tiếp cận), Agent **phải** sử dụng Chrome DevTools MCP (`chrome-devtools`, `/debug-optimize-lcp`, `/a11y-debugging` khi khả dụng trong môi trường thực thi) để kiểm tra thực tế trên trình duyệt đang chạy:
+    1. **Layout & Zero CLS**: Không giật khung hình khi bật/tắt trạng thái (như mic/indicator), không tràn ngang trên desktop và mobile (`375px`).
+    2. **Hiệu năng & LCP (`/debug-optimize-lcp`)**: Kiểm tra performance trace, các pha LCP, console errors và network requests.
+    3. **Khả năng tiếp cận (`/a11y-debugging`)**: Kiểm tra accessibility tree, `aria-label`, trạng thái focus khi điều hướng bàn phím (`Tab` / `Escape`), kích thước vùng chạm ($\ge 44\times 44\text{px}$) và độ tương phản màu sắc.

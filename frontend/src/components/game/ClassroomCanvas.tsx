@@ -115,7 +115,7 @@ export function ClassroomCanvas() {
             type="button"
             data-testid="open-drink-menu-btn"
             onClick={() => openDrinkMenu('Quầy Study Café', 'npc_barista')}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/25 sm:min-h-8"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
           >
             {activeDrink ? (
               <span data-testid="selected-drink-badge">{activeDrink.icon} {activeDrink.name}</span>
@@ -154,7 +154,7 @@ export function ClassroomCanvas() {
             aria-label="Thu nhỏ bản đồ"
             disabled={cameraZoom <= MIN_CAMERA_ZOOM}
             onClick={() => adjustCameraZoom(-CAMERA_ZOOM_STEP)}
-            className="flex min-h-9 min-w-9 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-8 sm:min-w-8"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 sm:min-h-8 sm:min-w-8"
           >
             −
           </button>
@@ -170,7 +170,7 @@ export function ClassroomCanvas() {
             aria-label="Phóng to bản đồ"
             disabled={cameraZoom >= MAX_CAMERA_ZOOM}
             onClick={() => adjustCameraZoom(CAMERA_ZOOM_STEP)}
-            className="flex min-h-9 min-w-9 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 disabled:opacity-40 sm:min-h-8 sm:min-w-8"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded border border-border bg-secondary font-bold text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 sm:min-h-8 sm:min-w-8"
           >
             +
           </button>
@@ -181,7 +181,7 @@ export function ClassroomCanvas() {
             aria-label="Theo dõi nhân vật"
             title={cameraFollowEnabled ? 'Đang theo dõi nhân vật' : 'Bật theo dõi nhân vật'}
             onClick={() => toggleCameraFollow()}
-            className={`ml-0.5 flex min-h-9 min-w-9 items-center justify-center gap-1 rounded border px-2 font-medium transition sm:min-h-8 sm:min-w-0 sm:px-2 ${
+            className={`ml-0.5 flex min-h-11 min-w-11 items-center justify-center gap-1 rounded border px-2 font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 sm:px-2 ${
               cameraFollowEnabled
                 ? 'border-sky-500/50 bg-sky-500/20 text-sky-200'
                 : 'border-border bg-secondary text-muted-foreground hover:text-foreground'
