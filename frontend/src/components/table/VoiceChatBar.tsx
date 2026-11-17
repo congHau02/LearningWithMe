@@ -12,7 +12,7 @@ export interface VoiceChatBarProps {
 }
 
 const CONNECTION_BADGES: Record<VoicePeerConnectionState, { label: string; cls: string }> = {
-  ready: { label: 'Sẵn sàng', cls: 'border-slate-600 bg-slate-800 text-slate-300' },
+  ready: { label: 'Sẵn sàng', cls: 'border-border bg-secondary text-secondary-foreground' },
   connecting: { label: 'Đang kết nối', cls: 'border-amber-500/40 bg-amber-500/15 text-amber-300' },
   connected: { label: 'Đã kết nối', cls: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300' },
   disconnected: { label: 'Mất kết nối', cls: 'border-rose-500/40 bg-rose-500/15 text-rose-300' },
@@ -51,7 +51,7 @@ export function VoiceChatBar({
           </span>
           <span
             data-testid="voice-participant-count"
-            className="rounded border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-[10px] text-slate-300"
+            className="rounded border border-border bg-[#0F1714] px-2 py-0.5 font-mono text-[10px] text-muted-foreground"
           >
             {activeCount} đang bật thoại
           </span>
@@ -70,7 +70,7 @@ export function VoiceChatBar({
               data-testid="voice-join-btn"
               disabled={isJoining}
               onClick={onJoinVoice}
-              className="min-h-[44px] rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 font-semibold text-emerald-200 transition hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[36px]"
+              className="min-h-[44px] rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 font-semibold text-emerald-200 transition hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[36px]"
             >
               {isJoining ? 'Đang bật mic...' : 'Tham gia Voice'}
             </button>
@@ -82,7 +82,7 @@ export function VoiceChatBar({
                 aria-pressed={micMeta.ariaPressed}
                 aria-label={micMeta.ariaLabel}
                 onClick={onToggleMute}
-                className={`min-h-[44px] min-w-[8.25rem] rounded-lg border px-3 py-1.5 text-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 sm:min-h-[36px] ${micMeta.toneClass}`}
+                className={`min-h-[44px] min-w-[8.25rem] rounded-lg border px-3 py-1.5 text-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[36px] ${micMeta.toneClass}`}
               >
                 {micMeta.label}
               </button>
@@ -90,7 +90,7 @@ export function VoiceChatBar({
                 type="button"
                 data-testid="voice-leave-btn"
                 onClick={onLeaveVoice}
-                className="min-h-[44px] rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 font-semibold text-rose-200 transition hover:bg-rose-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 sm:min-h-[36px]"
+                className="min-h-[44px] rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 font-semibold text-rose-200 transition hover:bg-rose-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[36px]"
               >
                 Rời kênh thoại
               </button>
@@ -123,7 +123,7 @@ export function VoiceChatBar({
             const peer = peers[member.userId];
             const badge = peer
               ? CONNECTION_BADGES[peer.connectionState]
-              : { label: 'Chưa vào Voice', cls: 'border-slate-700 bg-slate-900 text-slate-400' };
+              : { label: 'Chưa vào Voice', cls: 'border-border bg-[#0F1714] text-muted-foreground' };
             return (
               <span
                 key={member.userId}

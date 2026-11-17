@@ -56,7 +56,7 @@ export function WorkspacePrimaryPanels({ activeTableId, canControl }: WorkspaceP
       endPanelDrag();
     },
     className: `${orderClass} min-w-0 rounded-xl transition ${
-      dragOverPanel === target ? 'ring-2 ring-sky-400/70' : ''
+      dragOverPanel === target ? 'ring-2 ring-primary/70' : ''
     }`,
   });
 

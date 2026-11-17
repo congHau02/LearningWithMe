@@ -6,6 +6,7 @@ import {
   formatFocusCountdown,
   getFocusPhaseDurationSeconds,
 } from '../../utils/focusCycle';
+import { CoffeeIcon, TargetIcon } from '../icons';
 
 interface FocusCycleBarProps {
   tableId: string;
@@ -57,28 +58,33 @@ export function FocusCycleBar({ tableId, canControl, isSeated }: FocusCycleBarPr
   return (
     <div
       data-testid="focus-cycle-bar"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-500/35 bg-slate-900/80 px-3.5 py-2.5 text-xs"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-[#16221E]/80 px-3.5 py-2.5 text-xs"
     >
       <div className="flex flex-wrap items-center gap-2.5">
         <span
           data-testid="focus-cycle-phase"
           className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-semibold ${
             isFocusPhase
-              ? 'border-indigo-400/50 bg-indigo-500/20 text-indigo-200'
-              : 'border-teal-400/50 bg-teal-500/20 text-teal-200'
+              ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-200'
+              : 'border-primary/50 bg-primary/20 text-primary'
           }`}
         >
-          {isFocusPhase ? '🎯 Tập trung' : '☕ Nghỉ ngắn'}
+          {isFocusPhase ? (
+            <TargetIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+          ) : (
+            <CoffeeIcon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+          )}
+          <span>{isFocusPhase ? 'Tập trung' : 'Nghỉ ngắn'}</span>
         </span>
 
         <span
           data-testid="focus-cycle-countdown"
-          className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1 font-mono text-base font-bold tabular-nums text-slate-100"
+          className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 font-mono text-base font-bold tabular-nums text-emerald-300"
         >
           {formatFocusCountdown(remainingSeconds)}
         </span>
 
-        <span data-testid="focus-cycle-status" className="text-[11px] text-slate-400">
+        <span data-testid="focus-cycle-status" className="text-[11px] text-muted-foreground">
           {statusLabel} • {focusCycleState.focusMinutes}/{focusCycleState.breakMinutes}p
         </span>
 
@@ -88,7 +94,7 @@ export function FocusCycleBar({ tableId, canControl, isSeated }: FocusCycleBarPr
             role="status"
             data-testid="focus-cycle-notice"
             onClick={dismissCompletionNotice}
-            className="rounded-lg border border-amber-400/50 bg-amber-500/20 px-2.5 py-1 font-medium text-amber-200 transition hover:bg-amber-500/30"
+            className="rounded-lg border border-primary/50 bg-primary/20 px-2.5 py-1 font-medium text-primary transition hover:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             🔔 {completionNotice}
           </button>
@@ -101,7 +107,7 @@ export function FocusCycleBar({ tableId, canControl, isSeated }: FocusCycleBarPr
             type="button"
             data-testid="focus-toggle-run-btn"
             onClick={handleToggleRun}
-            className="rounded-lg border border-indigo-400/50 bg-indigo-500/20 px-2.5 py-1 font-semibold text-indigo-100 transition hover:bg-indigo-500/35"
+            className="rounded-lg border border-primary/60 bg-primary px-2.5 py-1 font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {isEffectivelyRunning ? 'Tạm dừng' : isResumable ? 'Tiếp tục' : 'Bắt đầu'}
           </button>
@@ -109,7 +115,7 @@ export function FocusCycleBar({ tableId, canControl, isSeated }: FocusCycleBarPr
             type="button"
             data-testid="focus-reset-btn"
             onClick={() => sendTableFocusCycleSync(tableId, { action: 'RESET' })}
-            className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 font-medium text-slate-200 transition hover:bg-slate-800"
+            className="rounded-lg border border-border bg-card px-2.5 py-1 font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Đặt lại
           </button>
@@ -117,11 +123,11 @@ export function FocusCycleBar({ tableId, canControl, isSeated }: FocusCycleBarPr
             type="button"
             data-testid="focus-switch-phase-btn"
             onClick={handleSwitchPhase}
-            className="rounded-lg border border-teal-500/40 bg-teal-500/15 px-2.5 py-1 font-medium text-teal-200 transition hover:bg-teal-500/25"
+            className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-medium text-emerald-200 transition hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {isFocusPhase ? 'Sang nghỉ ngắn' : 'Sang tập trung'}
           </button>
-          <div className="ml-1 flex items-center gap-1 border-l border-slate-700 pl-2">
+          <div className="ml-1 flex items-center gap-1 border-l border-border pl-2">
             {FOCUS_CYCLE_PRESETS.map((preset) => {
               const active =
                 focusCycleState.focusMinutes === preset.focusMinutes &&
@@ -138,10 +144,10 @@ export function FocusCycleBar({ tableId, canControl, isSeated }: FocusCycleBarPr
                       breakMinutes: preset.breakMinutes,
                     })
                   }
-                  className={`rounded-md border px-2 py-1 font-mono text-[11px] transition ${
+                  className={`rounded-md border px-2 py-1 font-mono text-[11px] transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                     active
-                      ? 'border-indigo-400/60 bg-indigo-500/25 font-bold text-indigo-100'
-                      : 'border-slate-700 bg-slate-950 text-slate-400 hover:text-slate-200'
+                      ? 'border-primary/60 bg-primary/25 font-bold text-primary'
+                      : 'border-border bg-card text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {preset.label}
@@ -151,7 +157,7 @@ export function FocusCycleBar({ tableId, canControl, isSeated }: FocusCycleBarPr
           </div>
         </div>
       ) : (
-        <span data-testid="focus-readonly-badge" className="text-[11px] text-slate-400">
+        <span data-testid="focus-readonly-badge" className="text-[11px] text-muted-foreground">
           Đồng bộ theo Host/Co-Host
         </span>
       )}

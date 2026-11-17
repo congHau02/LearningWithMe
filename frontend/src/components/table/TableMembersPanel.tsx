@@ -3,6 +3,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useVoiceStore } from '../../stores/useVoiceStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
+import { CrownIcon, ZapIcon } from '../icons';
 import { SpeakingEqualizer } from './SpeakingEqualizer';
 
 export interface TableMembersPanelProps {
@@ -13,9 +14,9 @@ export interface TableMembersPanelProps {
 }
 
 const ROLE_BADGES = {
-  TABLE_HOST: { label: 'Trưởng bàn 👑', cls: 'border-amber-500/40 bg-amber-500/15 text-amber-300' },
-  CO_HOST: { label: 'Co-Host ⚡', cls: 'border-sky-500/40 bg-sky-500/15 text-sky-300' },
-  MEMBER: { label: 'Thành viên', cls: 'border-slate-600 bg-slate-800 text-slate-300' },
+  TABLE_HOST: { label: 'Trưởng bàn', cls: 'border border-[#E5A93C] bg-[#E5A93C] text-[#0F1714] font-bold shadow-sm' },
+  CO_HOST: { label: 'Co-Host', cls: 'border border-[#E5A93C] bg-[#E5A93C] text-[#0F1714] font-bold shadow-sm' },
+  MEMBER: { label: 'Thành viên', cls: 'border border-border bg-card text-muted-foreground' },
 } as const;
 
 export function TableMembersPanel({
@@ -59,7 +60,7 @@ export function TableMembersPanel({
               <li
                 key={member.userId}
                 data-testid={`table-member-${member.userId}`}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-secondary/40 px-2.5 py-2 text-xs"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-[#0F1714]/60 px-2.5 py-2 text-xs"
               >
                 <div className="flex items-center gap-2">
                   <StarterAvatarPortrait
@@ -113,9 +114,14 @@ export function TableMembersPanel({
                   ) : null}
                   <span
                     data-testid={`member-role-${member.userId}`}
-                    className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}
+                    className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold ${badge.cls}`}
                   >
-                    {badge.label}
+                    {member.tableRole === 'TABLE_HOST' ? (
+                      <CrownIcon className="h-3 w-3 text-[#0F1714]" aria-hidden="true" />
+                    ) : member.tableRole === 'CO_HOST' ? (
+                      <ZapIcon className="h-3 w-3 text-[#0F1714]" aria-hidden="true" />
+                    ) : null}
+                    <span>{badge.label}</span>
                   </span>
 
                   {isSelfHost && !isSelf ? (
@@ -125,7 +131,7 @@ export function TableMembersPanel({
                           type="button"
                           data-testid={`grant-cohost-btn-${member.userId}`}
                           onClick={() => onAction('GRANT', member.userId)}
-                          className="rounded border border-sky-500/40 bg-sky-500/15 px-2 py-0.5 text-[10px] font-medium text-sky-300 hover:bg-sky-500/25"
+                          className="rounded border border-primary/40 bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/25"
                         >
                           Cấp Co-Host
                         </button>
@@ -144,7 +150,7 @@ export function TableMembersPanel({
                         type="button"
                         data-testid={`transfer-host-btn-${member.userId}`}
                         onClick={() => onAction('TRANSFER_HOST', member.userId)}
-                        className="rounded border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300 hover:bg-amber-500/25"
+                        className="rounded border border-primary/50 bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/30"
                       >
                         Chuyển Trưởng bàn
                       </button>

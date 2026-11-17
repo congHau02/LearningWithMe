@@ -1,11 +1,19 @@
 import type { BoardTool } from '../../utils/homeworkCanvasMath';
+import {
+  EraserIcon,
+  HighlighterIcon,
+  LaserIcon,
+  PenIcon,
+  TextIcon,
+  TrashIcon,
+} from '../icons';
 
-const TOOL_OPTIONS: Array<{ id: BoardTool; label: string }> = [
-  { id: 'PEN', label: 'Bút' },
-  { id: 'HIGHLIGHTER', label: 'Dạ quang' },
-  { id: 'TEXT', label: 'Chữ' },
-  { id: 'ERASER', label: 'Tẩy' },
-  { id: 'LASER', label: 'Laser' },
+const TOOL_OPTIONS: Array<{ id: BoardTool; label: string; icon: typeof PenIcon }> = [
+  { id: 'PEN', label: 'Bút', icon: PenIcon },
+  { id: 'HIGHLIGHTER', label: 'Dạ quang', icon: HighlighterIcon },
+  { id: 'TEXT', label: 'Chữ', icon: TextIcon },
+  { id: 'ERASER', label: 'Tẩy', icon: EraserIcon },
+  { id: 'LASER', label: 'Laser', icon: LaserIcon },
 ];
 
 const COLOR_SWATCHES = ['#ef4444', '#38bdf8', '#22c55e', '#facc15', '#f8fafc'];
@@ -33,11 +41,12 @@ export function HomeworkBoardToolbar({
   return (
     <div
       data-testid="homework-board-toolbar"
-      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-2.5 py-1.5"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-[#16221E]/90 px-2.5 py-1.5"
     >
       <div className="flex flex-wrap items-center gap-1">
         {TOOL_OPTIONS.map((item) => {
           const active = tool === item.id;
+          const Icon = item.icon;
           return (
             <button
               key={item.id}
@@ -45,13 +54,14 @@ export function HomeworkBoardToolbar({
               data-testid={`board-tool-${item.id}`}
               aria-pressed={active}
               onClick={() => onToolChange(item.id)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                 active
-                  ? 'border border-sky-400/60 bg-sky-500/25 text-sky-100'
-                  : 'border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-700/70'
+                  ? 'border border-primary/60 bg-primary/25 text-primary-foreground font-semibold'
+                  : 'border border-border bg-card/80 text-muted-foreground hover:bg-secondary hover:text-foreground'
               }`}
             >
-              {item.label}
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{item.label}</span>
             </button>
           );
         })}
@@ -69,7 +79,7 @@ export function HomeworkBoardToolbar({
               onClick={() => onColorChange(swatch)}
               style={{ backgroundColor: swatch }}
               className={`h-6 w-6 rounded-full border transition sm:h-5 sm:w-5 ${
-                color === swatch ? 'scale-110 border-white ring-2 ring-sky-400' : 'border-slate-600'
+                color === swatch ? 'scale-110 border-white ring-2 ring-primary' : 'border-border'
               }`}
             />
           ))}
@@ -80,7 +90,7 @@ export function HomeworkBoardToolbar({
           data-testid="board-size-select"
           value={lineWidth}
           onChange={(e) => onLineWidthChange(Number(e.target.value))}
-          className="rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-xs text-slate-200"
+          className="rounded border border-border bg-card px-1.5 py-0.5 text-xs text-foreground focus:border-primary focus:outline-none"
         >
           {SIZE_OPTIONS.map((sz) => (
             <option key={sz} value={sz}>
@@ -93,9 +103,10 @@ export function HomeworkBoardToolbar({
           type="button"
           data-testid="board-clear-slide-btn"
           onClick={onClearSlide}
-          className="rounded-md border border-rose-500/40 bg-rose-500/15 px-2.5 py-1 text-xs font-medium text-rose-200 transition hover:bg-rose-500/25"
+          className="inline-flex items-center gap-1 rounded-md border border-rose-500/40 bg-rose-500/15 px-2.5 py-1 text-xs font-medium text-rose-200 transition hover:bg-rose-500/25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          Xóa trang
+          <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Xóa trang</span>
         </button>
       </div>
     </div>

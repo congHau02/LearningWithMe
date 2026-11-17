@@ -76,7 +76,7 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
           type="button"
           data-testid="sos-open-form-btn"
           onClick={() => setIsComposing(true)}
-          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/20"
+          className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           🆘 Bật SOS cầu cứu
         </button>
@@ -89,7 +89,7 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
       onSubmit={handleSubmit(onSubmit)}
       noValidate
       data-testid="sos-compose-form"
-      className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/40 bg-slate-900/90 p-2.5 text-xs"
+      className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-card/95 p-2.5 text-xs"
     >
       <input
         type="text"
@@ -98,12 +98,12 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
         maxLength={MAX_SOS_TOPIC_LENGTH}
         placeholder="VD: Cần giúp Tích phân từng phần"
         aria-label="Chủ đề cần hỗ trợ SOS"
-        className="min-w-[220px] flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none"
+        className="min-w-[220px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
       />
       <button
         type="submit"
         data-testid="sos-activate-btn"
-        className="rounded-lg bg-amber-500 px-3 py-1.5 font-semibold text-slate-950 transition hover:bg-amber-400"
+        className="rounded-lg bg-primary px-3 py-1.5 font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Phát tín hiệu SOS
       </button>
@@ -114,7 +114,7 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
           setIsComposing(false);
           reset();
         }}
-        className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-slate-300 transition hover:bg-slate-800"
+        className="rounded-lg border border-border px-2.5 py-1.5 text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Hủy
       </button>

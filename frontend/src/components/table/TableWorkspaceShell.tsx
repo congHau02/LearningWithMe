@@ -88,7 +88,7 @@ export function TableWorkspaceShell() {
         className={
           isWorkspaceMinimized
             ? 'hidden'
-            : 'absolute inset-2 z-30 flex flex-col overflow-hidden rounded-2xl border border-border/90 bg-slate-950/96 shadow-2xl ring-1 ring-white/5 sm:inset-3 md:inset-x-6 md:inset-y-3'
+            : 'absolute inset-2 z-30 flex flex-col overflow-hidden rounded-2xl border border-border bg-[#0F1714]/98 shadow-2xl ring-1 ring-border/60 sm:inset-3 md:inset-x-6 md:inset-y-3'
         }
       >
         <TableWorkspaceHeader
@@ -110,7 +110,7 @@ export function TableWorkspaceShell() {
             <div
               role="status"
               data-testid="table-permission-toast"
-              className="rounded-lg border border-sky-500/40 bg-sky-500/15 px-3 py-2 text-xs font-medium text-sky-200"
+              className="rounded-lg border border-primary/40 bg-primary/15 px-3 py-2 text-xs font-medium text-primary"
             >
               {permissionToast}
             </div>

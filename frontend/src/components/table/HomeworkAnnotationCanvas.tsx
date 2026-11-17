@@ -61,7 +61,7 @@ export function HomeworkAnnotationCanvas({
         : 'cursor-crosshair';
 
   return (
-    <div className="relative flex min-h-48 items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-950/70 p-2">
+    <div className="relative flex min-h-48 items-center justify-center overflow-hidden rounded-lg border border-border bg-[#0F1714]/80 p-2">
       <div className="relative inline-block max-w-full">
         {imageError ? (
           <div
@@ -83,7 +83,7 @@ export function HomeworkAnnotationCanvas({
         ) : (
           <div
             data-testid="homework-image-loading"
-            className="flex h-48 w-72 items-center justify-center rounded bg-slate-900/60 text-xs text-slate-400"
+            className="flex h-48 w-72 items-center justify-center rounded bg-[#16221E]/60 text-xs text-muted-foreground"
           >
             Đang tải trang bài tập...
           </div>
@@ -122,7 +122,7 @@ export function HomeworkAnnotationCanvas({
               }
             }}
             onBlur={commitPendingText}
-            className="absolute z-10 min-w-32 -translate-y-1/2 rounded border border-sky-400 bg-slate-950/95 px-2 py-0.5 text-xs text-slate-100 shadow-lg outline-none"
+            className="absolute z-10 min-w-32 -translate-y-1/2 rounded border border-primary bg-[#16221E]/95 px-2 py-0.5 text-xs text-foreground shadow-lg outline-none"
           />
         ) : null}
       </div>

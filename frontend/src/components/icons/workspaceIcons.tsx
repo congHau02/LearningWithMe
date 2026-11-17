@@ -139,3 +139,22 @@ export function GripVerticalIcon(props: StudioIconProps) {
     </StudioIconWrapper>
   );
 }
+
+export function ArrowUpDownIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16" />
+    </StudioIconWrapper>
+  );
+}
+
+export function TextIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <polyline points="4 7 4 4 20 4 20 7" />
+      <line x1="9" x2="15" y1="20" y2="20" />
+      <line x1="12" x2="12" y1="4" y2="20" />
+    </StudioIconWrapper>
+  );
+}
+

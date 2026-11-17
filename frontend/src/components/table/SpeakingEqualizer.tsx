@@ -34,12 +34,12 @@ export function SpeakingEqualizer({
     : micLive
       ? compact
         ? 'opacity-35'
-        : 'border-slate-700/80 bg-slate-900/70 opacity-40'
+        : 'border-border/80 bg-card/70 opacity-40'
       : compact
         ? 'opacity-15'
-        : 'border-slate-800/70 bg-slate-900/50 opacity-20';
+        : 'border-border/60 bg-card/50 opacity-20';
 
-  const barColor = speaking ? 'bg-emerald-400' : 'bg-slate-400';
+  const barColor = speaking ? 'bg-emerald-400' : 'bg-muted-foreground/40';
 
   return (
     <span

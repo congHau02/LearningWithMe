@@ -3,6 +3,15 @@ import { formatStudyDuration } from '../../hooks/useStudyTimer';
 import { useTableStore } from '../../stores/useTableStore';
 import { useVoiceStore } from '../../stores/useVoiceStore';
 import { formatFocusCountdown } from '../../utils/focusCycle';
+import {
+  ChatIcon,
+  CoffeeIcon,
+  DoorIcon,
+  MaximizeIcon,
+  MicIcon,
+  TargetIcon,
+  TimerIcon,
+} from '../icons';
 import { getMicControlMeta } from './voiceControlMeta';
 
 interface MinimizedTableWorkspaceBarProps {
@@ -43,7 +52,7 @@ export function MinimizedTableWorkspaceBar({
     <aside
       data-testid="minimized-table-workspace-bar"
       aria-label={`Thanh thu gọn bàn học ${activeTableId}`}
-      className="z-30 mx-2 mt-1 mb-14 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/90 bg-slate-950/95 px-3 py-2 text-xs shadow-2xl ring-1 ring-white/10 backdrop-blur-lg sm:mx-4 sm:my-0 sm:mb-3 sm:mr-44 sm:self-start"
+      className="z-30 mx-2 mt-1 mb-14 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-[#0F1714]/95 px-3 py-2 text-xs shadow-2xl ring-1 ring-border/60 backdrop-blur-lg sm:mx-4 sm:my-0 sm:mb-3 sm:mr-44 sm:self-start"
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-md bg-primary/20 px-2 py-1 font-mono font-bold text-primary">
@@ -52,20 +61,26 @@ export function MinimizedTableWorkspaceBar({
 
         <span
           data-testid="minimized-study-timer"
-          className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-1 font-mono font-semibold tabular-nums text-emerald-300"
+          className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-1 font-mono font-semibold tabular-nums text-emerald-300"
         >
-          ⏱ {formatStudyDuration(elapsedSeconds)}
+          <TimerIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+          <span>{formatStudyDuration(elapsedSeconds)}</span>
         </span>
 
         <span
           data-testid="minimized-focus-countdown"
-          className={`rounded-md border px-2 py-1 font-mono font-semibold tabular-nums ${
+          className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-mono font-semibold tabular-nums ${
             isFocusPhase
-              ? 'border-indigo-400/50 bg-indigo-500/20 text-indigo-200'
-              : 'border-teal-400/50 bg-teal-500/20 text-teal-200'
+              ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300'
+              : 'border-primary/50 bg-primary/20 text-primary'
           }`}
         >
-          {isFocusPhase ? '🎯' : '☕'} {formatFocusCountdown(remainingSeconds)}
+          {isFocusPhase ? (
+            <TargetIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+          ) : (
+            <CoffeeIcon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+          )}
+          <span>{formatFocusCountdown(remainingSeconds)}</span>
         </span>
       </div>
 
@@ -77,7 +92,7 @@ export function MinimizedTableWorkspaceBar({
             aria-pressed={micMeta.ariaPressed}
             aria-label={micMeta.ariaLabel}
             onClick={onToggleMute}
-            className={`inline-flex min-h-11 min-w-[8rem] items-center justify-center rounded-lg border px-2.5 py-1 text-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 sm:min-h-8 ${micMeta.toneClass}`}
+            className={`inline-flex min-h-11 min-w-[8rem] items-center justify-center rounded-lg border px-2.5 py-1 text-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 ${micMeta.toneClass}`}
           >
             {micMeta.label}
           </button>
@@ -87,9 +102,16 @@ export function MinimizedTableWorkspaceBar({
             data-testid="minimized-voice-join-btn"
             disabled={isJoining}
             onClick={onJoinVoice}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-semibold text-emerald-200 transition hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 sm:min-h-8"
+            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-semibold text-emerald-200 transition hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 sm:min-h-8"
           >
-            {isJoining ? 'Đang bật...' : '🎙️ Voice'}
+            {isJoining ? (
+              'Đang bật...'
+            ) : (
+              <>
+                <MicIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+                <span>Voice</span>
+              </>
+            )}
           </button>
         )}
 
@@ -99,9 +121,10 @@ export function MinimizedTableWorkspaceBar({
             data-testid="minimized-unread-chat-badge"
             aria-label={`${unreadChatCount} tin nhắn bàn học chưa đọc`}
             onClick={onExpand}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-amber-400/50 bg-amber-500/20 px-2 py-1 font-mono font-bold text-amber-200 transition hover:bg-amber-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-primary/50 bg-primary/20 px-2 py-1 font-mono font-bold text-primary transition hover:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0"
           >
-            💬 {unreadChatCount}
+            <ChatIcon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            <span>{unreadChatCount}</span>
           </button>
         ) : null}
 
@@ -109,18 +132,20 @@ export function MinimizedTableWorkspaceBar({
           type="button"
           data-testid="expand-workspace-btn"
           onClick={onExpand}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary/50 bg-primary/20 px-2.5 py-1 font-semibold text-primary transition hover:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
+          className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg border border-primary/50 bg-primary/20 px-2.5 py-1 font-semibold text-primary transition hover:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
         >
-          Mở rộng
+          <MaximizeIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Mở rộng</span>
         </button>
 
         <button
           type="button"
           data-testid="minimized-leave-seat-btn"
           onClick={onRequestLeaveSeat}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-destructive/50 bg-destructive/20 px-2.5 py-1 font-semibold text-destructive-foreground transition hover:bg-destructive/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
+          className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg border border-destructive/50 bg-destructive/20 px-2.5 py-1 font-semibold text-destructive-foreground transition hover:bg-destructive/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
         >
-          Rời bàn
+          <DoorIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Rời bàn</span>
         </button>
       </div>
     </aside>

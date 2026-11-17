@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { sendTableChatMessage } from '../../services/tableStompClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useTableStore } from '../../stores/useTableStore';
+import { ChatIcon } from '../icons';
 import {
   MAX_TABLE_CHAT_LENGTH,
   tableChatResolver,
@@ -55,21 +56,21 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
   return (
     <div
       data-testid="table-chat-panel"
-      className="flex h-72 flex-col overflow-hidden rounded-xl border border-border bg-slate-900/80 text-slate-200"
+      className="flex h-72 flex-col overflow-hidden rounded-xl border border-border bg-[#16221E]/95 text-[#E6ECE8]"
     >
-      <div className="flex items-center justify-between border-b border-border/70 bg-slate-800/70 px-3 py-2">
+      <div className="flex items-center justify-between border-b border-border bg-[#0F1714]/85 px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs">💬</span>
-          <h3 className="text-xs font-semibold text-slate-100">Table Chat</h3>
+          <ChatIcon className="h-4 w-4 text-primary" aria-hidden="true" />
+          <h3 className="text-xs font-semibold text-[#E6ECE8]">Table Chat</h3>
         </div>
-        <span className="rounded bg-slate-950/60 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+        <span className="rounded border border-border bg-[#16221E] px-1.5 py-0.5 font-mono text-[10px] text-[#8FA399]">
           {recentMessages.length}/50
         </span>
       </div>
 
       <div ref={messagesListRef} className="flex-1 space-y-2 overflow-y-auto p-3 text-xs">
         {recentMessages.length === 0 ? (
-          <p className="mt-6 text-center text-[11px] text-slate-400">
+          <p className="mt-6 text-center text-[11px] text-[#8FA399]">
             Trao đổi riêng với các bạn cùng bàn tại đây.
           </p>
         ) : (
@@ -86,8 +87,8 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
                 key={msg.id}
                 className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}
               >
-                <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
-                  <span className={isSelf ? 'font-medium text-sky-400' : 'font-medium text-emerald-400'}>
+                <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-[#8FA399]">
+                  <span className={isSelf ? 'font-semibold text-primary' : 'font-semibold text-emerald-400'}>
                     {isSelf ? 'Bạn' : msg.nickname}
                   </span>
                   {timeStr ? <span>• {timeStr}</span> : null}
@@ -95,8 +96,8 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
                 <div
                   className={`max-w-[85%] break-words rounded-xl px-2.5 py-1.5 text-xs ${
                     isSelf
-                      ? 'rounded-tr-none bg-sky-600 text-white'
-                      : 'rounded-tl-none border border-slate-700/60 bg-slate-800 text-slate-100'
+                      ? 'rounded-tr-none border border-primary/40 bg-primary/20 text-[#E6ECE8]'
+                      : 'rounded-tl-none border border-border bg-[#0F1714]/80 text-[#E6ECE8]'
                   }`}
                 >
                   {msg.content}
@@ -107,13 +108,13 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-1 border-t border-slate-800/80 bg-slate-800/40 px-3 py-1">
+      <div className="flex items-center justify-between gap-1 border-t border-border bg-[#0F1714]/60 px-3 py-1">
         {TABLE_QUICK_EMOJIS.map((emoji) => (
           <button
             key={emoji}
             type="button"
             onClick={() => dispatchMessage(emoji)}
-            className="cursor-pointer p-0.5 text-sm transition-transform hover:scale-125"
+            className="cursor-pointer p-0.5 text-sm transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             aria-label={`Table reaction ${emoji}`}
           >
             {emoji}
@@ -124,7 +125,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
       <form
         onSubmit={handleSubmit((values) => dispatchMessage(values.content))}
         noValidate
-        className="flex flex-col gap-1 border-t border-border/70 bg-slate-800/70 p-2"
+        className="flex flex-col gap-1 border-t border-border bg-[#0F1714]/85 p-2"
       >
         <div className="flex items-center gap-1.5">
           <input
@@ -139,18 +140,18 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
               }
             }}
             placeholder="Nhắn tin trong bàn (tối đa 200 ký tự)..."
-            className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none"
+            className="flex-1 rounded-lg border border-border bg-[#16221E] px-2.5 py-1.5 text-xs text-[#E6ECE8] placeholder:text-[#8FA399] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <button
             type="submit"
             data-testid="table-chat-send-btn"
             disabled={!currentContent.trim()}
-            className="cursor-pointer rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className="cursor-pointer rounded-lg border border-primary/40 bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
           >
             Gửi
           </button>
         </div>
-        <div className="text-right text-[10px] text-slate-400">{currentContent.length}/200</div>
+        <div className="text-right text-[10px] text-[#8FA399]">{currentContent.length}/200</div>
       </form>
     </div>
   );

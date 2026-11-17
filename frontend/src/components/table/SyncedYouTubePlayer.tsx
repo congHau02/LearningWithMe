@@ -4,6 +4,7 @@ import { useSyncedYouTubePlayer } from '../../hooks/useSyncedYouTubePlayer';
 import { sendTableVideoSync } from '../../services/tableStompClient';
 import { useTableStore } from '../../stores/useTableStore';
 import { extractYouTubeVideoId } from '../../utils/youtubeSync';
+import { PauseIcon, PlayIcon, VolumeIcon, VolumeOffIcon } from '../icons';
 import { youtubeUrlResolver, type YouTubeUrlFormValues } from './tableFormSchemas';
 
 interface SyncedYouTubePlayerProps {
@@ -90,7 +91,7 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
           disabled={!canControl}
           onKeyDown={(e) => e.stopPropagation()}
           placeholder={canControl ? 'Dán link YouTube hoặc mã video 11 ký tự...' : 'Chỉ Host/Co-Host được đổi video'}
-          className="min-w-0 flex-1 rounded-lg border border-border bg-slate-900/90 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-w-0 flex-1 rounded-lg border border-border bg-[#0F1714] px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
         />
         <button
           type="submit"
@@ -107,7 +108,7 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
         </p>
       ) : null}
 
-      <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-slate-950">
+      <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-[#0F1714]">
         {videoState.videoId ? (
           <div ref={containerRef} data-testid="yt-iframe-container" className="h-full w-full" />
         ) : (
@@ -124,16 +125,17 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
             data-testid="yt-play-pause-btn"
             disabled={!canControl || !videoState.videoId}
             onClick={handleTogglePlayPause}
-            className="rounded-lg border border-border bg-slate-900 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-[#16221E] px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-[#243630] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {videoState.isPlaying ? 'Tạm dừng' : 'Phát'}
+            {videoState.isPlaying ? <PauseIcon className="h-3.5 w-3.5" aria-hidden="true" /> : <PlayIcon className="h-3.5 w-3.5" aria-hidden="true" />}
+            <span>{videoState.isPlaying ? 'Tạm dừng' : 'Phát'}</span>
           </button>
           <button
             type="button"
             data-testid="yt-seek-back-btn"
             disabled={!canControl || !videoState.videoId}
             onClick={() => handleSeekOffset(-10)}
-            className="rounded-lg border border-border bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-border bg-[#16221E] px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-[#243630] disabled:cursor-not-allowed disabled:opacity-50"
           >
             -10s
           </button>
@@ -142,7 +144,7 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
             data-testid="yt-seek-forward-btn"
             disabled={!canControl || !videoState.videoId}
             onClick={() => handleSeekOffset(10)}
-            className="rounded-lg border border-border bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-border bg-[#16221E] px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-[#243630] disabled:cursor-not-allowed disabled:opacity-50"
           >
             +10s
           </button>
@@ -153,9 +155,10 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
             type="button"
             data-testid="yt-mute-btn"
             onClick={handleToggleMute}
-            className="rounded-lg border border-border bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-slate-800"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-[#16221E] px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-[#243630]"
           >
-            {isMuted ? 'Bật tiếng' : 'Tắt tiếng'}
+            {isMuted ? <VolumeOffIcon className="h-3.5 w-3.5" aria-hidden="true" /> : <VolumeIcon className="h-3.5 w-3.5" aria-hidden="true" />}
+            <span>{isMuted ? 'Bật tiếng' : 'Tắt tiếng'}</span>
           </button>
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>Âm lượng</span>
