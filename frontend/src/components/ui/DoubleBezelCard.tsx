@@ -1,6 +1,7 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 
-export interface DoubleBezelCardProps extends HTMLAttributes<HTMLDivElement> {
+export interface DoubleBezelCardProps extends HTMLAttributes<HTMLElement> {
+  as?: 'div' | 'section' | 'article';
   children?: ReactNode;
   innerClassName?: string;
   outerClassName?: string;
@@ -14,6 +15,7 @@ export interface DoubleBezelCardProps extends HTMLAttributes<HTMLDivElement> {
  * - Inner core: Slate leaf surface (#16221E) with hairline border glow
  */
 export function DoubleBezelCard({
+  as: Component = 'div',
   children,
   className = '',
   innerClassName = '',
@@ -25,7 +27,7 @@ export function DoubleBezelCard({
   const defaultPadding = hasCustomPadding ? '' : 'p-4';
 
   return (
-    <div
+    <Component
       data-testid={testId}
       data-slot="double-bezel-outer"
       className={`relative rounded-2xl border border-border/90 bg-[#121c18]/90 p-1.5 shadow-2xl ring-1 ring-white/5 transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${outerClassName} ${className}`.trim()}
@@ -38,6 +40,6 @@ export function DoubleBezelCard({
       >
         {children}
       </div>
-    </div>
+    </Component>
   );
 }

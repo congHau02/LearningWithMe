@@ -28,6 +28,13 @@ export const BOTANICAL_PALETTE_INT = {
 export const BOTANICAL_2D_SCENE = {
   canvasBackground: BOTANICAL_PALETTE_HEX.deepPineNight,
   canvasBackgroundInt: BOTANICAL_PALETTE_INT.deepPineNight,
+  windows: {
+    paneFill: BOTANICAL_PALETTE_INT.slateLeaf,
+    frame: BOTANICAL_PALETTE_INT.luminousBorder,
+    mullion: BOTANICAL_PALETTE_INT.luminousBorder,
+    twilightBeam: BOTANICAL_PALETTE_INT.slateLeaf,
+    beamAlpha: 0.1,
+  },
   chatBubble: {
     bgInt: BOTANICAL_PALETTE_INT.slateLeaf,
     borderInt: BOTANICAL_PALETTE_INT.luminousBorder,
@@ -35,24 +42,65 @@ export const BOTANICAL_2D_SCENE = {
     accentInt: BOTANICAL_PALETTE_INT.bioluminescentEmerald,
   },
   tableSos: {
+    bgInt: BOTANICAL_PALETTE_INT.slateLeaf,
+    borderInt: BOTANICAL_PALETTE_INT.luminousBorder,
     pulseFill: BOTANICAL_PALETTE_INT.warmAmber,
+    pulseStroke: BOTANICAL_PALETTE_INT.warmAmber,
     border: BOTANICAL_PALETTE_INT.warmAmber,
+    textColor: BOTANICAL_PALETTE_HEX.morningMist,
+    textBg: '#16221Eee',
   },
   seats: {
     empty: BOTANICAL_PALETTE_INT.bioluminescentEmerald,
+    emptyBorder: BOTANICAL_PALETTE_INT.bioluminescentEmerald,
     occupied: 0xef4444,
+    occupiedBorder: 0xef4444,
     current: BOTANICAL_PALETTE_INT.bioluminescentEmerald,
+    currentBorder: BOTANICAL_PALETTE_INT.morningMist,
     hover: BOTANICAL_PALETTE_INT.warmAmber,
+    hoverBorder: BOTANICAL_PALETTE_INT.warmAmber,
   },
   lighting: {
     lampWarm: BOTANICAL_PALETTE_INT.warmAmber,
     nightAmbient: BOTANICAL_PALETTE_INT.deepPineNight,
     counterGlow: BOTANICAL_PALETTE_INT.warmAmber,
+    lampAlpha: 0.11,
     ambientAlpha: 0.18,
+  },
+  afkLounge: {
+    accent: BOTANICAL_PALETTE_INT.warmAmber,
+    glowAlpha: 0.08,
+    cushionWarm: BOTANICAL_PALETTE_INT.warmAmber,
+    cushionEmerald: BOTANICAL_PALETTE_INT.bioluminescentEmerald,
+    textColor: BOTANICAL_PALETTE_HEX.morningMist,
+    backgroundColor: '#16221Ecc',
+  },
+  counter: {
+    glowFill: BOTANICAL_PALETTE_INT.warmAmber,
+    glowStroke: BOTANICAL_PALETTE_INT.warmAmber,
+    menuBoardBg: BOTANICAL_PALETTE_INT.slateLeaf,
+    menuBoardBorder: BOTANICAL_PALETTE_INT.luminousBorder,
+    menuLines: [
+      BOTANICAL_PALETTE_INT.morningMist,
+      BOTANICAL_PALETTE_INT.warmAmber,
+      BOTANICAL_PALETTE_INT.bioluminescentEmerald,
+    ] as const,
+    textColor: BOTANICAL_PALETTE_HEX.morningMist,
+    backgroundColor: '#16221Edd',
   },
   pathfinder: {
     markerInt: BOTANICAL_PALETTE_INT.bioluminescentEmerald,
     lineInt: BOTANICAL_PALETTE_INT.bioluminescentEmerald,
+  },
+  tableLabels: {
+    textColor: BOTANICAL_PALETTE_HEX.morningMist,
+    backgroundColor: '#16221Ecc',
+  },
+  playerLabels: {
+    selfTextColor: BOTANICAL_PALETTE_HEX.morningMist,
+    selfTextBg: '#16221Ecc',
+    remoteTextColor: BOTANICAL_PALETTE_HEX.morningMist,
+    remoteTextBg: '#16221Ecc',
   },
 } as const;
 

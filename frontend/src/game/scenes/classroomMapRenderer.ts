@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import {
   STARTER_AVATAR_KEYS,
   type StarterAvatarKey,
@@ -92,8 +93,8 @@ export function buildClassroomTilemap(
       .text(cx, cy, table.tableId, {
         fontFamily: 'monospace',
         fontSize: '9px',
-        color: '#fde68a',
-        backgroundColor: '#451a0399',
+        color: BOTANICAL_2D_SCENE.tableLabels.textColor,
+        backgroundColor: BOTANICAL_2D_SCENE.tableLabels.backgroundColor,
         padding: { x: 3, y: 1 },
       })
       .setOrigin(0.5)
@@ -123,22 +124,31 @@ export function drawDynamicOverlay(
     const isHovered = seat.seatId === hoveredSeatId && !isOccupied;
 
     const fillColor = isSeatedHere
-      ? 0x10b981
+      ? BOTANICAL_2D_SCENE.seats.current
       : isOccupied
-        ? 0x475569
+        ? BOTANICAL_2D_SCENE.seats.occupied
         : isHovered
-          ? 0x38bdf8
-          : 0x334155;
+          ? BOTANICAL_2D_SCENE.seats.hover
+          : BOTANICAL_2D_SCENE.seats.empty;
+
+    const strokeColor = isSeatedHere
+      ? BOTANICAL_2D_SCENE.seats.currentBorder
+      : isOccupied
+        ? BOTANICAL_2D_SCENE.seats.occupiedBorder
+        : isHovered
+          ? BOTANICAL_2D_SCENE.seats.hoverBorder
+          : BOTANICAL_2D_SCENE.seats.emptyBorder;
+
     graphics.fillStyle(fillColor, isSeatedHere || isHovered ? 0.85 : isOccupied ? 0.45 : 0.65);
     graphics.fillRoundedRect(cx - 10, cy - 10, 20, 20, 5);
-    graphics.lineStyle(1.5, isSeatedHere ? 0xa7f3d0 : isOccupied ? 0xef4444 : 0x94a3b8, isOccupied ? 0.5 : 0.9);
+    graphics.lineStyle(1.5, strokeColor, isOccupied ? 0.5 : 0.9);
     graphics.strokeRoundedRect(cx - 10, cy - 10, 20, 20, 5);
   }
 
   for (const step of pathQueue) {
     const cx = step.tileX * tileSize + tileSize / 2;
     const cy = step.tileY * tileSize + tileSize / 2;
-    graphics.fillStyle(0x38bdf8, 0.8);
+    graphics.fillStyle(BOTANICAL_2D_SCENE.pathfinder.markerInt, 0.85);
     graphics.fillCircle(cx, cy, 4);
   }
 }

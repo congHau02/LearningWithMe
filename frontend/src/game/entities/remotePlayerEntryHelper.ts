@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { RoomPlayerDto } from '../../services/roomApi';
 import { useGameStore } from '../../stores/useGameStore';
+import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import { appendGoalCompletionBadge } from '../cafe/studyCafeConfig';
 import { CharacterAccessoriesOverlay } from './CharacterAccessoriesOverlay';
 import { ChatBubble } from './ChatBubble';
@@ -88,8 +89,8 @@ export function createRemotePlayerEntry(
       .text(pos.x, pos.y - 20, initialLabel, {
         fontFamily: 'sans-serif',
         fontSize: '11px',
-        color: '#e2e8f0',
-        backgroundColor: '#0f172acc',
+        color: BOTANICAL_2D_SCENE.playerLabels.remoteTextColor,
+        backgroundColor: BOTANICAL_2D_SCENE.playerLabels.remoteTextBg,
         padding: { x: 4, y: 2 },
         align: 'center',
       })

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { RoomTableSummary } from '../../services/roomApi';
+import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import type { RoomTopology, TableMetadata } from '../topology/roomTopology';
 
 interface TableAnchor {
@@ -58,8 +59,8 @@ export class TableSosOverlay {
             fontFamily: 'sans-serif',
             fontSize: '10px',
             fontStyle: 'bold',
-            color: '#fef3c7',
-            backgroundColor: '#78350fee',
+            color: BOTANICAL_2D_SCENE.tableSos.textColor,
+            backgroundColor: BOTANICAL_2D_SCENE.tableSos.textBg,
             padding: { x: 6, y: 3 },
           })
           .setOrigin(0.5, 1)
@@ -76,9 +77,10 @@ export class TableSosOverlay {
       const boxX = anchor.cx - width / 2;
       const boxY = anchor.topY - 12 - height + 3;
 
-      this.graphics.fillStyle(0xf59e0b, pulse * 0.28);
+      // Slate Leaf background with subtle luminous border (ADR-0010)
+      this.graphics.fillStyle(BOTANICAL_2D_SCENE.tableSos.bgInt, 0.90);
       this.graphics.fillRoundedRect(boxX - 4, boxY - 4, width + 8, height + 8, 9);
-      this.graphics.lineStyle(2, 0xfbbf24, 0.5 + pulse * 0.45);
+      this.graphics.lineStyle(1.5, BOTANICAL_2D_SCENE.tableSos.borderInt, 0.5 + pulse * 0.45);
       this.graphics.strokeRoundedRect(boxX - 1, boxY - 1, width + 2, height + 2, 7);
     }
   }

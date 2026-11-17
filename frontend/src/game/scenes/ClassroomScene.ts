@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
+import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import { AmbientNpcManager } from '../cafe/AmbientNpcManager';
 import { formatSelfCharacterLabel } from '../cafe/studyCafeConfig';
 import { renderStudyCafeDecor } from '../cafe/studyCafeDecorRenderer';
@@ -98,8 +99,8 @@ export class ClassroomScene extends Phaser.Scene {
       .text(pos.x, pos.y - 20, this.playerSprite.getNickname(), {
         fontFamily: 'sans-serif',
         fontSize: '11px',
-        color: '#f8fafc',
-        backgroundColor: '#0f172acc',
+        color: BOTANICAL_2D_SCENE.playerLabels.selfTextColor,
+        backgroundColor: BOTANICAL_2D_SCENE.playerLabels.selfTextBg,
         padding: { x: 4, y: 2 },
         align: 'center',
       })

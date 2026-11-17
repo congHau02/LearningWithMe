@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 
 export class ChatBubble {
   private readonly scene?: Phaser.Scene;
@@ -19,7 +20,7 @@ export class ChatBubble {
       this.label = this.scene.add.text(0, 0, '', {
         fontFamily: 'sans-serif',
         fontSize: '11px',
-        color: '#f8fafc',
+        color: BOTANICAL_2D_SCENE.chatBubble.textColor,
         wordWrap: { width: 140, useAdvancedWrap: true },
         align: 'center',
       }).setOrigin(0.5, 0.5);
@@ -41,16 +42,16 @@ export class ChatBubble {
       const height = Math.max(20, this.label.height + 8);
 
       this.bg.clear();
-      // Translucent slate background with subtle border
-      this.bg.fillStyle(0x0f172a, 0.92);
-      this.bg.lineStyle(1, 0x38bdf8, 0.85);
+      // Slate Leaf background with subtle luminous border (ADR-0010)
+      this.bg.fillStyle(BOTANICAL_2D_SCENE.chatBubble.bgInt, 0.92);
+      this.bg.lineStyle(1, BOTANICAL_2D_SCENE.chatBubble.borderInt, 0.85);
       this.bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
       this.bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
 
       // Tail pointing downwards
-      this.bg.fillStyle(0x0f172a, 0.92);
+      this.bg.fillStyle(BOTANICAL_2D_SCENE.chatBubble.bgInt, 0.92);
       this.bg.fillTriangle(-4, height / 2, 4, height / 2, 0, height / 2 + 4);
-      this.bg.lineStyle(1, 0x38bdf8, 0.85);
+      this.bg.lineStyle(1, BOTANICAL_2D_SCENE.chatBubble.borderInt, 0.85);
       this.bg.lineBetween(-4, height / 2, 0, height / 2 + 4);
       this.bg.lineBetween(0, height / 2 + 4, 4, height / 2);
 
