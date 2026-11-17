@@ -9,6 +9,7 @@ import { LeaveTableConfirmModal } from './LeaveTableConfirmModal';
 import { RoomChatBox } from './RoomChatBox';
 import { StudyLeaderboardModal } from './StudyLeaderboardModal';
 import { StudySessionsModal } from './StudySessionsModal';
+import type { BackendConnectionStatus } from './TopBar';
 import { VirtualDrinkMenuModal } from './VirtualDrinkMenuModal';
 
 interface AppModalsProps {
@@ -17,6 +18,10 @@ interface AppModalsProps {
   characterState: CharacterState;
   currentTableId: string | null;
   currentSeatId: string | null;
+  backendStatus: BackendConnectionStatus;
+  showColdStartNotice: boolean;
+  coldStartElapsedSeconds: number;
+  onRetryBackendHealth: () => void;
   isLeaveConfirmOpen: boolean;
   isUpgradeModalOpen: boolean;
   isStudySessionsOpen: boolean;
@@ -39,6 +44,10 @@ export function AppModals({
   characterState,
   currentTableId,
   currentSeatId,
+  backendStatus,
+  showColdStartNotice,
+  coldStartElapsedSeconds,
+  onRetryBackendHealth,
   isLeaveConfirmOpen,
   isUpgradeModalOpen,
   isStudySessionsOpen,
@@ -67,7 +76,14 @@ export function AppModals({
         />
       ) : null}
 
-      {!token ? <GuestOnboardingModal /> : null}
+      {!token ? (
+        <GuestOnboardingModal
+          backendStatus={backendStatus}
+          showColdStartNotice={showColdStartNotice}
+          coldStartElapsedSeconds={coldStartElapsedSeconds}
+          onRetryBackendHealth={onRetryBackendHealth}
+        />
+      ) : null}
       {token && authProvider === 'GUEST' && isUpgradeModalOpen ? (
         <AccountUpgradeModal onClose={onCloseUpgrade} onUpgraded={onUpgraded} />
       ) : null}

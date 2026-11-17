@@ -3,7 +3,10 @@ import { useForm } from 'react-hook-form';
 import { formatApiError } from '../../services/apiClient';
 import { createGuestSession } from '../../services/authApi';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { ServerWakeUpNotice } from '../hud/ServerWakeUpNotice';
+import type { BackendConnectionStatus } from '../hud/TopBar';
 import { AvatarPickerField } from './AvatarPickerField';
+import { OnboardingEntryTabs, type OnboardingEntryTab } from './OnboardingEntryTabs';
 import { OnboardingTextField } from './OnboardingTextField';
 import { RegisteredLoginPanel } from './RegisteredLoginPanel';
 import { DEFAULT_AVATAR_ID } from './starterAvatars';
@@ -14,12 +17,23 @@ import {
   type GuestOnboardingFormValues,
 } from './guestOnboardingSchema';
 
-type EntryTab = 'GUEST' | 'LOGIN';
+export interface GuestOnboardingModalProps {
+  backendStatus?: BackendConnectionStatus;
+  showColdStartNotice?: boolean;
+  coldStartElapsedSeconds?: number;
+  onRetryBackendHealth?: () => void;
+}
 
-export function GuestOnboardingModal() {
-  const [activeTab, setActiveTab] = useState<EntryTab>('GUEST');
+export function GuestOnboardingModal({
+  backendStatus = 'UP',
+  showColdStartNotice = false,
+  coldStartElapsedSeconds = 0,
+  onRetryBackendHealth,
+}: GuestOnboardingModalProps) {
+  const [activeTab, setActiveTab] = useState<OnboardingEntryTab>('GUEST');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const setSession = useAuthStore((s) => s.setSession);
+  const isBackendWaiting = showColdStartNotice && backendStatus !== 'UP';
 
   const {
     register,
@@ -68,40 +82,16 @@ export function GuestOnboardingModal() {
         aria-labelledby="guest-onboarding-title"
         className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl sm:p-5"
       >
-        <div
-          role="tablist"
-          aria-label="Chế độ vào phòng học"
-          className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-border bg-background/70 p-1"
-        >
-          <button
-            type="button"
-            role="tab"
-            id="entry-tab-guest"
-            aria-selected={activeTab === 'GUEST'}
-            onClick={() => setActiveTab('GUEST')}
-            className={`min-h-9 rounded-md px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card ${
-              activeTab === 'GUEST'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Vào ngay (Khách)
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="entry-tab-login"
-            aria-selected={activeTab === 'LOGIN'}
-            onClick={() => setActiveTab('LOGIN')}
-            className={`min-h-9 rounded-md px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card ${
-              activeTab === 'LOGIN'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Đăng nhập tài khoản
-          </button>
-        </div>
+        {isBackendWaiting ? (
+          <ServerWakeUpNotice
+            variant="card"
+            backendStatus={backendStatus}
+            elapsedSeconds={coldStartElapsedSeconds}
+            onRetry={onRetryBackendHealth}
+          />
+        ) : null}
+
+        <OnboardingEntryTabs activeTab={activeTab} onChange={setActiveTab} />
 
         <div className="space-y-1.5">
           <span className="inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
@@ -167,14 +157,18 @@ export function GuestOnboardingModal() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isBackendWaiting}
               className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
             >
-              {isSubmitting ? 'Đang vào phòng học...' : 'Vào phòng học ngay'}
+              {isBackendWaiting
+                ? 'Đang chờ máy chủ khởi động...'
+                : isSubmitting
+                  ? 'Đang vào phòng học...'
+                  : 'Vào phòng học ngay'}
             </button>
           </form>
         ) : (
-          <RegisteredLoginPanel />
+          <RegisteredLoginPanel isBackendWaiting={isBackendWaiting} />
         )}
       </div>
     </div>

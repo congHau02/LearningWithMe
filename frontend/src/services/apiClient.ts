@@ -47,10 +47,16 @@ export function formatApiError(
   includeErrorMessage = false,
 ): string {
   if (error instanceof ApiError) {
+    if (error.status === 502 || error.status === 503 || error.status === 504) {
+      return 'Máy chủ đang khởi động lại (Render Free). Vui lòng đợi vài giây rồi thử lại.';
+    }
     const fieldSummary = error.errors
       ? Object.values(error.errors).join(', ')
       : '';
     return fieldSummary || error.detail;
+  }
+  if (error instanceof TypeError) {
+    return 'Không thể kết nối tới máy chủ. Máy chủ có thể đang khởi động lại, vui lòng thử lại sau giây lát.';
   }
   if (includeErrorMessage && error instanceof Error && error.message) {
     return error.message;
@@ -150,8 +156,11 @@ export interface BackendHealthResponse {
   timestamp?: string;
 }
 
-export async function fetchBackendHealth(): Promise<BackendHealthResponse> {
+export async function fetchBackendHealth(
+  signal?: AbortSignal,
+): Promise<BackendHealthResponse> {
   return apiRequest<BackendHealthResponse>('/api/v1/health', {
     method: 'GET',
+    signal,
   });
 }

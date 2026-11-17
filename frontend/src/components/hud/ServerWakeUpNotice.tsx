@@ -1,0 +1,88 @@
+import type { BackendConnectionStatus } from './TopBar';
+
+export interface ServerWakeUpNoticeProps {
+  variant: 'card' | 'banner';
+  backendStatus: BackendConnectionStatus;
+  elapsedSeconds: number;
+  onRetry?: () => void;
+}
+
+function RetryButton({
+  onRetry,
+  className,
+}: {
+  onRetry?: () => void;
+  className: string;
+}) {
+  if (!onRetry) {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onRetry}
+      className={`inline-flex min-h-11 shrink-0 items-center rounded-lg border border-amber-400/50 bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${className}`}
+    >
+      Thử kết nối lại ngay
+    </button>
+  );
+}
+
+export function ServerWakeUpNotice({
+  variant,
+  elapsedSeconds,
+  onRetry,
+}: ServerWakeUpNoticeProps) {
+  if (variant === 'banner') {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        data-testid="server-wakeup-banner"
+        className="relative z-40 flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/40 bg-amber-950/90 px-4 py-2 text-xs text-amber-100 shadow-md"
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-400"
+            aria-hidden="true"
+          />
+          <span>
+            Máy chủ đang khởi động lại (Render Free có thể mất 30–60 giây). Hệ thống đang tự động
+            kiểm tra...{' '}
+            <strong className="font-mono text-amber-200">Đã chờ {elapsedSeconds}s</strong>
+          </span>
+        </div>
+        <RetryButton onRetry={onRetry} className="" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      data-testid="server-wakeup-card"
+      className="mb-3.5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 font-semibold text-amber-200">
+          <span
+            className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-400"
+            aria-hidden="true"
+          />
+          <span>Đang đánh thức máy chủ học tập...</span>
+        </div>
+        <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[11px] text-amber-200">
+          Đã chờ {elapsedSeconds}s
+        </span>
+      </div>
+      <p className="mt-1.5 leading-relaxed text-amber-100/90">
+        Render Free cần khoảng 30–60 giây để khởi động lại sau khi nghỉ. Bạn có thể điền trước tên,
+        chọn nhân vật và mục tiêu học tập trong lúc chờ.
+      </p>
+      <div className="mt-2.5 flex justify-end">
+        <RetryButton onRetry={onRetry} className="" />
+      </div>
+    </div>
+  );
+}

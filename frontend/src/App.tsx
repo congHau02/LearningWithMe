@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
 import { AppModals } from './components/hud/AppModals';
 import { ReconnectingBanner } from './components/hud/ReconnectingBanner';
+import { ServerWakeUpNotice } from './components/hud/ServerWakeUpNotice';
 import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
 import { TopBar } from './components/hud/TopBar';
 import { TableWorkspaceShell } from './components/table/TableWorkspaceShell';
@@ -52,8 +53,13 @@ export function App() {
   const isMinimizedSeated = isSeated && isWorkspaceMinimized;
   const isTableHost = isSeated && Boolean(tableHostUserId && selfUserId && tableHostUserId === selfUserId);
 
-  const backendStatus = useAppBootstrap();
-  useRoomSync();
+  const {
+    backendStatus,
+    showColdStartNotice,
+    coldStartElapsedSeconds,
+    retryHealthCheck,
+  } = useAppBootstrap();
+  useRoomSync(backendStatus);
   useTableWorkspaceSync();
 
   const hasOpenModal = isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen || isCustomizerOpen || isDrinkMenuOpen;
@@ -106,6 +112,14 @@ export function App() {
 
       {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
       {connectionStatus === 'RECONNECTING' ? <ReconnectingBanner /> : null}
+      {token && showColdStartNotice && backendStatus !== 'UP' && connectionStatus !== 'REPLACED' ? (
+        <ServerWakeUpNotice
+          variant="banner"
+          backendStatus={backendStatus}
+          elapsedSeconds={coldStartElapsedSeconds}
+          onRetry={retryHealthCheck}
+        />
+      ) : null}
 
       {toastMessage ? (
         <aside
@@ -149,6 +163,10 @@ export function App() {
         characterState={characterState}
         currentTableId={currentTableId}
         currentSeatId={currentSeatId}
+        backendStatus={backendStatus}
+        showColdStartNotice={showColdStartNotice}
+        coldStartElapsedSeconds={coldStartElapsedSeconds}
+        onRetryBackendHealth={retryHealthCheck}
         isLeaveConfirmOpen={isLeaveConfirmOpen}
         isUpgradeModalOpen={isUpgradeModalOpen}
         isStudySessionsOpen={isStudySessionsOpen}

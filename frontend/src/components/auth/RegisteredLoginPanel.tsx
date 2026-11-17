@@ -8,7 +8,11 @@ import { GoogleLogoMark } from './GoogleLogoMark';
 import { localLoginResolver, type LocalLoginFormValues } from './loginSchema';
 import { PasswordField } from './PasswordField';
 
-export function RegisteredLoginPanel() {
+export interface RegisteredLoginPanelProps {
+  isBackendWaiting?: boolean;
+}
+
+export function RegisteredLoginPanel({ isBackendWaiting = false }: RegisteredLoginPanelProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const fallbackButtonRef = useRef<HTMLDivElement | null>(null);
@@ -141,10 +145,14 @@ export function RegisteredLoginPanel() {
 
         <button
           type="submit"
-          disabled={isSubmitting || isGoogleLoading}
+          disabled={isSubmitting || isGoogleLoading || isBackendWaiting}
           className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
         >
-          {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+          {isBackendWaiting
+            ? 'Đang chờ máy chủ khởi động...'
+            : isSubmitting
+              ? 'Đang đăng nhập...'
+              : 'Đăng nhập'}
         </button>
       </form>
 
@@ -157,7 +165,7 @@ export function RegisteredLoginPanel() {
       <button
         type="button"
         onClick={handleGoogleLogin}
-        disabled={isSubmitting || isGoogleLoading}
+        disabled={isSubmitting || isGoogleLoading || isBackendWaiting}
         className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <GoogleLogoMark />

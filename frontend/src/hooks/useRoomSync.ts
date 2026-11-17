@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { BackendConnectionStatus } from '../components/hud/TopBar';
 import { MovementThrottler } from '../services/movementThrottler';
 import {
   createRoomStompSession,
@@ -11,7 +12,7 @@ import { useGameStore } from '../stores/useGameStore';
 import { useTableStore } from '../stores/useTableStore';
 import { teardownActiveVoice } from '../stores/useVoiceStore';
 
-export function useRoomSync(): void {
+export function useRoomSync(backendStatus: BackendConnectionStatus = 'UP'): void {
   const token = useAuthStore((s) => s.token);
   const userId = useAuthStore((s) => s.userId);
   const sessionRef = useRef<RoomStompSession | null>(null);
@@ -212,6 +213,11 @@ export function useRoomSync(): void {
     if (prevTokenRef.current !== token) {
       prevTokenRef.current = token;
       void sessionRef.current.updateToken(token);
+      return;
     }
-  }, [token]);
+
+    if (backendStatus === 'UP' && useGameStore.getState().connectionStatus === 'ERROR') {
+      void sessionRef.current.start(token);
+    }
+  }, [token, backendStatus]);
 }
