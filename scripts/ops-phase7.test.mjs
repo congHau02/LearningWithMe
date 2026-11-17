@@ -94,18 +94,23 @@ test('backup-nightly workflow and backup/restore scripts exist and meet Phase 7 
   execFileSync(bashBin, ['-n', createScript]);
   execFileSync(bashBin, ['-n', restoreScript]);
 
-  const dryRunOut = execFileSync(bashBin, [createScript, 'backups/test.tar.gz'], {
-    env: {
-      ...process.env,
-      BACKUP_DRY_RUN: 'true',
-      SPRING_DATASOURCE_URL:
-        'jdbc:mysql://mysql-aiven.example.com:25060/defaultdb?sslMode=REQUIRED&characterEncoding=UTF-8',
-      SPRING_DATASOURCE_USERNAME: 'avnadmin',
-      SPRING_DATA_REDIS_HOST: 'redis-123.redns.redis-cloud.com',
-      SPRING_DATA_REDIS_PORT: '14567',
-      SPRING_DATA_REDIS_SSL_ENABLED: 'true',
-    },
-    encoding: 'utf8',
+  const runBackupDryRun = (archive, envOverrides) =>
+    execFileSync(bashBin, [createScript, archive], {
+      env: {
+        ...process.env,
+        BACKUP_DRY_RUN: 'true',
+        SPRING_DATA_REDIS_HOST: 'redis-123.redns.redis-cloud.com',
+        SPRING_DATA_REDIS_PORT: '14567',
+        SPRING_DATA_REDIS_SSL_ENABLED: 'true',
+        ...envOverrides,
+      },
+      encoding: 'utf8',
+    });
+
+  const dryRunOut = runBackupDryRun('backups/test.tar.gz', {
+    SPRING_DATASOURCE_URL:
+      'jdbc:mysql://mysql-aiven.example.com:25060/defaultdb?sslMode=REQUIRED&characterEncoding=UTF-8',
+    SPRING_DATASOURCE_USERNAME: 'avnadmin',
   });
   assert.match(
     dryRunOut,
@@ -115,4 +120,95 @@ test('backup-nightly workflow and backup/restore scripts exist and meet Phase 7 
     dryRunOut,
     /REDIS_HOST=redis-123\.redns\.redis-cloud\.com REDIS_PORT=14567 REDIS_USERNAME=default REDIS_TLS=true OUTPUT=backups\/test\.tar\.gz/,
   );
+
+  // TiDB Cloud Serverless JDBC URL (VERIFY_IDENTITY) + Redis Labs TLS
+  const tidbDryRunOut = runBackupDryRun('backups/tidb.tar.gz', {
+    SPRING_DATASOURCE_URL:
+      'jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/studytogether?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3',
+    SPRING_DATASOURCE_USERNAME: 'tidbuser.root',
+  });
+  assert.match(
+    tidbDryRunOut,
+    /MYSQL_HOST=gateway01\.ap-southeast-1\.prod\.aws\.tidbcloud\.com MYSQL_PORT=4000 MYSQL_DATABASE=studytogether MYSQL_USER=tidbuser\.root MYSQL_SSL_MODE=VERIFY_IDENTITY/,
+  );
+  assert.match(
+    tidbDryRunOut,
+    /REDIS_HOST=redis-123\.redns\.redis-cloud\.com REDIS_PORT=14567 REDIS_USERNAME=default REDIS_TLS=true OUTPUT=backups\/tidb\.tar\.gz/,
+  );
+
+  // Verify actual TLS CLI args emitted by backup-env.sh for TiDB Cloud and Redis Labs
+  const tlsArgsOut = execFileSync(
+    bashBin,
+    [
+      '-c',
+      `source "${backupEnvScript.replace(/\\/g, '/')}"
+       mysqldump() { echo "--ssl-mode --ssl-ca"; }
+       resolve_backup_connection_env
+       append_mysql_ssl_args mysqldump
+       build_redis_cli_args
+       printf 'MYSQL_ARGS=%s\\nREDIS_ARGS=%s\\n' "\${MYSQL_SSL_ARGS[*]}" "\${REDIS_ARGS[*]}"`,
+    ],
+    {
+      env: {
+        ...process.env,
+        SPRING_DATASOURCE_URL:
+          'jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/studytogether?sslMode=VERIFY_IDENTITY',
+        MYSQL_SSL_CA: '/etc/ssl/certs/ca-certificates.crt',
+        SPRING_DATA_REDIS_HOST: 'redis-123.redns.redis-cloud.com',
+        SPRING_DATA_REDIS_PORT: '14567',
+        SPRING_DATA_REDIS_SSL_ENABLED: 'true',
+      },
+      encoding: 'utf8',
+    },
+  );
+  assert.match(tlsArgsOut, /MYSQL_ARGS=--ssl-mode=VERIFY_IDENTITY --ssl-ca=\/etc\/ssl\/certs\/ca-certificates\.crt/);
+  assert.match(tlsArgsOut, /REDIS_ARGS=-h redis-123\.redns\.redis-cloud\.com -p 14567 --tls/);
+});
+
+test('GitHub Actions workflows never reference secrets.* inside if: conditionals and backup-nightly handles unconfigured secrets gracefully', () => {
+  const workflowsDir = path.join(rootDir, '.github/workflows');
+  const workflowFiles = fs
+    .readdirSync(workflowsDir)
+    .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'));
+  assert.ok(workflowFiles.length >= 3, 'Expected ci.yml, cd.yml, and backup-nightly.yml');
+
+  for (const file of workflowFiles) {
+    const content = fs.readFileSync(path.join(workflowsDir, file), 'utf8');
+    const lines = content.split(/\r?\n/);
+    let inIfBlock = false;
+    let ifIndent = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const ifMatch = line.match(/^(\s*)(?:-\s*)?if:\s*(.*)$/);
+      if (ifMatch) {
+        ifIndent = ifMatch[1].length + (line.includes('- if:') ? 2 : 0);
+        inIfBlock = true;
+        assert.doesNotMatch(
+          ifMatch[2],
+          /\bsecrets\./,
+          `${file}:${i + 1} must not reference secrets.* inside an if: conditional`,
+        );
+        continue;
+      }
+      if (inIfBlock) {
+        if (/^\s*$/.test(line) || /^\s*#/.test(line)) continue;
+        const indent = line.match(/^(\s*)/)[1].length;
+        if (indent > ifIndent) {
+          assert.doesNotMatch(
+            line,
+            /\bsecrets\./,
+            `${file}:${i + 1} must not reference secrets.* inside a multi-line if: conditional`,
+          );
+        } else {
+          inIfBlock = false;
+        }
+      }
+    }
+  }
+
+  const backupWorkflow = fs.readFileSync(path.join(workflowsDir, 'backup-nightly.yml'), 'utf8');
+  assert.match(backupWorkflow, /::warning::/);
+  assert.match(backupWorkflow, /steps\.create-backup\.outputs\.archive\s*!=\s*''/);
+  assert.match(backupWorkflow, /BACKUP_S3_BUCKET/);
 });

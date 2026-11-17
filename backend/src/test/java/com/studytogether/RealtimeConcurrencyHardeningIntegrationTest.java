@@ -224,6 +224,7 @@ class RealtimeConcurrencyHardeningIntegrationTest {
         for (StompSession s : sessions) {
             if (s.isConnected()) s.disconnect();
         }
+        awaitDisconnected(roomId, userIds.toArray(String[]::new));
         observer.disconnect();
     }
 
@@ -337,6 +338,7 @@ class RealtimeConcurrencyHardeningIntegrationTest {
 
         aSession.disconnect();
         bSession.disconnect();
+        awaitDisconnected(roomId, aAuth.get("guestId").asText(), bAuth.get("guestId").asText());
     }
 
     @Test
@@ -355,7 +357,7 @@ class RealtimeConcurrencyHardeningIntegrationTest {
 
         CountDownLatch ready = new CountDownLatch(totalLearners);
         CountDownLatch go = new CountDownLatch(1);
-        ExecutorService pool = Executors.newFixedThreadPool(24);
+        ExecutorService pool = Executors.newFixedThreadPool(totalLearners);
         List<Future<String>> futures = new ArrayList<>(totalLearners);
         try {
             for (int i = 0; i < totalLearners; i++) {
@@ -422,6 +424,7 @@ class RealtimeConcurrencyHardeningIntegrationTest {
             assertThat(redisTemplate.opsForHash().hasKey(
                     RedisRoomStateStore.playersKey("main-library"), userIds.get(firstMainIdx))).isTrue();
             reservedSession.disconnect();
+            awaitDisconnected("main-library", userIds.get(firstMainIdx));
         } finally {
             pool.shutdownNow();
         }
@@ -585,5 +588,24 @@ class RealtimeConcurrencyHardeningIntegrationTest {
             }
         }
         throw new AssertionError("Expected event type " + type);
+    }
+
+    private void awaitDisconnected(String roomId, String... userIds) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < deadline) {
+            boolean allSettled = true;
+            for (String userId : userIds) {
+                var playerOpt = roomStateStore.getPlayer(roomId, userId);
+                if (playerOpt.isPresent() && playerOpt.get().connected()) {
+                    allSettled = false;
+                    break;
+                }
+            }
+            if (allSettled) {
+                return;
+            }
+            Thread.sleep(25);
+        }
+        throw new AssertionError("Timed out waiting for STOMP disconnect handling to settle");
     }
 }

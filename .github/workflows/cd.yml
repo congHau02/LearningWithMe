@@ -60,7 +60,6 @@ jobs:
       packages: read
     steps:
       - name: Checkout fallback Compose config when using SSH fallback
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL == '' && secrets.VM_HOST != '' }}
         uses: actions/checkout@v4
         with:
           sparse-checkout: |
