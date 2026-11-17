@@ -62,7 +62,7 @@ export function StarterAvatarPortrait({
       data-avatar-id={avatarId}
       data-hat-id={hatId}
       data-desk-pet-id={deskPetId}
-      className="shrink-0 rounded-lg bg-slate-900/70"
+      className="shrink-0 rounded-lg border border-border/40 bg-[#0F1714]/80"
     >
       <path d="M12 44C12 36.268 17.373 31 24 31C30.627 31 36 36.268 36 44" fill={avatar.shirtHex} />
       {avatar.id === 'skin_scholar_blazer' ? (

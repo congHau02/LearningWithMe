@@ -58,7 +58,7 @@ export function GoogleUpgradePanel({ onSuccess }: GoogleUpgradePanelProps) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-background/70 p-3.5 text-xs leading-relaxed text-muted-foreground">
+      <div className="rounded-xl border border-border bg-[#0F1714]/70 p-3.5 text-xs leading-relaxed text-muted-foreground">
         Đăng nhập bằng tài khoản Google qua cửa sổ bật lên an toàn. Trình duyệt giữ nguyên kết nối phòng học và chỗ ngồi hiện tại.
       </div>
 
@@ -75,7 +75,7 @@ export function GoogleUpgradePanel({ onSuccess }: GoogleUpgradePanelProps) {
         type="button"
         onClick={handleGoogleSignIn}
         disabled={isSubmitting}
-        className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm font-semibold text-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <GoogleLogoMark />
         {isSubmitting ? 'Đang xác thực với Google...' : 'Tiếp tục với Google'}

@@ -21,6 +21,9 @@ export function DoubleBezelCard({
   'data-testid': testId = 'double-bezel-outer',
   ...props
 }: DoubleBezelCardProps) {
+  const hasCustomPadding = /(?:^|\s)p(?:[xytrbl])?-/.test(innerClassName);
+  const defaultPadding = hasCustomPadding ? '' : 'p-4';
+
   return (
     <div
       data-testid={testId}
@@ -31,7 +34,7 @@ export function DoubleBezelCard({
       <div
         data-testid="double-bezel-inner"
         data-slot="double-bezel-inner"
-        className={`relative w-full rounded-xl border border-border/80 bg-card/95 p-4 text-foreground shadow-inner backdrop-blur-none transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${innerClassName}`.trim()}
+        className={`relative w-full rounded-xl border border-border/80 bg-card/95 ${defaultPadding} text-foreground shadow-inner backdrop-blur-none transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${innerClassName}`.trim()}
       >
         {children}
       </div>

@@ -5,6 +5,8 @@ import {
   type PersonalStudyStatsResponse,
 } from '../../services/statsApi';
 import { useAuthStore, type AuthProvider } from '../../stores/useAuthStore';
+import { ClockIcon, FlameIcon, TrophyIcon, XIcon } from '../icons';
+import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 import { StudySessionRow } from './StudySessionRow';
 
 export interface StudySessionsModalProps {
@@ -50,12 +52,13 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
   const sessions = stats?.recentSessions ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
-      <div
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+      <DoubleBezelCard
         role="dialog"
         aria-modal="true"
         aria-labelledby="study-sessions-modal-title"
-        className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-2xl sm:max-h-[85dvh] sm:p-6"
+        className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col sm:max-h-[85dvh]"
+        innerClassName="flex flex-col flex-1 min-h-0 p-5 sm:p-6 overflow-hidden"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -76,7 +79,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
               type="button"
               onClick={() => void loadStats()}
               disabled={isLoading}
-              className="rounded-md border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground transition hover:bg-accent disabled:opacity-50"
+              className="min-h-11 rounded-xl border border-border bg-secondary px-3 py-1 text-xs font-medium text-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 disabled:opacity-50 sm:min-h-9"
             >
               Làm mới
             </button>
@@ -84,17 +87,19 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
               type="button"
               onClick={onClose}
               aria-label="Đóng"
-              className="rounded-md border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground transition hover:bg-accent"
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-border bg-secondary px-3 py-1 text-xs font-medium text-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 sm:min-h-9"
             >
-              Đóng
+              <XIcon className="h-3.5 w-3.5" />
+              <span>Đóng</span>
             </button>
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
-            <p className="text-[11px] font-medium text-emerald-300/90">
-              Tổng thời gian tích lũy
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+            <p className="flex items-center gap-1 text-[11px] font-medium text-emerald-300/90">
+              <ClockIcon className="h-3.5 w-3.5" />
+              <span>Tổng thời gian tích lũy</span>
             </p>
             <p
               data-testid="study-sessions-total-minutes"
@@ -103,9 +108,10 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
               {totalMinutes} phút
             </p>
           </div>
-          <div className="rounded-lg border border-border bg-secondary/60 p-3">
-            <p className="text-[11px] font-medium text-muted-foreground">
-              Tổng số phiên học
+          <div className="rounded-xl border border-border bg-secondary/60 p-3">
+            <p className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+              <TrophyIcon className="h-3.5 w-3.5" />
+              <span>Tổng số phiên học</span>
             </p>
             <p
               data-testid="study-sessions-total-sessions"
@@ -114,13 +120,14 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
               {totalSessions} phiên
             </p>
           </div>
-          <div className="rounded-lg border border-orange-500/35 bg-orange-500/10 p-3">
-            <p className="text-[11px] font-medium text-orange-200/90">
-              Chuỗi ngày học
+          <div className="rounded-xl border border-primary/35 bg-primary/10 p-3">
+            <p className="flex items-center gap-1 text-[11px] font-medium text-primary/90">
+              <FlameIcon className="h-3.5 w-3.5" />
+              <span>Chuỗi ngày học</span>
             </p>
             <p
               data-testid="study-sessions-streak"
-              className="mt-1 font-mono text-xl font-bold text-orange-200"
+              className="mt-1 font-mono text-xl font-bold text-primary"
             >
               🔥 {studyStreakDays} ngày
             </p>
@@ -133,11 +140,11 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
               Đang tải lịch sử phiên học...
             </p>
           ) : errorMessage ? (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/15 p-3 text-xs text-destructive-foreground">
+            <div className="rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-destructive-foreground">
               {errorMessage}
             </div>
           ) : sessions.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-background/50 px-4 py-8 text-center text-xs text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-border bg-[#0F1714]/40 px-4 py-8 text-center text-xs text-muted-foreground">
               Chưa có phiên học nào đạt từ 1 phút trở lên. Hãy ngồi vào bàn học và tập trung nhé!
             </div>
           ) : (
@@ -151,7 +158,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
             </ul>
           )}
         </div>
-      </div>
+      </DoubleBezelCard>
     </div>
   );
 }

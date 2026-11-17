@@ -9,6 +9,8 @@ import {
 } from '../../services/customizationApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
+import { XIcon } from '../icons';
+import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 import { CharacterCustomizerItemCard } from './CharacterCustomizerItemCard';
 
 export interface CharacterCustomizerModalProps {
@@ -93,30 +95,39 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
   const tabItems = items.filter((item) => item.itemType === activeTab);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
-      <div
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+      <DoubleBezelCard
         role="dialog"
         aria-modal="true"
         aria-labelledby="customizer-title"
         data-testid="character-customizer-modal"
-        className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-2xl sm:max-h-[88dvh] sm:p-6"
+        className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col sm:max-h-[88dvh]"
+        innerClassName="flex flex-col flex-1 min-h-0 p-5 sm:p-6 overflow-hidden"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div className="flex items-center gap-4">
             <StarterAvatarPortrait avatarId={skinId} hatId={hatId} deskPetId={deskPetId} size={64} testId="customizer-preview-portrait" />
             <div>
-              <h2 id="customizer-title" className="text-lg font-bold tracking-tight">Tủ đồ &amp; Thú cưng bàn học</h2>
+              <h2 id="customizer-title" className="text-lg font-bold tracking-tight text-foreground">
+                Tủ đồ &amp; Thú cưng bàn học
+              </h2>
               <p className="text-xs text-muted-foreground">
                 Tổng tích lũy: <span className="font-mono font-semibold text-primary">{totalMinutes} phút</span> học tập
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="rounded-md border border-border bg-secondary px-2.5 py-1 text-xs font-medium hover:bg-accent">
-            Đóng
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Đóng"
+            className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-border bg-secondary px-3 py-1 text-xs font-medium text-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 sm:min-h-9"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+            <span>Đóng</span>
           </button>
         </div>
 
-        <div role="tablist" className="mt-4 grid grid-cols-3 gap-2 rounded-lg border border-border bg-background/60 p-1">
+        <div role="tablist" className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-border bg-[#0F1714]/60 p-1">
           {TABS.map((tab) => (
             <button
               key={tab.type}
@@ -125,7 +136,7 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
               aria-selected={activeTab === tab.type}
               data-testid={`customizer-tab-${tab.type}`}
               onClick={() => setActiveTab(tab.type)}
-              className={`rounded-md px-2 py-2 text-xs font-semibold transition ${
+              className={`min-h-11 rounded-lg px-2 py-2 text-xs font-semibold transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] sm:min-h-9 ${
                 activeTab === tab.type ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -135,7 +146,7 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
         </div>
 
         {errorMsg ? (
-          <p role="alert" className="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+          <p role="alert" className="mt-3 rounded-lg border border-destructive/40 bg-destructive/15 px-3 py-2 text-xs text-rose-300">
             {errorMsg}
           </p>
         ) : null}
@@ -156,7 +167,11 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
         </div>
 
         <div className="mt-4 flex items-center justify-end gap-2 border-t border-border pt-4">
-          <button type="button" onClick={onClose} className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-accent">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-11 rounded-xl border border-border bg-secondary px-4 py-2 text-xs font-medium text-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 sm:min-h-9"
+          >
             Hủy
           </button>
           <button
@@ -164,12 +179,12 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
             data-testid="customizer-save-btn"
             disabled={loading || saving}
             onClick={handleSave}
-            className="rounded-md bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
+            className="min-h-11 rounded-xl border border-primary/40 bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-md transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:brightness-105 active:brightness-95 disabled:opacity-50 sm:min-h-9"
           >
             {saving ? 'Đang lưu...' : 'Lưu trang bị'}
           </button>
         </div>
-      </div>
+      </DoubleBezelCard>
     </div>
   );
 }

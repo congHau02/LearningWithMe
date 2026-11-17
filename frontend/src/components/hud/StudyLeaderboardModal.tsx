@@ -7,6 +7,8 @@ import {
 } from '../../services/statsApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
+import { XIcon } from '../icons';
+import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 import { LeaderboardEntryRow } from './LeaderboardEntryRow';
 import { StudyStreakBadge } from './StudyStreakBadge';
 
@@ -51,12 +53,13 @@ export function StudyLeaderboardModal({
   const myEntry = data?.myEntry ?? null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
-      <div
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+      <DoubleBezelCard
         role="dialog"
         aria-modal="true"
         aria-labelledby="study-leaderboard-modal-title"
-        className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-xl flex-col rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-2xl sm:max-h-[85dvh] sm:p-6"
+        className="my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-xl flex-col sm:max-h-[85dvh]"
+        innerClassName="flex flex-col flex-1 min-h-0 p-5 sm:p-6 overflow-hidden"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -77,7 +80,7 @@ export function StudyLeaderboardModal({
               type="button"
               onClick={() => void loadLeaderboard()}
               disabled={isLoading}
-              className="rounded-md border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground transition hover:bg-accent disabled:opacity-50"
+              className="min-h-11 rounded-xl border border-border bg-secondary px-3 py-1 text-xs font-medium text-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 disabled:opacity-50 sm:min-h-9"
             >
               Làm mới
             </button>
@@ -85,9 +88,10 @@ export function StudyLeaderboardModal({
               type="button"
               onClick={onClose}
               aria-label="Đóng"
-              className="rounded-md border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground transition hover:bg-accent"
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-border bg-secondary px-3 py-1 text-xs font-medium text-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 sm:min-h-9"
             >
-              Đóng
+              <XIcon className="h-3.5 w-3.5" />
+              <span>Đóng</span>
             </button>
           </div>
         </div>
@@ -98,11 +102,11 @@ export function StudyLeaderboardModal({
               Đang tải bảng xếp hạng...
             </p>
           ) : errorMessage ? (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/15 p-3 text-xs text-destructive-foreground">
+            <div className="rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-destructive-foreground">
               {errorMessage}
             </div>
           ) : entries.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-background/50 px-4 py-8 text-center text-xs text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-border bg-[#0F1714]/40 px-4 py-8 text-center text-xs text-muted-foreground">
               Chưa có thành viên chính thức nào trên bảng xếp hạng. Hãy nâng cấp tài khoản để ghi danh đầu tiên!
             </div>
           ) : (
@@ -125,7 +129,7 @@ export function StudyLeaderboardModal({
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="rounded-md border border-primary/40 bg-primary/20 px-2 py-1 font-mono text-xs font-bold text-primary">
+                <span className="rounded-lg border border-primary/40 bg-primary/20 px-2 py-1 font-mono text-xs font-bold text-primary">
                   {myEntry.rank !== null ? `#${myEntry.rank}` : 'Chưa xếp hạng'}
                 </span>
                 <StarterAvatarPortrait avatarId={myEntry.avatarSpriteId} size={34} />
@@ -142,7 +146,7 @@ export function StudyLeaderboardModal({
               </div>
               <div className="flex items-center gap-2">
                 <StudyStreakBadge days={myEntry.studyStreakDays} testId="leaderboard-my-streak" />
-                <span className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-mono text-xs font-semibold text-emerald-300">
+                <span className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 font-mono text-xs font-semibold text-emerald-300">
                   {formatStudyDuration(myEntry.totalStudyMinutes)}
                 </span>
               </div>
@@ -156,7 +160,7 @@ export function StudyLeaderboardModal({
                 <button
                   type="button"
                   onClick={onRequestUpgrade}
-                  className="rounded-md border border-primary/60 bg-primary/20 px-3 py-1 text-xs font-semibold text-primary transition hover:bg-primary/30"
+                  className="min-h-11 sm:min-h-8 rounded-lg border border-primary/60 bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-sm transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:brightness-105 active:brightness-95"
                 >
                   Nâng cấp tài khoản
                 </button>
@@ -164,7 +168,7 @@ export function StudyLeaderboardModal({
             ) : null}
           </div>
         ) : null}
-      </div>
+      </DoubleBezelCard>
     </div>
   );
 }

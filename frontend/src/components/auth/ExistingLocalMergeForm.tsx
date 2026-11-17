@@ -55,7 +55,7 @@ export function ExistingLocalMergeForm({ onSuccess }: ExistingLocalMergeFormProp
           placeholder="banhoc@example.com"
           aria-invalid={Boolean(errors.email)}
           {...register('email')}
-          className="min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 w-full rounded-xl border border-border bg-[#0F1714]/80 px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         {errors.email ? (
           <p role="alert" className="text-xs font-medium text-rose-400">
@@ -82,7 +82,7 @@ export function ExistingLocalMergeForm({ onSuccess }: ExistingLocalMergeFormProp
       <button
         type="submit"
         disabled={isSubmitting}
-        className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        className="min-h-11 w-full rounded-xl border border-primary/40 bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:brightness-105 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {isSubmitting ? 'Đang đăng nhập & gộp phiên...' : 'Đăng nhập & gộp phiên học'}
       </button>

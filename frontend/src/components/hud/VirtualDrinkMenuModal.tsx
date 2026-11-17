@@ -1,6 +1,8 @@
 import { VIRTUAL_DRINKS } from '../../game/cafe/studyCafeConfig';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { useGameStore } from '../../stores/useGameStore';
+import { XIcon } from '../icons';
+import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 
 export function VirtualDrinkMenuModal() {
   const isOpen = useGameStore((s) => s.isDrinkMenuOpen);
@@ -19,23 +21,24 @@ export function VirtualDrinkMenuModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/75 p-3 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4"
       onClick={closeDrinkMenu}
     >
-      <div
+      <DoubleBezelCard
         role="dialog"
         aria-modal="true"
         aria-labelledby="drink-menu-title"
         data-testid="virtual-drink-menu-modal"
         onClick={(e) => e.stopPropagation()}
-        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-amber-500/30 bg-card p-5 text-card-foreground shadow-2xl"
+        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto"
+        innerClassName="p-5"
       >
         <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-400">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
               Study Café • {activeCafeNpcName || 'Quầy pha chế'}
             </p>
-            <h2 id="drink-menu-title" className="mt-0.5 text-base font-bold tracking-tight">
+            <h2 id="drink-menu-title" className="mt-0.5 text-base font-bold tracking-tight text-foreground">
               Chọn đồ uống đồng hành
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -46,9 +49,10 @@ export function VirtualDrinkMenuModal() {
             type="button"
             onClick={closeDrinkMenu}
             aria-label="Đóng menu đồ uống"
-            className="rounded-md border border-border bg-secondary px-2.5 py-1 text-xs font-medium hover:bg-accent"
+            className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-border bg-secondary px-3 py-1 text-xs font-medium text-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 sm:min-h-9"
           >
-            Đóng
+            <XIcon className="h-3.5 w-3.5" />
+            <span>Đóng</span>
           </button>
         </div>
 
@@ -61,13 +65,13 @@ export function VirtualDrinkMenuModal() {
                 type="button"
                 data-testid={`drink-option-${drink.id}`}
                 onClick={() => selectVirtualDrink(drink.id)}
-                className={`flex items-center gap-3 rounded-lg border p-3 text-left transition ${
+                className={`flex min-h-14 items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   isSelected
-                    ? 'border-amber-400 bg-amber-500/15 shadow-sm'
-                    : 'border-border bg-secondary/40 hover:border-amber-500/40 hover:bg-secondary/80'
+                    ? 'border-primary bg-primary/15 shadow-sm ring-1 ring-primary/40'
+                    : 'border-border bg-secondary/40 hover:border-primary/50 hover:bg-secondary/80'
                 }`}
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900/80 text-xl">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-[#0F1714]/90 text-2xl shadow-inner">
                   {drink.icon}
                 </span>
                 <div className="min-w-0">
@@ -85,7 +89,7 @@ export function VirtualDrinkMenuModal() {
               type="button"
               data-testid="clear-drink-btn"
               onClick={() => selectVirtualDrink(null)}
-              className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              className="min-h-11 rounded-xl border border-border bg-secondary px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 hover:text-foreground sm:min-h-9"
             >
               Bỏ ly xuống
             </button>
@@ -95,12 +99,12 @@ export function VirtualDrinkMenuModal() {
           <button
             type="button"
             onClick={closeDrinkMenu}
-            className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-accent"
+            className="min-h-11 rounded-xl border border-primary/40 bg-primary px-5 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:brightness-105 active:brightness-95 sm:min-h-9"
           >
             Xong
           </button>
         </div>
-      </div>
+      </DoubleBezelCard>
     </div>
   );
 }

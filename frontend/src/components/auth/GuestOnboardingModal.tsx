@@ -5,6 +5,8 @@ import { createGuestSession } from '../../services/authApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { ServerWakeUpNotice } from '../hud/ServerWakeUpNotice';
 import type { BackendConnectionStatus } from '../hud/TopBar';
+import { ChevronRightIcon } from '../icons';
+import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 import { AvatarPickerField } from './AvatarPickerField';
 import { OnboardingEntryTabs, type OnboardingEntryTab } from './OnboardingEntryTabs';
 import { OnboardingTextField } from './OnboardingTextField';
@@ -75,12 +77,13 @@ export function GuestOnboardingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
-      <div
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+      <DoubleBezelCard
         role="dialog"
         aria-modal="true"
         aria-labelledby="guest-onboarding-title"
-        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl sm:p-5"
+        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto"
+        innerClassName="p-4 sm:p-5"
       >
         {isBackendWaiting ? (
           <ServerWakeUpNotice
@@ -93,7 +96,7 @@ export function GuestOnboardingModal({
         <OnboardingEntryTabs activeTab={activeTab} onChange={setActiveTab} />
 
         <div className="space-y-1.5">
-          <span className="inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+          <span className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
             {activeTab === 'GUEST'
               ? 'Guest Mode • Vào phòng không cần đăng ký'
               : 'Registered Mode • Khôi phục hồ sơ & giờ học'}
@@ -157,19 +160,26 @@ export function GuestOnboardingModal({
             <button
               type="submit"
               disabled={isSubmitting || isBackendWaiting}
-              className="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+              className="group min-h-11 w-full rounded-xl border border-primary/40 bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:brightness-105 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              {isBackendWaiting
-                ? 'Đang chờ máy chủ khởi động...'
-                : isSubmitting
-                  ? 'Đang vào phòng học...'
-                  : 'Vào phòng học ngay'}
+              <span className="inline-flex items-center justify-center gap-2">
+                <span>
+                  {isBackendWaiting
+                    ? 'Đang chờ máy chủ khởi động...'
+                    : isSubmitting
+                      ? 'Đang vào phòng học...'
+                      : 'Vào phòng học ngay'}
+                </span>
+                <span className="inline-flex shrink-0 items-center transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5">
+                  <ChevronRightIcon className="h-4 w-4" />
+                </span>
+              </span>
             </button>
           </form>
         ) : (
           <RegisteredLoginPanel isBackendWaiting={isBackendWaiting} />
         )}
-      </div>
+      </DoubleBezelCard>
     </div>
   );
 }

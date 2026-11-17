@@ -1,3 +1,5 @@
+import { DoubleBezelCard } from '../ui/DoubleBezelCard';
+
 interface LeaveTableConfirmModalProps {
   tableId: string | null;
   seatId: string | null;
@@ -12,25 +14,29 @@ export function LeaveTableConfirmModal({
   onCancel,
 }: LeaveTableConfirmModalProps) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/75 p-3 backdrop-blur-xs sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Xác nhận rời bàn học"
-      data-testid="leave-seat-confirm-dialog"
-    >
-      <div className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xl sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+      <DoubleBezelCard
+        role="dialog"
+        aria-modal="true"
+        aria-label="Xác nhận rời bàn học"
+        data-testid="leave-seat-confirm-dialog"
+        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto"
+        innerClassName="p-5 sm:p-6"
+      >
         <h3 className="text-base font-semibold text-foreground">
           Xác nhận đứng dậy rời bàn?
         </h3>
         <p className="mt-2 text-sm text-muted-foreground">
           Bạn đang ngồi tại{' '}
-          <span className="font-mono font-semibold text-foreground">
+          <span className="font-mono font-semibold text-primary">
             {tableId ?? 'bàn học'}
             {seatId ? ` (${seatId})` : ''}
           </span>
           . Nếu rời bàn bây giờ, nhân vật sẽ trở về trạng thái đi lại tự do (
-          <span className="font-mono text-xs">FREE_ROAM</span>).
+          <span className="rounded border border-border bg-secondary/80 px-1.5 py-0.5 font-mono text-xs text-foreground">
+            FREE_ROAM
+          </span>
+          ).
         </p>
 
         <div className="mt-5 flex items-center justify-end gap-2.5">
@@ -38,7 +44,7 @@ export function LeaveTableConfirmModal({
             type="button"
             data-testid="cancel-leave-seat-btn"
             onClick={onCancel}
-            className="min-h-10 rounded-lg border border-border bg-secondary px-4 py-2 text-xs font-semibold text-secondary-foreground transition hover:bg-secondary/80"
+            className="min-h-11 rounded-xl border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
           >
             Tiếp tục ngồi học
           </button>
@@ -46,12 +52,12 @@ export function LeaveTableConfirmModal({
             type="button"
             data-testid="confirm-leave-seat-btn"
             onClick={onConfirmLeave}
-            className="min-h-10 rounded-lg border border-destructive/60 bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground transition hover:bg-destructive/90"
+            className="min-h-11 rounded-xl border border-destructive/60 bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:brightness-105 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
           >
             Xác nhận rời bàn
           </button>
         </div>
-      </div>
+      </DoubleBezelCard>
     </div>
   );
 }

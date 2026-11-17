@@ -28,9 +28,9 @@ export function AvatarPickerField({
               role="radio"
               aria-checked={isSelected}
               onClick={() => onSelect(avatar.id)}
-              className={`flex min-h-14 items-center gap-3 rounded-lg border p-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`flex min-h-14 items-center gap-3 rounded-xl border p-2.5 text-left transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isSelected
-                  ? 'border-primary bg-primary/15 text-foreground'
+                  ? 'border-primary bg-primary/15 text-foreground shadow-sm ring-1 ring-primary/40'
                   : 'border-border bg-secondary/40 text-muted-foreground hover:border-primary/50 hover:bg-secondary/70'
               }`}
             >
