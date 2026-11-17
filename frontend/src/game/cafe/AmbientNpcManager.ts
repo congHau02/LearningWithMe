@@ -1,8 +1,20 @@
 import type Phaser from 'phaser';
 import { ChatBubble } from '../entities/ChatBubble';
 import { tileToWorldCenter } from '../entities/PlayerSprite';
-import type { FacingDirection } from '../topology/roomTopology';
-import { createNpcVisualParts, drawNpcApron } from './ambientNpcRenderHelper';
+import { GridPathfinder } from '../pathfinding/GridPathfinder';
+import {
+  MAIN_LIBRARY_TOPOLOGY,
+  type FacingDirection,
+  type RoomTopology,
+  type TileCoordinate,
+} from '../topology/roomTopology';
+import { createNpcVisualParts, syncNpcVisuals } from './ambientNpcRenderHelper';
+import {
+  advanceDrinkDelivery,
+  createDrinkDeliveryState,
+  resolveMoveDirection,
+  type ActiveDrinkDelivery,
+} from './npcDrinkDelivery';
 import {
   AMBIENT_NPC_DEFINITIONS,
   type AmbientNpcDefinition,
@@ -42,23 +54,22 @@ interface NpcRuntimeEntry {
 const NPC_SPEED_PX_PER_SEC = 48;
 const NPC_HIT_RADIUS_PX = 20;
 
-function resolveMoveDirection(dx: number, dy: number, fallback: FacingDirection): FacingDirection {
-  if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > 0.1) return dx > 0 ? 'RIGHT' : 'LEFT';
-  if (Math.abs(dy) > 0.1) return dy > 0 ? 'DOWN' : 'UP';
-  return fallback;
-}
-
 export class AmbientNpcManager {
   private readonly tileSize: number;
+  private readonly pathfinder: GridPathfinder;
   private readonly entries: NpcRuntimeEntry[] = [];
+  private activeDelivery: { entry: NpcRuntimeEntry; state: ActiveDrinkDelivery } | null = null;
 
   constructor(options: {
     scene?: Phaser.Scene;
     tileSize?: number;
+    topology?: RoomTopology;
     definitions?: readonly AmbientNpcDefinition[];
     nowMs?: number;
   } = {}) {
-    this.tileSize = options.tileSize ?? 32;
+    const topology = options.topology ?? MAIN_LIBRARY_TOPOLOGY;
+    this.tileSize = options.tileSize ?? topology.tileSize;
+    this.pathfinder = new GridPathfinder(topology);
     const defs = options.definitions ?? AMBIENT_NPC_DEFINITIONS;
     const nowMs = options.nowMs ?? Date.now();
 
@@ -68,15 +79,7 @@ export class AmbientNpcManager {
       const startPos = tileToWorldCenter(firstWp.tileX, firstWp.tileY, this.tileSize);
       const animKey = `${def.avatarKey}:standing:${firstWp.facingDir.toLowerCase()}`;
       const chatBubble = new ChatBubble({ scene: options.scene });
-      const visuals = createNpcVisualParts(
-        options.scene,
-        def,
-        startPos.x,
-        startPos.y,
-        animKey,
-        firstWp.facingDir,
-      );
-
+      const visuals = createNpcVisualParts(options.scene, def, startPos.x, startPos.y, animKey, firstWp.facingDir);
       this.entries.push({
         def,
         waypointIndex: 0,
@@ -98,28 +101,31 @@ export class AmbientNpcManager {
     const safeDelta = Math.max(0, Math.min(deltaMs, 250));
 
     for (const entry of this.entries) {
-      this.advanceMovement(entry, safeDelta);
+      if (this.activeDelivery?.entry === entry) {
+        const result = advanceDrinkDelivery({
+          delivery: this.activeDelivery.state,
+          actor: entry,
+          pathfinder: this.pathfinder,
+          tileSize: this.tileSize,
+          deltaMs: safeDelta,
+          nowMs,
+          showBubble: (text, ts) => this.showNpcBubble(entry, text, ts),
+        });
+        if (result.finished) {
+          entry.pauseRemainingMs = 0;
+          this.activeDelivery = null;
+        }
+      } else {
+        this.advanceMovement(entry, safeDelta);
 
-      if (nowMs >= entry.nextBubbleAtMs && entry.def.ambientLines.length > 0) {
-        const line = entry.def.ambientLines[entry.lineCursor % entry.def.ambientLines.length];
-        entry.lineCursor += 1;
-        this.showNpcBubble(entry, line, nowMs);
-      }
-
-      if (entry.sprite) {
-        entry.sprite.setPosition(entry.pixelX, entry.pixelY);
-        const posture = entry.isMoving ? 'stepping' : 'standing';
-        const nextAnim = `${entry.def.avatarKey}:${posture}:${entry.facingDir.toLowerCase()}`;
-        if (nextAnim !== entry.animKey) {
-          entry.animKey = nextAnim;
-          entry.sprite.play(nextAnim, true);
+        if (nowMs >= entry.nextBubbleAtMs && entry.def.ambientLines.length > 0) {
+          const line = entry.def.ambientLines[entry.lineCursor % entry.def.ambientLines.length];
+          entry.lineCursor += 1;
+          this.showNpcBubble(entry, line, nowMs);
         }
       }
 
-      drawNpcApron(entry.apron, entry.pixelX, entry.pixelY, entry.def.apronColor, entry.facingDir);
-      const isCounterStaff = entry.def.role === 'BARISTA' || entry.def.role === 'CASHIER';
-      entry.label?.setPosition(entry.pixelX, isCounterStaff ? entry.pixelY + 18 : entry.pixelY - 20);
-      entry.chatBubble.update(nowMs, entry.pixelX, isCounterStaff ? entry.pixelY - 76 : entry.pixelY - 42);
+      syncNpcVisuals(entry, nowMs);
     }
   }
 
@@ -146,6 +152,35 @@ export class AmbientNpcManager {
     return true;
   }
 
+  public startDrinkDelivery(params: {
+    drinkId: string;
+    seq: number;
+    getLearnerTile: () => TileCoordinate;
+    onDelivered: (drinkId: string, seq: number) => void;
+    nowMs?: number;
+  }): boolean {
+    const serverEntry = this.entries.find((e) => e.def.role === 'SERVER') ?? this.entries[0];
+    if (!serverEntry) return false;
+    const state = createDrinkDeliveryState({
+      ...params,
+      npcPixelX: serverEntry.pixelX,
+      npcPixelY: serverEntry.pixelY,
+      tileSize: this.tileSize,
+      pathfinder: this.pathfinder,
+      nowMs: params.nowMs ?? Date.now(),
+    });
+    if (!state) return false;
+    this.activeDelivery = { entry: serverEntry, state };
+    return true;
+  }
+
+  public cancelDrinkDelivery(): void {
+    if (this.activeDelivery) {
+      this.activeDelivery.entry.pauseRemainingMs = 0;
+      this.activeDelivery = null;
+    }
+  }
+
   public getSnapshots(): AmbientNpcSnapshot[] {
     return this.entries.map((entry) => this.toSnapshot(entry));
   }
@@ -162,17 +197,13 @@ export class AmbientNpcManager {
 
   private advanceMovement(entry: NpcRuntimeEntry, deltaMs: number): void {
     const waypoints = entry.def.waypoints;
-    if (waypoints.length <= 1) {
-      entry.isMoving = false;
-      return;
-    }
+    if (waypoints.length <= 1) { entry.isMoving = false; return; }
     if (entry.pauseRemainingMs > 0) {
       entry.pauseRemainingMs = Math.max(0, entry.pauseRemainingMs - deltaMs);
       entry.isMoving = false;
       entry.facingDir = waypoints[entry.waypointIndex].facingDir;
       return;
     }
-
     const nextIndex = (entry.waypointIndex + 1) % waypoints.length;
     const targetWp = waypoints[nextIndex];
     const targetPos = tileToWorldCenter(targetWp.tileX, targetWp.tileY, this.tileSize);
@@ -180,17 +211,10 @@ export class AmbientNpcManager {
     const dy = targetPos.y - entry.pixelY;
     const dist = Math.hypot(dx, dy);
     const maxStep = (NPC_SPEED_PX_PER_SEC * deltaMs) / 1000;
-
     if (dist <= maxStep || dist < 0.5) {
-      entry.pixelX = targetPos.x;
-      entry.pixelY = targetPos.y;
-      entry.waypointIndex = nextIndex;
-      entry.pauseRemainingMs = targetWp.pauseMs;
-      entry.facingDir = targetWp.facingDir;
-      entry.isMoving = false;
+      Object.assign(entry, { pixelX: targetPos.x, pixelY: targetPos.y, waypointIndex: nextIndex, pauseRemainingMs: targetWp.pauseMs, facingDir: targetWp.facingDir, isMoving: false });
       return;
     }
-
     entry.pixelX += (dx / dist) * maxStep;
     entry.pixelY += (dy / dist) * maxStep;
     entry.facingDir = resolveMoveDirection(dx, dy, entry.facingDir);

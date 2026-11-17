@@ -201,11 +201,20 @@ describe('Phase 8 P8-T5: Study Café Environment, Ambient NPCs & Virtual Drinks'
         expect(screen.getByTestId('virtual-drink-menu-modal')).toBeInTheDocument();
       });
 
-      // Pick Matcha Latte
+      // Pick Matcha Latte -> enters pending delivery until Phục vụ An arrives
       fireEvent.click(screen.getByTestId('drink-option-matcha_latte'));
-      expect(useGameStore.getState().selectedDrinkId).toBe('matcha_latte');
+      const pendingOrder = useGameStore.getState().pendingDrinkOrder;
+      expect(pendingOrder?.drinkId).toBe('matcha_latte');
+      expect(useGameStore.getState().selectedDrinkId).toBeNull();
       expect(useGameStore.getState().isDrinkMenuOpen).toBe(false);
       expect(screen.queryByTestId('virtual-drink-menu-modal')).not.toBeInTheDocument();
+      expect(screen.getByTestId('delivering-drink-badge')).toHaveTextContent('🍵');
+
+      // Complete delivery equips selectedDrinkId and displays selected-drink-badge
+      act(() => {
+        useGameStore.getState().completeDrinkDelivery('matcha_latte', pendingOrder!.seq);
+      });
+      expect(useGameStore.getState().selectedDrinkId).toBe('matcha_latte');
       expect(screen.getByTestId('selected-drink-badge')).toHaveTextContent('🍵');
 
       // Staff reaction command updates AmbientNpcManager bubble

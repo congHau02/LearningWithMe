@@ -19,12 +19,38 @@ import {
 
 export function subscribeNpcDrinkReactions(ambientNpcManager?: AmbientNpcManager): () => void {
   let lastSeq = useGameStore.getState().npcBubbleOrder?.seq ?? 0;
+  let lastDeliverySeq = 0;
+
+  const syncPendingDelivery = (state: ReturnType<typeof useGameStore.getState>) => {
+    const pending = state.pendingDrinkOrder;
+    if (pending && pending.seq !== lastDeliverySeq) {
+      lastDeliverySeq = pending.seq;
+      ambientNpcManager?.startDrinkDelivery({
+        drinkId: pending.drinkId,
+        seq: pending.seq,
+        getLearnerTile: () => {
+          const pos = useGameStore.getState().position;
+          return { tileX: pos.x, tileY: pos.y };
+        },
+        onDelivered: (drinkId, seq) => {
+          useGameStore.getState().completeDrinkDelivery(drinkId, seq);
+        },
+      });
+    } else if (!pending && lastDeliverySeq !== 0 && !state.selectedDrinkId) {
+      lastDeliverySeq = 0;
+      ambientNpcManager?.cancelDrinkDelivery();
+    }
+  };
+
+  syncPendingDelivery(useGameStore.getState());
+
   return useGameStore.subscribe((state) => {
     const order = state.npcBubbleOrder;
     if (order && order.seq !== lastSeq) {
       lastSeq = order.seq;
       ambientNpcManager?.triggerStaffReaction(order.npcId, order.text);
     }
+    syncPendingDelivery(state);
   });
 }
 

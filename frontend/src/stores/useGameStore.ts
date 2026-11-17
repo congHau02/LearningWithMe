@@ -74,13 +74,33 @@ export const useGameStore = create<GameState>((set) => ({
   selectVirtualDrink: (drinkId) =>
     set((s) => {
       const drink = findVirtualDrink(drinkId);
-      const nextSeq = (s.npcBubbleOrder?.seq ?? 0) + 1;
+      if (!drink) {
+        return {
+          selectedDrinkId: null,
+          pendingDrinkOrder: null,
+          isDrinkMenuOpen: false,
+        };
+      }
+      const nextSeq = Math.max(s.npcBubbleOrder?.seq ?? 0, s.pendingDrinkOrder?.seq ?? 0) + 1;
       return {
-        selectedDrinkId: drink ? drink.id : null,
+        selectedDrinkId: null,
+        pendingDrinkOrder: { drinkId: drink.id, seq: nextSeq },
         isDrinkMenuOpen: false,
-        npcBubbleOrder: drink
-          ? { npcId: s.activeCafeNpcId ?? 'npc_barista', text: drink.staffReply, seq: nextSeq }
-          : s.npcBubbleOrder,
+        npcBubbleOrder: {
+          npcId: s.activeCafeNpcId ?? 'npc_barista',
+          text: `Đã nhận ${drink.name}, Phục vụ An đang mang ra cho bạn!`,
+          seq: nextSeq,
+        },
+      };
+    }),
+  completeDrinkDelivery: (drinkId, seq) =>
+    set((s) => {
+      if (!s.pendingDrinkOrder || s.pendingDrinkOrder.seq !== seq || s.pendingDrinkOrder.drinkId !== drinkId) {
+        return s;
+      }
+      return {
+        selectedDrinkId: drinkId,
+        pendingDrinkOrder: null,
       };
     }),
   clearToast: () => set({ toastMessage: null }),

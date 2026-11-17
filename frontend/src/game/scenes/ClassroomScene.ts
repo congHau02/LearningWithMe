@@ -84,6 +84,7 @@ export class ClassroomScene extends Phaser.Scene {
     this.ambientNpcManager = new AmbientNpcManager({
       scene: this,
       tileSize: this.topology.tileSize,
+      topology: this.topology,
     });
     const pos = this.playerSprite.getPixelPosition();
     this.actorSprite = this.add

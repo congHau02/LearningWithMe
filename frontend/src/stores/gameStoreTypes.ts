@@ -22,6 +22,11 @@ export interface NpcBubbleOrder {
   seq: number;
 }
 
+export interface PendingDrinkOrder {
+  drinkId: string;
+  seq: number;
+}
+
 export interface GameState {
   characterState: CharacterState;
   isPendingSeatConfirmation: boolean;
@@ -46,6 +51,7 @@ export interface GameState {
   pathQueue: TileCoordinate[];
   isLeaveConfirmOpen: boolean;
   selectedDrinkId: string | null;
+  pendingDrinkOrder: PendingDrinkOrder | null;
   isDrinkMenuOpen: boolean;
   activeCafeNpcName: string | null;
   activeCafeNpcId: string | null;
@@ -72,6 +78,7 @@ export interface GameState {
   openDrinkMenu: (npcName?: string, npcId?: string) => void;
   closeDrinkMenu: () => void;
   selectVirtualDrink: (drinkId: string | null) => void;
+  completeDrinkDelivery: (drinkId: string, seq: number) => void;
   clearToast: () => void;
   setConnectionStatus: (status: RoomConnectionStatus, error?: StompErrorPayload | null) => void;
   applyRoomSnapshot: (snapshot: RoomSnapshotResponse, selfUserId: string | null) => void;
@@ -108,6 +115,7 @@ export const INITIAL_GAME_STATE = {
   pathQueue: [] as TileCoordinate[],
   isLeaveConfirmOpen: false,
   selectedDrinkId: null as string | null,
+  pendingDrinkOrder: null as PendingDrinkOrder | null,
   isDrinkMenuOpen: false,
   activeCafeNpcName: null as string | null,
   activeCafeNpcId: null as string | null,

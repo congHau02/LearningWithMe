@@ -5,6 +5,8 @@ import { useGameStore } from '../../stores/useGameStore';
 export function VirtualDrinkMenuModal() {
   const isOpen = useGameStore((s) => s.isDrinkMenuOpen);
   const selectedDrinkId = useGameStore((s) => s.selectedDrinkId);
+  const pendingDrinkOrder = useGameStore((s) => s.pendingDrinkOrder);
+  const activeDrinkId = selectedDrinkId ?? pendingDrinkOrder?.drinkId ?? null;
   const activeCafeNpcName = useGameStore((s) => s.activeCafeNpcName);
   const closeDrinkMenu = useGameStore((s) => s.closeDrinkMenu);
   const selectVirtualDrink = useGameStore((s) => s.selectVirtualDrink);
@@ -52,7 +54,7 @@ export function VirtualDrinkMenuModal() {
 
         <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {VIRTUAL_DRINKS.map((drink) => {
-            const isSelected = selectedDrinkId === drink.id;
+            const isSelected = activeDrinkId === drink.id;
             return (
               <button
                 key={drink.id}
@@ -78,7 +80,7 @@ export function VirtualDrinkMenuModal() {
         </div>
 
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-          {selectedDrinkId ? (
+          {activeDrinkId ? (
             <button
               type="button"
               data-testid="clear-drink-btn"

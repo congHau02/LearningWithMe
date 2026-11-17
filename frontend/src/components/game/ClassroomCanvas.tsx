@@ -21,6 +21,7 @@ function canBootPhaserCanvas(): boolean {
 export function ClassroomCanvas() {
   const roomId = useGameStore((s) => s.roomId);
   const selectedDrinkId = useGameStore((s) => s.selectedDrinkId);
+  const pendingDrinkOrder = useGameStore((s) => s.pendingDrinkOrder);
   const cameraZoom = useGameStore((s) => s.cameraZoom);
   const cameraFollowEnabled = useGameStore((s) => s.cameraFollowEnabled);
   const openDrinkMenu = useGameStore((s) => s.openDrinkMenu);
@@ -28,6 +29,7 @@ export function ClassroomCanvas() {
   const adjustCameraZoom = useGameStore((s) => s.adjustCameraZoom);
   const toggleCameraFollow = useGameStore((s) => s.toggleCameraFollow);
   const activeDrink = findVirtualDrink(selectedDrinkId);
+  const pendingDrink = !activeDrink ? findVirtualDrink(pendingDrinkOrder?.drinkId) : null;
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
   const [isCanvasReady, setIsCanvasReady] = useState(false);
 
@@ -116,9 +118,9 @@ export function ClassroomCanvas() {
             className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/25 sm:min-h-8"
           >
             {activeDrink ? (
-              <span data-testid="selected-drink-badge">
-                {activeDrink.icon} {activeDrink.name}
-              </span>
+              <span data-testid="selected-drink-badge">{activeDrink.icon} {activeDrink.name}</span>
+            ) : pendingDrink ? (
+              <span data-testid="delivering-drink-badge">{pendingDrink.icon} Đang giao...</span>
             ) : (
               <span>☕ Quầy đồ uống</span>
             )}

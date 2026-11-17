@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import type { ChatBubble } from '../entities/ChatBubble';
 import type { FacingDirection } from '../topology/roomTopology';
 import type { AmbientNpcDefinition } from './studyCafeConfig';
 
@@ -51,4 +52,31 @@ export function drawNpcApron(
   graphics.fillRect?.(x - 5, y + 2, 10, 8);
   graphics.fillStyle?.(0xfef3c7, 0.95);
   graphics.fillRect?.(x - 3, y + 2, 6, 2);
+}
+
+export function syncNpcVisuals(
+  entry: NpcVisualParts & {
+    def: AmbientNpcDefinition;
+    pixelX: number;
+    pixelY: number;
+    facingDir: FacingDirection;
+    isMoving: boolean;
+    animKey: string;
+    chatBubble: ChatBubble;
+  },
+  nowMs: number,
+): void {
+  if (entry.sprite) {
+    entry.sprite.setPosition(entry.pixelX, entry.pixelY);
+    const posture = entry.isMoving ? 'stepping' : 'standing';
+    const nextAnim = `${entry.def.avatarKey}:${posture}:${entry.facingDir.toLowerCase()}`;
+    if (nextAnim !== entry.animKey) {
+      entry.animKey = nextAnim;
+      entry.sprite.play(nextAnim, true);
+    }
+  }
+  drawNpcApron(entry.apron, entry.pixelX, entry.pixelY, entry.def.apronColor, entry.facingDir);
+  const isCounterStaff = entry.def.role === 'BARISTA' || entry.def.role === 'CASHIER';
+  entry.label?.setPosition(entry.pixelX, isCounterStaff ? entry.pixelY + 18 : entry.pixelY - 20);
+  entry.chatBubble.update(nowMs, entry.pixelX, isCounterStaff ? entry.pixelY - 76 : entry.pixelY - 42);
 }
