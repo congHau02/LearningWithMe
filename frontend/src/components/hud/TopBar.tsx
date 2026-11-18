@@ -3,6 +3,7 @@ import { useViewportIsMobile } from '../../hooks/useViewportIsMobile';
 import type { AuthProvider } from '../../stores/useAuthStore';
 import type { CharacterState } from '../../stores/useGameStore';
 import { DEFAULT_AVATAR_ID } from '../auth/starterAvatars';
+import { BrandLogo } from '../brand/BrandLogo';
 import { MenuIcon, XIcon } from '../icons';
 import { AmbientSoundscapeControl } from './AmbientSoundscapeControl';
 import { StudyGoalControl } from './StudyGoalControl';
@@ -70,9 +71,7 @@ export function TopBar({
         className="flex min-w-0 items-center justify-between gap-2 sm:shrink sm:justify-start"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-initial">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 text-xs font-bold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-9 sm:w-9 sm:text-sm">
-            2D
-          </div>
+          <BrandLogo variant="topbar" />
           <h1 className="truncate text-sm font-semibold tracking-tight text-foreground sm:text-base">
             Cùng Nhau Học Bài
           </h1>

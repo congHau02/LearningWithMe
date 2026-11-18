@@ -1,0 +1,30 @@
+{
+  "name": "Cùng Nhau Học Bài — Không gian học tập 2D",
+  "short_name": "Learning With Me",
+  "description": "Không gian học tập 2D trực tuyến giúp bạn học nhóm, đồng bộ YouTube và vẽ bài tập theo thời gian thực.",
+  "lang": "vi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1714",
+  "theme_color": "#0F1714",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

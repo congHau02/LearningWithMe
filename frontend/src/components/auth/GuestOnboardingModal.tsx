@@ -5,6 +5,7 @@ import { createGuestSession } from '../../services/authApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { ServerWakeUpNotice } from '../hud/ServerWakeUpNotice';
 import type { BackendConnectionStatus } from '../hud/TopBar';
+import { BrandLogo } from '../brand/BrandLogo';
 import { ChevronRightIcon } from '../icons';
 import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 import { AvatarPickerField } from './AvatarPickerField';
@@ -95,25 +96,33 @@ export function GuestOnboardingModal({
 
         <OnboardingEntryTabs activeTab={activeTab} onChange={setActiveTab} />
 
-        <div className="space-y-1.5">
-          <span className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-            {activeTab === 'GUEST'
-              ? 'Guest Mode • Vào phòng không cần đăng ký'
-              : 'Registered Mode • Khôi phục hồ sơ & giờ học'}
-          </span>
-          <h2
-            id="guest-onboarding-title"
-            className="text-xl font-bold tracking-tight text-foreground"
-          >
-            {activeTab === 'GUEST'
-              ? 'Thiết lập nhân vật học tập'
-              : 'Đăng nhập tài khoản'}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {activeTab === 'GUEST'
-              ? 'Chọn ngoại hình, tên hiển thị và mục tiêu hôm nay để vào ngay thư viện 2D. Phiên Guest được lưu 7 ngày trên trình duyệt.'
-              : 'Đăng nhập bằng tài khoản đã đăng ký để khôi phục nhân vật, vật phẩm mở khóa và tổng số phút học.'}
-          </p>
+        <div className="flex items-start gap-3.5">
+          <BrandLogo variant="modal" alt="Logo Learning With Me" className="mt-0.5" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold tracking-tight text-foreground">
+                Learning With Me
+              </span>
+              <span className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                {activeTab === 'GUEST'
+                  ? 'Guest Mode • Vào phòng không cần đăng ký'
+                  : 'Registered Mode • Khôi phục hồ sơ & giờ học'}
+              </span>
+            </div>
+            <h2
+              id="guest-onboarding-title"
+              className="text-xl font-bold tracking-tight text-foreground"
+            >
+              {activeTab === 'GUEST'
+                ? 'Thiết lập nhân vật học tập'
+                : 'Đăng nhập tài khoản'}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === 'GUEST'
+                ? 'Chọn ngoại hình, tên hiển thị và mục tiêu hôm nay để vào ngay thư viện 2D. Phiên Guest được lưu 7 ngày trên trình duyệt.'
+                : 'Đăng nhập bằng tài khoản đã đăng ký để khôi phục nhân vật, vật phẩm mở khóa và tổng số phút học.'}
+            </p>
+          </div>
         </div>
 
         {activeTab === 'GUEST' ? (
