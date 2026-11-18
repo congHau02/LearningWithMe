@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useStudyTimer } from '../../hooks/useStudyTimer';
 import { useTableVoiceChat } from '../../hooks/useTableVoiceChat';
+import { useViewportIsMobile } from '../../hooks/useViewportIsMobile';
 import { sendTablePermissionRequest, sendTablePermissionRespond } from '../../services/tableStompClient';
 import type { PermissionAction } from '../../services/tableApi';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -17,6 +18,7 @@ import { VoiceChatBar } from './VoiceChatBar';
 import { WorkspacePrimaryPanels } from './WorkspacePrimaryPanels';
 
 export function TableWorkspaceShell() {
+  const isMobile = useViewportIsMobile();
   const characterState = useGameStore((s) => s.characterState);
   const currentTableId = useGameStore((s) => s.currentTableId);
   const requestLeaveSeat = useGameStore((s) => s.requestLeaveSeat);
@@ -88,7 +90,7 @@ export function TableWorkspaceShell() {
         className={
           isWorkspaceMinimized
             ? 'hidden'
-            : 'absolute inset-2 z-30 flex flex-col overflow-hidden rounded-2xl border border-border bg-[#0F1714]/98 shadow-2xl ring-1 ring-border/60 sm:inset-3 md:inset-x-6 md:inset-y-3'
+            : 'absolute inset-1.5 z-30 flex flex-col overflow-hidden rounded-2xl border border-border bg-[#0F1714]/98 shadow-2xl ring-1 ring-border/60 sm:inset-3 md:inset-x-6 md:inset-y-3'
         }
       >
         <TableWorkspaceHeader
@@ -129,11 +131,13 @@ export function TableWorkspaceShell() {
             canControl={canControl}
           />
 
-          <FocusCycleBar
-            tableId={activeTableId}
-            canControl={canControl}
-            isSeated={isSeated}
-          />
+          {!isMobile ? (
+            <FocusCycleBar
+              tableId={activeTableId}
+              canControl={canControl}
+              isSeated={isSeated}
+            />
+          ) : null}
 
           <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
             <WorkspacePrimaryPanels activeTableId={activeTableId} canControl={canControl} />

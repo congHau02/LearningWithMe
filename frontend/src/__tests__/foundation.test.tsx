@@ -135,7 +135,7 @@ describe('P1-T1 Frontend Foundation', () => {
     render(<App />);
 
     expect(screen.getByText('Cùng Nhau Học Bài')).toBeInTheDocument();
-    expect(screen.getByTestId('room-badge')).toHaveTextContent('main-library');
+    expect(screen.queryByTestId('room-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('character-state-badge')).not.toBeInTheDocument();
     expect(screen.getByTestId('classroom-viewport')).toBeInTheDocument();
 

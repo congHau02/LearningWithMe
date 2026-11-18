@@ -1,5 +1,6 @@
 import { useFocusCycleTimer } from '../../hooks/useFocusCycleTimer';
 import { formatStudyDuration } from '../../hooks/useStudyTimer';
+import { useViewportIsMobile } from '../../hooks/useViewportIsMobile';
 import { useTableStore } from '../../stores/useTableStore';
 import { useVoiceStore } from '../../stores/useVoiceStore';
 import { formatFocusCountdown } from '../../utils/focusCycle';
@@ -37,6 +38,7 @@ export function MinimizedTableWorkspaceBar({
   onExpand,
   onRequestLeaveSeat,
 }: MinimizedTableWorkspaceBarProps) {
+  const isMobile = useViewportIsMobile();
   const focusCycleState = useTableStore((s) => s.focusCycleState);
   const focusCycleResetSeq = useTableStore((s) => s.focusCycleResetSeq);
   const unreadChatCount = useTableStore((s) => s.unreadChatCount);
@@ -44,7 +46,7 @@ export function MinimizedTableWorkspaceBar({
   const isJoining = useVoiceStore((s) => s.isJoining);
   const isMuted = useVoiceStore((s) => s.isMuted);
 
-  const { remainingSeconds } = useFocusCycleTimer(focusCycleState, focusCycleResetSeq, isSeated);
+  const { remainingSeconds } = useFocusCycleTimer(focusCycleState, focusCycleResetSeq, isSeated && !isMobile);
   const isFocusPhase = focusCycleState.phase === 'FOCUS';
   const micMeta = getMicControlMeta(isMuted);
 
@@ -67,21 +69,23 @@ export function MinimizedTableWorkspaceBar({
           <span>{formatStudyDuration(elapsedSeconds)}</span>
         </span>
 
-        <span
-          data-testid="minimized-focus-countdown"
-          className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-mono font-semibold tabular-nums ${
-            isFocusPhase
-              ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300'
-              : 'border-primary/50 bg-primary/20 text-primary'
-          }`}
-        >
-          {isFocusPhase ? (
-            <TargetIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
-          ) : (
-            <CoffeeIcon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-          )}
-          <span>{formatFocusCountdown(remainingSeconds)}</span>
-        </span>
+        {!isMobile ? (
+          <span
+            data-testid="minimized-focus-countdown"
+            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-mono font-semibold tabular-nums ${
+              isFocusPhase
+                ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300'
+                : 'border-primary/50 bg-primary/20 text-primary'
+            }`}
+          >
+            {isFocusPhase ? (
+              <TargetIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+            ) : (
+              <CoffeeIcon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            )}
+            <span>{formatFocusCountdown(remainingSeconds)}</span>
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">

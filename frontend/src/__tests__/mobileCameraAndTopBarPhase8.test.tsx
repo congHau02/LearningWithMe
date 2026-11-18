@@ -183,15 +183,16 @@ describe('P8-T8 Slice 3: Mobile Camera Follow/Zoom & Compact TopBar', () => {
     expect(menuBtn).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByTestId('topbar-mobile-drawer')).not.toBeVisible();
 
-    // Primary bar essentials stay visible
-    expect(screen.getByTestId('room-badge')).toBeVisible();
-    expect(screen.getByTestId('study-goal-text')).toBeVisible();
+    // Primary bar stays clean single row: room badge omitted, study goal tucked inside drawer
+    expect(screen.queryByTestId('room-badge')).not.toBeInTheDocument();
+    expect(screen.getByTestId('study-goal-text')).not.toBeVisible();
     expect(screen.getByTestId('ambient-soundscape-toggle-btn')).toBeVisible();
 
     // Open mobile drawer
     fireEvent.click(menuBtn);
     expect(menuBtn).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('topbar-mobile-drawer')).toBeVisible();
+    expect(screen.getByTestId('study-goal-text')).toBeVisible();
     expect(screen.getByTestId('leaderboard-open-btn')).toBeVisible();
     expect(screen.getByTestId('customizer-open-btn')).toBeVisible();
 

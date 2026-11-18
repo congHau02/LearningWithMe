@@ -168,11 +168,12 @@ describe('P3-T3 (#17): Atomic Seat Lock, Mid-Walk Abort & Initial Table Host Ass
 
     rerender(<App />);
 
-    // Crown badge appears next to nickname on HUD
+    // Crown badge appears next to nickname on HUD; TopBar intentionally omits redundant seated table badge
     const crown = screen.getByTestId('table-host-crown');
     expect(crown).toBeInTheDocument();
     expect(crown).toHaveTextContent('👑');
-    expect(screen.getByTestId('seated-table-badge')).toHaveTextContent('Bàn: table_01 (T1_S1)');
+    expect(screen.queryByTestId('seated-table-badge')).toBeNull();
+    expect(screen.getByTestId('workspace-table-title')).toHaveTextContent('table_01');
 
     // When leaving table via requestLeaveSeat
     act(() => {

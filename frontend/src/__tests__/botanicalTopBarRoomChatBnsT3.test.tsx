@@ -56,7 +56,7 @@ describe('BNS-T3: Streamlined Botanical TopBar, Telemetry Bar & Floating Room Ch
       expect(screen.getByTestId('topbar-right-zone')).toBeInTheDocument();
     });
 
-    it('renders seated table badge with Bioluminescent Emerald glow when SEATED', () => {
+    it('omits room-badge and seated-table-badge from TopBar even when SEATED to keep header clean', () => {
       render(
         <TopBar
           roomId="main-library"
@@ -73,10 +73,8 @@ describe('BNS-T3: Streamlined Botanical TopBar, Telemetry Bar & Floating Room Ch
         />,
       );
 
-      const seatedBadge = screen.getByTestId('seated-table-badge');
-      expect(seatedBadge).toHaveTextContent('Bàn: table_01 (T1_S1)');
-      expect(seatedBadge.className).toContain('border-emerald-500/40');
-      expect(seatedBadge.className).toContain('text-emerald-300');
+      expect(screen.queryByTestId('room-badge')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('seated-table-badge')).not.toBeInTheDocument();
     });
 
     it('renders TopBarActions with Studio SVG icons and no legacy sky/slate classes', () => {

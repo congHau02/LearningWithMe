@@ -57,7 +57,7 @@ describe('P9-T4 (#53): Streamlined Single-Row TopBar Header & Profile Dropdown',
     expect(screen.getByTestId('guest-upgrade-indicator')).toBeInTheDocument();
   });
 
-  it('shows Backend status badge only for CHECKING or OFFLINE states and shows compact Table/Seat pill when SEATED', () => {
+  it('shows Backend status badge only for CHECKING or OFFLINE states and omits room/table badges even when SEATED', () => {
     const { rerender } = render(
       <TopBar
         roomId="main-library"
@@ -71,6 +71,7 @@ describe('P9-T4 (#53): Streamlined Single-Row TopBar Header & Profile Dropdown',
     );
 
     expect(screen.queryByTestId('character-state-badge')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('room-badge')).not.toBeInTheDocument();
     expect(screen.getByTestId('backend-status-badge')).toHaveTextContent('Backend: CHECKING');
     expect(screen.queryByTestId('seated-table-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('guest-upgrade-indicator')).not.toBeInTheDocument();
@@ -90,7 +91,8 @@ describe('P9-T4 (#53): Streamlined Single-Row TopBar Header & Profile Dropdown',
     );
 
     expect(screen.getByTestId('backend-status-badge')).toHaveTextContent('Backend: OFFLINE');
-    expect(screen.getByTestId('seated-table-badge')).toHaveTextContent('Bàn: table_02 (T2_S1)');
+    expect(screen.queryByTestId('room-badge')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('seated-table-badge')).not.toBeInTheDocument();
     expect(screen.getByTestId('table-host-crown')).toBeInTheDocument();
   });
 
@@ -201,9 +203,12 @@ describe('P9-T4 (#53): Streamlined Single-Row TopBar Header & Profile Dropdown',
     expect(mobileMenuBtn.className).toContain('min-w-11');
     expect(ambientBtn.className).toContain('min-h-11');
     expect(ambientBtn.className).toContain('min-w-11');
-    expect(screen.getByTestId('seated-table-badge')).toBeVisible();
+    expect(screen.queryByTestId('seated-table-badge')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('room-badge')).not.toBeInTheDocument();
+    expect(screen.getByTestId('study-goal-text')).not.toBeVisible();
 
     fireEvent.click(mobileMenuBtn);
+    expect(screen.getByTestId('study-goal-text')).toBeVisible();
     expect(screen.getByTestId('leaderboard-open-btn').className).toContain('min-h-11');
     expect(screen.getByTestId('leaderboard-open-btn').className).toContain('min-w-11');
     expect(screen.getByTestId('customizer-open-btn').className).toContain('min-h-11');

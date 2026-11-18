@@ -442,9 +442,7 @@ describe('Phase 2: 2D Classroom Engine & Character State Machine (#12, #13, #14)
       expect(useGameStore.getState().characterState).toBe('SEATED');
       expect(useGameStore.getState().currentTableId).toBe('table_01');
       expect(useGameStore.getState().currentSeatId).toBe('T1_S1');
-      expect(screen.getByTestId('seated-table-badge')).toHaveTextContent(
-        'Bàn: table_01 (T1_S1)',
-      );
+      expect(screen.queryByTestId('seated-table-badge')).not.toBeInTheDocument();
       expect(screen.getByTestId('active-seat-readout')).toHaveTextContent(
         'table_01 / T1_S1',
       );

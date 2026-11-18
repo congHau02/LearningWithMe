@@ -9,6 +9,7 @@ export interface StudyGoalControlProps {
   studyGoal: string;
   studyGoalCompleted: boolean;
   canEdit?: boolean;
+  inMobileDrawer?: boolean;
   onUpdateGoal?: (studyGoal: string, completed: boolean) => void;
 }
 
@@ -28,6 +29,7 @@ export function StudyGoalControl({
   studyGoal,
   studyGoalCompleted,
   canEdit = false,
+  inMobileDrawer = false,
   onUpdateGoal,
 }: StudyGoalControlProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -78,7 +80,9 @@ export function StudyGoalControl({
   return (
     <div
       ref={containerRef}
-      className="relative flex min-w-0 items-center gap-1.5 rounded-lg border border-border bg-card/85 px-2 py-1 text-xs shadow-sm sm:min-h-8"
+      className={`relative flex min-w-0 items-center gap-1.5 rounded-xl border border-border bg-card/85 px-2 py-1 text-xs shadow-sm sm:min-h-8 ${
+        inMobileDrawer ? 'w-full justify-between' : ''
+      }`}
     >
       {hasGoal && onUpdateGoal ? (
         <button
@@ -88,7 +92,7 @@ export function StudyGoalControl({
           aria-label={isCompleted ? 'Bỏ đánh dấu hoàn thành mục tiêu' : 'Đánh dấu hoàn thành mục tiêu'}
           title={isCompleted ? 'Bỏ đánh dấu hoàn thành mục tiêu' : 'Đánh dấu hoàn thành mục tiêu'}
           onClick={() => onUpdateGoal(trimmedGoal, !isCompleted)}
-          className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded border px-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-7 sm:min-h-0 sm:min-w-7 sm:px-1.5 sm:text-[11px] ${
+          className={`transition-botanical inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-7 sm:min-h-0 sm:min-w-7 sm:px-1.5 sm:text-[11px] ${
             isCompleted
               ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
               : 'border-border bg-secondary/80 text-muted-foreground hover:text-foreground'
@@ -113,9 +117,9 @@ export function StudyGoalControl({
       <p
         data-testid="study-goal-text"
         title={trimmedGoal || undefined}
-        className={`max-w-[180px] truncate sm:max-w-[200px] lg:max-w-[240px] ${
-          isCompleted ? 'font-medium text-emerald-300' : 'text-muted-foreground'
-        }`}
+        className={`truncate ${
+          inMobileDrawer ? 'min-w-0 flex-1' : 'max-w-[180px] sm:max-w-[200px] lg:max-w-[240px]'
+        } ${isCompleted ? 'font-medium text-emerald-300' : 'text-muted-foreground'}`}
       >
         {trimmedGoal || 'Chưa đặt mục tiêu học tập hôm nay'}
       </p>
@@ -133,7 +137,7 @@ export function StudyGoalControl({
           }}
           title="Chỉnh sửa mục tiêu học tập"
           aria-label="Chỉnh sửa mục tiêu học tập"
-          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded border border-border bg-secondary/80 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:min-w-0 sm:px-2 sm:py-0.5 sm:text-[10px]"
+          className="transition-botanical inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-lg border border-border bg-secondary/80 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 sm:min-w-0 sm:px-2 sm:py-0.5 sm:text-[10px]"
         >
           <EditIcon className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
           <span>Sửa</span>
@@ -143,7 +147,11 @@ export function StudyGoalControl({
       {isEditing ? (
         <form
           id="study-goal-popover"
-          className="absolute left-0 top-full z-50 mt-2 flex w-72 max-w-[calc(100vw-1.5rem)] flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card/95 p-2.5 shadow-2xl backdrop-blur-md sm:left-1/2 sm:-translate-x-1/2"
+          className={`absolute top-full z-50 mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card/98 p-2.5 shadow-2xl backdrop-blur-md ${
+            inMobileDrawer
+              ? 'inset-x-0 w-full'
+              : 'left-0 w-72 max-w-[calc(100vw-1.5rem)] sm:left-1/2 sm:-translate-x-1/2'
+          }`}
           onSubmit={(e) => void handleSubmit(onSubmit)(e)}
         >
           <input

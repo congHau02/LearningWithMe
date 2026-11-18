@@ -158,3 +158,13 @@ export function MenuIcon(props: StudioIconProps) {
     </StudioIconWrapper>
   );
 }
+
+export function MoreHorizontalIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <circle cx="12" cy="12" r="1.25" fill="currentColor" />
+      <circle cx="19" cy="12" r="1.25" fill="currentColor" />
+      <circle cx="5" cy="12" r="1.25" fill="currentColor" />
+    </StudioIconWrapper>
+  );
+}
