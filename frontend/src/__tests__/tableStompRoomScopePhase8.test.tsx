@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TableWorkspaceShell } from '../components/table/TableWorkspaceShell';
 import { useTableWorkspaceSync } from '../hooks/useTableWorkspaceSync';
@@ -210,8 +210,6 @@ describe('P8-T3 Frontend Room-Scoped Table STOMP & Private /user/queue/voice', (
     expect(transport.subscriptions.has('/topic/table/table_01/workspace')).toBe(false);
 
     await waitFor(() => expect(screen.getByTestId('table-member-u-bob')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('voice-join-btn'));
     await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(true));
 
     // Broadcast MUTE_STATUS arrives on room-scoped workspace topic

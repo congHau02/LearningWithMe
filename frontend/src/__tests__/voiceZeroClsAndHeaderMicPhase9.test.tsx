@@ -137,38 +137,37 @@ describe('P9-T3 Zero-CLS Voice Mic Indicators & Persistent Table Header Mic Cont
     expect(selfIndicator).toHaveAttribute('data-speaking', 'false');
   });
 
-  it('renders persistent header mic pill beside timer, joins voice, and syncs explicit BẬT/TẮT state with VoiceChatBar', async () => {
+  it('renders persistent header mic pill auto-joined muted and toggles BẬT/TẮT in sync with TableMembersPanel', async () => {
     render(<TableWorkspaceShell />);
 
-    const headerPill = screen.getByTestId('header-voice-mic-pill');
-    expect(headerPill).toBeInTheDocument();
-
-    // Quick join from header pill
-    fireEvent.click(headerPill);
     await waitFor(() => {
       expect(useVoiceStore.getState().inVoice).toBe(true);
     });
 
-    const activeHeaderPill = screen.getByTestId('header-voice-mic-pill');
-    const barMuteBtn = screen.getByTestId('voice-mute-btn');
+    const headerPill = screen.getByTestId('header-voice-mic-pill');
+    expect(headerPill).toBeInTheDocument();
+    expect(headerPill).toHaveTextContent('Mic đang TẮT');
+    expect(headerPill).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('voice-mute-badge-u-alice')).toHaveTextContent('Mic tắt');
 
-    expect(activeHeaderPill).toHaveTextContent('Mic đang BẬT');
-    expect(activeHeaderPill).toHaveAttribute('aria-pressed', 'true');
-    expect(barMuteBtn).toHaveTextContent('Mic đang BẬT');
-    expect(barMuteBtn).toHaveAttribute('aria-pressed', 'true');
+    // First click requests mic and unmutes
+    fireEvent.click(headerPill);
+    await waitFor(() => {
+      expect(useVoiceStore.getState().isMuted).toBe(false);
+    });
 
-    // Toggle mute from header pill -> updates both header pill, VoiceChatBar, and audio track
-    fireEvent.click(activeHeaderPill);
-    expect(localTracks[0].enabled).toBe(false);
-    expect(activeHeaderPill).toHaveTextContent('Mic đang TẮT');
-    expect(activeHeaderPill).toHaveAttribute('aria-pressed', 'false');
-    expect(barMuteBtn).toHaveTextContent('Mic đang TẮT');
-    expect(barMuteBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(headerPill).toHaveTextContent('Mic đang BẬT');
+    expect(headerPill).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('voice-mute-badge-u-alice')).toHaveTextContent('Mic bật');
 
-    // Toggle unmute from VoiceChatBar -> header pill stays synchronized
-    fireEvent.click(barMuteBtn);
-    expect(localTracks[0].enabled).toBe(true);
-    expect(activeHeaderPill).toHaveTextContent('Mic đang BẬT');
-    expect(activeHeaderPill).toHaveAttribute('aria-pressed', 'true');
+    // Second click mutes audio track and keeps TableMembersPanel synchronized
+    fireEvent.click(headerPill);
+    await waitFor(() => {
+      expect(localTracks[0].enabled).toBe(false);
+      expect(useVoiceStore.getState().isMuted).toBe(true);
+    });
+    expect(headerPill).toHaveTextContent('Mic đang TẮT');
+    expect(headerPill).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('voice-mute-badge-u-alice')).toHaveTextContent('Mic tắt');
   });
 });

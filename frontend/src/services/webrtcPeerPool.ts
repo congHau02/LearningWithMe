@@ -91,10 +91,43 @@ export class WebRtcPeerPool {
     return pc;
   }
 
+  private findAudioTransceiver(pc: RTCPeerConnection): RTCRtpTransceiver | undefined {
+    return pc
+      .getTransceivers?.()
+      .find((t) => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio');
+  }
+
+  async attachLocalStream(stream: MediaStream): Promise<void> {
+    const audioTrack = stream.getAudioTracks()[0];
+    if (!audioTrack) return;
+
+    for (const [peerId, pc] of this.peers.entries()) {
+      try {
+        const sender =
+          this.findAudioTransceiver(pc)?.sender ??
+          pc.getSenders?.().find((s) => !s.track || s.track.kind === 'audio');
+
+        if (sender && typeof sender.replaceTrack === 'function') {
+          await sender.replaceTrack(audioTrack);
+        } else {
+          pc.addTrack(audioTrack, stream);
+          if (pc.remoteDescription && pc.signalingState === 'stable') {
+            await this.createAndSendOffer(peerId);
+          }
+        }
+      } catch {
+        // Ignore transient track-attach error on closing peer
+      }
+    }
+  }
+
   async createAndSendOffer(peerId: string): Promise<void> {
     if (!this.callbacks.isActive()) return;
     this.callbacks.onPeerStateChange(peerId, 'connecting');
     const pc = this.getOrCreatePeerConnection(peerId);
+    if (!this.callbacks.getLocalStream() && typeof pc.addTransceiver === 'function' && !this.findAudioTransceiver(pc)) {
+      pc.addTransceiver('audio', { direction: 'sendrecv' });
+    }
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -118,6 +151,12 @@ export class WebRtcPeerPool {
     const pc = this.getOrCreatePeerConnection(peerId);
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      if (!this.callbacks.getLocalStream()) {
+        const audioTransceiver = this.findAudioTransceiver(pc);
+        if (audioTransceiver) {
+          audioTransceiver.direction = 'sendrecv';
+        }
+      }
       await this.flushPendingIce(peerId, pc);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);

@@ -20,6 +20,10 @@ interface MockTrack {
 interface MockPeerInstance {
   config: RTCConfiguration | undefined;
   addTrack: ReturnType<typeof vi.fn>;
+  addTransceiver: ReturnType<typeof vi.fn>;
+  getTransceivers: ReturnType<typeof vi.fn>;
+  getSenders: ReturnType<typeof vi.fn>;
+  replaceTrack: ReturnType<typeof vi.fn>;
   createOffer: ReturnType<typeof vi.fn>;
   createAnswer: ReturnType<typeof vi.fn>;
   setLocalDescription: ReturnType<typeof vi.fn>;
@@ -95,12 +99,37 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
       ontrack: ((ev: { streams: MediaStream[]; track: MediaStreamTrack }) => void) | null = null;
       onconnectionstatechange: (() => void) | null = null;
 
+      replaceTrack = vi.fn(async () => {});
+      private transceivers: Array<{
+        direction: RTCRtpTransceiverDirection;
+        receiver: { track: { kind: string } };
+        sender: { track: { kind: string } | null; replaceTrack: ReturnType<typeof vi.fn> };
+      }> = [];
+
       addTrack = vi.fn();
+      addTransceiver = vi.fn((kind: string, init?: { direction?: RTCRtpTransceiverDirection }) => {
+        const t = {
+          direction: init?.direction ?? 'sendrecv',
+          receiver: { track: { kind } },
+          sender: { track: null, replaceTrack: this.replaceTrack },
+        };
+        this.transceivers.push(t);
+        return t;
+      });
+      getTransceivers = vi.fn(() => this.transceivers);
+      getSenders = vi.fn(() => this.transceivers.map((t) => t.sender));
       createOffer = vi.fn(async () => ({ type: 'offer' as const, sdp: 'v=0-offer-sdp' }));
       createAnswer = vi.fn(async () => ({ type: 'answer' as const, sdp: 'v=0-answer-sdp' }));
       setLocalDescription = vi.fn(async () => {});
       setRemoteDescription = vi.fn(async (desc: RTCSessionDescriptionInit) => {
         this.remoteDescription = desc;
+        if (desc.type === 'offer' && this.transceivers.length === 0) {
+          this.transceivers.push({
+            direction: 'recvonly',
+            receiver: { track: { kind: 'audio' } },
+            sender: { track: null, replaceTrack: this.replaceTrack },
+          });
+        }
       });
       addIceCandidate = vi.fn(async () => {});
       close = vi.fn(() => {
@@ -239,23 +268,28 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
     vi.useRealTimers();
   });
 
-  it('joins P2P mesh with STUN, negotiates SDP/ICE, toggles mute, shows speaking indicator & tears down on leave', async () => {
+  it('auto-joins P2P mesh muted (listen-only without mic prompt), negotiates SDP/ICE, lazily acquires mic on unmute & tears down on leave', async () => {
     render(<WorkspaceHarness />);
     await waitFor(() => expect(screen.getByTestId('table-member-u-bob')).toBeInTheDocument());
 
-    // Before joining voice, remote tablemate shows "Chưa vào Voice"
-    expect(screen.getByTestId('voice-peer-status-u-bob')).toHaveTextContent('Chưa vào Voice');
+    // No separate VoiceChatBar or manual join/leave voice buttons exist
+    expect(screen.queryByTestId('voice-chat-bar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('voice-join-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('voice-leave-btn')).not.toBeInTheDocument();
 
-    // Join voice
-    fireEvent.click(screen.getByTestId('voice-join-btn'));
+    // Auto-joins voice muted without prompting getUserMedia
     await waitFor(() => {
+      expect(useVoiceStore.getState().inVoice).toBe(true);
       expect(sendVoiceSignal).toHaveBeenCalledWith('table_01', {
         signalType: 'VOICE_JOIN',
-        muted: false,
+        muted: true,
       });
     });
+    expect(useVoiceStore.getState().isMuted).toBe(true);
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+    expect(screen.getByTestId('voice-peer-status-u-bob')).toHaveTextContent('Sẵn sàng');
 
-    // Bob joins voice -> Alice (u-alice < u-bob) creates RTCPeerConnection with STUN and sends SDP_OFFER
+    // Bob joins voice -> Alice (u-alice < u-bob) creates RTCPeerConnection with STUN & sendrecv audio transceiver
     act(() => {
       dispatchIncomingVoiceSignal({
         signalType: 'VOICE_JOIN',
@@ -272,13 +306,14 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
         expect.objectContaining({
           signalType: 'SDP_OFFER',
           targetUserId: 'u-bob',
+          muted: true,
         }),
       );
     });
     expect(createdPeers[0].config).toEqual({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
-    expect(createdPeers[0].addTrack).toHaveBeenCalledTimes(1);
+    expect(createdPeers[0].addTransceiver).toHaveBeenCalledWith('audio', { direction: 'sendrecv' });
 
     // ICE candidate before SDP_ANSWER is buffered until remoteDescription is set
     act(() => {
@@ -306,7 +341,7 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
       expect(createdPeers[0].addIceCandidate).toHaveBeenCalledTimes(1);
     });
 
-    // Simulate connected state & remote audio stream speaking indicator
+    // Simulate connected state & remote audio stream speaking indicator while Alice is still muted
     const remoteStream = new MediaStream();
     analyserEnergyByStream.set(remoteStream, 42);
     act(() => {
@@ -335,12 +370,26 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
     expect(screen.getByTestId('voice-mute-badge-u-bob')).toHaveTextContent('Mic tắt');
     expect(screen.getByTestId('speaking-indicator-u-bob')).toHaveAttribute('data-speaking', 'false');
 
-    // Alice toggles her own mic mute
-    fireEvent.click(screen.getByTestId('voice-mute-btn'));
-    expect(localTracks[0].enabled).toBe(false);
-    expect(sendVoiceSignal).toHaveBeenCalledWith('table_01', {
-      signalType: 'MUTE_STATUS',
-      muted: true,
+    // Alice clicks header mic pill for the first time -> lazily acquires mic & calls replaceTrack
+    fireEvent.click(screen.getByTestId('header-voice-mic-pill'));
+    await waitFor(() => {
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+      expect(createdPeers[0].replaceTrack).toHaveBeenCalledWith(localTracks[0]);
+      expect(sendVoiceSignal).toHaveBeenCalledWith('table_01', {
+        signalType: 'MUTE_STATUS',
+        muted: false,
+      });
+    });
+    expect(screen.getByTestId('voice-mute-badge-u-alice')).toHaveTextContent('Mic bật');
+
+    // Alice toggles her own mic back to muted
+    fireEvent.click(screen.getByTestId('header-voice-mic-pill'));
+    await waitFor(() => {
+      expect(localTracks[0].enabled).toBe(false);
+      expect(sendVoiceSignal).toHaveBeenCalledWith('table_01', {
+        signalType: 'MUTE_STATUS',
+        muted: true,
+      });
     });
     expect(screen.getByTestId('voice-mute-badge-u-alice')).toHaveTextContent('Mic tắt');
 
@@ -354,7 +403,7 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
     expect(useVoiceStore.getState().inVoice).toBe(false);
   });
 
-  it('handles denied microphone permissions gracefully without crashing', async () => {
+  it('stays in voice (listen-only) and shows error banner in TableMembersPanel when mic permission is denied on unmute', async () => {
     const deniedErr = new Error('Permission denied');
     deniedErr.name = 'NotAllowedError';
     Object.defineProperty(navigator, 'mediaDevices', {
@@ -365,21 +414,27 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
     });
 
     render(<WorkspaceHarness />);
-    fireEvent.click(screen.getByTestId('voice-join-btn'));
+    await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(true));
+
+    // User clicks mic pill to unmute -> permission denied
+    fireEvent.click(screen.getByTestId('header-voice-mic-pill'));
 
     await waitFor(() => {
       expect(screen.getByTestId('voice-error-banner')).toHaveTextContent('từ chối quyền');
     });
-    expect(useVoiceStore.getState().inVoice).toBe(false);
-    expect(sendVoiceSignal).not.toHaveBeenCalled();
+    // Still connected to table voice (listen-only), mic remains muted
+    expect(useVoiceStore.getState().inVoice).toBe(true);
+    expect(useVoiceStore.getState().isMuted).toBe(true);
   });
 
   it('auto-tears down peer connections and mic stream on component unmount and peer seat release', async () => {
     const { unmount } = render(<WorkspaceHarness />);
     await waitFor(() => expect(screen.getByTestId('table-member-u-bob')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('voice-join-btn'));
     await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(true));
+
+    // Unmute once so a local mic track is active and verified to stop on unmount
+    fireEvent.click(screen.getByTestId('header-voice-mic-pill'));
+    await waitFor(() => expect(useVoiceStore.getState().isMuted).toBe(false));
 
     act(() => {
       dispatchIncomingVoiceSignal({
@@ -422,9 +477,11 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
   it('answers incoming SDP_OFFER from a lower userId peer and tears down when clicking Đứng dậy rời bàn', async () => {
     const { rerender } = render(<WorkspaceHarness />);
     await waitFor(() => expect(screen.getByTestId('table-member-u-bob')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('voice-join-btn'));
     await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(true));
+
+    // Unmute once so local track cleanup is also exercised on seat leave
+    fireEvent.click(screen.getByTestId('header-voice-mic-pill'));
+    await waitFor(() => expect(useVoiceStore.getState().isMuted).toBe(false));
 
     // Peer with lower ID ('u-aaa' < 'u-alice') sends SDP_OFFER while muted -> Alice responds with SDP_ANSWER and records muted state
     await act(async () => {
@@ -494,9 +551,10 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
   it('flushes early ICE candidates before SDP_OFFER, catches WebRTC errors, filters cross-shard signals & preserves voice on account upgrade', async () => {
     render(<WorkspaceHarness />);
     await waitFor(() => expect(screen.getByTestId('table-member-u-bob')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('voice-join-btn'));
     await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(true));
+
+    fireEvent.click(screen.getByTestId('header-voice-mic-pill'));
+    await waitFor(() => expect(useVoiceStore.getState().isMuted).toBe(false));
 
     // 1. Early ICE_CANDIDATE arrives BEFORE SDP_OFFER from 'u-aaa'
     act(() => {
@@ -650,11 +708,10 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<WorkspaceHarness />);
+    const firstRender = render(<WorkspaceHarness />);
     await waitFor(() => expect(screen.getByTestId('table-member-u-bob')).toBeInTheDocument());
 
-    // 1. Join voice when /api/v1/voice/ice-servers succeeds with STUN + TURN
-    fireEvent.click(screen.getByTestId('voice-join-btn'));
+    // 1. Auto-joins voice when /api/v1/voice/ice-servers succeeds with STUN + TURN
     await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(true));
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringMatching(/\/api\/v1\/voice\/ice-servers$/),
@@ -675,16 +732,23 @@ describe('P6-T4 WebRTC P2P Mesh Voice Chat, Speaking Indicator & Auto-Teardown',
       iceServers: turnIceServers,
     });
 
-    // 2. Leave voice, then rejoin when /api/v1/voice/ice-servers fails -> gracefully falls back to default STUN
-    fireEvent.click(screen.getByTestId('voice-leave-btn'));
-    await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(false));
+    // 2. Leave seat (unmount) then sit down again when /api/v1/voice/ice-servers fails -> gracefully falls back to default STUN
+    firstRender.unmount();
+    expect(useVoiceStore.getState().inVoice).toBe(false);
 
     failIceEndpoint = true;
-    fireEvent.click(screen.getByTestId('voice-join-btn'));
-    await waitFor(() => {
-      expect(useVoiceStore.getState().inVoice).toBe(true);
-      expect(createdPeers).toHaveLength(2);
+    render(<WorkspaceHarness />);
+    await waitFor(() => expect(useVoiceStore.getState().inVoice).toBe(true));
+
+    act(() => {
+      dispatchIncomingVoiceSignal({
+        signalType: 'VOICE_JOIN',
+        senderUserId: 'u-bob',
+        senderNickname: 'Bob',
+        muted: false,
+      });
     });
+    await waitFor(() => expect(createdPeers).toHaveLength(2));
     expect(createdPeers[1].config).toEqual({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });

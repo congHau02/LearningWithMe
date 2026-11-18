@@ -183,7 +183,7 @@ describe('P8-T8 Slice 1: Personal Ambient Soundscape Mixer', () => {
       lastUpdatedEpoch: 1000,
     });
     expect(useVoiceStore.getState().inVoice).toBe(false);
-    expect(useVoiceStore.getState().isMuted).toBe(false);
+    expect(useVoiceStore.getState().isMuted).toBe(true);
   });
 
   it('closes popover on Escape when SEATED without triggering LeaveTableConfirmModal', async () => {

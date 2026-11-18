@@ -14,11 +14,13 @@ export interface VoicePeerState {
 export interface VoiceStoreState {
   inVoice: boolean;
   isJoining: boolean;
+  isAcquiringMic: boolean;
   isMuted: boolean;
   isSelfSpeaking: boolean;
   voiceError: string | null;
   peers: Record<string, VoicePeerState>;
   setJoining: (isJoining: boolean) => void;
+  setAcquiringMic: (isAcquiringMic: boolean) => void;
   setInVoice: (inVoice: boolean, isMuted?: boolean) => void;
   setMuted: (isMuted: boolean) => void;
   setSelfSpeaking: (isSelfSpeaking: boolean) => void;
@@ -31,7 +33,8 @@ export interface VoiceStoreState {
 const INITIAL_VOICE_STATE = {
   inVoice: false,
   isJoining: false,
-  isMuted: false,
+  isAcquiringMic: false,
+  isMuted: true,
   isSelfSpeaking: false,
   voiceError: null as string | null,
   peers: {} as Record<string, VoicePeerState>,
@@ -40,10 +43,12 @@ const INITIAL_VOICE_STATE = {
 export const useVoiceStore = create<VoiceStoreState>((set) => ({
   ...INITIAL_VOICE_STATE,
   setJoining: (isJoining) => set({ isJoining }),
+  setAcquiringMic: (isAcquiringMic) => set({ isAcquiringMic }),
   setInVoice: (inVoice, isMuted) =>
     set((s) => ({
       inVoice,
       isJoining: false,
+      isAcquiringMic: inVoice ? s.isAcquiringMic : false,
       isMuted: isMuted ?? s.isMuted,
       isSelfSpeaking: inVoice ? s.isSelfSpeaking : false,
     })),

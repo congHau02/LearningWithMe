@@ -62,6 +62,21 @@ export class VoiceAudioAnalyzer {
     }
   }
 
+  resumePlayback(): void {
+    if (this.audioCtx?.state === 'suspended') {
+      this.audioCtx.resume?.().catch(() => {});
+    }
+    for (const audio of this.audioElements.values()) {
+      if (audio.paused) {
+        try {
+          void Promise.resolve(audio.play?.()).catch(() => {});
+        } catch {
+          // Ignore unsupported play() in jsdom
+        }
+      }
+    }
+  }
+
   setMuted(key: string, muted: boolean): void {
     const slot = this.slots.get(key);
     if (!slot) return;

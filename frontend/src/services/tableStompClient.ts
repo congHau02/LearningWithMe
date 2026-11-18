@@ -77,7 +77,7 @@ export function sendBoardDraw(
 
 export function sendTableVoiceSignal(tableId: string, payload: VoiceSignalRequest): boolean {
   const session = getActiveRoomStompSession();
-  if (!session) return false;
+  if (!session || typeof session.sendVoiceSignal !== 'function') return false;
   session.sendVoiceSignal(tableId, payload);
   return true;
 }

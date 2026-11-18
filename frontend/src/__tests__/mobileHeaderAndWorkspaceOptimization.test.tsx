@@ -72,7 +72,7 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
     expect(onUpdateStudyGoal).toHaveBeenCalledWith('Làm đề Giải tích', true);
   });
 
-  it('displays concise table id without "Table Workspace • " prefix on both desktop and mobile', () => {
+  it('displays concise table id without "Table Workspace • " prefix and keeps desktop leave button inline', () => {
     const { rerender } = render(
       <TableWorkspaceHeader
         activeTableId="table_03"
@@ -82,7 +82,6 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
         canControl={true}
         onToggleFreeCollab={vi.fn()}
         onRequestControl={vi.fn()}
-        onJoinVoice={vi.fn()}
         onToggleMute={vi.fn()}
         onMinimize={vi.fn()}
         onRequestLeaveSeat={vi.fn()}
@@ -93,6 +92,7 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
     expect(desktopTitle).toHaveTextContent(/^table_03$/);
     expect(screen.queryByText(/Table Workspace/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-collab-menu-btn')).not.toBeInTheDocument();
+    expect(screen.getByTestId('workspace-leave-seat-btn')).toBeInTheDocument();
 
     act(() => {
       setViewportWidth(375);
@@ -106,7 +106,6 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
         canControl={true}
         onToggleFreeCollab={vi.fn()}
         onRequestControl={vi.fn()}
-        onJoinVoice={vi.fn()}
         onToggleMute={vi.fn()}
         onMinimize={vi.fn()}
         onRequestLeaveSeat={vi.fn()}
@@ -115,11 +114,13 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
 
     expect(screen.getByTestId('workspace-table-title')).toHaveTextContent(/^table_03$/);
     expect(screen.getByTestId('workspace-collab-menu-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-leave-seat-btn')).not.toBeInTheDocument();
   });
 
-  it('renders single-row mobile TableWorkspaceHeader with >=44px touch targets, Zero-CLS voice pill, and dismissible collab popover', () => {
+  it('renders 3-button mobile header ([Mic] [Thu gọn] [⋯]) with >=44px targets and tucks both collab & leave seat inside ⋯ Double-Bezel popover', () => {
     setViewportWidth(375);
     const onToggleFreeCollab = vi.fn();
+    const onRequestLeaveSeat = vi.fn();
 
     render(
       <TableWorkspaceHeader
@@ -130,38 +131,51 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
         canControl={true}
         onToggleFreeCollab={onToggleFreeCollab}
         onRequestControl={vi.fn()}
-        onJoinVoice={vi.fn()}
         onToggleMute={vi.fn()}
         onMinimize={vi.fn()}
-        onRequestLeaveSeat={vi.fn()}
+        onRequestLeaveSeat={onRequestLeaveSeat}
       />,
     );
 
     const voiceBtn = screen.getByTestId('header-voice-mic-pill');
-    const collabBtn = screen.getByTestId('workspace-collab-menu-btn');
     const minimizeBtn = screen.getByTestId('minimize-workspace-btn');
-    const leaveBtn = screen.getByTestId('workspace-leave-seat-btn');
+    const collabBtn = screen.getByTestId('workspace-collab-menu-btn');
 
     expect(voiceBtn.className).toContain('min-h-[44px]');
-    expect(voiceBtn.className).toContain('min-w-[52px]');
-    expect(collabBtn.className).toContain('min-h-[44px]');
-    expect(collabBtn.className).toContain('min-w-[44px]');
+    expect(voiceBtn.className).toContain('min-w-[56px]');
     expect(minimizeBtn.className).toContain('min-h-[44px]');
     expect(minimizeBtn.className).toContain('min-w-[44px]');
-    expect(leaveBtn.className).toContain('min-h-[44px]');
-    expect(leaveBtn.className).toContain('min-w-[44px]');
+    expect(collabBtn.className).toContain('min-h-[44px]');
+    expect(collabBtn.className).toContain('min-w-[44px]');
 
-    // Collab toggle lives inside overflow popover on mobile
+    // Leave seat is NOT rendered directly on the mobile header bar
+    expect(screen.queryByTestId('workspace-leave-seat-btn')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-collab-popover')).not.toBeInTheDocument();
+
+    // Verify visual order: [Mic] -> [Thu gọn] -> [⋯]
+    const headerButtons = screen.getAllByRole('button');
+    expect(headerButtons).toEqual([voiceBtn, minimizeBtn, collabBtn]);
+
+    // Opening ⋯ reveals Double-Bezel popover with collab toggle + separator + leave seat
     fireEvent.click(collabBtn);
-    expect(screen.getByTestId('workspace-collab-popover')).toBeVisible();
+    const popover = screen.getByTestId('workspace-collab-popover');
+    expect(popover).toBeVisible();
+    expect(popover.className).toContain('botanical-bezel-outer');
     expect(screen.getByTestId('free-collab-badge')).toHaveTextContent('TẮT');
+    expect(screen.getByRole('separator')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-leave-seat-btn')).toHaveTextContent('Đứng dậy rời bàn');
 
     fireEvent.click(screen.getByTestId('toggle-free-collab-btn'));
     expect(onToggleFreeCollab).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('workspace-collab-popover')).not.toBeInTheDocument();
 
-    // Re-open and dismiss with Escape
+    // Re-open and click Đứng dậy rời bàn -> closes popover and triggers leave confirmation flow
+    fireEvent.click(collabBtn);
+    fireEvent.click(screen.getByTestId('workspace-leave-seat-btn'));
+    expect(onRequestLeaveSeat).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('workspace-collab-popover')).not.toBeInTheDocument();
+
+    // Re-open and dismiss with Escape -> restores focus to trigger
     fireEvent.click(collabBtn);
     expect(screen.getByTestId('workspace-collab-popover')).toBeVisible();
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -207,7 +221,6 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
         activeTableId="table_03"
         elapsedSeconds={60}
         isSeated={true}
-        onJoinVoice={vi.fn()}
         onToggleMute={vi.fn()}
         onExpand={vi.fn()}
         onRequestLeaveSeat={vi.fn()}
@@ -223,7 +236,6 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
         activeTableId="table_03"
         elapsedSeconds={60}
         isSeated={true}
-        onJoinVoice={vi.fn()}
         onToggleMute={vi.fn()}
         onExpand={vi.fn()}
         onRequestLeaveSeat={vi.fn()}

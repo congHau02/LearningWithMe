@@ -12,7 +12,6 @@ import { TableChatPanel } from '../components/table/TableChatPanel';
 import { TableMembersPanel } from '../components/table/TableMembersPanel';
 import { TableWorkspaceHeader } from '../components/table/TableWorkspaceHeader';
 import { TableWorkspaceShell } from '../components/table/TableWorkspaceShell';
-import { VoiceChatBar } from '../components/table/VoiceChatBar';
 import { WorkspaceLayoutControls } from '../components/table/WorkspaceLayoutControls';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useGameStore } from '../stores/useGameStore';
@@ -45,7 +44,6 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
           canControl={true}
           onToggleFreeCollab={vi.fn()}
           onRequestControl={vi.fn()}
-          onJoinVoice={vi.fn()}
           onToggleMute={vi.fn()}
           onMinimize={vi.fn()}
           onRequestLeaveSeat={vi.fn()}
@@ -102,18 +100,18 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
           canControl={false}
           onToggleFreeCollab={vi.fn()}
           onRequestControl={vi.fn()}
-          onJoinVoice={vi.fn()}
           onToggleMute={vi.fn()}
           onMinimize={vi.fn()}
           onRequestLeaveSeat={vi.fn()}
         />,
       );
 
-      // Not in voice state
-      const notInVoiceBtn = screen.getByTestId('header-voice-mic-pill');
-      expect(notInVoiceBtn.className).toContain('min-w-[9.5rem]');
-      expect(notInVoiceBtn.className).toContain('min-h-[44px]');
-      expect(notInVoiceBtn).toHaveTextContent('Vào Voice');
+      // Default always-in-voice muted state
+      const defaultMutedBtn = screen.getByTestId('header-voice-mic-pill');
+      expect(defaultMutedBtn.className).toContain('min-w-[9.5rem]');
+      expect(defaultMutedBtn.className).toContain('min-h-[44px]');
+      expect(defaultMutedBtn).toHaveTextContent('Mic đang TẮT');
+      expect(defaultMutedBtn.className).toContain('border-amber-500/50');
 
       // In voice unmuted state
       act(() => {
@@ -128,7 +126,6 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
           canControl={false}
           onToggleFreeCollab={vi.fn()}
           onRequestControl={vi.fn()}
-          onJoinVoice={vi.fn()}
           onToggleMute={vi.fn()}
           onMinimize={vi.fn()}
           onRequestLeaveSeat={vi.fn()}
@@ -154,7 +151,6 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
           canControl={false}
           onToggleFreeCollab={vi.fn()}
           onRequestControl={vi.fn()}
-          onJoinVoice={vi.fn()}
           onToggleMute={vi.fn()}
           onMinimize={vi.fn()}
           onRequestLeaveSeat={vi.fn()}
@@ -206,7 +202,6 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
           activeTableId="table_01"
           elapsedSeconds={60}
           isSeated={true}
-          onJoinVoice={vi.fn()}
           onToggleMute={vi.fn()}
           onExpand={vi.fn()}
           onRequestLeaveSeat={vi.fn()}
@@ -426,7 +421,6 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
             canControl={true}
             onToggleFreeCollab={vi.fn()}
             onRequestControl={vi.fn()}
-            onJoinVoice={vi.fn()}
             onToggleMute={vi.fn()}
             onMinimize={vi.fn()}
             onRequestLeaveSeat={vi.fn()}
@@ -435,19 +429,11 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
             activeTableId="table_01"
             elapsedSeconds={10}
             isSeated={true}
-            onJoinVoice={vi.fn()}
             onToggleMute={vi.fn()}
             onExpand={vi.fn()}
             onRequestLeaveSeat={vi.fn()}
           />
           <FocusCycleBar tableId="table_01" canControl={true} isSeated={true} />
-          <VoiceChatBar
-            members={useTableStore.getState().members}
-            selfUserId="u-host"
-            onJoinVoice={vi.fn()}
-            onLeaveVoice={vi.fn()}
-            onToggleMute={vi.fn()}
-          />
           <SosBannerControl tableId="table_01" sosBanner={null} canControl={true} />
           <HostPermissionToast requests={[]} onRespond={vi.fn()} />
           <WorkspaceLayoutControls

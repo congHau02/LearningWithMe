@@ -16,6 +16,7 @@ export class WebRtcMeshManager {
   private localStream: MediaStream | null = null;
   private joined = false;
   private joinGeneration = 0;
+  private joinPromise: Promise<void> | null = null;
 
   private readonly analyzer = new VoiceAudioAnalyzer((key, speaking) => {
     const store = useVoiceStore.getState();
@@ -53,64 +54,112 @@ export class WebRtcMeshManager {
     sendTableVoiceSignal(this.tableId, payload);
   }
 
+  /**
+   * Auto-joins the table voice mesh in listen-only (muted) mode without
+   * prompting for microphone permission until the learner explicitly unmutes.
+   */
   async join(): Promise<void> {
     if (this.joined || !this.tableId || !this.selfUserId) return;
+    if (this.joinPromise) return this.joinPromise;
+
     const store = useVoiceStore.getState();
-    if (store.isJoining) return;
-
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      store.setVoiceError('Trình duyệt không hỗ trợ truy cập micro WebRTC.');
-      return;
-    }
-
     const myGen = ++this.joinGeneration;
     store.setVoiceError(null);
     store.setJoining(true);
+
+    const runJoin = async () => {
+      const iceServers = await fetchVoiceIceServers();
+      if (this.joinGeneration !== myGen || !this.tableId || !this.selfUserId) {
+        store.setJoining(false);
+        return;
+      }
+
+      this.peerPool.setIceServers(iceServers);
+      this.joined = true;
+      store.setInVoice(true, true);
+
+      this.sendSignal({ signalType: 'VOICE_JOIN', muted: true });
+
+      const knownPeers = Object.keys(useVoiceStore.getState().peers);
+      for (const peerId of knownPeers) {
+        if (peerId !== this.selfUserId && this.selfUserId < peerId) {
+          await this.peerPool.createAndSendOffer(peerId);
+        }
+      }
+    };
+
+    this.joinPromise = runJoin().finally(() => {
+      if (this.joinGeneration === myGen) {
+        this.joinPromise = null;
+      }
+    });
+    return this.joinPromise;
+  }
+
+  announcePresence(): void {
+    if (!this.joined || !this.tableId || !this.selfUserId) return;
+    this.sendSignal({ signalType: 'VOICE_JOIN', muted: useVoiceStore.getState().isMuted });
+  }
+
+  resumeAudioPlayback(): void {
+    this.analyzer.resumePlayback();
+  }
+
+  async toggleMute(): Promise<boolean> {
+    this.analyzer.resumePlayback();
+    if (!this.tableId || !this.selfUserId) return true;
+    if (!this.joined) {
+      await this.join();
+      if (!this.joined) return true;
+    }
+
+    const store = useVoiceStore.getState();
+    if (store.isAcquiringMic) return store.isMuted;
+
+    if (this.localStream) {
+      const nextMuted = !store.isMuted;
+      for (const track of this.localStream.getAudioTracks()) {
+        track.enabled = !nextMuted;
+      }
+      this.analyzer.setMuted(SELF_AUDIO_KEY, nextMuted);
+      store.setMuted(nextMuted);
+      this.sendSignal({ signalType: 'MUTE_STATUS', muted: nextMuted });
+      return nextMuted;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      store.setVoiceError('Trình duyệt không hỗ trợ truy cập micro WebRTC.');
+      return true;
+    }
+
+    const myGen = this.joinGeneration;
+    store.setVoiceError(null);
+    store.setAcquiringMic(true);
 
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     } catch (err) {
       if (this.joinGeneration === myGen) {
-        store.setJoining(false);
+        store.setAcquiringMic(false);
         store.setVoiceError(mapMicError(err));
       }
-      return;
+      return true;
     }
 
-    const iceServers = await fetchVoiceIceServers();
-    if (this.joinGeneration !== myGen || !this.tableId || !this.selfUserId) {
+    if (this.joinGeneration !== myGen || !this.joined || !this.tableId) {
       stream.getTracks().forEach((track) => track.stop());
-      store.setJoining(false);
-      return;
+      store.setAcquiringMic(false);
+      return true;
     }
 
-    this.peerPool.setIceServers(iceServers);
     this.localStream = stream;
-    this.joined = true;
+    await this.peerPool.attachLocalStream(stream);
     this.analyzer.attachStream(SELF_AUDIO_KEY, stream, false, false);
-    store.setInVoice(true, false);
-
-    this.sendSignal({ signalType: 'VOICE_JOIN', muted: false });
-
-    const knownPeers = Object.keys(useVoiceStore.getState().peers);
-    for (const peerId of knownPeers) {
-      if (peerId !== this.selfUserId && this.selfUserId < peerId) {
-        await this.peerPool.createAndSendOffer(peerId);
-      }
-    }
-  }
-
-  toggleMute(): boolean {
-    if (!this.joined || !this.localStream || !this.tableId) return false;
-    const nextMuted = !useVoiceStore.getState().isMuted;
-    for (const track of this.localStream.getAudioTracks()) {
-      track.enabled = !nextMuted;
-    }
-    this.analyzer.setMuted(SELF_AUDIO_KEY, nextMuted);
-    useVoiceStore.getState().setMuted(nextMuted);
-    this.sendSignal({ signalType: 'MUTE_STATUS', muted: nextMuted });
-    return nextMuted;
+    store.setAcquiringMic(false);
+    store.setMuted(false);
+    this.sendSignal({ signalType: 'MUTE_STATUS', muted: false });
+    return false;
   }
 
   handleIncomingSignal(signal: VoiceSignalPayload): void {
@@ -140,6 +189,7 @@ export class WebRtcMeshManager {
 
   leave(sendSignal = true): void {
     this.joinGeneration += 1;
+    this.joinPromise = null;
     const wasJoined = this.joined;
     const activeTableId = this.tableId;
     this.joined = false;
@@ -159,7 +209,7 @@ export class WebRtcMeshManager {
     this.analyzer.destroy();
 
     const store = useVoiceStore.getState();
-    store.setInVoice(false, false);
+    store.setInVoice(false, true);
     for (const peerId of Object.keys(store.peers)) {
       store.upsertPeer({ userId: peerId, speaking: false, connectionState: 'ready' });
     }

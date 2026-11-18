@@ -14,7 +14,6 @@ import { SosBannerControl } from './SosBannerControl';
 import { TableChatPanel } from './TableChatPanel';
 import { TableMembersPanel } from './TableMembersPanel';
 import { TableWorkspaceHeader } from './TableWorkspaceHeader';
-import { VoiceChatBar } from './VoiceChatBar';
 import { WorkspacePrimaryPanels } from './WorkspacePrimaryPanels';
 
 export function TableWorkspaceShell() {
@@ -42,7 +41,7 @@ export function TableWorkspaceShell() {
   const activeTableId = tableId ?? currentTableId;
   const isSeated = characterState === 'SEATED' && Boolean(activeTableId);
   const elapsedSeconds = useStudyTimer(sitStartTimeEpoch, isSeated);
-  const { joinVoice, leaveVoice, toggleMute } = useTableVoiceChat(
+  const { toggleMute } = useTableVoiceChat(
     isSeated ? activeTableId : null,
     selfUserId,
     members,
@@ -101,8 +100,7 @@ export function TableWorkspaceShell() {
           canControl={canControl}
           onToggleFreeCollab={() => handlePermissionAction('TOGGLE_FREE_COLLAB', undefined, !isFreeCollab)}
           onRequestControl={handleRequestControl}
-          onJoinVoice={() => void joinVoice()}
-          onToggleMute={toggleMute}
+          onToggleMute={() => void toggleMute()}
           onMinimize={() => setWorkspaceMinimized(true)}
           onRequestLeaveSeat={requestLeaveSeat}
         />
@@ -143,13 +141,6 @@ export function TableWorkspaceShell() {
             <WorkspacePrimaryPanels activeTableId={activeTableId} canControl={canControl} />
 
             <div className="flex flex-col gap-4">
-              <VoiceChatBar
-                members={members}
-                selfUserId={selfUserId}
-                onJoinVoice={() => void joinVoice()}
-                onLeaveVoice={leaveVoice}
-                onToggleMute={toggleMute}
-              />
               <TableMembersPanel
                 members={members}
                 selfUserId={selfUserId}
@@ -167,8 +158,7 @@ export function TableWorkspaceShell() {
           activeTableId={activeTableId}
           elapsedSeconds={elapsedSeconds}
           isSeated={isSeated}
-          onJoinVoice={() => void joinVoice()}
-          onToggleMute={toggleMute}
+          onToggleMute={() => void toggleMute()}
           onExpand={() => setWorkspaceMinimized(false)}
           onRequestLeaveSeat={requestLeaveSeat}
         />

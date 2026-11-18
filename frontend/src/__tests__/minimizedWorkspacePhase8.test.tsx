@@ -142,10 +142,13 @@ describe('P8-T8 Slice 2: Minimized Table Workspace Bar', () => {
     expect(screen.getByTestId('table-workspace-shell')).toBeVisible();
     expect(screen.queryByTestId('minimized-table-workspace-bar')).not.toBeInTheDocument();
 
-    // Join voice before minimizing and confirm voice stays connected across minimize
-    fireEvent.click(screen.getByTestId('voice-join-btn'));
+    // Voice auto-joins muted; unmute before minimizing and confirm voice & mic track stay alive across minimize
     await waitFor(() => {
       expect(useVoiceStore.getState().inVoice).toBe(true);
+    });
+    fireEvent.click(screen.getByTestId('header-voice-mic-pill'));
+    await waitFor(() => {
+      expect(useVoiceStore.getState().isMuted).toBe(false);
     });
 
     // Click Minimize
@@ -164,8 +167,10 @@ describe('P8-T8 Slice 2: Minimized Table Workspace Bar', () => {
 
     // Toggle voice mute from minimized bar
     fireEvent.click(screen.getByTestId('minimized-voice-mute-btn'));
-    expect(useVoiceStore.getState().isMuted).toBe(true);
-    expect(fakeTrack.enabled).toBe(false);
+    await waitFor(() => {
+      expect(useVoiceStore.getState().isMuted).toBe(true);
+      expect(fakeTrack.enabled).toBe(false);
+    });
 
     // Incoming TABLE_CHAT from peer increments unread badge while minimized; self chat does not
     expect(screen.queryByTestId('minimized-unread-chat-badge')).not.toBeInTheDocument();
