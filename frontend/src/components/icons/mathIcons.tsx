@@ -121,3 +121,39 @@ export function PinToSlideIcon(props: StudioIconProps) {
     </StudioIconWrapper>
   );
 }
+
+export function CalculatorIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 7h8M8 12h2m4 0h2M8 16h2m4 0h2" />
+    </StudioIconWrapper>
+  );
+}
+
+export function ZoomInIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5M11 8v6M8 11h6" />
+    </StudioIconWrapper>
+  );
+}
+
+export function ZoomOutIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5M8 11h6" />
+    </StudioIconWrapper>
+  );
+}
+
+export function ResetViewIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 3v5h5" />
+    </StudioIconWrapper>
+  );
+}

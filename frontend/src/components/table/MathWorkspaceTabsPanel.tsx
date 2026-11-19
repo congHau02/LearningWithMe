@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { BoardIcon, GraphCurveIcon, ScratchpadIcon } from '../icons';
 import { HomeworkDeckPanel } from './HomeworkDeckPanel';
+import { MathGrapherSolverPanel } from './MathGrapherSolverPanel';
 import { MathScratchpadPanel } from './MathScratchpadPanel';
 
 export type MathWorkspaceTabId = 'board' | 'scratchpad' | 'grapher';
@@ -24,7 +25,13 @@ const MATH_TABS: readonly {
 /** 3-tab Math Workspace host that preserves mounted state across Board, Scratchpad, and Grapher tabs. */
 export function MathWorkspaceTabsPanel({ tableId, canControl, dragHandle }: MathWorkspaceTabsPanelProps) {
   const [activeTab, setActiveTab] = useState<MathWorkspaceTabId>('board');
+  const [hasVisitedGrapher, setHasVisitedGrapher] = useState(false);
   const tabButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const selectTab = (next: MathWorkspaceTabId) => {
+    if (next === 'grapher') setHasVisitedGrapher(true);
+    setActiveTab(next);
+  };
 
   const handleTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>, idx: number) => {
     let nextIdx: number | null = null;
@@ -34,7 +41,7 @@ export function MathWorkspaceTabsPanel({ tableId, canControl, dragHandle }: Math
     else if (e.key === 'End') nextIdx = MATH_TABS.length - 1;
     if (nextIdx === null) return;
     e.preventDefault();
-    setActiveTab(MATH_TABS[nextIdx].id);
+    selectTab(MATH_TABS[nextIdx].id);
     tabButtonRefs.current[nextIdx]?.focus();
   };
 
@@ -62,7 +69,7 @@ export function MathWorkspaceTabsPanel({ tableId, canControl, dragHandle }: Math
                 aria-selected={isActive}
                 aria-controls={`math-tabpanel-${id}`}
                 tabIndex={isActive ? 0 : -1}
-                onClick={() => setActiveTab(id)}
+                onClick={() => selectTab(id)}
                 onKeyDown={(e) => handleTabKeyDown(e, idx)}
                 className={`inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-botanical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[36px] ${
                   isActive
@@ -105,16 +112,13 @@ export function MathWorkspaceTabsPanel({ tableId, canControl, dragHandle }: Math
         hidden={activeTab !== 'grapher'}
         className={activeTab === 'grapher' ? 'block' : 'hidden'}
       >
-        <div
-          data-testid="math-grapher-placeholder"
-          className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-card p-6 text-center"
-        >
-          <GraphCurveIcon className="h-7 w-7 text-primary" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-foreground">Đồ thị f(x) & Máy tính giải tích</h3>
-          <p className="max-w-md text-xs text-muted-foreground">
-            Không gian vẽ đồ thị hàm số trên hệ trục Oxy và giải đạo hàm, tích phân, phương trình sẽ được kích hoạt tại bước tiếp theo.
-          </p>
-        </div>
+        {hasVisitedGrapher ? (
+          <MathGrapherSolverPanel
+            tableId={tableId}
+            canControl={canControl}
+            onSwitchToBoard={() => selectTab('board')}
+          />
+        ) : null}
       </div>
     </div>
   );

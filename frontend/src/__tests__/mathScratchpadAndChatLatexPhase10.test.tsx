@@ -162,7 +162,7 @@ describe('P10-T4 Collaborative Math Scratchpad & Inline/Block LaTeX in Table/Roo
     // Keyboard ArrowRight switches to Grapher tab without unmounting Board or Scratchpad
     fireEvent.keyDown(scratchpadTab, { key: 'ArrowRight' });
     expect(grapherTab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByTestId('math-grapher-placeholder')).toBeVisible();
+    expect(screen.getByTestId('math-grapher-solver-panel')).toBeVisible();
     expect(screen.getByTestId('homework-deck-panel')).toBe(mountedBoardPanel);
     expect((screen.getByTestId('scratchpad-editor') as HTMLTextAreaElement).value).toBe('Bước 1: $x + 1 = 2$');
   });
