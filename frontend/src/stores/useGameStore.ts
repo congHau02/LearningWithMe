@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { findVirtualDrink } from '../game/cafe/studyCafeConfig';
 import { clampCameraZoom } from '../game/scenes/classroomCameraController';
 import { applyRoomEvent, reduceSnapshotState } from '../services/roomEventReducer';
+import { playStudySfx } from '../services/studySfxEngine';
 import {
   INITIAL_GAME_STATE,
   type CharacterState,
@@ -11,7 +12,19 @@ import {
 
 export type { CharacterState, GameState, GridPosition };
 
-export const useGameStore = create<GameState>((set) => ({
+export const useGameStore = create<GameState>((set, get) => {
+  const enterSeatedState = (tableId: string, seatId: string, seatPosition?: GridPosition, facingDir?: GameState['facingDir']) => {
+    const wasSeated = get().characterState === 'SEATED';
+    set((s) => ({
+      characterState: 'SEATED', currentTableId: tableId, currentSeatId: seatId,
+      targetTableId: null, targetSeatId: null, isPendingSeatConfirmation: false, isPendingSeatLeave: false,
+      position: seatPosition ?? s.position, facingDir: facingDir ?? s.facingDir, pathQueue: [], isMoving: false,
+      isLeaveConfirmOpen: false, occupiedSeats: { ...s.occupiedSeats, [seatId]: s.occupiedSeats[seatId] ?? '' },
+    }));
+    if (!wasSeated) playStudySfx('seatSit');
+  };
+
+  return {
   ...INITIAL_GAME_STATE,
   setRoomId: (roomId) => set({ roomId }),
   setPosition: (position, facingDir, isMoving) =>
@@ -34,20 +47,8 @@ export const useGameStore = create<GameState>((set) => ({
     })),
   requestSeatConfirmation: (tableId, seatId) =>
     set({ isPendingSeatConfirmation: true, isMoving: false, pathQueue: [], currentTableId: tableId, currentSeatId: seatId, targetTableId: tableId, targetSeatId: seatId }),
-  confirmSeat: (tableId, seatId, seatPosition, facingDir) =>
-    set((s) => ({
-      characterState: 'SEATED', currentTableId: tableId, currentSeatId: seatId,
-      targetTableId: null, targetSeatId: null, isPendingSeatConfirmation: false, isPendingSeatLeave: false,
-      position: seatPosition ?? s.position, facingDir: facingDir ?? s.facingDir, pathQueue: [], isMoving: false,
-      isLeaveConfirmOpen: false, occupiedSeats: { ...s.occupiedSeats, [seatId]: s.occupiedSeats[seatId] ?? '' },
-    })),
-  sitAtSeat: (tableId, seatId, seatPosition, facingDir) =>
-    set((s) => ({
-      characterState: 'SEATED', currentTableId: tableId, currentSeatId: seatId,
-      targetTableId: null, targetSeatId: null, isPendingSeatConfirmation: false, isPendingSeatLeave: false,
-      position: seatPosition ?? s.position, facingDir: facingDir ?? s.facingDir, pathQueue: [], isMoving: false,
-      isLeaveConfirmOpen: false, occupiedSeats: { ...s.occupiedSeats, [seatId]: s.occupiedSeats[seatId] ?? '' },
-    })),
+  confirmSeat: enterSeatedState,
+  sitAtSeat: enterSeatedState,
   abortSeatWalk: (reason) =>
     set({
       characterState: 'FREE_ROAM', currentTableId: null, currentSeatId: null,
@@ -93,16 +94,12 @@ export const useGameStore = create<GameState>((set) => ({
         },
       };
     }),
-  completeDrinkDelivery: (drinkId, seq) =>
-    set((s) => {
-      if (!s.pendingDrinkOrder || s.pendingDrinkOrder.seq !== seq || s.pendingDrinkOrder.drinkId !== drinkId) {
-        return s;
-      }
-      return {
-        selectedDrinkId: drinkId,
-        pendingDrinkOrder: null,
-      };
-    }),
+  completeDrinkDelivery: (drinkId, seq) => {
+    const pending = get().pendingDrinkOrder;
+    if (!pending || pending.seq !== seq || pending.drinkId !== drinkId) return;
+    set({ selectedDrinkId: drinkId, pendingDrinkOrder: null });
+    playStudySfx('drinkDelivery');
+  },
   clearToast: () => set({ toastMessage: null }),
   setConnectionStatus: (connectionStatus, error) =>
     set((s) => ({ connectionStatus, lastError: error !== undefined ? error : connectionStatus === 'CONNECTED' ? null : s.lastError })),
@@ -145,4 +142,5 @@ export const useGameStore = create<GameState>((set) => ({
   toggleCameraFollow: () =>
     set((s) => ({ cameraFollowEnabled: !s.cameraFollowEnabled, cameraManualOverride: true })),
   resetGame: () => set({ ...INITIAL_GAME_STATE }),
-}));
+};
+});

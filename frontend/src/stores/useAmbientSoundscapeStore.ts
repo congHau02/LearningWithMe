@@ -17,7 +17,7 @@ function buildDefaultPreferences(): AmbientPreferences {
   for (const def of AMBIENT_CHANNEL_DEFS) {
     channels[def.id] = { enabled: false, volume: DEFAULT_CHANNEL_VOLUME };
   }
-  return { isMuted: false, channels };
+  return { isMuted: false, sfxEnabled: true, channels };
 }
 
 function readPreferencesFromStorage(): AmbientPreferences {
@@ -39,6 +39,7 @@ function readPreferencesFromStorage(): AmbientPreferences {
     }
     return {
       isMuted: Boolean(parsed.isMuted),
+      sfxEnabled: typeof parsed.sfxEnabled === 'boolean' ? parsed.sfxEnabled : true,
       channels,
     };
   } catch {
@@ -61,6 +62,7 @@ export interface AmbientSoundscapeStore extends AmbientPreferences {
   toggleChannel: (id: AmbientChannelId) => void;
   setChannelVolume: (id: AmbientChannelId, volume: number) => void;
   toggleMute: () => void;
+  toggleSfx: () => void;
   hydrateFromStorage: () => void;
   syncAudioEngine: () => void;
   resetPreferences: () => void;
@@ -79,6 +81,7 @@ export const useAmbientSoundscapeStore = create<AmbientSoundscapeStore>((set, ge
       const prev = get();
       commitPreferences({
         isMuted: prev.isMuted,
+        sfxEnabled: prev.sfxEnabled,
         channels: {
           ...prev.channels,
           [id]: { ...prev.channels[id], enabled: !prev.channels[id].enabled },
@@ -89,6 +92,7 @@ export const useAmbientSoundscapeStore = create<AmbientSoundscapeStore>((set, ge
       const prev = get();
       commitPreferences({
         isMuted: prev.isMuted,
+        sfxEnabled: prev.sfxEnabled,
         channels: {
           ...prev.channels,
           [id]: { ...prev.channels[id], volume: clampAmbientVolume(volume) },
@@ -99,6 +103,15 @@ export const useAmbientSoundscapeStore = create<AmbientSoundscapeStore>((set, ge
       const prev = get();
       commitPreferences({
         isMuted: !prev.isMuted,
+        sfxEnabled: prev.sfxEnabled,
+        channels: prev.channels,
+      });
+    },
+    toggleSfx: () => {
+      const prev = get();
+      commitPreferences({
+        isMuted: prev.isMuted,
+        sfxEnabled: !prev.sfxEnabled,
         channels: prev.channels,
       });
     },
@@ -108,8 +121,8 @@ export const useAmbientSoundscapeStore = create<AmbientSoundscapeStore>((set, ge
       set(nextPrefs);
     },
     syncAudioEngine: () => {
-      const { isMuted, channels } = get();
-      engine.sync({ isMuted, channels });
+      const { isMuted, sfxEnabled, channels } = get();
+      engine.sync({ isMuted, sfxEnabled, channels });
     },
     resetPreferences: () => {
       engine.dispose();

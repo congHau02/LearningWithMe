@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import type { UpgradeAccountResponse } from '../services/authApi';
 import { getActiveRoomStompSession } from '../services/roomStompClient';
 import { refreshPersonalStudyStats } from '../services/statsApi';
+import { playStudySfx } from '../services/studySfxEngine';
 import { useAuthStore } from '../stores/useAuthStore';
 import type { CharacterState } from '../stores/useGameStore';
 import { useTableStore } from '../stores/useTableStore';
@@ -57,7 +58,11 @@ export function useAppHudEffects({
   }, [token]);
 
   const handleUpdateStudyGoal = (nextStudyGoal: string, completed: boolean) => {
+    const wasCompleted = useAuthStore.getState().studyGoalCompleted;
     useAuthStore.getState().setStudyGoalState({ studyGoal: nextStudyGoal, studyGoalCompleted: completed });
+    if (!wasCompleted && completed && nextStudyGoal.trim().length > 0) {
+      playStudySfx('goalComplete');
+    }
     if (characterState === 'SEATED' && selfUserId) {
       useTableStore.getState().updateMemberStudyGoal(selfUserId, nextStudyGoal, completed);
     }
