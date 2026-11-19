@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import { ChatBubble } from '../entities/ChatBubble';
 import { tileToWorldCenter } from '../entities/PlayerSprite';
 import { GridPathfinder } from '../pathfinding/GridPathfinder';
+import { computeYSortDepth } from '../scenes/ySortDepth';
 import {
   MAIN_LIBRARY_TOPOLOGY,
   type FacingDirection,
@@ -32,6 +33,7 @@ export interface AmbientNpcSnapshot {
   tileY: number;
   pixelX: number;
   pixelY: number;
+  depth: number;
   facingDir: FacingDirection;
   isMoving: boolean;
   activeBubbleText: string | null;
@@ -43,6 +45,7 @@ interface NpcRuntimeEntry {
   pauseRemainingMs: number;
   pixelX: number;
   pixelY: number;
+  depth: number;
   facingDir: FacingDirection;
   isMoving: boolean;
   animKey: string;
@@ -91,6 +94,7 @@ export class AmbientNpcManager {
         pauseRemainingMs: firstWp.pauseMs,
         pixelX: startPos.x,
         pixelY: startPos.y,
+        depth: computeYSortDepth(startPos.y),
         facingDir: firstWp.facingDir,
         isMoving: false,
         animKey,
@@ -105,7 +109,7 @@ export class AmbientNpcManager {
   public update(deltaMs: number, nowMs = Date.now()): void {
     const safeDelta = Math.max(0, Math.min(deltaMs, 250));
 
-    for (const entry of this.entries) {
+    this.entries.forEach((entry, index) => {
       if (this.activeDelivery?.entry === entry) {
         const result = advanceDrinkDelivery({
           delivery: this.activeDelivery.state,
@@ -130,8 +134,8 @@ export class AmbientNpcManager {
         }
       }
 
-      syncNpcVisuals(entry, nowMs);
-    }
+      syncNpcVisuals(entry, nowMs, index * 1.1);
+    });
   }
 
   public handlePointerClick(worldX: number, worldY: number, nowMs = Date.now()): AmbientNpcSnapshot | null {
@@ -223,6 +227,7 @@ export class AmbientNpcManager {
       tileY: Math.floor(entry.pixelY / this.tileSize),
       pixelX: entry.pixelX,
       pixelY: entry.pixelY,
+      depth: entry.depth,
       facingDir: entry.facingDir,
       isMoving: entry.isMoving,
       activeBubbleText: entry.chatBubble.isActive() ? entry.chatBubble.getText() : null,

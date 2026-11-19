@@ -1,21 +1,39 @@
 import type Phaser from 'phaser';
-import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
+import { BOTANICAL_2D_SCENE, BOTANICAL_PALETTE_INT } from '../botanicalPalette';
+import { computeYSortDepth } from '../scenes/ySortDepth';
 import type { RoomTopology } from '../topology/roomTopology';
 import { SERVICE_COUNTER_TILES } from './studyCafeConfig';
 
 /**
- * Draws nocturnal Study Café ambience: twilight top windows with soft nocturnal wash,
- * the interactive Service Counter menu sign, and Chill Lounge lamp glow.
+ * Draws nocturnal Study Café ambience: twilight north windows with nocturnal wash,
+ * woven under-table area rugs, Warm Amber reading lamp halos, Chill Lounge accents,
+ * and the Y-sorted Barista Service Counter with espresso machine & menu chalkboard.
  */
 export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology): void {
   const ts = topology.tileSize;
   const g = scene.add.graphics().setDepth(3) as Partial<Phaser.GameObjects.Graphics>;
 
-  // Twilight windows along top wall (x = 8..10 and 13..15) with gentle nocturnal wash
+  // 1. Woven under-table area rugs beneath each study table footprint
+  for (const table of topology.tables) {
+    if (table.obstacleTiles.length === 0) continue;
+    const xs = table.obstacleTiles.map((t) => t.tileX);
+    const ys = table.obstacleTiles.map((t) => t.tileY);
+    const rugX = (Math.min(...xs) - 0.85) * ts;
+    const rugY = (Math.min(...ys) - 0.85) * ts;
+    const rugW = (Math.max(...xs) - Math.min(...xs) + 2.7) * ts;
+    const rugH = (Math.max(...ys) - Math.min(...ys) + 2.7) * ts;
+
+    g.fillStyle?.(BOTANICAL_PALETTE_INT.slateLeaf, 0.52);
+    g.fillRoundedRect?.(rugX, rugY, rugW, rugH, 8);
+    g.lineStyle?.(1.5, BOTANICAL_PALETTE_INT.luminousBorder, 0.72);
+    g.strokeRoundedRect?.(rugX + 2, rugY + 2, rugW - 4, rugH - 4, 6);
+  }
+
+  // 2. Twilight windows along north wall (x = 8..10 and 13..15) with nocturnal wash
   const windowStarts = [8, 13];
   for (const wx of windowStarts) {
     const px = wx * ts;
-    g.fillStyle?.(BOTANICAL_2D_SCENE.windows.paneFill, 0.85);
+    g.fillStyle?.(BOTANICAL_2D_SCENE.windows.paneFill, 0.9);
     g.fillRoundedRect?.(px + 4, 4, ts * 2 - 8, 18, 3);
     g.lineStyle?.(1.5, BOTANICAL_2D_SCENE.windows.frame, 1);
     g.strokeRoundedRect?.(px + 4, 4, ts * 2 - 8, 18, 3);
@@ -27,13 +45,13 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
     g.fillTriangle?.(px + 4, 24, px + ts * 2 + 12, ts * 3.2, px - 6, ts * 3.2);
   }
 
-  // Warm Amber lamp glow around top reading lamps at (4,1) and (19,1)
+  // 3. Warm Amber lamp glow around top reading lamps at (4,1) and (19,1)
   for (const lampX of [4, 19]) {
     g.fillStyle?.(BOTANICAL_2D_SCENE.lighting.lampWarm, BOTANICAL_2D_SCENE.lighting.lampAlpha);
-    g.fillCircle?.((lampX + 0.5) * ts, 1.5 * ts, ts * 1.4);
+    g.fillCircle?.((lampX + 0.5) * ts, 1.5 * ts, ts * 1.45);
   }
 
-  // Chill Lounge warm cushion & floor-lamp accents over AFK zone
+  // 4. Chill Lounge warm cushion & floor-lamp accents over AFK zone
   if (topology.afkZone.length > 0) {
     const minX = Math.min(...topology.afkZone.map((t) => t.tileX));
     const maxX = Math.max(...topology.afkZone.map((t) => t.tileX));
@@ -45,7 +63,6 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
     g.fillStyle?.(BOTANICAL_2D_SCENE.afkLounge.accent, BOTANICAL_2D_SCENE.afkLounge.glowAlpha);
     g.fillCircle?.(loungeCx, ((minY + maxY + 1) / 2) * ts, ts * 2.2);
 
-    // Small cozy cushions on lounge rug corners
     g.fillStyle?.(BOTANICAL_2D_SCENE.afkLounge.cushionWarm, 0.85);
     g.fillCircle?.((minX + 0.5) * ts, (minY + 0.5) * ts, 8);
     g.fillStyle?.(BOTANICAL_2D_SCENE.afkLounge.cushionEmerald, 0.85);
@@ -64,17 +81,48 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
       .setDepth(5);
   }
 
-  // Service Counter Warm Amber glow & clickable menu header
+  // 5. Service Counter Warm Amber glow, Y-sorted Espresso Machine & Chalkboard Menu Board
   if (SERVICE_COUNTER_TILES.length > 0) {
     const minX = Math.min(...SERVICE_COUNTER_TILES.map((t) => t.tileX));
     const maxX = Math.max(...SERVICE_COUNTER_TILES.map((t) => t.tileX));
     const counterY = SERVICE_COUNTER_TILES[0].tileY;
     const counterCx = ((minX + maxX + 1) / 2) * ts;
+    const counterDepth = computeYSortDepth(counterY * ts + ts / 2);
 
     g.fillStyle?.(BOTANICAL_2D_SCENE.counter.glowFill, 0.12);
     g.fillRoundedRect?.(minX * ts - 4, counterY * ts - 4, (maxX - minX + 1) * ts + 8, ts + 8, 8);
     g.lineStyle?.(1.5, BOTANICAL_2D_SCENE.counter.glowStroke, 0.5);
     g.strokeRoundedRect?.(minX * ts - 2, counterY * ts - 2, (maxX - minX + 1) * ts + 4, ts + 4, 6);
+
+    const cg = scene.add.graphics().setDepth(counterDepth) as Partial<Phaser.GameObjects.Graphics>;
+    const cLeft = minX * ts;
+    const cTop = counterY * ts;
+    const cWidth = (maxX - minX + 1) * ts;
+
+    // 3/4 mahogany bar top + slate front paneling
+    cg.fillStyle?.(0x4a2e1b, 0.96);
+    cg.fillRoundedRect?.(cLeft + 1, cTop + 2, cWidth - 2, ts - 3, 5);
+    cg.fillStyle?.(0x7c4d2b, 0.98);
+    cg.fillRoundedRect?.(cLeft + 2, cTop + 2, cWidth - 4, 13, 3);
+
+    // Espresso machine at (16..17, 12) with portafilter & warm amber indicator
+    cg.fillStyle?.(BOTANICAL_PALETTE_INT.luminousBorder, 0.98);
+    cg.fillRoundedRect?.(cLeft + 8, cTop - 4, 24, 15, 3);
+    cg.fillStyle?.(BOTANICAL_PALETTE_INT.morningMist, 0.92);
+    cg.fillRect?.(cLeft + 11, cTop - 2, 18, 4);
+    cg.fillStyle?.(BOTANICAL_2D_SCENE.lighting.lampWarm, 0.98);
+    cg.fillCircle?.(cLeft + 20, cTop + 4, 2.2);
+
+    // Glass pastry dome at center (18, 12) & POS cashier terminal at right (20, 12)
+    cg.fillStyle?.(BOTANICAL_PALETTE_INT.bioluminescentEmerald, 0.25);
+    cg.fillRoundedRect?.(cLeft + ts * 2 + 6, cTop - 1, 20, 11, 4);
+    cg.fillStyle?.(BOTANICAL_PALETTE_INT.warmAmber, 0.95);
+    cg.fillRoundedRect?.(cLeft + ts * 2 + 11, cTop + 3, 10, 5, 2);
+
+    cg.fillStyle?.(BOTANICAL_PALETTE_INT.deepPineNight, 0.96);
+    cg.fillRoundedRect?.(cLeft + ts * 4 + 8, cTop - 2, 16, 11, 2);
+    cg.fillStyle?.(BOTANICAL_PALETTE_INT.bioluminescentEmerald, 0.9);
+    cg.fillRect?.(cLeft + ts * 4 + 10, cTop, 12, 6);
 
     // Chalkboard Menu Board mounted beside the counter
     const boardX = (maxX + 1) * ts + 6;
@@ -100,6 +148,6 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
         padding: { x: 6, y: 2 },
       })
       .setOrigin(0.5, 1)
-      .setDepth(6);
+      .setDepth(counterDepth + 0.1);
   }
 }

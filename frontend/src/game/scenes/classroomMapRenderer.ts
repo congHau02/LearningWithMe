@@ -1,9 +1,6 @@
 import Phaser from 'phaser';
-import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
-import {
-  STARTER_AVATAR_KEYS,
-  type StarterAvatarKey,
-} from '../entities/PlayerSprite';
+import { BOTANICAL_2D_SCENE, BOTANICAL_PALETTE_INT } from '../botanicalPalette';
+import { STARTER_AVATAR_KEYS, type StarterAvatarKey } from '../entities/PlayerSprite';
 import {
   MAIN_LIBRARY_RAW_MAP,
   type FacingDirection,
@@ -11,6 +8,13 @@ import {
   type SeatMetadata,
   type TileCoordinate,
 } from '../topology/roomTopology';
+import {
+  CHARACTER_FRAME_HEIGHT,
+  CHARACTER_FRAME_WIDTH,
+  computeChairYSortDepth,
+  computeYSortDepth,
+  formatTablePlaqueLabel,
+} from './ySortDepth';
 
 const DIRECTION_ROW: Readonly<Record<FacingDirection, number>> = {
   DOWN: 0,
@@ -23,8 +27,8 @@ export function preloadClassroomAssets(scene: Phaser.Scene): void {
   scene.load.image('classroom-tiles', '/assets/tilesets/classroom-tiles.png');
   for (const avatarKey of STARTER_AVATAR_KEYS) {
     scene.load.spritesheet(avatarKey, `/assets/sprites/${avatarKey}.png`, {
-      frameWidth: 32,
-      frameHeight: 32,
+      frameWidth: CHARACTER_FRAME_WIDTH,
+      frameHeight: CHARACTER_FRAME_HEIGHT,
     });
   }
   scene.cache.tilemap.add('main-library', {
@@ -40,14 +44,7 @@ export function registerCharacterAnimations(scene: Phaser.Scene): void {
       const rowStart = DIRECTION_ROW[dir] * 4;
       const lowerDir = dir.toLowerCase();
       ensureAnim(scene, `${avatarKey}:standing:${lowerDir}`, avatarKey, [rowStart], 1, 0);
-      ensureAnim(
-        scene,
-        `${avatarKey}:stepping:${lowerDir}`,
-        avatarKey,
-        [rowStart + 1, rowStart, rowStart + 2, rowStart],
-        8,
-        -1,
-      );
+      ensureAnim(scene, `${avatarKey}:stepping:${lowerDir}`, avatarKey, [rowStart + 1, rowStart, rowStart + 2, rowStart], 8, -1);
       ensureAnim(scene, `${avatarKey}:seated:${lowerDir}`, avatarKey, [rowStart + 3], 1, 0);
     }
   }
@@ -70,36 +67,81 @@ function ensureAnim(
   });
 }
 
-export function buildClassroomTilemap(
-  scene: Phaser.Scene,
-  topology: RoomTopology,
-): void {
+export function buildClassroomTilemap(scene: Phaser.Scene, topology: RoomTopology): void {
   const map = scene.make.tilemap({ key: 'main-library' });
   const tileset = map.addTilesetImage('classroom-tiles', 'classroom-tiles');
   if (tileset) {
-    map.createLayer('Floor', tileset, 0, 0);
-    map.createLayer('Walls', tileset, 0, 0);
-    map.createLayer('Furniture', tileset, 0, 0);
-    map.createLayer('AFK', tileset, 0, 0);
+    for (const layer of ['Floor', 'AFK', 'Walls', 'Furniture'] as const) {
+      map.createLayer(layer, tileset, 0, 0);
+    }
   }
 
-  for (const table of topology.tables) {
-    if (table.obstacleTiles.length === 0) continue;
+  const ts = topology.tileSize;
+  topology.tables.forEach((table, index) => {
+    if (table.obstacleTiles.length === 0) return;
     const xs = table.obstacleTiles.map((t) => t.tileX);
     const ys = table.obstacleTiles.map((t) => t.tileY);
-    const cx = ((Math.min(...xs) + Math.max(...xs) + 1) / 2) * topology.tileSize;
-    const cy = ((Math.min(...ys) + Math.max(...ys) + 1) / 2) * topology.tileSize;
+    const leftPx = Math.min(...xs) * ts;
+    const topPx = Math.min(...ys) * ts;
+    const widthPx = (Math.max(...xs) - Math.min(...xs) + 1) * ts;
+    const heightPx = (Math.max(...ys) - Math.min(...ys) + 1) * ts;
+    const cx = leftPx + widthPx / 2;
+    const cy = topPx + heightPx / 2;
+    const propDepth = computeYSortDepth(cy);
+
+    const g = scene.add.graphics?.()?.setDepth?.(propDepth) as Partial<Phaser.GameObjects.Graphics> | undefined;
+    if (g) {
+      // Y-sorted 3/4 walnut tabletop bevel & front apron
+      g.fillStyle?.(0x4a2e1b, 0.96);
+      g.fillRoundedRect?.(leftPx + 2, topPx + 2, widthPx - 4, heightPx - 4, 5);
+      g.fillStyle?.(0x6b442a, 0.98);
+      g.fillRoundedRect?.(leftPx + 3, topPx + 3, widthPx - 6, heightPx - 10, 4);
+      g.lineStyle?.(1, 0x8c5a38, 0.9);
+      g.strokeRoundedRect?.(leftPx + 3, topPx + 3, widthPx - 6, heightPx - 10, 4);
+
+      // Glowing Warm Amber desk lamp + study notebook
+      const lampX = cx + 8;
+      const lampY = cy - 4;
+      g.fillStyle?.(BOTANICAL_2D_SCENE.lighting.lampWarm, 0.16);
+      g.fillCircle?.(lampX, lampY + 2, 18);
+      g.fillStyle?.(BOTANICAL_PALETTE_INT.luminousBorder, 1);
+      g.fillRect?.(lampX - 3, lampY + 2, 6, 3);
+      g.fillStyle?.(BOTANICAL_2D_SCENE.lighting.lampWarm, 0.98);
+      g.fillRoundedRect?.(lampX - 5, lampY - 4, 10, 6, 2);
+
+      g.fillStyle?.(BOTANICAL_PALETTE_INT.morningMist, 0.95);
+      g.fillRect?.(leftPx + 10, cy - 5, 13, 9);
+      g.lineStyle?.(1, BOTANICAL_PALETTE_INT.mutedSage, 0.8);
+      g.lineBetween?.(leftPx + 16, cy - 5, leftPx + 16, cy + 4);
+      g.fillStyle?.(BOTANICAL_PALETTE_INT.bioluminescentEmerald, 0.95);
+      g.fillRect?.(leftPx + 19, cy - 4, 2, 6);
+
+      if (widthPx >= ts * 3) {
+        g.fillStyle?.(BOTANICAL_PALETTE_INT.slateLeaf, 0.96);
+        g.fillRoundedRect?.(leftPx + widthPx - 24, cy - 6, 14, 9, 2);
+        g.lineStyle?.(1, BOTANICAL_PALETTE_INT.bioluminescentEmerald, 0.75);
+        g.strokeRoundedRect?.(leftPx + widthPx - 23, cy - 5, 12, 5, 1);
+      }
+
+      // Corner plaque backing frame
+      g.fillStyle?.(BOTANICAL_PALETTE_INT.slateLeaf, 0.94);
+      g.fillRoundedRect?.(leftPx + 3, topPx - 5, 38, 13, 3);
+      g.lineStyle?.(1, BOTANICAL_PALETTE_INT.luminousBorder, 0.95);
+      g.strokeRoundedRect?.(leftPx + 3, topPx - 5, 38, 13, 3);
+    }
+
     scene.add
-      .text(cx, cy, table.tableId, {
-        fontFamily: 'monospace',
+      .text(leftPx + 22, topPx + 1, formatTablePlaqueLabel(table.tableId, index), {
+        fontFamily: 'sans-serif',
         fontSize: '9px',
+        fontStyle: 'bold',
         color: BOTANICAL_2D_SCENE.tableLabels.textColor,
         backgroundColor: BOTANICAL_2D_SCENE.tableLabels.backgroundColor,
         padding: { x: 3, y: 1 },
       })
       .setOrigin(0.5)
-      .setDepth(4);
-  }
+      .setDepth(propDepth + 0.05);
+  });
 }
 
 export function drawDynamicOverlay(
@@ -111,14 +153,20 @@ export function drawDynamicOverlay(
     activeSeatId: string | null;
     hoveredSeatId: string | null;
     pathQueue: TileCoordinate[];
+    seatGraphicsById?: Map<string, Phaser.GameObjects.Graphics>;
   },
 ): void {
-  const { tileSize, seats, occupiedSeats, activeSeatId, hoveredSeatId, pathQueue } = options;
-  graphics.clear();
+  const { tileSize, seats, occupiedSeats, activeSeatId, hoveredSeatId, pathQueue, seatGraphicsById } = options;
+  const g = graphics as Partial<Phaser.GameObjects.Graphics>;
+  g.clear?.();
 
   for (const seat of seats) {
     const cx = seat.tileX * tileSize + tileSize / 2;
     const cy = seat.tileY * tileSize + tileSize / 2;
+    const seatG = (seatGraphicsById?.get(seat.seatId) ?? g) as Partial<Phaser.GameObjects.Graphics>;
+    if (seatG !== g) seatG.clear?.();
+    seatG.setDepth?.(computeChairYSortDepth(cy));
+
     const isSeatedHere = seat.seatId === activeSeatId;
     const isOccupied = Boolean(occupiedSeats && occupiedSeats[seat.seatId] && !isSeatedHere);
     const isHovered = seat.seatId === hoveredSeatId && !isOccupied;
@@ -130,7 +178,6 @@ export function drawDynamicOverlay(
         : isHovered
           ? BOTANICAL_2D_SCENE.seats.hover
           : BOTANICAL_2D_SCENE.seats.empty;
-
     const strokeColor = isSeatedHere
       ? BOTANICAL_2D_SCENE.seats.currentBorder
       : isOccupied
@@ -139,16 +186,28 @@ export function drawDynamicOverlay(
           ? BOTANICAL_2D_SCENE.seats.hoverBorder
           : BOTANICAL_2D_SCENE.seats.emptyBorder;
 
-    graphics.fillStyle(fillColor, isSeatedHere || isHovered ? 0.85 : isOccupied ? 0.45 : 0.65);
-    graphics.fillRoundedRect(cx - 10, cy - 10, 20, 20, 5);
-    graphics.lineStyle(1.5, strokeColor, isOccupied ? 0.5 : 0.9);
-    graphics.strokeRoundedRect(cx - 10, cy - 10, 20, 20, 5);
+    seatG.fillStyle?.(BOTANICAL_PALETTE_INT.deepPineNight, 0.36);
+    seatG.fillRoundedRect?.(cx - 10, cy - 6, 20, 17, 5);
+    seatG.fillStyle?.(0x4a2e1b, 0.95);
+    seatG.fillRect?.(cx - 8, cy + 6, 3, 4);
+    seatG.fillRect?.(cx + 5, cy + 6, 3, 4);
+    seatG.fillStyle?.(0x6b442a, 0.96);
+    seatG.fillRoundedRect?.(cx - 9, cy - 7, 18, 15, 4);
+
+    seatG.fillStyle?.(fillColor, isSeatedHere || isHovered ? 0.88 : isOccupied ? 0.45 : 0.68);
+    seatG.fillRoundedRect?.(cx - 7, cy - 5, 14, 11, 3);
+    seatG.lineStyle?.(1.5, strokeColor, isOccupied ? 0.5 : 0.92);
+    seatG.strokeRoundedRect?.(cx - 8, cy - 6, 16, 13, 4);
+
+    seatG.fillStyle?.(0x7c4d2b, 0.98);
+    if (seat.facingDir === 'DOWN') seatG.fillRoundedRect?.(cx - 9, cy - 11, 18, 5, 2);
+    else if (seat.facingDir === 'UP') seatG.fillRoundedRect?.(cx - 9, cy + 6, 18, 5, 2);
+    else if (seat.facingDir === 'LEFT') seatG.fillRoundedRect?.(cx + 6, cy - 8, 4, 15, 2);
+    else seatG.fillRoundedRect?.(cx - 10, cy - 8, 4, 15, 2);
   }
 
   for (const step of pathQueue) {
-    const cx = step.tileX * tileSize + tileSize / 2;
-    const cy = step.tileY * tileSize + tileSize / 2;
-    graphics.fillStyle(BOTANICAL_2D_SCENE.pathfinder.markerInt, 0.85);
-    graphics.fillCircle(cx, cy, 4);
+    g.fillStyle?.(BOTANICAL_2D_SCENE.pathfinder.markerInt, 0.85);
+    g.fillCircle?.(step.tileX * tileSize + tileSize / 2, step.tileY * tileSize + tileSize / 2, 4);
   }
 }

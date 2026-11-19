@@ -3,6 +3,11 @@ import type { RoomPlayerDto } from '../../services/roomApi';
 import { useGameStore } from '../../stores/useGameStore';
 import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import { appendGoalCompletionBadge } from '../cafe/studyCafeConfig';
+import {
+  CHARACTER_ORIGIN_X,
+  CHARACTER_ORIGIN_Y,
+  computeYSortDepth,
+} from '../scenes/ySortDepth';
 import { CharacterAccessoriesOverlay } from './CharacterAccessoriesOverlay';
 import { ChatBubble } from './ChatBubble';
 import { PlayerSprite, tileToWorldCenter } from './PlayerSprite';
@@ -11,6 +16,7 @@ export interface RemotePlayerEntry {
   data: RoomPlayerDto;
   model: PlayerSprite;
   animKey: string;
+  depth: number;
   chatBubble: ChatBubble;
   accessories: CharacterAccessoriesOverlay;
   lastLabel?: string;
@@ -66,27 +72,34 @@ export function createRemotePlayerEntry(
     deskPetId: player.deskPetId,
   });
 
+  const pos = tileToWorldCenter(player.x, player.y, tileSize);
+  const initialDepth = computeYSortDepth(pos.y);
   const chatBubble = new ChatBubble({ scene });
-  const accessories = new CharacterAccessoriesOverlay({ scene, depth: 10 });
+  const accessories = new CharacterAccessoriesOverlay({
+    scene,
+    depth: computeYSortDepth(pos.y, 10, 0.001),
+  });
   const entry: RemotePlayerEntry = {
     data: player,
     model,
     animKey: model.getAnimationKey(),
+    depth: initialDepth,
     chatBubble,
     accessories,
   };
 
   if (scene) {
-    const pos = tileToWorldCenter(player.x, player.y, tileSize);
-    entry.sprite = scene.add
-      .sprite(pos.x, pos.y, model.getAvatarId(), 0)
-      .setDepth(9);
-    entry.sprite.play(entry.animKey, true);
+    const sprite = scene.add.sprite(pos.x, pos.y, model.getAvatarId(), 0);
+    sprite.setOrigin?.(CHARACTER_ORIGIN_X, CHARACTER_ORIGIN_Y);
+    sprite.setDepth?.(initialDepth);
+    sprite.play?.(entry.animKey, true);
+    entry.sprite = sprite;
+
     const isHost = isPlayerTableHost(player);
     const initialLabel = formatRemoteLabel(player, isHost);
     entry.lastLabel = initialLabel;
     entry.label = scene.add
-      .text(pos.x, pos.y - 20, initialLabel, {
+      .text(pos.x, pos.y - 36, initialLabel, {
         fontFamily: 'sans-serif',
         fontSize: '11px',
         color: BOTANICAL_2D_SCENE.playerLabels.remoteTextColor,
@@ -95,7 +108,7 @@ export function createRemotePlayerEntry(
         align: 'center',
       })
       .setOrigin(0.5, 1)
-      .setDepth(11);
+      .setDepth(initialDepth + 2);
   }
 
   return entry;

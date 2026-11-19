@@ -1,5 +1,9 @@
 import type Phaser from 'phaser';
 import type { RoomPlayerDto } from '../../services/roomApi';
+import {
+  computeIdleBreathingOffset,
+  computeYSortDepth,
+} from '../scenes/ySortDepth';
 import type { StarterAvatarKey } from './PlayerSprite';
 import {
   createRemotePlayerEntry,
@@ -19,6 +23,7 @@ export interface RemotePlayerRenderSnapshot {
   tileY: number;
   pixelX: number;
   pixelY: number;
+  depth: number;
   facingDir: string;
   state: 'FREE_ROAM' | 'SEATED';
   connected: boolean;
@@ -74,17 +79,24 @@ export class RemotePlayersRenderer {
   }
 
   public update(lerpFactor = 0.28, now = Date.now()): void {
+    let idx = 0;
     for (const entry of this.entries.values()) {
+      idx += 1;
       const pos = entry.model.interpolatePosition(lerpFactor);
       const nextAnim = entry.model.getAnimationKey();
       const alpha = entry.data.connected ? 1 : 0.55;
+      const isMoving = entry.model.getPosture() === 'STEPPING';
+      const breathingOffset = computeIdleBreathingOffset(now, idx * 1.3, isMoving);
+      const depth = computeYSortDepth(pos.y);
+      entry.depth = depth;
 
       if (entry.sprite) {
-        entry.sprite.setPosition(pos.x, pos.y);
+        entry.sprite.setPosition(pos.x, pos.y + breathingOffset);
         entry.sprite.setAlpha(alpha);
+        entry.sprite.setDepth?.(depth);
         if (nextAnim !== entry.animKey) {
           entry.animKey = nextAnim;
-          entry.sprite.play(nextAnim, true);
+          entry.sprite.play?.(nextAnim, true);
         }
       }
 
@@ -95,8 +107,9 @@ export class RemotePlayersRenderer {
           entry.lastLabel = nextLabel;
           entry.label.setText(nextLabel);
         }
-        entry.label.setPosition(pos.x, pos.y - 20);
+        entry.label.setPosition(pos.x, pos.y - 36);
         entry.label.setAlpha(alpha);
+        entry.label.setDepth?.(depth + 2);
       }
 
       entry.accessories.update({
@@ -105,10 +118,12 @@ export class RemotePlayersRenderer {
         skinId: entry.model.getSkinId(),
         hatId: entry.model.getHatId(),
         deskPetId: entry.model.getDeskPetId(),
+        facingDir: entry.model.getFacingDir(),
+        breathingOffsetY: breathingOffset,
         alpha,
       });
 
-      entry.chatBubble.update(now, pos.x, pos.y - 42);
+      entry.chatBubble.update(now, pos.x, pos.y - 56);
     }
   }
 
@@ -144,6 +159,7 @@ export class RemotePlayersRenderer {
       tileY: coord.tileY,
       pixelX: px.x,
       pixelY: px.y,
+      depth: entry.depth,
       facingDir: entry.model.getFacingDir(),
       state: entry.data.state,
       connected: entry.data.connected,
