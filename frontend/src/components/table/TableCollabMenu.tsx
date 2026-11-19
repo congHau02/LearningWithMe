@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useDismissiblePopover } from '../../hooks/useDismissiblePopover';
-import { DoorIcon, MoreHorizontalIcon } from '../icons';
+import { DoorIcon, MinimizeIcon, MoreHorizontalIcon } from '../icons';
 
 export interface TableCollabMenuProps {
   isMobile: boolean;
@@ -9,13 +9,17 @@ export interface TableCollabMenuProps {
   canControl: boolean;
   onToggleFreeCollab: () => void;
   onRequestControl: () => void;
+  onMinimize: () => void;
   onRequestLeaveSeat: () => void;
 }
+
+const MENU_ACTION_BASE =
+  'transition-botanical flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 font-semibold active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 /**
  * Compact permission & overflow menu for {@link TableWorkspaceHeader}.
  * Renders inline collaboration controls on desktop and a Botanical Double-Bezel
- * overflow popover (free-collab permissions + leave seat) on mobile.
+ * overflow popover (free-collab permissions + minimize + leave seat) on mobile.
  */
 export function TableCollabMenu({
   isMobile,
@@ -24,6 +28,7 @@ export function TableCollabMenu({
   canControl,
   onToggleFreeCollab,
   onRequestControl,
+  onMinimize,
   onRequestLeaveSeat,
 }: TableCollabMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,15 +53,11 @@ export function TableCollabMenu({
               : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
           }`}
         >
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${isFreeCollab ? 'bg-primary' : 'bg-muted-foreground/50'}`}
-            aria-hidden="true"
-          />
+          <span className={`h-1.5 w-1.5 rounded-full ${isFreeCollab ? 'bg-primary' : 'bg-muted-foreground/50'}`} aria-hidden="true" />
           <span>{isFreeCollab ? 'Hợp tác tự do: BẬT' : 'Hợp tác tự do: TẮT'}</span>
         </button>
       );
     }
-
     if (!canControl) {
       return (
         <button
@@ -69,7 +70,6 @@ export function TableCollabMenu({
         </button>
       );
     }
-
     return (
       <span
         data-testid="cohost-active-badge"
@@ -81,6 +81,10 @@ export function TableCollabMenu({
     );
   }
 
+  const runAndClose = (fn: () => void) => () => {
+    setIsOpen(false);
+    fn();
+  };
   const hasActiveStatusDot = isFreeCollab || (canControl && !isHost);
 
   return (
@@ -99,10 +103,7 @@ export function TableCollabMenu({
       >
         <MoreHorizontalIcon className="h-4 w-4" aria-hidden="true" />
         {hasActiveStatusDot ? (
-          <span
-            aria-hidden="true"
-            className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-secondary"
-          />
+          <span aria-hidden="true" className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-secondary" />
         ) : null}
       </button>
 
@@ -121,9 +122,7 @@ export function TableCollabMenu({
                 <span
                   data-testid="free-collab-badge"
                   className={`rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-semibold ${
-                    isFreeCollab
-                      ? 'border-primary/40 bg-primary/15 text-primary'
-                      : 'border-border bg-card text-muted-foreground'
+                    isFreeCollab ? 'border-primary/40 bg-primary/15 text-primary' : 'border-border bg-card text-muted-foreground'
                   }`}
                 >
                   {isFreeCollab ? 'BẬT' : 'TẮT'}
@@ -136,11 +135,8 @@ export function TableCollabMenu({
                   role="menuitemcheckbox"
                   data-testid="toggle-free-collab-btn"
                   aria-checked={isFreeCollab}
-                  onClick={() => {
-                    onToggleFreeCollab();
-                    setIsOpen(false);
-                  }}
-                  className="transition-botanical flex min-h-11 w-full items-center justify-center rounded-xl border border-primary/45 bg-primary/15 px-3 py-2 font-semibold text-primary hover:bg-primary/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={runAndClose(onToggleFreeCollab)}
+                  className={`${MENU_ACTION_BASE} border-primary/45 bg-primary/15 text-primary hover:bg-primary/25`}
                 >
                   {isFreeCollab ? 'Tắt hợp tác tự do' : 'Bật hợp tác tự do'}
                 </button>
@@ -149,11 +145,8 @@ export function TableCollabMenu({
                   type="button"
                   role="menuitem"
                   data-testid="request-control-btn"
-                  onClick={() => {
-                    onRequestControl();
-                    setIsOpen(false);
-                  }}
-                  className="transition-botanical flex min-h-11 w-full items-center justify-center rounded-xl border border-primary/45 bg-primary/15 px-3 py-2 font-semibold text-primary hover:bg-primary/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={runAndClose(onRequestControl)}
+                  className={`${MENU_ACTION_BASE} border-primary/45 bg-primary/15 text-primary hover:bg-primary/25`}
                 >
                   Xin quyền điều khiển
                 </button>
@@ -169,19 +162,31 @@ export function TableCollabMenu({
 
             <div role="separator" className="h-px w-full bg-border/80" />
 
-            <button
-              type="button"
-              role="menuitem"
-              data-testid="workspace-leave-seat-btn"
-              onClick={() => {
-                setIsOpen(false);
-                onRequestLeaveSeat();
-              }}
-              className="transition-botanical flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-destructive/50 bg-destructive/20 px-3 py-2 font-semibold text-destructive-foreground hover:bg-destructive/30 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <DoorIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>Đứng dậy rời bàn</span>
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="minimize-workspace-btn"
+                aria-label="Thu gọn để ngắm Study Café"
+                title="Thu gọn để ngắm Study Café"
+                onClick={runAndClose(onMinimize)}
+                className={`${MENU_ACTION_BASE} border-border bg-secondary/90 text-foreground hover:bg-secondary`}
+              >
+                <MinimizeIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Thu gọn</span>
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="workspace-leave-seat-btn"
+                onClick={runAndClose(onRequestLeaveSeat)}
+                className={`${MENU_ACTION_BASE} border-destructive/50 bg-destructive/20 text-destructive-foreground hover:bg-destructive/30`}
+              >
+                <DoorIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Đứng dậy rời bàn</span>
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

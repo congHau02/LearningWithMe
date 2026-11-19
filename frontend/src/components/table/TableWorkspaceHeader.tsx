@@ -1,6 +1,6 @@
 import { formatStudyDuration } from '../../hooks/useStudyTimer';
 import { useViewportIsMobile } from '../../hooks/useViewportIsMobile';
-import { DoorIcon, MinimizeIcon, TimerIcon } from '../icons';
+import { BoardIcon, DoorIcon, MinimizeIcon, TimerIcon } from '../icons';
 import { TableCollabMenu } from './TableCollabMenu';
 import { VoiceMicToggleButton } from './VoiceMicToggleButton';
 
@@ -10,6 +10,8 @@ interface TableWorkspaceHeaderProps {
   isFreeCollab: boolean;
   isHost: boolean;
   canControl: boolean;
+  isClearView?: boolean;
+  onToggleClearView?: () => void;
   onToggleFreeCollab: () => void;
   onRequestControl: () => void;
   onToggleMute: () => void;
@@ -20,8 +22,8 @@ interface TableWorkspaceHeaderProps {
 /**
  * Compact header bar inside {@link TableWorkspaceShell}.
  * Uses a spacious single row on mobile (<= 640px) with 3 right controls
- * ([Mic] [Thu gọn] [⋯]) where Leave Seat lives inside the ⋯ overflow menu,
- * expanding to full labeled controls on desktop.
+ * ([Mic] [Clear View toggle] [⋯]) where Minimize & Leave Seat live inside
+ * the ⋯ overflow menu, expanding to full labeled controls on desktop.
  */
 export function TableWorkspaceHeader({
   activeTableId,
@@ -29,6 +31,8 @@ export function TableWorkspaceHeader({
   isFreeCollab,
   isHost,
   canControl,
+  isClearView = false,
+  onToggleClearView,
   onToggleFreeCollab,
   onRequestControl,
   onToggleMute,
@@ -41,6 +45,29 @@ export function TableWorkspaceHeader({
     <VoiceMicToggleButton testId="header-voice-mic-pill" isMobile={isMobile} onToggleMute={onToggleMute} />
   );
 
+  const clearViewToggle = (
+    <button
+      type="button"
+      data-testid="clear-view-toggle-btn"
+      aria-pressed={isClearView}
+      aria-label="Chế độ rõ ràng"
+      title={
+        isClearView
+          ? 'Chế độ rõ ràng: BẬT — bấm để xem đầy đủ'
+          : 'Chế độ rõ ràng: TẮT — bấm để chỉ xem Bảng giải bài & Chat'
+      }
+      onClick={onToggleClearView}
+      className={`transition-botanical inline-flex items-center justify-center gap-1.5 rounded-xl border py-1.5 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        isClearView
+          ? 'border-primary/50 bg-primary/20 text-primary hover:bg-primary/30'
+          : 'border-border bg-secondary/90 text-foreground hover:bg-secondary'
+      } ${isMobile ? 'min-h-[44px] min-w-[44px] px-0' : 'min-h-[36px] min-w-0 px-3'}`}
+    >
+      <BoardIcon className={isMobile ? 'h-4 w-4' : 'h-3.5 w-3.5'} aria-hidden="true" />
+      <span className={isMobile ? 'sr-only' : undefined}>Chế độ rõ ràng</span>
+    </button>
+  );
+
   const collabMenu = (
     <TableCollabMenu
       isMobile={isMobile}
@@ -49,6 +76,7 @@ export function TableWorkspaceHeader({
       canControl={canControl}
       onToggleFreeCollab={onToggleFreeCollab}
       onRequestControl={onRequestControl}
+      onMinimize={onMinimize}
       onRequestLeaveSeat={onRequestLeaveSeat}
     />
   );
@@ -85,20 +113,21 @@ export function TableWorkspaceHeader({
 
       <div className={`flex shrink-0 items-center gap-2 text-xs ${isMobile ? '' : 'flex-wrap'}`}>
         {isMobile ? micControl : collabMenu}
+        {clearViewToggle}
 
-        <button
-          type="button"
-          data-testid="minimize-workspace-btn"
-          onClick={onMinimize}
-          aria-label="Thu gọn để ngắm Study Café"
-          title="Thu gọn để ngắm Study Café"
-          className={`transition-botanical inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/90 py-1.5 font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-secondary active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-            isMobile ? 'min-h-[44px] min-w-[44px] px-0' : 'min-h-[36px] min-w-0 px-3'
-          }`}
-        >
-          <MinimizeIcon className={isMobile ? 'h-4 w-4' : 'h-3.5 w-3.5'} aria-hidden="true" />
-          <span className={isMobile ? 'sr-only' : undefined}>Thu gọn</span>
-        </button>
+        {!isMobile ? (
+          <button
+            type="button"
+            data-testid="minimize-workspace-btn"
+            onClick={onMinimize}
+            aria-label="Thu gọn để ngắm Study Café"
+            title="Thu gọn để ngắm Study Café"
+            className="transition-botanical inline-flex min-h-[36px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/90 px-3 py-1.5 font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-secondary active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <MinimizeIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Thu gọn</span>
+          </button>
+        ) : null}
 
         {isMobile ? (
           collabMenu

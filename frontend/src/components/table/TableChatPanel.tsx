@@ -16,11 +16,12 @@ import {
 export interface TableChatPanelProps {
   tableId: string;
   onSend?: (content: string) => void;
+  fillHeight?: boolean;
 }
 
 const TABLE_QUICK_EMOJIS = ['👍', '💡', '🔥', '👏', '❓', '☕'] as const;
 
-export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend }) => {
+export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend, fillHeight = false }) => {
   const messagesListRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement | null>(null);
   const recentMessages = useTableStore((s) => s.recentMessages);
@@ -72,7 +73,9 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
   return (
     <div
       data-testid="table-chat-panel"
-      className="flex min-h-[27rem] flex-col overflow-hidden rounded-xl border border-border bg-[#16221E]/95 text-[#E6ECE8] sm:min-h-[24rem] sm:h-[25rem]"
+      className={`flex flex-col overflow-hidden rounded-xl border border-border bg-[#16221E]/95 text-[#E6ECE8] ${
+        fillHeight ? 'h-full min-h-0 flex-1' : 'min-h-[27rem] sm:h-[25rem] sm:min-h-[24rem]'
+      }`}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-background/85 px-3 py-2">
         <div className="flex items-center gap-2">
@@ -84,7 +87,10 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend 
         </span>
       </div>
 
-      <div ref={messagesListRef} className="min-h-36 flex-1 space-y-2 overflow-y-auto p-3 text-xs">
+      <div
+        ref={messagesListRef}
+        className={`${fillHeight ? 'min-h-16' : 'min-h-36'} flex-1 space-y-2 overflow-y-auto p-3 text-xs`}
+      >
         {recentMessages.length === 0 ? (
           <p className="mt-6 text-center text-[11px] text-muted-foreground">
             Trao đổi riêng với các bạn cùng bàn tại đây. Hỗ trợ công thức $LaTeX$.

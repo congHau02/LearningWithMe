@@ -117,9 +117,11 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
     expect(screen.queryByTestId('workspace-leave-seat-btn')).not.toBeInTheDocument();
   });
 
-  it('renders 3-button mobile header ([Mic] [Thu gọn] [⋯]) with >=44px targets and tucks both collab & leave seat inside ⋯ Double-Bezel popover', () => {
+  it('renders 3-button mobile header ([Mic] [Clear View] [⋯]) with >=44px targets and tucks collab, minimize & leave seat inside ⋯ Double-Bezel popover', () => {
     setViewportWidth(375);
     const onToggleFreeCollab = vi.fn();
+    const onToggleClearView = vi.fn();
+    const onMinimize = vi.fn();
     const onRequestLeaveSeat = vi.fn();
 
     render(
@@ -129,44 +131,58 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
         isFreeCollab={false}
         isHost={true}
         canControl={true}
+        isClearView={true}
+        onToggleClearView={onToggleClearView}
         onToggleFreeCollab={onToggleFreeCollab}
         onRequestControl={vi.fn()}
         onToggleMute={vi.fn()}
-        onMinimize={vi.fn()}
+        onMinimize={onMinimize}
         onRequestLeaveSeat={onRequestLeaveSeat}
       />,
     );
 
     const voiceBtn = screen.getByTestId('header-voice-mic-pill');
-    const minimizeBtn = screen.getByTestId('minimize-workspace-btn');
+    const clearViewBtn = screen.getByTestId('clear-view-toggle-btn');
     const collabBtn = screen.getByTestId('workspace-collab-menu-btn');
 
     expect(voiceBtn.className).toContain('min-h-[44px]');
     expect(voiceBtn.className).toContain('min-w-[56px]');
-    expect(minimizeBtn.className).toContain('min-h-[44px]');
-    expect(minimizeBtn.className).toContain('min-w-[44px]');
+    expect(clearViewBtn.className).toContain('min-h-[44px]');
+    expect(clearViewBtn.className).toContain('min-w-[44px]');
+    expect(clearViewBtn).toHaveAttribute('aria-pressed', 'true');
     expect(collabBtn.className).toContain('min-h-[44px]');
     expect(collabBtn.className).toContain('min-w-[44px]');
 
-    // Leave seat is NOT rendered directly on the mobile header bar
+    // Minimize & Leave seat are NOT rendered directly on the mobile header bar
+    expect(screen.queryByTestId('minimize-workspace-btn')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-leave-seat-btn')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-collab-popover')).not.toBeInTheDocument();
 
-    // Verify visual order: [Mic] -> [Thu gọn] -> [⋯]
+    // Verify visual order: [Mic] -> [Clear View] -> [⋯]
     const headerButtons = screen.getAllByRole('button');
-    expect(headerButtons).toEqual([voiceBtn, minimizeBtn, collabBtn]);
+    expect(headerButtons).toEqual([voiceBtn, clearViewBtn, collabBtn]);
 
-    // Opening ⋯ reveals Double-Bezel popover with collab toggle + separator + leave seat
+    fireEvent.click(clearViewBtn);
+    expect(onToggleClearView).toHaveBeenCalledTimes(1);
+
+    // Opening ⋯ reveals Double-Bezel popover with collab toggle + separator + minimize + leave seat
     fireEvent.click(collabBtn);
     const popover = screen.getByTestId('workspace-collab-popover');
     expect(popover).toBeVisible();
     expect(popover.className).toContain('botanical-bezel-outer');
     expect(screen.getByTestId('free-collab-badge')).toHaveTextContent('TẮT');
     expect(screen.getByRole('separator')).toBeInTheDocument();
+    expect(screen.getByTestId('minimize-workspace-btn')).toHaveTextContent('Thu gọn');
     expect(screen.getByTestId('workspace-leave-seat-btn')).toHaveTextContent('Đứng dậy rời bàn');
 
     fireEvent.click(screen.getByTestId('toggle-free-collab-btn'));
     expect(onToggleFreeCollab).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('workspace-collab-popover')).not.toBeInTheDocument();
+
+    // Re-open and click Thu gọn -> closes popover and calls onMinimize
+    fireEvent.click(collabBtn);
+    fireEvent.click(screen.getByTestId('minimize-workspace-btn'));
+    expect(onMinimize).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('workspace-collab-popover')).not.toBeInTheDocument();
 
     // Re-open and click Đứng dậy rời bàn -> closes popover and triggers leave confirmation flow

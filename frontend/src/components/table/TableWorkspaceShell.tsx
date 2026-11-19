@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useClearView } from '../../hooks/useClearView';
 import { useStudyTimer } from '../../hooks/useStudyTimer';
 import { useTableVoiceChat } from '../../hooks/useTableVoiceChat';
 import { sendTablePermissionRequest, sendTablePermissionRespond } from '../../services/tableStompClient';
@@ -6,6 +7,7 @@ import type { PermissionAction } from '../../services/tableApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
+import { HomeworkDeckPanel } from './HomeworkDeckPanel';
 import { HostPermissionToast } from './HostPermissionToast';
 import { MinimizedTableWorkspaceBar } from './MinimizedTableWorkspaceBar';
 import { SosBannerControl } from './SosBannerControl';
@@ -15,6 +17,7 @@ import { TableWorkspaceHeader } from './TableWorkspaceHeader';
 import { WorkspacePrimaryPanels } from './WorkspacePrimaryPanels';
 
 export function TableWorkspaceShell() {
+  const { isClearView, toggleClearView } = useClearView();
   const characterState = useGameStore((s) => s.characterState);
   const currentTableId = useGameStore((s) => s.currentTableId);
   const requestLeaveSeat = useGameStore((s) => s.requestLeaveSeat);
@@ -95,6 +98,8 @@ export function TableWorkspaceShell() {
           isFreeCollab={isFreeCollab}
           isHost={isHost}
           canControl={canControl}
+          isClearView={isClearView}
+          onToggleClearView={toggleClearView}
           onToggleFreeCollab={() => handlePermissionAction('TOGGLE_FREE_COLLAB', undefined, !isFreeCollab)}
           onRequestControl={handleRequestControl}
           onToggleMute={() => void toggleMute()}
@@ -126,19 +131,39 @@ export function TableWorkspaceShell() {
             canControl={canControl}
           />
 
-          <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-            <WorkspacePrimaryPanels activeTableId={activeTableId} canControl={canControl} />
-
-            <div className="flex flex-col gap-4">
-              <TableMembersPanel
-                members={members}
-                selfUserId={selfUserId}
-                isSelfHost={isHost}
-                onAction={(action, targetUserId) => handlePermissionAction(action, targetUserId)}
-              />
-              <TableChatPanel tableId={activeTableId} />
+          {isClearView ? (
+            <div
+              data-testid="clear-view-layout"
+              className="flex min-h-0 flex-1 flex-col gap-3 lg:grid lg:grid-cols-3 lg:gap-4"
+            >
+              <div
+                data-testid="clear-view-board-pane"
+                className="flex min-h-0 flex-[3_1_0%] flex-col overflow-y-auto lg:col-span-2"
+              >
+                <HomeworkDeckPanel tableId={activeTableId} canControl={canControl} />
+              </div>
+              <div
+                data-testid="clear-view-chat-pane"
+                className="flex min-h-[15rem] flex-[2_1_0%] flex-col overflow-hidden lg:col-span-1 lg:min-h-0"
+              >
+                <TableChatPanel tableId={activeTableId} fillHeight />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+              <WorkspacePrimaryPanels activeTableId={activeTableId} canControl={canControl} />
+
+              <div className="flex flex-col gap-4">
+                <TableMembersPanel
+                  members={members}
+                  selfUserId={selfUserId}
+                  isSelfHost={isHost}
+                  onAction={(action, targetUserId) => handlePermissionAction(action, targetUserId)}
+                />
+                <TableChatPanel tableId={activeTableId} />
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
