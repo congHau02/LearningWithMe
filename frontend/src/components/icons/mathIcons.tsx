@@ -85,3 +85,39 @@ export function PlainBoardIcon(props: StudioIconProps) {
     </StudioIconWrapper>
   );
 }
+
+export function ScratchpadIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h6M8 16h4" />
+    </StudioIconWrapper>
+  );
+}
+
+export function GraphCurveIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M4 20V4M4 20h16" />
+      <path d="M6 16c2.5-7 5-9 7-4s4.5 2 6-6" />
+    </StudioIconWrapper>
+  );
+}
+
+export function SendToChatIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <path d="M9 10h6m-2-2 2 2-2 2" />
+    </StudioIconWrapper>
+  );
+}
+
+export function PinToSlideIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M12 17v5" />
+      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+    </StudioIconWrapper>
+  );
+}

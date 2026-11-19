@@ -49,6 +49,10 @@ public final class TableWorkspaceEvents {
         return builder("FOCUS_CYCLE_UPDATED", tableId, actorUserId, state, now).focusCycleState(focusCycleState).focusCycleAction(focusCycleAction).build();
     }
 
+    public static TableWorkspaceEvent scratchpadUpdated(String tableId, String actorUserId, TableScratchpadState scratchpadState, RedisTableState state, long now) {
+        return builder("UPDATE_SCRATCHPAD", tableId, actorUserId, state, now).scratchpadState(scratchpadState).build();
+    }
+
     private static Builder builder(String type, String tableId, String actorUserId, RedisTableState state, long now) {
         return new Builder(type, tableId, actorUserId, state, now);
     }
@@ -68,6 +72,7 @@ public final class TableWorkspaceEvents {
         private VoiceSignalPayload voiceSignal;
         private TableFocusCycleState focusCycleState;
         private FocusCycleAction focusCycleAction;
+        private TableScratchpadState scratchpadState;
 
         private Builder(String type, String tableId, String actorUserId, RedisTableState state, long timestampEpoch) {
             this.type = type; this.tableId = tableId; this.actorUserId = actorUserId;
@@ -88,12 +93,13 @@ public final class TableWorkspaceEvents {
         private Builder voiceSignal(VoiceSignalPayload v) { this.voiceSignal = v; return this; }
         private Builder focusCycleState(TableFocusCycleState v) { this.focusCycleState = v; return this; }
         private Builder focusCycleAction(FocusCycleAction v) { this.focusCycleAction = v; return this; }
+        private Builder scratchpadState(TableScratchpadState v) { this.scratchpadState = v; return this; }
 
         private TableWorkspaceEvent build() {
             return new TableWorkspaceEvent(type, null, tableId, actorUserId, targetUserId, requesterNickname,
                     action, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(), videoState, sosBanner,
                     chatMessage, homeworkSlides, state.activeSlideId(), slideId, drawAction, stroke, erasedStrokeId,
-                    laserPointer, voiceSignal, focusCycleState, focusCycleAction, timestampEpoch);
+                    laserPointer, voiceSignal, focusCycleState, focusCycleAction, scratchpadState, timestampEpoch);
         }
     }
 }

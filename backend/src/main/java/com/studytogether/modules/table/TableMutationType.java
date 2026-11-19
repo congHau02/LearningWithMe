@@ -7,7 +7,8 @@ public enum TableMutationType {
     VIDEO_SYNC("video-sync", 10_000L, 10, "video.sync"),
     BOARD_SLIDE("board-slide", 10_000L, 10, "board.slide"),
     BOARD_DRAW("board-draw", 5_000L, 20, "board.draw"),
-    FOCUS_CYCLE("focus-cycle", 10_000L, 15, "focus.sync");
+    FOCUS_CYCLE("focus-cycle", 10_000L, 15, "focus.sync"),
+    SCRATCHPAD_UPDATE("scratchpad-update", 5_000L, 25, "scratchpad.update");
 
     private final String keyScope;
     private final long windowMs;

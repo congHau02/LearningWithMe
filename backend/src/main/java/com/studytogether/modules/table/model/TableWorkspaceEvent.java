@@ -27,6 +27,7 @@ public record TableWorkspaceEvent(
         VoiceSignalPayload voiceSignal,
         TableFocusCycleState focusCycleState,
         FocusCycleAction focusCycleAction,
+        TableScratchpadState scratchpadState,
         long timestampEpoch
 ) {
     public TableWorkspaceEvent {
@@ -38,6 +39,6 @@ public record TableWorkspaceEvent(
         return new TableWorkspaceEvent(type, nextRoomId, tableId, actorUserId, targetUserId, requesterNickname,
                 action, hostUserId, coHostUserIds, isFreeCollab, videoState, sosBanner, chatMessage,
                 homeworkSlides, activeSlideId, slideId, drawAction, stroke, erasedStrokeId, laserPointer, voiceSignal,
-                focusCycleState, focusCycleAction, timestampEpoch);
+                focusCycleState, focusCycleAction, scratchpadState, timestampEpoch);
     }
 }

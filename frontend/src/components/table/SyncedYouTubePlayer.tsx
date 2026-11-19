@@ -86,6 +86,7 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
         <input
           type="text"
           data-testid="yt-url-input"
+          aria-label="Link YouTube hoặc mã video 11 ký tự"
           {...register('url')}
           disabled={!canControl}
           onKeyDown={(e) => e.stopPropagation()}

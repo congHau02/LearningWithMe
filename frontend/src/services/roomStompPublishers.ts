@@ -78,4 +78,8 @@ export abstract class RoomStompPublishers {
   sendFocusCycleSync(tableId: string, payload: FocusCycleSyncPayload): void {
     this.publishJson(`/app/table/${tableId}/focus.sync`, payload);
   }
+
+  sendScratchpadUpdate(tableId: string, content: string): void {
+    this.publishJson(`/app/table/${tableId}/scratchpad.update`, { content });
+  }
 }

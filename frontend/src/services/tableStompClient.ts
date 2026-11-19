@@ -88,3 +88,10 @@ export function sendTableFocusCycleSync(tableId: string, payload: FocusCycleSync
   session.sendFocusCycleSync(tableId, payload);
   return true;
 }
+
+export function sendTableScratchpadUpdate(tableId: string, content: string): boolean {
+  const session = getActiveRoomStompSession();
+  if (!session || typeof session.sendScratchpadUpdate !== 'function') return false;
+  session.sendScratchpadUpdate(tableId, content);
+  return true;
+}

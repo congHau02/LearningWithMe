@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { sendRoomChatMessage } from '../../services/roomStompClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
+import { MathRichText } from '../common/MathRichText';
 import { ChatIcon, XIcon } from '../icons';
 
 export interface RoomChatBoxProps {
@@ -105,7 +106,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
                           : 'rounded-tl-none border border-[#243630] bg-[#0F1714]/80 text-[#E6ECE8]'
                       }`}
                     >
-                      {msg.content}
+                      <MathRichText text={msg.content} />
                     </div>
                   </div>
                 );
@@ -133,6 +134,7 @@ export const RoomChatBox: React.FC<RoomChatBoxProps> = ({ initialOpen = false, o
             <div className="flex items-center gap-1.5">
               <input
                 type="text"
+                aria-label="Nhập tin nhắn toàn phòng"
                 value={text}
                 maxLength={200}
                 onChange={(e) => setText(e.target.value)}

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { HomeworkSlide, PermissionRequestNotification, TableChatMessage, TableMemberDto, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
+import type { HomeworkSlide, PermissionRequestNotification, TableChatMessage, TableMemberDto, TableScratchpadState, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
 import type { RoomEvent } from '../services/roomApi';
 import { DEFAULT_FOCUS_CYCLE_STATE, type FocusCycleState } from '../utils/focusCycle';
 import { reduceRoomSeatEvent, reduceWorkspaceEvent, type LaserPointerState } from './tableStoreReducers';
@@ -23,6 +23,7 @@ export interface TableWorkspaceState {
   recentMessages: TableChatMessage[];
   homeworkSlides: HomeworkSlide[];
   activeSlideId: string | null;
+  scratchpadState: TableScratchpadState;
   laserPointers: Record<string, LaserPointerState>;
   isWorkspaceMinimized: boolean;
   unreadChatCount: number;
@@ -44,12 +45,13 @@ export interface TableWorkspaceState {
 }
 
 const DEFAULT_VIDEO_STATE: VideoSyncState = { videoId: null, isPlaying: false, currentTime: 0, lastUpdatedEpoch: 0 };
+const EMPTY_SCRATCHPAD_STATE: TableScratchpadState = { content: '', updatedByUserId: null, updatedByNickname: null, updatedAtEpoch: 0 };
 const INITIAL_TABLE_STATE = {
   tableId: null as string | null, hostUserId: null as string | null, coHostUserIds: [] as string[],
   isFreeCollab: false, sosBanner: null as string | null, sitStartTimeEpoch: null as number | null,
   members: [] as TableMemberDto[], pendingPermissionRequests: [] as PermissionRequestNotification[],
   permissionToast: null as string | null, videoState: DEFAULT_VIDEO_STATE, focusCycleState: DEFAULT_FOCUS_CYCLE_STATE, focusCycleResetSeq: 0, recentMessages: [] as TableChatMessage[],
-  homeworkSlides: [] as HomeworkSlide[], activeSlideId: null as string | null,
+  homeworkSlides: [] as HomeworkSlide[], activeSlideId: null as string | null, scratchpadState: EMPTY_SCRATCHPAD_STATE,
   laserPointers: {} as Record<string, LaserPointerState>,
   isWorkspaceMinimized: false,
   unreadChatCount: 0,
@@ -76,6 +78,7 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
         recentMessages: (snapshot.recentMessages ?? []).slice(-50),
         homeworkSlides: snapshot.homeworkSlides ?? [],
         activeSlideId: snapshot.activeSlideId ?? null,
+        scratchpadState: snapshot.scratchpadState ?? EMPTY_SCRATCHPAD_STATE,
       };
     }),
   applyWorkspaceEvent: (event, selfUserId) => set((s) => reduceWorkspaceEvent(s, event, selfUserId)),

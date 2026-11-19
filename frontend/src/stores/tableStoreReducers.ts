@@ -37,6 +37,9 @@ export function reduceWorkspaceEvent(
       focusCycleResetSeq: event.focusCycleAction === 'RESET' ? s.focusCycleResetSeq + 1 : s.focusCycleResetSeq,
     };
   }
+  if (event.type === 'UPDATE_SCRATCHPAD' && event.scratchpadState) {
+    return { scratchpadState: event.scratchpadState };
+  }
   if (event.type === 'SOS_UPDATED') return { sosBanner: event.sosBanner ?? null };
   if (event.type === 'TABLE_CHAT' && event.chatMessage) {
     const msg = event.chatMessage;

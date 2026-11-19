@@ -7,6 +7,7 @@ import com.studytogether.modules.table.model.FocusCycleSyncRequest;
 import com.studytogether.modules.table.model.HomeworkSlideActionRequest;
 import com.studytogether.modules.table.model.PermissionRequestPayload;
 import com.studytogether.modules.table.model.PermissionRespondRequest;
+import com.studytogether.modules.table.model.ScratchpadUpdateRequest;
 import com.studytogether.modules.table.model.SosToggleRequest;
 import com.studytogether.modules.table.model.TableChatSendRequest;
 import com.studytogether.modules.table.model.VideoSyncRequest;
@@ -33,6 +34,7 @@ public class TableStompController {
     private final TableBoardService boardService;
     private final TableVoiceService voiceService;
     private final TableFocusCycleService focusCycleService;
+    private final TableScratchpadService scratchpadService;
     private final StompErrorDispatcher errorDispatcher;
 
     public TableStompController(
@@ -40,7 +42,7 @@ public class TableStompController {
             TableSosService sosService, TableChatService tableChatService,
             TableHomeworkService homeworkService, TableBoardService boardService,
             TableVoiceService voiceService, TableFocusCycleService focusCycleService,
-            StompErrorDispatcher errorDispatcher
+            TableScratchpadService scratchpadService, StompErrorDispatcher errorDispatcher
     ) {
         this.workspaceService = workspaceService;
         this.videoService = videoService;
@@ -50,6 +52,7 @@ public class TableStompController {
         this.boardService = boardService;
         this.voiceService = voiceService;
         this.focusCycleService = focusCycleService;
+        this.scratchpadService = scratchpadService;
         this.errorDispatcher = errorDispatcher;
     }
 
@@ -101,6 +104,12 @@ public class TableStompController {
     @MessageMapping("/table/{tableId}/focus.sync")
     public void syncFocusCycle(@DestinationVariable String tableId, @Valid @Payload FocusCycleSyncRequest request, Principal user) {
         focusCycleService.syncFocusCycle(StompErrorDispatcher.requirePrincipal(user), tableId, request);
+    }
+
+    @MessageMapping("/table/{tableId}/scratchpad.update")
+    public void updateScratchpad(@DestinationVariable String tableId,
+            @Valid @Payload(required = false) ScratchpadUpdateRequest request, Principal user) {
+        scratchpadService.updateScratchpad(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageExceptionHandler(MethodArgumentNotValidException.class)

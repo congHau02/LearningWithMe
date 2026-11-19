@@ -378,6 +378,64 @@ class BoardAnnotationIntegrationTest {
         }
     }
 
+    @Test
+    void hostAndCoHostSyncScratchpadOverStompAndAutoPurgeWhenTableEmpties() throws Exception {
+        GuestSession host = createGuest("ScratchHost");
+        GuestSession member = createGuest("ScratchMember");
+
+        StompSession hostSession = connectStomp(host.token());
+        StompSession memberSession = connectStomp(member.token());
+        try {
+            BlockingQueue<JsonNode> roomEvents = subscribeTopic(hostSession, "/topic/room/main-library/events");
+            hostSession.send("/app/room/main-library/join", "");
+            memberSession.send("/app/room/main-library/join", "");
+            awaitEventType(roomEvents, "PLAYER_JOINED");
+            awaitEventType(roomEvents, "PLAYER_JOINED");
+
+            hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "T2_S1"));
+            awaitEventType(roomEvents, "SEAT_LOCKED");
+            memberSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "T2_S2"));
+            awaitEventType(roomEvents, "SEAT_LOCKED");
+
+            BlockingQueue<JsonNode> memberWorkspaceEvents = subscribeTopic(
+                    memberSession, "/topic/room/main-library/table/table_02/workspace");
+            BlockingQueue<JsonNode> memberErrors = subscribeTopic(memberSession, "/user/queue/errors");
+            Thread.sleep(150);
+
+            // Plain member cannot update scratchpad
+            memberSession.send("/app/table/table_02/scratchpad.update", Map.of("content", "$1 + 1 = 2$"));
+            JsonNode err = memberErrors.poll(3, TimeUnit.SECONDS);
+            assertThat(err).isNotNull();
+            assertThat(err.path("code").asText()).isEqualTo("TABLE_PERMISSION_DENIED");
+
+            // Host updates scratchpad -> broadcast UPDATE_SCRATCHPAD to seated member
+            String derivation = "Bước 1: $x^2 - 9 = 0$\nBước 2: $$x = \\pm 3$$";
+            hostSession.send("/app/table/table_02/scratchpad.update", Map.of("content", derivation));
+            JsonNode updated = awaitEventType(memberWorkspaceEvents, "UPDATE_SCRATCHPAD");
+            assertThat(updated.path("scratchpadState").path("content").asText()).isEqualTo(derivation);
+            assertThat(updated.path("scratchpadState").path("updatedByNickname").asText()).isEqualTo("ScratchHost");
+
+            // Snapshot reflects persisted ephemeral scratchpad
+            JsonNode snapshot = fetchSnapshot(member.token(), "main-library", "table_02");
+            assertThat(snapshot.path("scratchpadState").path("content").asText()).isEqualTo(derivation);
+
+            // Both leave -> table reaches 0 occupants -> scratchpad auto-purged
+            hostSession.send("/app/room/main-library/seat.leave", Map.of());
+            awaitEventType(roomEvents, "SEAT_RELEASED");
+            memberSession.send("/app/room/main-library/seat.leave", Map.of());
+            awaitEventType(roomEvents, "SEAT_RELEASED");
+
+            // Next occupant sitting at table_02 sees empty scratchpad
+            hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_02", "seatId", "T2_S1"));
+            awaitEventType(roomEvents, "SEAT_LOCKED");
+            JsonNode afterPurge = fetchSnapshot(host.token(), "main-library", "table_02");
+            assertThat(afterPurge.path("scratchpadState").path("content").asText()).isEmpty();
+        } finally {
+            if (hostSession.isConnected()) hostSession.disconnect();
+            if (memberSession.isConnected()) memberSession.disconnect();
+        }
+    }
+
     private HomeworkSlide uploadSlide(String token, String tableId, String filename) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);

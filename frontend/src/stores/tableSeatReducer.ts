@@ -5,6 +5,7 @@ import type {
   PermissionRequestNotification,
   TableChatMessage,
   TableMemberDto,
+  TableScratchpadState,
 } from '../services/tableApi';
 import type { VideoSyncState } from './useTableStore';
 import type { FocusCycleState } from '../utils/focusCycle';
@@ -29,6 +30,7 @@ export interface TableStoreData {
   recentMessages: TableChatMessage[];
   homeworkSlides: HomeworkSlide[];
   activeSlideId: string | null;
+  scratchpadState: TableScratchpadState;
   laserPointers: Record<string, LaserPointerState>;
   isWorkspaceMinimized: boolean;
   unreadChatCount: number;

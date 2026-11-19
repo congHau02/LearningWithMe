@@ -72,6 +72,13 @@ export interface TableChatMessage {
   createdAtEpoch: number;
 }
 
+export interface TableScratchpadState {
+  content: string;
+  updatedByUserId: string | null;
+  updatedByNickname: string | null;
+  updatedAtEpoch: number;
+}
+
 export interface TableWorkspaceSnapshot {
   roomId: string;
   tableId: string;
@@ -85,6 +92,7 @@ export interface TableWorkspaceSnapshot {
   homeworkSlides?: HomeworkSlide[];
   activeSlideId?: string | null;
   focusCycleState?: FocusCycleState | null;
+  scratchpadState?: TableScratchpadState | null;
 }
 
 export interface LaserPointerPayload {
@@ -108,7 +116,8 @@ export interface TableWorkspaceEvent {
     | 'BOARD_DRAW'
     | 'LASER_MOVE'
     | 'VOICE_SIGNAL'
-    | 'FOCUS_CYCLE_UPDATED';
+    | 'FOCUS_CYCLE_UPDATED'
+    | 'UPDATE_SCRATCHPAD';
   roomId?: string | null;
   tableId: string;
   actorUserId: string;
@@ -131,6 +140,7 @@ export interface TableWorkspaceEvent {
   voiceSignal?: VoiceSignalPayload | null;
   focusCycleState?: FocusCycleState | null;
   focusCycleAction?: FocusCycleAction | null;
+  scratchpadState?: TableScratchpadState | null;
   timestampEpoch: number;
 }
 

@@ -15,7 +15,8 @@ public record TableWorkspaceSnapshot(
         List<TableChatMessage> recentMessages,
         List<HomeworkSlide> homeworkSlides,
         String activeSlideId,
-        TableFocusCycleState focusCycleState
+        TableFocusCycleState focusCycleState,
+        TableScratchpadState scratchpadState
 ) {
     public TableWorkspaceSnapshot {
         coHostUserIds = coHostUserIds == null ? List.of() : List.copyOf(coHostUserIds);
@@ -24,5 +25,6 @@ public record TableWorkspaceSnapshot(
         recentMessages = recentMessages == null ? List.of() : List.copyOf(recentMessages);
         homeworkSlides = homeworkSlides == null ? List.of() : List.copyOf(homeworkSlides);
         focusCycleState = focusCycleState == null ? TableFocusCycleState.initial() : focusCycleState;
+        scratchpadState = scratchpadState == null ? TableScratchpadState.empty() : scratchpadState;
     }
 }

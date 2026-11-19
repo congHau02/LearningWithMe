@@ -1,6 +1,6 @@
 import { useState, type DragEvent } from 'react';
 import { useWorkspaceLayout } from '../../hooks/useWorkspaceLayout';
-import { HomeworkDeckPanel } from './HomeworkDeckPanel';
+import { MathWorkspaceTabsPanel } from './MathWorkspaceTabsPanel';
 import { PanelDragHandle } from './PanelDragHandle';
 import { SyncedYouTubePlayer } from './SyncedYouTubePlayer';
 import { WorkspaceLayoutControls } from './WorkspaceLayoutControls';
@@ -95,7 +95,7 @@ export function WorkspacePrimaryPanels({ activeTableId, canControl }: WorkspaceP
           data-testid="homework-panel-slot"
           {...getSlotHandlers('homework', isHomeworkFirst ? 'order-1' : 'order-2')}
         >
-          <HomeworkDeckPanel
+          <MathWorkspaceTabsPanel
             tableId={activeTableId}
             canControl={canControl}
             dragHandle={makeDragHandle(
