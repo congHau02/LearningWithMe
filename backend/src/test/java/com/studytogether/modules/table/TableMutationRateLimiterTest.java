@@ -2,7 +2,7 @@ package com.studytogether.modules.table;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -11,29 +11,25 @@ import static org.mockito.Mockito.when;
 
 import com.studytogether.config.BusinessException;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.HttpStatus;
 
 class TableMutationRateLimiterTest {
 
     private StringRedisTemplate redisTemplate;
-    private ZSetOperations<String, String> zSetOperations;
     private AtomicLong nowMs;
     private TableMutationRateLimiter rateLimiter;
 
     @BeforeEach
-    @SuppressWarnings("unchecked")
     void setUp() {
         redisTemplate = mock(StringRedisTemplate.class);
-        zSetOperations = mock(ZSetOperations.class);
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
         nowMs = new AtomicLong(1_700_000_000_000L);
         Clock clock = new Clock() {
             @Override
@@ -47,17 +43,30 @@ class TableMutationRateLimiterTest {
     }
 
     @Test
-    void enforcesSlidingWindowLimitAndThrows429RateLimitExceeded() {
+    @SuppressWarnings("unchecked")
+    void enforcesAtomicSlidingWindowLimitAndThrows429RateLimitExceeded() {
         String key = "ratelimit:table:video-sync:u-1";
-        when(zSetOperations.zCard(key)).thenReturn(9L);
+        String nowStr = String.valueOf(nowMs.get());
+        String windowStr = String.valueOf(TableMutationType.VIDEO_SYNC.windowMs());
+        String maxStr = String.valueOf(TableMutationType.VIDEO_SYNC.maxRequests());
+        String ttlStr = String.valueOf(TableMutationType.VIDEO_SYNC.windowMs() + 1000L);
+
+        when(redisTemplate.execute(any(RedisScript.class), eq(List.of(key)),
+                eq(nowStr), eq(windowStr), eq(maxStr), anyString(), eq(ttlStr)))
+                .thenReturn(1L, 0L);
 
         rateLimiter.enforce("u-1", TableMutationType.VIDEO_SYNC);
 
-        verify(zSetOperations).removeRangeByScore(key, 0, nowMs.get() - TableMutationType.VIDEO_SYNC.windowMs());
-        verify(zSetOperations).add(eq(key), anyString(), eq((double) nowMs.get()));
-        verify(redisTemplate).expire(eq(key), eq(Duration.ofMillis(TableMutationType.VIDEO_SYNC.windowMs() + 1000L)));
+        verify(redisTemplate).execute(
+                any(RedisScript.class),
+                eq(List.of(key)),
+                eq(nowStr),
+                eq(windowStr),
+                eq(maxStr),
+                anyString(),
+                eq(ttlStr)
+        );
 
-        when(zSetOperations.zCard(key)).thenReturn((long) TableMutationType.VIDEO_SYNC.maxRequests());
         assertThatThrownBy(() -> rateLimiter.enforce("u-1", TableMutationType.VIDEO_SYNC))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> {

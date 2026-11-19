@@ -107,4 +107,30 @@ class TableHomeworkServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus())
                 .isEqualTo(HttpStatus.NOT_FOUND);
     }
+
+    @Test
+    void loadEphemeralFileReturnsExactMimeTypeFromMagicBytesForPngAndJpegPayloads() throws Exception {
+        long now = System.currentTimeMillis();
+        byte[] png = new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        byte[] jpeg = new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10};
+
+        Files.write(tempHomeworkDir.resolve("img-222222222222.webp"), png);
+        Files.write(tempHomeworkDir.resolve("img-333333333333.webp"), jpeg);
+        stateStore.saveEphemeralImage(
+                new EphemeralImageMetadata("img-222222222222", "main-library", "table_01", "img-222222222222.webp", host.userId(), now),
+                Duration.ofHours(6)
+        );
+        stateStore.saveEphemeralImage(
+                new EphemeralImageMetadata("img-333333333333", "main-library", "table_01", "img-333333333333.webp", host.userId(), now),
+                Duration.ofHours(6)
+        );
+
+        TableHomeworkService.LoadedEphemeralFile loadedPng = service.loadEphemeralFile(host, "img-222222222222.webp");
+        assertThat(loadedPng.contentType()).isEqualTo("image/png");
+        assertThat(loadedPng.bytes()).isEqualTo(png);
+
+        TableHomeworkService.LoadedEphemeralFile loadedJpeg = service.loadEphemeralFile(host, "img-333333333333.webp");
+        assertThat(loadedJpeg.contentType()).isEqualTo("image/jpeg");
+        assertThat(loadedJpeg.bytes()).isEqualTo(jpeg);
+    }
 }

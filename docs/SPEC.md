@@ -114,7 +114,7 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 ## Implementation Decisions
 
 ### 1. Phased Vertical-Slice Delivery Architecture
-- The system is divided into 7 sequential/parallelizable vertical slices (**Phase 1** through **Phase 7**), where each phase delivers an end-to-end testable increment across Backend and Frontend while respecting strict module size limits (React components $\le 200$ lines, Phaser modules $\le 250$ lines, Zustand stores $\le 150$ lines, Spring Controllers/Handlers $\le 150$ lines, Spring Services $\le 250$ lines, DTOs/Entities $\le 120$ lines).
+- The system is divided into 10 sequential/parallelizable vertical slices (**Phase 1** through **Phase 10**), where each phase delivers an end-to-end testable increment across Backend and Frontend while respecting strict module size limits (React components $\le 200$ lines, Phaser modules $\le 250$ lines, Zustand stores $\le 150$ lines, Spring Controllers/Handlers $\le 150$ lines, Spring Services $\le 250$ lines, DTOs/Entities $\le 120$ lines).
 
 ### 2. Hybrid Auth & Zero-Interruption Account Upgrade (ADR-0001 & ADR-0004)
 - **Guest Onboarding**: `POST /api/v1/auth/guest` issues a signed 7-day JWT (`guestToken`) with a generated UUID `guestId` without inserting a row into the MySQL `users` table.

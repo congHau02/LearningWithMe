@@ -38,7 +38,6 @@ public class TableMutationRateLimiter {
         if (userId == null || userId.isBlank() || type == null) {
             return false;
         }
-        // shortcut: non-atomic ZSet check-then-add matching ChatRateLimiter/AuthRateLimiter; upgrade to Lua script if strict burst precision needed
         return RedisRateLimitSupport.tryAcquire(
                 redisTemplate,
                 KEY_PREFIX + type.keyScope() + ":" + userId.trim(),

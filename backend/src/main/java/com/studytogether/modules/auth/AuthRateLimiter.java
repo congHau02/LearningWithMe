@@ -24,7 +24,6 @@ public class AuthRateLimiter {
         if (clientIp == null || clientIp.isBlank()) {
             return false;
         }
-        // shortcut: non-atomic ZSet check-then-add matching ChatRateLimiter; upgrade to Lua script if strict burst precision needed
         return RedisRateLimitSupport.tryAcquire(
                 redisTemplate,
                 KEY_PREFIX + clientIp.trim(),

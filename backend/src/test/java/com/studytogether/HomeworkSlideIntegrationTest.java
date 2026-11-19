@@ -142,15 +142,24 @@ class HomeworkSlideIntegrationTest {
         assertThat(spoofedResp.getBody()).isNotNull();
         assertThat(spoofedResp.getBody().path("status").asInt()).isEqualTo(400);
 
-        // Upload 5 valid slides
+        // Upload 5 valid slides (WebP, PNG, JPEG, and 2 more WebP to verify magic-byte MIME serving)
+        byte[] validPng = new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        byte[] validJpeg = new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10};
         HomeworkSlide firstSlide = null;
         HomeworkSlide secondSlide = null;
+        HomeworkSlide thirdSlide = null;
         for (int i = 1; i <= 5; i++) {
-            ResponseEntity<JsonNode> okResp = uploadImage(hostToken, "table_01", "slide-" + i + ".webp", validWebp);
+            byte[] payload = switch (i) {
+                case 2 -> validPng;
+                case 3 -> validJpeg;
+                default -> validWebp;
+            };
+            ResponseEntity<JsonNode> okResp = uploadImage(hostToken, "table_01", "slide-" + i + ".webp", payload);
             assertThat(okResp.getStatusCode().is2xxSuccessful()).isTrue();
             HomeworkSlide slide = objectMapper.treeToValue(okResp.getBody(), HomeworkSlide.class);
             if (i == 1) firstSlide = slide;
             if (i == 2) secondSlide = slide;
+            if (i == 3) thirdSlide = slide;
 
             JsonNode addedEv = tableEvents.poll(5, TimeUnit.SECONDS);
             assertThat(addedEv).isNotNull();
@@ -160,6 +169,8 @@ class HomeworkSlideIntegrationTest {
 
         // Verify file on disk and Redis key TTL ~ 21600s
         assertThat(firstSlide).isNotNull();
+        assertThat(secondSlide).isNotNull();
+        assertThat(thirdSlide).isNotNull();
         assertThat(Files.exists(tempHomeworkDir.resolve(firstSlide.fileName()))).isTrue();
         Long ttlSeconds = redisTemplate.getExpire("ephemeral:img:" + firstSlide.imageId(), TimeUnit.SECONDS);
         assertThat(ttlSeconds).isNotNull().isBetween(21500L, 21600L);
@@ -171,7 +182,7 @@ class HomeworkSlideIntegrationTest {
         );
         assertThat(unauthFileResp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        // Seated learner serves file via GET /api/v1/ephemeral-files/{fileName}
+        // Seated learner serves WebP, PNG, and JPEG files with exact magic-byte Content-Type headers
         HttpHeaders memberAuthHeaders = new HttpHeaders();
         memberAuthHeaders.setBearerAuth(memberToken);
         ResponseEntity<byte[]> fileResp = restTemplate.exchange(
@@ -181,7 +192,28 @@ class HomeworkSlideIntegrationTest {
                 byte[].class
         );
         assertThat(fileResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(fileResp.getHeaders().getContentType()).isEqualTo(MediaType.parseMediaType("image/webp"));
         assertThat(fileResp.getBody()).isEqualTo(validWebp);
+
+        ResponseEntity<byte[]> pngFileResp = restTemplate.exchange(
+                "/api/v1/ephemeral-files/" + secondSlide.fileName(),
+                HttpMethod.GET,
+                new HttpEntity<>(memberAuthHeaders),
+                byte[].class
+        );
+        assertThat(pngFileResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(pngFileResp.getHeaders().getContentType()).isEqualTo(MediaType.IMAGE_PNG);
+        assertThat(pngFileResp.getBody()).isEqualTo(validPng);
+
+        ResponseEntity<byte[]> jpegFileResp = restTemplate.exchange(
+                "/api/v1/ephemeral-files/" + thirdSlide.fileName(),
+                HttpMethod.GET,
+                new HttpEntity<>(memberAuthHeaders),
+                byte[].class
+        );
+        assertThat(jpegFileResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(jpegFileResp.getHeaders().getContentType()).isEqualTo(MediaType.IMAGE_JPEG);
+        assertThat(jpegFileResp.getBody()).isEqualTo(validJpeg);
 
         // Path traversal rejected
         ResponseEntity<String> traversalResp = restTemplate.exchange(

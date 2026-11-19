@@ -22,6 +22,20 @@ class HomeworkImageValidatorTest {
     }
 
     @Test
+    void detectsExactMimeTypeOrFallsBackToWebp() {
+        byte[] jpeg = new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+        byte[] png = new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        byte[] webp = "RIFF\u0024\u0000\u0000\u0000WEBPVP8 ".getBytes(StandardCharsets.ISO_8859_1);
+        byte[] unknown = "plain-bytes".getBytes(StandardCharsets.UTF_8);
+
+        assertThat(HomeworkImageValidator.detectImageContentTypeOrDefault(jpeg)).isEqualTo("image/jpeg");
+        assertThat(HomeworkImageValidator.detectImageContentTypeOrDefault(png)).isEqualTo("image/png");
+        assertThat(HomeworkImageValidator.detectImageContentTypeOrDefault(webp)).isEqualTo("image/webp");
+        assertThat(HomeworkImageValidator.detectImageContentTypeOrDefault(unknown)).isEqualTo("image/webp");
+        assertThat(HomeworkImageValidator.detectImageContentTypeOrDefault(null)).isEqualTo("image/webp");
+    }
+
+    @Test
     void rejectsSpoofedExtensionOrEmptyOrOversizedPayload() {
         byte[] spoofedText = "not-an-image-script".getBytes(StandardCharsets.UTF_8);
         byte[] truncatedWebp = "RIFF1234WEB".getBytes(StandardCharsets.ISO_8859_1);
