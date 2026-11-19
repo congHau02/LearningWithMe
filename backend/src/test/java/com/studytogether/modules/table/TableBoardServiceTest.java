@@ -124,4 +124,90 @@ class TableBoardServiceTest {
                 .extracting(e -> ((BusinessException) e).getType())
                 .isEqualTo(TableExceptions.INVALID_TABLE_ACTION_TYPE);
     }
+
+    @Test
+    void validatesGeometricTwoPointStrokesAndLatexContent() {
+        List<NormalizedPoint> twoPts = List.of(new NormalizedPoint(0.1, 0.2), new NormalizedPoint(0.8, 0.7));
+        for (BoardStrokeTool shapeTool : List.of(
+                BoardStrokeTool.LINE, BoardStrokeTool.ARROW, BoardStrokeTool.RECT, BoardStrokeTool.CIRCLE)) {
+            BoardStroke shape = new BoardStroke(
+                    "shape-" + shapeTool.name(), shapeTool, "#38bdf8", 3.0, twoPts, null, null, 0L);
+            TableWorkspaceEvent event = boardService.handleDraw(
+                    host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, shape, null, null));
+            assertThat(event.stroke()).isNotNull();
+            assertThat(event.stroke().tool()).isEqualTo(shapeTool);
+            assertThat(event.stroke().authorUserId()).isEqualTo(host.userId());
+        }
+
+        // Single point geometric stroke must be rejected
+        BoardStroke invalidLine = new BoardStroke(
+                "bad-line", BoardStrokeTool.LINE, "#38bdf8", 3.0, List.of(new NormalizedPoint(0.1, 0.2)), null, null, 0L);
+        assertThatThrownBy(() -> boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, invalidLine, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getType())
+                .isEqualTo(TableExceptions.INVALID_TABLE_ACTION_TYPE);
+
+        // Valid LATEX stroke accepted; blank LATEX rejected
+        BoardStroke validLatex = new BoardStroke(
+                "latex-1", BoardStrokeTool.LATEX, "#E6ECE8", 18.0,
+                List.of(new NormalizedPoint(0.5, 0.4)), "  \\frac{a}{b} + \\sqrt{x}  ", null, 0L);
+        TableWorkspaceEvent latexEvent = boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, validLatex, null, null));
+        assertThat(latexEvent.stroke().text()).isEqualTo("\\frac{a}{b} + \\sqrt{x}");
+
+        BoardStroke blankLatex = new BoardStroke(
+                "latex-blank", BoardStrokeTool.LATEX, "#E6ECE8", 18.0,
+                List.of(new NormalizedPoint(0.5, 0.4)), "   ", null, 0L);
+        assertThatThrownBy(() -> boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, blankLatex, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getType())
+                .isEqualTo(TableExceptions.INVALID_TABLE_ACTION_TYPE);
+    }
+
+    @Test
+    void undoStrokeRemovesOnlyActingAuthorsStrokeAndRejectsOtherAuthorsStroke() {
+        AuthPrincipal coHost = new AuthPrincipal("u-cohost", AuthRole.GUEST, "CoHost", "avatar_02", null);
+        stateStore.savePlayer("main-library", new RoomPlayerState(
+                coHost.userId(), coHost.nickname(), coHost.avatarId(), "GUEST", "SEATED",
+                5, 5, "DOWN", "table_01", "seat_02", "ws-2", true, nowMs.get(), false, nowMs.get()
+        ));
+        stateStore.mutateTableState("main-library", "table_01",
+                cur -> cur.withPermissions(cur.hostUserId(), List.of(coHost.userId()), cur.isFreeCollab()));
+
+        BoardStroke hostStroke = new BoardStroke(
+                "s-host-1", BoardStrokeTool.LINE, "#ef4444", 3.0,
+                List.of(new NormalizedPoint(0.1, 0.1), new NormalizedPoint(0.4, 0.4)), null, null, 0L);
+        BoardStroke coHostStroke = new BoardStroke(
+                "s-cohost-1", BoardStrokeTool.ARROW, "#22c55e", 3.0,
+                List.of(new NormalizedPoint(0.2, 0.2), new NormalizedPoint(0.6, 0.6)), null, null, 0L);
+
+        boardService.handleDraw(host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, hostStroke, null, null));
+        boardService.handleDraw(coHost, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, coHostStroke, null, null));
+
+        // Host cannot UNDO_STROKE targeting coHost's stroke
+        assertThatThrownBy(() -> boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.UNDO_STROKE, null, "s-cohost-1", null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getType())
+                .isEqualTo(TableExceptions.TABLE_PERMISSION_DENIED_TYPE);
+
+        // Host implicit UNDO_STROKE (null strokeId) skips coHost's newer stroke and removes host's stroke
+        TableWorkspaceEvent undoEvent = boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.UNDO_STROKE, null, null, null));
+        assertThat(undoEvent.drawAction()).isEqualTo(BoardDrawAction.UNDO_STROKE);
+        assertThat(undoEvent.erasedStrokeId()).isEqualTo("s-host-1");
+
+        List<BoardStroke> remaining = stateStore.getTableState("main-library", "table_01")
+                .orElseThrow().homeworkSlides().get(0).strokes();
+        assertThat(remaining).extracting(BoardStroke::id).containsExactly("s-cohost-1");
+
+        // Re-adding a stroke with the same ID (idempotent redo/retry) must not duplicate it
+        boardService.handleDraw(host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, hostStroke, null, null));
+        boardService.handleDraw(host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, hostStroke, null, null));
+        List<BoardStroke> afterRedo = stateStore.getTableState("main-library", "table_01")
+                .orElseThrow().homeworkSlides().get(0).strokes();
+        assertThat(afterRedo).extracting(BoardStroke::id).containsExactly("s-cohost-1", "s-host-1");
+    }
 }

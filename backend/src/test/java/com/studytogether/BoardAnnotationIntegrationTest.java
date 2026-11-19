@@ -268,6 +268,116 @@ class BoardAnnotationIntegrationTest {
         }
     }
 
+    @Test
+    void supportsGeometricAndLatexStrokesWithServerEnforcedPerAuthorUndo() throws Exception {
+        GuestSession host = createGuest("MathHost");
+        GuestSession coHost = createGuest("MathCoHost");
+        StompSession hostSession = connectStomp(host.token());
+        StompSession coHostSession = connectStomp(coHost.token());
+        try {
+            BlockingQueue<JsonNode> roomEvents = subscribeTopic(hostSession, "/topic/room/main-library/events");
+            hostSession.send("/app/room/main-library/join", "");
+            coHostSession.send("/app/room/main-library/join", "");
+            assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
+            assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
+
+            hostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_03", "seatId", "T3_S1"));
+            assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
+            coHostSession.send("/app/room/main-library/seat.sit", Map.of("tableId", "table_03", "seatId", "T3_S2"));
+            assertThat(roomEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
+
+            BlockingQueue<JsonNode> tableEvents = subscribeTopic(hostSession, "/topic/room/main-library/table/table_03/workspace");
+            BlockingQueue<JsonNode> hostErrors = subscribeTopic(hostSession, "/user/queue/errors");
+            Thread.sleep(100);
+
+            // Grant Co-Host permission to second learner
+            hostSession.send("/app/table/table_03/permission.respond", Map.of(
+                    "action", "GRANT",
+                    "targetUserId", coHost.userId()
+            ));
+            awaitEventType(tableEvents, "PERMISSION_UPDATED");
+
+            HomeworkSlide slide = uploadSlide(host.token(), "table_03", "math-oxy.webp");
+            tableEvents.clear();
+
+            // Host draws ARROW vector + LATEX formula
+            hostSession.send("/app/table/table_03/board.draw", Map.of(
+                    "slideId", slide.imageId(),
+                    "action", "ADD_STROKE",
+                    "stroke", Map.of(
+                            "id", "vec-host-1",
+                            "tool", "ARROW",
+                            "color", "#E5A93C",
+                            "lineWidth", 3,
+                            "points", List.of(Map.of("x", 0.2, "y", 0.8), Map.of("x", 0.7, "y", 0.2))
+                    )
+            ));
+            JsonNode arrowEvt = awaitEventType(tableEvents, "BOARD_DRAW");
+            assertThat(arrowEvt.get("stroke").get("tool").asText()).isEqualTo("ARROW");
+            assertThat(arrowEvt.get("stroke").get("authorUserId").asText()).isEqualTo(host.userId());
+
+            hostSession.send("/app/table/table_03/board.draw", Map.of(
+                    "slideId", slide.imageId(),
+                    "action", "ADD_STROKE",
+                    "stroke", Map.of(
+                            "id", "latex-host-1",
+                            "tool", "LATEX",
+                            "color", "#E6ECE8",
+                            "lineWidth", 18,
+                            "text", "\\int_0^1 x^2 dx = \\frac{1}{3}",
+                            "points", List.of(Map.of("x", 0.5, "y", 0.5))
+                    )
+            ));
+            JsonNode latexEvt = awaitEventType(tableEvents, "BOARD_DRAW");
+            assertThat(latexEvt.get("stroke").get("tool").asText()).isEqualTo("LATEX");
+            assertThat(latexEvt.get("stroke").get("text").asText()).isEqualTo("\\int_0^1 x^2 dx = \\frac{1}{3}");
+
+            // Co-Host draws CIRCLE stroke
+            coHostSession.send("/app/table/table_03/board.draw", Map.of(
+                    "slideId", slide.imageId(),
+                    "action", "ADD_STROKE",
+                    "stroke", Map.of(
+                            "id", "circle-cohost-1",
+                            "tool", "CIRCLE",
+                            "color", "#34D399",
+                            "lineWidth", 3,
+                            "points", List.of(Map.of("x", 0.3, "y", 0.3), Map.of("x", 0.6, "y", 0.6))
+                    )
+            ));
+            JsonNode circleEvt = awaitEventType(tableEvents, "BOARD_DRAW");
+            assertThat(circleEvt.get("stroke").get("authorUserId").asText()).isEqualTo(coHost.userId());
+
+            // Host tries to UNDO_STROKE coHost's stroke -> TABLE_PERMISSION_DENIED, circle stays intact
+            hostSession.send("/app/table/table_03/board.draw", Map.of(
+                    "slideId", slide.imageId(),
+                    "action", "UNDO_STROKE",
+                    "strokeId", "circle-cohost-1"
+            ));
+            JsonNode forbiddenErr = hostErrors.poll(5, TimeUnit.SECONDS);
+            assertThat(forbiddenErr).isNotNull();
+            assertThat(forbiddenErr.get("code").asText()).isEqualTo("TABLE_PERMISSION_DENIED");
+
+            // Host runs UNDO_STROKE on own latest stroke -> removes latex-host-1 only
+            hostSession.send("/app/table/table_03/board.draw", Map.of(
+                    "slideId", slide.imageId(),
+                    "action", "UNDO_STROKE",
+                    "strokeId", "latex-host-1"
+            ));
+            JsonNode undoEvt = awaitEventType(tableEvents, "BOARD_DRAW");
+            assertThat(undoEvt.get("drawAction").asText()).isEqualTo("UNDO_STROKE");
+            assertThat(undoEvt.get("erasedStrokeId").asText()).isEqualTo("latex-host-1");
+
+            JsonNode snapshot = fetchSnapshot(host.token(), "main-library", "table_03");
+            JsonNode strokes = findSlide(snapshot, slide.imageId()).get("strokes");
+            assertThat(strokes).hasSize(2);
+            assertThat(strokes.get(0).get("id").asText()).isEqualTo("vec-host-1");
+            assertThat(strokes.get(1).get("id").asText()).isEqualTo("circle-cohost-1");
+        } finally {
+            if (hostSession.isConnected()) hostSession.disconnect();
+            if (coHostSession.isConnected()) coHostSession.disconnect();
+        }
+    }
+
     private HomeworkSlide uploadSlide(String token, String tableId, String filename) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);

@@ -3,5 +3,10 @@ package com.studytogether.modules.table.model;
 public enum BoardStrokeTool {
     PEN,
     HIGHLIGHTER,
-    TEXT
+    TEXT,
+    LATEX,
+    LINE,
+    ARROW,
+    RECT,
+    CIRCLE
 }

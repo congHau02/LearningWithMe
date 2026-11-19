@@ -103,12 +103,16 @@ public class TableBoardService {
 
             List<BoardStroke> nextStrokes = switch (request.action()) {
                 case ADD_STROKE -> {
-                    if (slide.strokes().size() >= MAX_STROKES_PER_SLIDE) {
-                        throw TableExceptions.invalidAction("Slide has reached maximum stroke limit");
-                    }
                     BoardStroke validated = BoardStrokeValidator.validateAndNormalize(
                             request.stroke(), principal.userId(), now);
                     savedStrokeRef.set(validated);
+                    boolean exists = slide.strokes().stream().anyMatch(s -> s.id().equals(validated.id()));
+                    if (exists) {
+                        yield slide.strokes();
+                    }
+                    if (slide.strokes().size() >= MAX_STROKES_PER_SLIDE) {
+                        throw TableExceptions.invalidAction("Slide has reached maximum stroke limit");
+                    }
                     List<BoardStroke> updated = new ArrayList<>(slide.strokes());
                     updated.add(validated);
                     yield updated;
@@ -123,6 +127,8 @@ public class TableBoardService {
                             .filter(s -> !s.id().equals(targetId))
                             .toList();
                 }
+                case UNDO_STROKE -> undoAuthorStroke(
+                        slide.strokes(), request.strokeId(), principal.userId(), erasedStrokeIdRef);
                 case CLEAR_SLIDE -> List.of();
                 case LASER_MOVE -> throw new IllegalStateException("LASER_MOVE handled above");
             };
@@ -180,6 +186,44 @@ public class TableBoardService {
         if (event != null && event.userId() != null) {
             lastLaserEpochByUserId.remove(event.userId());
         }
+    }
+
+    private static List<BoardStroke> undoAuthorStroke(
+            List<BoardStroke> strokes,
+            String requestedStrokeId,
+            String actorUserId,
+            AtomicReference<String> erasedStrokeIdRef
+    ) {
+        String explicitId = (requestedStrokeId != null && !requestedStrokeId.isBlank()) ? requestedStrokeId.trim() : null;
+        int targetIndex = -1;
+        for (int i = strokes.size() - 1; i >= 0; i -= 1) {
+            BoardStroke candidate = strokes.get(i);
+            if (explicitId != null) {
+                if (explicitId.equals(candidate.id())) {
+                    if (!actorUserId.equals(candidate.authorUserId())) {
+                        throw TableExceptions.forbiddenControl("Only the stroke author can undo this stroke");
+                    }
+                    targetIndex = i;
+                    break;
+                }
+            } else if (actorUserId.equals(candidate.authorUserId())) {
+                targetIndex = i;
+                break;
+            }
+        }
+        if (targetIndex < 0) {
+            throw TableExceptions.invalidAction(explicitId != null
+                    ? "Stroke not found for undo: " + explicitId
+                    : "No stroke authored by user to undo");
+        }
+        erasedStrokeIdRef.set(strokes.get(targetIndex).id());
+        List<BoardStroke> updated = new ArrayList<>(strokes.size() - 1);
+        for (int i = 0; i < strokes.size(); i += 1) {
+            if (i != targetIndex) {
+                updated.add(strokes.get(i));
+            }
+        }
+        return updated;
     }
 
     private static int findSlideIndex(List<HomeworkSlide> slides, String slideId) {

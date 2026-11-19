@@ -3,6 +3,8 @@ import { useEphemeralImageUrl } from '../../hooks/useEphemeralImageUrl';
 import { useHomeworkCanvas } from '../../hooks/useHomeworkCanvas';
 import type { BoardStroke, BoardTool } from '../../utils/homeworkCanvasMath';
 import { HomeworkLaserOverlay } from './HomeworkLaserOverlay';
+import { HomeworkLatexOverlay } from './HomeworkLatexOverlay';
+import { HomeworkLatexPopover } from './HomeworkLatexPopover';
 
 interface HomeworkAnnotationCanvasProps {
   tableId: string;
@@ -11,10 +13,12 @@ interface HomeworkAnnotationCanvasProps {
   fileName: string;
   strokes: BoardStroke[];
   canControl: boolean;
+  selfUserId?: string | null;
   tool: BoardTool;
   color: string;
   lineWidth: number;
   onStrokeError?: (message: string | null) => void;
+  onNewStrokeCommitted?: () => void;
 }
 
 export function HomeworkAnnotationCanvas({
@@ -24,10 +28,12 @@ export function HomeworkAnnotationCanvas({
   fileName,
   strokes,
   canControl,
+  selfUserId,
   tool,
   color,
   lineWidth,
   onStrokeError,
+  onNewStrokeCommitted,
 }: HomeworkAnnotationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { objectUrl, error: imageError } = useEphemeralImageUrl(imageUrl);
@@ -35,33 +41,38 @@ export function HomeworkAnnotationCanvas({
   const {
     pendingText,
     setPendingText,
+    pendingLatex,
+    setPendingLatex,
     syncCanvasSize,
     handlePointerDown,
     handlePointerMove,
-    finishFreehandStroke,
+    finishStroke,
     commitPendingText,
+    commitPendingLatex,
   } = useHomeworkCanvas({
     tableId,
     slideId,
     strokes,
     canControl,
+    selfUserId,
     tool,
     color,
     lineWidth,
     canvasRef,
     onStrokeError,
+    onNewStrokeCommitted,
   });
 
   const cursorClass = !canControl
     ? 'cursor-default'
     : tool === 'ERASER'
       ? 'cursor-cell'
-      : tool === 'TEXT'
+      : tool === 'TEXT' || tool === 'LATEX'
         ? 'cursor-text'
         : 'cursor-crosshair';
 
   return (
-    <div className="relative flex min-h-48 items-center justify-center overflow-hidden rounded-lg border border-border bg-[#0F1714]/80 p-2">
+    <div className="relative flex min-h-48 items-center justify-center overflow-visible rounded-lg border border-border bg-background/80 p-2">
       <div className="relative inline-block max-w-full">
         {imageError ? (
           <div
@@ -93,10 +104,11 @@ export function HomeworkAnnotationCanvas({
           data-testid="homework-annotation-canvas"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
-          onPointerUp={finishFreehandStroke}
-          onPointerCancel={finishFreehandStroke}
+          onPointerUp={finishStroke}
+          onPointerCancel={finishStroke}
           className={`absolute inset-0 h-full w-full touch-none rounded ${cursorClass}`}
         />
+        <HomeworkLatexOverlay strokes={strokes} />
         <HomeworkLaserOverlay slideId={slideId} />
         {pendingText && canControl ? (
           <input
@@ -123,6 +135,16 @@ export function HomeworkAnnotationCanvas({
             }}
             onBlur={commitPendingText}
             className="absolute z-10 min-w-32 -translate-y-1/2 rounded border border-primary bg-[#16221E]/95 px-2 py-0.5 text-xs text-foreground shadow-lg outline-none"
+          />
+        ) : null}
+        {pendingLatex && canControl ? (
+          <HomeworkLatexPopover
+            point={pendingLatex.point}
+            value={pendingLatex.value}
+            color={color}
+            onChange={(val) => setPendingLatex((prev) => (prev ? { ...prev, value: val } : null))}
+            onConfirm={commitPendingLatex}
+            onCancel={() => setPendingLatex(null)}
           />
         ) : null}
       </div>

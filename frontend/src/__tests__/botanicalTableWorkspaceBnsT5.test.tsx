@@ -309,9 +309,9 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
       const activeSwatch = screen.getByTestId('board-color-#ef4444');
       expect(activeSwatch.className).toContain('ring-primary');
 
-      // Active tool button uses primary accent
+      // Active tool button uses solid Warm Amber (#E5A93C) with Deep Pine ink (#0F1714) for 8.74:1 contrast
       const penTool = screen.getByTestId('board-tool-PEN');
-      expect(penTool.className).toContain('bg-primary/25');
+      expect(penTool.className).toContain('bg-primary');
       expect(penTool.className).toContain('text-primary-foreground');
     });
 

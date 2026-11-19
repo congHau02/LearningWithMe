@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useHomeworkUndoRedo } from '../../hooks/useHomeworkUndoRedo';
 import { formatApiError } from '../../services/apiClient';
 import { uploadHomeworkImage } from '../../services/tableApi';
 import { sendBoardDraw, sendHomeworkSlideAction } from '../../services/tableStompClient';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { compressImageToWebp } from '../../utils/homeworkImageCompression';
 import type { BoardTool } from '../../utils/homeworkCanvasMath';
+import { generateMathTemplateFile, type MathTemplateId } from '../../utils/mathSlideTemplates';
 import { CameraIcon, UploadIcon } from '../icons';
 import { HomeworkAnnotationCanvas } from './HomeworkAnnotationCanvas';
 import { HomeworkBoardToolbar } from './HomeworkBoardToolbar';
 import { HomeworkSlideTabs } from './HomeworkSlideTabs';
+import { HomeworkTemplatePicker } from './HomeworkTemplatePicker';
 
 const MAX_SLIDES = 5;
 
@@ -26,6 +30,7 @@ interface HomeworkDeckPanelProps {
 export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkDeckPanelProps) {
   const slides = useTableStore((s) => s.homeworkSlides);
   const activeSlideId = useTableStore((s) => s.activeSlideId);
+  const selfUserId = useAuthStore((s) => s.userId);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -37,7 +42,15 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
   const activeSlide = activeSlideId ? (slides.find((s) => s.imageId === activeSlideId) ?? null) : null;
   const isDeckFull = slides.length >= MAX_SLIDES;
 
-  const processAndUpload = useCallback(async (rawFile: File) => {
+  const { canUndo, canRedo, handleUndo, handleRedo, clearRedoForSlide } = useHomeworkUndoRedo({
+    tableId,
+    slideId: activeSlide?.imageId ?? null,
+    strokes: activeSlide?.strokes ?? [],
+    canControl,
+    selfUserId,
+  });
+
+  const runSlideUpload = useCallback(async (buildWebpFile: () => Promise<File>) => {
     if (!canControl || isUploading) return;
     if (isDeckFull) {
       setErrorMsg('Bàn học đã đạt tối đa 5 trang bài tập.');
@@ -46,7 +59,7 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
     setErrorMsg(null);
     setIsUploading(true);
     try {
-      const webpFile = await compressImageToWebp(rawFile, { maxDimension: 1920, quality: 0.85 });
+      const webpFile = await buildWebpFile();
       await uploadHomeworkImage(tableId, webpFile);
     } catch (err) {
       setErrorMsg(formatApiError(err, 'Không thể tải ảnh bài tập lên.', true));
@@ -54,6 +67,15 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
       setIsUploading(false);
     }
   }, [canControl, isDeckFull, isUploading, tableId]);
+
+  const processAndUpload = useCallback(
+    (rawFile: File) => runSlideUpload(() => compressImageToWebp(rawFile, { maxDimension: 1920, quality: 0.85 })),
+    [runSlideUpload],
+  );
+  const handleCreateTemplate = useCallback(
+    (templateId: MathTemplateId) => void runSlideUpload(() => generateMathTemplateFile(templateId)),
+    [runSlideUpload],
+  );
 
   const uploadRef = useRef(processAndUpload);
   uploadRef.current = processAndUpload;
@@ -101,23 +123,8 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
         {canControl ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="hidden text-xs text-muted-foreground sm:inline">Ctrl + V để dán ảnh</span>
-            <input
-              ref={fileInputRef}
-              data-testid="homework-file-input"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <input
-              ref={cameraInputRef}
-              data-testid="homework-camera-input"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+            <input ref={fileInputRef} data-testid="homework-file-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} className="hidden" />
+            <input ref={cameraInputRef} data-testid="homework-camera-input" type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
             <button
               type="button"
               data-testid="homework-camera-btn"
@@ -143,6 +150,8 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
         )}
       </div>
 
+      {canControl ? <HomeworkTemplatePicker disabled={isUploading || isDeckFull} onCreateTemplate={handleCreateTemplate} /> : null}
+
       {errorMsg ? (
         <p data-testid="homework-upload-error" role="alert" className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs text-rose-200">
           {errorMsg}
@@ -161,30 +170,26 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
         <div className="flex flex-col gap-2">
           {canControl ? (
             <HomeworkBoardToolbar
-              tool={tool}
-              color={color}
-              lineWidth={lineWidth}
-              onToolChange={setTool}
-              onColorChange={setColor}
-              onLineWidthChange={setLineWidth}
-              onClearSlide={() => sendBoardDraw(tableId, { slideId: activeSlide.imageId, action: 'CLEAR_SLIDE' })}
+              tool={tool} color={color} lineWidth={lineWidth} canUndo={canUndo} canRedo={canRedo}
+              onToolChange={setTool} onColorChange={setColor} onLineWidthChange={setLineWidth}
+              onUndo={handleUndo} onRedo={handleRedo}
+              onClearSlide={() => {
+                clearRedoForSlide(activeSlide.imageId);
+                sendBoardDraw(tableId, { slideId: activeSlide.imageId, action: 'CLEAR_SLIDE' });
+              }}
             />
           ) : null}
           <HomeworkAnnotationCanvas
-            tableId={tableId} slideId={activeSlide.imageId}
-            imageUrl={activeSlide.url} fileName={activeSlide.fileName}
-            strokes={activeSlide.strokes ?? []} canControl={canControl}
+            tableId={tableId} slideId={activeSlide.imageId} imageUrl={activeSlide.url} fileName={activeSlide.fileName}
+            strokes={activeSlide.strokes ?? []} canControl={canControl} selfUserId={selfUserId}
             tool={tool} color={color} lineWidth={lineWidth}
-            onStrokeError={setErrorMsg}
+            onStrokeError={setErrorMsg} onNewStrokeCommitted={() => clearRedoForSlide(activeSlide.imageId)}
           />
         </div>
       ) : (
-        <div
-          data-testid="homework-empty-state"
-          className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-[#0F1714]/40 px-4 text-center text-xs text-muted-foreground"
-        >
+        <div data-testid="homework-empty-state" className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-[#0F1714]/40 px-4 text-center text-xs text-muted-foreground">
           {canControl
-            ? 'Chưa có trang bài tập nào. Chọn ảnh (.jpg, .png, .webp) hoặc bấm vào đây và nhấn Ctrl + V để dán.'
+            ? 'Chưa có trang bài tập nào. Chọn mẫu giấy nháp toán ở trên, tải ảnh (.jpg, .png, .webp) hoặc nhấn Ctrl + V để dán.'
             : 'Chưa có trang bài tập nào được chia sẻ tại bàn này.'}
         </div>
       )}

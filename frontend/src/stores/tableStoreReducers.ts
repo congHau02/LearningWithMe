@@ -68,7 +68,7 @@ export function reduceWorkspaceEvent(
         if (event.drawAction === 'ADD_STROKE' && event.stroke) {
           return prev.some((st) => st.id === event.stroke?.id) ? slide : { ...slide, strokes: [...prev, event.stroke] };
         }
-        if (event.drawAction === 'ERASE_STROKE' && event.erasedStrokeId) {
+        if ((event.drawAction === 'ERASE_STROKE' || event.drawAction === 'UNDO_STROKE') && event.erasedStrokeId) {
           return { ...slide, strokes: prev.filter((st) => st.id !== event.erasedStrokeId) };
         }
         return event.drawAction === 'CLEAR_SLIDE' ? { ...slide, strokes: [] } : slide;

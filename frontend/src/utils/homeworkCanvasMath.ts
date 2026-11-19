@@ -1,8 +1,18 @@
-export type BoardStrokeTool = 'PEN' | 'HIGHLIGHTER' | 'TEXT';
+export { renderBoardStrokes } from './homeworkStrokeRenderer';
+
+export type BoardStrokeTool =
+  | 'PEN'
+  | 'HIGHLIGHTER'
+  | 'TEXT'
+  | 'LATEX'
+  | 'LINE'
+  | 'ARROW'
+  | 'RECT'
+  | 'CIRCLE';
 
 export type BoardTool = BoardStrokeTool | 'ERASER' | 'LASER';
 
-export type BoardDrawAction = 'ADD_STROKE' | 'ERASE_STROKE' | 'CLEAR_SLIDE' | 'LASER_MOVE';
+export type BoardDrawAction = 'ADD_STROKE' | 'ERASE_STROKE' | 'UNDO_STROKE' | 'CLEAR_SLIDE' | 'LASER_MOVE';
 
 export interface NormalizedPoint {
   x: number;
@@ -27,26 +37,36 @@ export interface CanvasRectLike {
   height: number;
 }
 
-const REFERENCE_CANVAS_WIDTH = 800;
 export const MAX_POINTS_PER_STROKE = 500;
+export const MAX_TEXT_LENGTH = 300;
 
 export interface BoardStrokeValidationError {
   code: 'INVALID_TABLE_ACTION';
   message: string;
 }
 
+export function isGeometricTool(tool: BoardTool): tool is 'LINE' | 'ARROW' | 'RECT' | 'CIRCLE' {
+  return tool === 'LINE' || tool === 'ARROW' || tool === 'RECT' || tool === 'CIRCLE';
+}
+
 export function validateBoardStroke(stroke: BoardStroke): BoardStrokeValidationError | null {
   if (!stroke.points || stroke.points.length === 0) {
-    return {
-      code: 'INVALID_TABLE_ACTION',
-      message: 'Nét vẽ phải chứa ít nhất 1 điểm hợp lệ.',
-    };
+    return { code: 'INVALID_TABLE_ACTION', message: 'Nét vẽ phải chứa ít nhất 1 điểm hợp lệ.' };
   }
   if (stroke.points.length > MAX_POINTS_PER_STROKE) {
-    return {
-      code: 'INVALID_TABLE_ACTION',
-      message: `Nét vẽ vượt quá giới hạn tối đa ${MAX_POINTS_PER_STROKE} điểm.`,
-    };
+    return { code: 'INVALID_TABLE_ACTION', message: `Nét vẽ vượt quá giới hạn tối đa ${MAX_POINTS_PER_STROKE} điểm.` };
+  }
+  if (isGeometricTool(stroke.tool) && stroke.points.length !== 2) {
+    return { code: 'INVALID_TABLE_ACTION', message: 'Nét hình học phải có đúng 2 điểm đầu và cuối.' };
+  }
+  if (stroke.tool === 'TEXT' || stroke.tool === 'LATEX') {
+    const trimmed = stroke.text?.trim() ?? '';
+    if (!trimmed) {
+      return { code: 'INVALID_TABLE_ACTION', message: 'Nội dung văn bản hoặc công thức không được để trống.' };
+    }
+    if (trimmed.length > MAX_TEXT_LENGTH) {
+      return { code: 'INVALID_TABLE_ACTION', message: `Nội dung vượt quá ${MAX_TEXT_LENGTH} ký tự.` };
+    }
   }
   return null;
 }
@@ -80,33 +100,59 @@ export function denormalizeCanvasPoint(
   };
 }
 
-function distancePointToSegment(
-  p: NormalizedPoint,
-  a: NormalizedPoint,
-  b: NormalizedPoint,
-): number {
+function distancePointToSegment(p: NormalizedPoint, a: NormalizedPoint, b: NormalizedPoint): number {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) {
-    return Math.hypot(p.x - a.x, p.y - a.y);
-  }
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
   const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
-function isStrokeHit(
-  stroke: BoardStroke,
-  target: NormalizedPoint,
-  hitRadiusNorm: number,
-): boolean {
+function isRectHit(a: NormalizedPoint, b: NormalizedPoint, target: NormalizedPoint, r: number): boolean {
+  const minX = Math.min(a.x, b.x);
+  const maxX = Math.max(a.x, b.x);
+  const minY = Math.min(a.y, b.y);
+  const maxY = Math.max(a.y, b.y);
+  const tl = { x: minX, y: minY };
+  const tr = { x: maxX, y: minY };
+  const br = { x: maxX, y: maxY };
+  const bl = { x: minX, y: maxY };
+  return (
+    distancePointToSegment(target, tl, tr) <= r ||
+    distancePointToSegment(target, tr, br) <= r ||
+    distancePointToSegment(target, br, bl) <= r ||
+    distancePointToSegment(target, bl, tl) <= r
+  );
+}
+
+function isCircleHit(a: NormalizedPoint, b: NormalizedPoint, target: NormalizedPoint, r: number): boolean {
+  const cx = (a.x + b.x) / 2;
+  const cy = (a.y + b.y) / 2;
+  const rx = Math.abs(b.x - a.x) / 2;
+  const ry = Math.abs(b.y - a.y) / 2;
+  if (rx < 0.005 || ry < 0.005) return Math.hypot(target.x - cx, target.y - cy) <= r;
+  const dx = target.x - cx;
+  const dy = target.y - cy;
+  const normDist = Math.hypot(dx / rx, dy / ry);
+  const minRadius = Math.min(rx, ry);
+  return Math.abs(normDist - 1) * minRadius <= r;
+}
+
+function isStrokeHit(stroke: BoardStroke, target: NormalizedPoint, hitRadiusNorm: number): boolean {
   if (!stroke.points.length) return false;
-  if (stroke.tool === 'TEXT') {
+  if (stroke.tool === 'TEXT' || stroke.tool === 'LATEX') {
     const anchor = stroke.points[0];
-    const approxWidthNorm = Math.min(0.45, Math.max(0.06, (stroke.text?.length ?? 1) * 0.014));
+    const approxWidthNorm = Math.min(0.45, Math.max(0.08, (stroke.text?.length ?? 1) * 0.014));
     const withinX = target.x >= anchor.x - hitRadiusNorm && target.x <= anchor.x + approxWidthNorm + hitRadiusNorm;
-    const withinY = Math.abs(target.y - anchor.y) <= hitRadiusNorm * 1.4;
+    const withinY = Math.abs(target.y - anchor.y) <= hitRadiusNorm * 1.6;
     return withinX && withinY;
+  }
+  if (stroke.points.length >= 2 && stroke.tool === 'RECT') {
+    return isRectHit(stroke.points[0], stroke.points[1], target, hitRadiusNorm);
+  }
+  if (stroke.points.length >= 2 && stroke.tool === 'CIRCLE') {
+    return isCircleHit(stroke.points[0], stroke.points[1], target, hitRadiusNorm);
   }
   if (stroke.points.length === 1) {
     const p = stroke.points[0];
@@ -132,61 +178,4 @@ export function findHitStrokeId(
     }
   }
   return null;
-}
-
-/** Render all committed strokes (and an optional in-progress draft stroke) onto an HTML5 2D canvas. */
-export function renderBoardStrokes(
-  ctx: CanvasRenderingContext2D,
-  strokes: BoardStroke[],
-  width: number,
-  height: number,
-  draftStroke?: BoardStroke | null,
-): void {
-  ctx.clearRect(0, 0, width, height);
-  const scale = width > 0 ? width / REFERENCE_CANVAS_WIDTH : 1;
-  const list = draftStroke ? [...strokes, draftStroke] : strokes;
-
-  for (const stroke of list) {
-    if (!stroke.points.length) continue;
-    ctx.save();
-    ctx.strokeStyle = stroke.color;
-    ctx.fillStyle = stroke.color;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    if (stroke.tool === 'TEXT') {
-      const anchor = denormalizeCanvasPoint(stroke.points[0], width, height);
-      const fontSize = Math.max(12, Math.round(stroke.lineWidth * scale));
-      ctx.font = `600 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
-      ctx.textBaseline = 'middle';
-      if (stroke.text) {
-        ctx.fillText(stroke.text, anchor.px, anchor.py);
-      }
-      ctx.restore();
-      continue;
-    }
-
-    ctx.globalAlpha = stroke.tool === 'HIGHLIGHTER' ? 0.35 : 1;
-    const baseWidth = stroke.tool === 'HIGHLIGHTER' ? Math.max(stroke.lineWidth, 12) : stroke.lineWidth;
-    ctx.lineWidth = Math.max(1.5, baseWidth * scale);
-
-    if (stroke.points.length === 1) {
-      const pt = denormalizeCanvasPoint(stroke.points[0], width, height);
-      ctx.beginPath();
-      ctx.arc(pt.px, pt.py, ctx.lineWidth / 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      continue;
-    }
-
-    ctx.beginPath();
-    const first = denormalizeCanvasPoint(stroke.points[0], width, height);
-    ctx.moveTo(first.px, first.py);
-    for (let i = 1; i < stroke.points.length; i += 1) {
-      const pt = denormalizeCanvasPoint(stroke.points[i], width, height);
-      ctx.lineTo(pt.px, pt.py);
-    }
-    ctx.stroke();
-    ctx.restore();
-  }
 }

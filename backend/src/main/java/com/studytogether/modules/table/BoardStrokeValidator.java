@@ -33,10 +33,13 @@ final class BoardStrokeValidator {
                 throw TableExceptions.invalidAction("All stroke coordinates must be within [0.0, 1.0]");
             }
         }
+        if (isGeometricShape(input.tool()) && input.points().size() != 2) {
+            throw TableExceptions.invalidAction(input.tool().name() + " stroke requires exactly 2 normalized points");
+        }
         String text = null;
-        if (input.tool() == BoardStrokeTool.TEXT) {
+        if (input.tool() == BoardStrokeTool.TEXT || input.tool() == BoardStrokeTool.LATEX) {
             if (input.text() == null || input.text().isBlank()) {
-                throw TableExceptions.invalidAction("Text content is required for TEXT stroke");
+                throw TableExceptions.invalidAction("Text content is required for " + input.tool().name() + " stroke");
             }
             text = input.text().trim();
             if (text.length() > MAX_TEXT_LENGTH) {
@@ -56,6 +59,13 @@ final class BoardStrokeValidator {
                 userId,
                 now
         );
+    }
+
+    static boolean isGeometricShape(BoardStrokeTool tool) {
+        return tool == BoardStrokeTool.LINE
+                || tool == BoardStrokeTool.ARROW
+                || tool == BoardStrokeTool.RECT
+                || tool == BoardStrokeTool.CIRCLE;
     }
 
     static boolean isNormalized(double value) {
