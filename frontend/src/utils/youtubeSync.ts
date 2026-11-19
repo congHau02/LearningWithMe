@@ -1,6 +1,8 @@
 import type { VideoSyncState } from '../stores/useTableStore';
+import { YT_PLAYER_STATE } from './youtubeIframeApi';
 
 export const DRIFT_TOLERANCE_SECONDS = 2.0;
+export const HEARTBEAT_INTERVAL_MS = 3000;
 
 const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
 
@@ -66,5 +68,38 @@ export function evaluateVideoDrift(
     targetTime,
     driftSeconds,
     shouldSeek: driftSeconds >= DRIFT_TOLERANCE_SECONDS,
+  };
+}
+
+export function formatVideoTime(seconds: number): string {
+  const safe = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  const mins = Math.floor(safe / 60);
+  const secs = safe % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+export interface AuthoritativeSyncEvaluation extends DriftEvaluation {
+  shouldPlay: boolean;
+  shouldPause: boolean;
+  isInSync: boolean;
+}
+
+export function evaluateAuthoritativeSync(
+  localTime: number,
+  playerState: number | undefined,
+  videoState: VideoSyncState,
+  nowEpoch: number = Date.now(),
+): AuthoritativeSyncEvaluation {
+  const drift = evaluateVideoDrift(localTime, videoState, nowEpoch);
+  const isPlayingOrBuffering =
+    playerState === YT_PLAYER_STATE.PLAYING || playerState === YT_PLAYER_STATE.BUFFERING;
+  const shouldPlay =
+    videoState.isPlaying && !isPlayingOrBuffering && playerState !== YT_PLAYER_STATE.ENDED;
+  const shouldPause = !videoState.isPlaying && playerState === YT_PLAYER_STATE.PLAYING;
+  return {
+    ...drift,
+    shouldPlay,
+    shouldPause,
+    isInSync: !drift.shouldSeek && !shouldPlay && !shouldPause,
   };
 }

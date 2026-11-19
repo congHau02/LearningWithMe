@@ -1,3 +1,12 @@
+export const YT_PLAYER_STATE = {
+  UNSTARTED: -1,
+  ENDED: 0,
+  PLAYING: 1,
+  PAUSED: 2,
+  BUFFERING: 3,
+  CUED: 5,
+} as const;
+
 export interface YTPlayerInstance {
   destroy(): void;
   loadVideoById(videoId: string, startSeconds?: number): void;
@@ -6,6 +15,8 @@ export interface YTPlayerInstance {
   pauseVideo(): void;
   seekTo(seconds: number, allowSeekAhead: boolean): void;
   getCurrentTime(): number;
+  getDuration?(): number;
+  getPlayerState?(): number;
   getVolume(): number;
   setVolume(volume: number): void;
   mute(): void;

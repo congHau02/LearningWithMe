@@ -6,6 +6,8 @@ import { useTableStore } from '../../stores/useTableStore';
 import { extractYouTubeVideoId } from '../../utils/youtubeSync';
 import { PauseIcon, PlayIcon, VolumeIcon, VolumeOffIcon } from '../icons';
 import { youtubeUrlResolver, type YouTubeUrlFormValues } from './tableFormSchemas';
+import { VideoPlayerViewport } from './VideoPlayerViewport';
+import { VideoTimelineScrubber } from './VideoTimelineScrubber';
 
 interface SyncedYouTubePlayerProps {
   tableId: string;
@@ -18,21 +20,12 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<YouTubeUrlFormValues>({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<YouTubeUrlFormValues>({
     resolver: youtubeUrlResolver,
     defaultValues: { url: '' },
   });
 
-  const { containerRef, getCurrentPlaybackSeconds, applyLocalVolume, applyLocalMute } = useSyncedYouTubePlayer(
-    videoState,
-    volume,
-    isMuted,
-  );
+  const player = useSyncedYouTubePlayer(videoState, volume, isMuted);
 
   const onSubmitUrl = (values: YouTubeUrlFormValues) => {
     if (!canControl) return;
@@ -46,28 +39,34 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
     if (!canControl || !videoState.videoId) return;
     sendTableVideoSync(tableId, {
       action: videoState.isPlaying ? 'PAUSE' : 'PLAY',
-      currentTime: getCurrentPlaybackSeconds(),
+      currentTime: player.getCurrentPlaybackSeconds(),
     });
   };
 
-  const handleSeekOffset = (deltaSeconds: number) => {
+  const handleSeekTo = (nextTime: number) => {
     if (!canControl || !videoState.videoId) return;
-    const nextTime = Math.max(0, getCurrentPlaybackSeconds() + deltaSeconds);
-    sendTableVideoSync(tableId, { action: 'SEEK', currentTime: nextTime });
+    sendTableVideoSync(tableId, { action: 'SEEK', currentTime: Math.max(0, nextTime) });
   };
 
   const handleVolumeChange = (nextVolume: number) => {
     setVolume(nextVolume);
-    const shouldUnmute = nextVolume > 0 && isMuted;
+    const shouldUnmute = nextVolume > 0 && (isMuted || player.autoplayMutedFallback);
     if (shouldUnmute) setIsMuted(false);
-    applyLocalVolume(nextVolume, shouldUnmute);
+    player.applyLocalVolume(nextVolume, shouldUnmute);
   };
 
   const handleToggleMute = () => {
-    const nextMuted = !isMuted;
+    const nextMuted = !(isMuted || player.autoplayMutedFallback);
     setIsMuted(nextMuted);
-    applyLocalMute(nextMuted);
+    player.applyLocalMute(nextMuted);
   };
+
+  const handleUnmuteFallback = () => {
+    setIsMuted(false);
+    player.unmuteAutoplayFallback();
+  };
+
+  const effectiveMuted = isMuted || player.autoplayMutedFallback;
 
   return (
     <div data-testid="synced-youtube-player" className="flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-4">
@@ -91,13 +90,13 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
           disabled={!canControl}
           onKeyDown={(e) => e.stopPropagation()}
           placeholder={canControl ? 'Dán link YouTube hoặc mã video 11 ký tự...' : 'Chỉ Host/Co-Host được đổi video'}
-          className="min-w-0 flex-1 rounded-lg border border-border bg-[#0F1714] px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
         />
         <button
           type="submit"
           data-testid="yt-change-btn"
           disabled={!canControl}
-          className="rounded-lg border border-primary/40 bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] rounded-lg border border-primary/40 bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary transition-botanical hover:bg-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Đổi video
         </button>
@@ -108,24 +107,34 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
         </p>
       ) : null}
 
-      <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-[#0F1714]">
-        {videoState.videoId ? (
-          <div ref={containerRef} data-testid="yt-iframe-container" className="h-full w-full" />
-        ) : (
-          <div data-testid="yt-empty-state" className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
-            Chưa có video nào được phát. {canControl ? 'Dán link YouTube phía trên để học cùng bàn!' : 'Chờ Trưởng bàn phát video.'}
-          </div>
-        )}
-      </div>
+      <VideoPlayerViewport
+        containerRef={player.containerRef}
+        videoId={videoState.videoId}
+        isPlaying={videoState.isPlaying}
+        canControl={canControl}
+        autoplayMutedFallback={player.autoplayMutedFallback}
+        onTogglePlayPause={handleTogglePlayPause}
+        onUnmuteFallback={handleUnmuteFallback}
+      />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <VideoTimelineScrubber
+        playbackSeconds={player.playbackSeconds}
+        durationSeconds={player.durationSeconds}
+        canControl={canControl}
+        hasVideo={Boolean(videoState.videoId)}
+        syncStatus={player.syncStatus}
+        onSeekTo={handleSeekTo}
+        onForceResync={player.forceResync}
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <button
             type="button"
             data-testid="yt-play-pause-btn"
             disabled={!canControl || !videoState.videoId}
             onClick={handleTogglePlayPause}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-[#16221E] px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-[#243630] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-botanical hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             {videoState.isPlaying ? <PauseIcon className="h-3.5 w-3.5" aria-hidden="true" /> : <PlayIcon className="h-3.5 w-3.5" aria-hidden="true" />}
             <span>{videoState.isPlaying ? 'Tạm dừng' : 'Phát'}</span>
@@ -134,8 +143,8 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
             type="button"
             data-testid="yt-seek-back-btn"
             disabled={!canControl || !videoState.videoId}
-            onClick={() => handleSeekOffset(-10)}
-            className="rounded-lg border border-border bg-[#16221E] px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-[#243630] disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => handleSeekTo(player.getCurrentPlaybackSeconds() - 10)}
+            className="min-h-[44px] min-w-[44px] rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-botanical hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             -10s
           </button>
@@ -143,8 +152,8 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
             type="button"
             data-testid="yt-seek-forward-btn"
             disabled={!canControl || !videoState.videoId}
-            onClick={() => handleSeekOffset(10)}
-            className="rounded-lg border border-border bg-[#16221E] px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-[#243630] disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => handleSeekTo(player.getCurrentPlaybackSeconds() + 10)}
+            className="min-h-[44px] min-w-[44px] rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-botanical hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             +10s
           </button>
@@ -155,12 +164,12 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
             type="button"
             data-testid="yt-mute-btn"
             onClick={handleToggleMute}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-[#16221E] px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:bg-[#243630]"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-botanical hover:bg-accent"
           >
-            {isMuted ? <VolumeOffIcon className="h-3.5 w-3.5" aria-hidden="true" /> : <VolumeIcon className="h-3.5 w-3.5" aria-hidden="true" />}
-            <span>{isMuted ? 'Bật tiếng' : 'Tắt tiếng'}</span>
+            {effectiveMuted ? <VolumeOffIcon className="h-3.5 w-3.5" aria-hidden="true" /> : <VolumeIcon className="h-3.5 w-3.5" aria-hidden="true" />}
+            <span>{effectiveMuted ? 'Bật tiếng' : 'Tắt tiếng'}</span>
           </button>
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <label className="flex min-h-[44px] items-center gap-1.5 text-xs text-muted-foreground">
             <span>Âm lượng</span>
             <input
               type="range"
@@ -169,7 +178,7 @@ export function SyncedYouTubePlayer({ tableId, canControl, dragHandle }: SyncedY
               max={100}
               value={volume}
               onChange={(e) => handleVolumeChange(Number(e.target.value))}
-              className="w-20 accent-primary"
+              className="min-h-[44px] w-20 accent-primary"
             />
           </label>
         </div>
