@@ -1,4 +1,4 @@
-# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (Phases 1 – 9)
+# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (Phases 1 – 10)
 
 ## Problem Statement
 
@@ -6,7 +6,7 @@ Người học trực tuyến (học sinh, sinh viên, người tự học) thư
 
 ## Solution
 
-Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **9 Phase (Vertical Slices)**:
+Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **10 Phase (Vertical Slices)** và hệ ngôn ngữ thiết kế **Botanical Night Studio (`#57` / `ADR-0010`)**:
 
 - **Phase 1 — Foundation, Docker Infra & Hybrid Auth**: Thiết lập nền tảng cơ sở dữ liệu bền vững (MySQL 8.0) và bộ nhớ trạng thái thời gian thực (Redis 7.x), cho phép người học bước ngay vào **Room** mặc định với tư cách **Guest** không cần đăng ký, và hỗ trợ **Account Upgrade** không gián đoạn lên **Registered User** để bảo toàn toàn bộ thời gian học.
 - **Phase 2 — 2D Classroom Engine & Character State Machine**: Xây dựng bản đồ **Room** 2D tương tác với tìm đường tự động $A^*$, máy trạng thái nhân vật 3 trạng thái bất biến (`FREE_ROAM` $\leftrightarrow$ `WALKING_TO_SEAT` $\leftrightarrow$ `SEATED`), quy tắc ưu tiên bàn phím tức thời và khóa di chuyển khi đang ngồi học.
@@ -17,6 +17,8 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 - **Phase 7 — Production Readiness & Zero-Card Cloud Free Tier Operations (ADR-0007)**: Đưa toàn bộ hệ thống lên môi trường Production HTTPS/WSS công khai với chi phí bằng 0 và không cần thẻ tín dụng (**Vercel Hobby** + **Render Free Docker `linux/amd64`** + **Redis Cloud Free** + **Managed MySQL 8.0** + **Managed TURN Free Tier**), kèm cổng kiểm định CI/CD GitHub Actions (kiểm tra giới hạn dòng `AGENTS.md`, độ phủ JaCoCo $\ge 70\%$), khôi phục **Grace Period** sau khi khởi động lại máy chủ, kết nối lại STOMP với backoff + jitter, sao lưu đêm tự động 7 ngày và kiểm thử tải `k6` 10Hz.
 - **Phase 8 — Realtime Hardening, Study Café & Focus Motivation (ADR-0008 & ADR-0009)**: Cô lập kênh STOMP theo `(roomId, tableId)`, bảo mật tín hiệu thoại riêng tư qua `/user/queue/voice`, khóa trạng thái bàn nguyên tử, xác thực tải ảnh bài tập, nâng cấp không gian **Study Café** với **Ambient NPCs**, **Focus Cycle** đồng bộ, check-off **Study Goal**, **Study Streak**, **Ambient Soundscape** và thu gọn **Table Workspace**.
 - **Phase 9 — UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening**: Kéo thả/hoán đổi bố cục Video & Bảng bài tập trong **Table Workspace** không làm reload YouTube iframe, chỉ báo Mic không giật (`CLS = 0`) kèm nút trạng thái cố định ở Header bàn, tinh gọn thanh `TopBar` về 1 hàng gọn gàng, thông báo đợi **Render** Cold Start kèm tự động ping lại `/api/v1/health`, nút chụp ảnh bài tập trực tiếp bằng camera điện thoại, nhân viên `Phục vụ An` tìm đường $A^*$ mang đồ uống tới chỗ người học (`Drink Delivery`), và sửa lỗi CI/CD + `backup-nightly.yml` + test phân mảnh **Room Shard**.
+- **UI Refactor (`#57` / `ADR-0010`) — Botanical Night Studio ("Rừng Đêm & Tập trung Sâu")**: Chuẩn hóa toàn bộ giao diện React HUD, các hộp thoại Modal, **Table Workspace** và ánh sáng đêm **Study Café** trên Phaser 3 qua một **Semantic Token Seam** dùng chung (`#0F1714` Deep Pine Night, `#16221E` Slate Leaf, `#243630` Luminous Border, `#E6ECE8` Morning Mist, `#8FA399` Muted Sage, `#E5A93C` Warm Amber với chữ `#0F1714` tương phản `8.74:1`, `#34D399` Bioluminescent Emerald), kiến trúc Double-Bezel + Static Glassmorphism, bộ `StudioIcons` SVG nét `1.5px` và cấm tuyệt đối lớp màu `slate-*`/`sky-*` thô trong UI chrome.
+- **Phase 10 — Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (ADR-0011 & ADR-0012, Bám sát Botanical Night Studio `#57`)**: Thanh toán toàn bộ nợ kỹ thuật Single-Node (Lua script nguyên tử cho toàn bộ Rate Limiters, hoàn tác nét vẽ theo người vẽ `Per-Author Undo/Redo`, chuẩn hóa MIME ảnh bài tập), khóa đồng bộ video YouTube tuyệt đối cho cả bàn qua `Iframe Click Shield` + `onStateChange` Guard + Heartbeat `3 giây` + thanh tua trực quan, bổ sung bộ công cụ Giải Toán chuyên sâu (Trang nháp Toán dựng sẵn, công cụ hình học & $\LaTeX$ **Stroke**, $\LaTeX$ trong **Table Chat** / **Room Chat**, **Math Scratchpad** đồng bộ và **Function Grapher** vẽ đồ thị $f(x)$ + máy tính giải tích/đại số), đại tu đồ họa 2D **Study Café** (nhân vật `32x48px` có bóng đổ, nội thất pixel-art có `Y-Sorting`, hiệu ứng mưa ngoài cửa sổ đồng bộ `BOTANICAL_2D_SCENE`), và nâng cấp **Ambient Soundscape** 5 kênh đa tầng (kèm giai điệu Lofi Piano) + **Study SFX**.
 
 ## User Stories
 
@@ -98,6 +100,17 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 59. As a learner ordering a virtual drink in the **Study Café**, I want the server **Ambient NPC** (`Phục vụ An`) to walk via $A^*$ pathfinding to the counter and then to my current location to deliver my drink bubble before equipping the drink badge, so that ordering feels alive and grounded in the 2D space.
 60. As the operator, I want valid GitHub Actions workflows (`ci.yml`, `cd.yml`, `backup-nightly.yml`) without illegal `secrets.*` expressions in `if:` conditionals, graceful handling when cloud backup secrets are unconfigured, TiDB/Redis TLS backup compatibility, and a deterministic **Room Shard** concurrency test, so that CI/CD and nightly backups stay trustworthy.
 
+### Phase 10: Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio
+61. As the operator, I want all sliding-window rate limiters (auth, chat, table mutations) executed via an atomic Redis Lua script and homework image serving matched to actual magic-byte MIME types, so that single-node technical debt and burst race conditions are eliminated.
+62. As a **`SEATED`** **Table Member**, I want direct clicks on the YouTube iframe surface to be shielded from accidentally pausing my local video while a 3-second heartbeat and `onStateChange` guard automatically resync my player to the **Table**'s playback state (with muted-autoplay fallback if unmuted autoplay is blocked), so that everyone at the **Table** always watches the exact same frame together.
+63. As a **Table Host** or **Co-Host**, I want clicking the video surface or scrubbing a live progress timeline (`mm:ss / mm:ss`) to broadcast `video.sync` immediately to the entire **Table**, so that controlling lectures feels natural and never desynchronizes my tablemates.
+64. As a **Table Host** or **Co-Host** solving math problems, I want to generate instant blank math **Homework Slides** (Square Grid, Cartesian $Oxy$ Coordinate Plane, or Plain Board) in one click without uploading an external file, so that we can start sketching geometry or algebra immediately.
+65. As a **Table Host** or **Co-Host**, I want to draw geometric **Strokes** (`LINE`, `ARROW` vector, `RECT`, `CIRCLE`), place formatted $\LaTeX$ math annotations with a quick math-symbol palette, and perform **Per-Author Undo/Redo** (`Ctrl+Z` / `Ctrl+Y`) that only reverts my own strokes, so that collaborative problem-solving is fast, accurate, and conflict-free.
+66. As a **`SEATED`** learner, I want to write and view synchronized step-by-step algebraic derivations in a **Math Scratchpad** tab and render inline/block $\LaTeX$ formulas (`$...$`, `$$...$$`) inside **Table Chat** and **Room Chat**, so that we can discuss equations clearly in text as well as on the board.
+67. As a **`SEATED`** learner, I want an interactive **Function Grapher** and scientific solver tab to plot up to 3 functions $y = f(x)$ on $Oxy$ (highlighting roots, extrema, and intersections), compute derivatives, definite integrals $\int_a^b f(x)dx$, and polynomial/linear systems, and export the plotted graph directly as a **Homework Slide**, so that calculus and algebra exercises can be analyzed and annotated together.
+68. As a learner in the **Study Café**, I want rich 3/4 pixel-art tiles and furniture, taller `32x48px` character and **Ambient NPC** sprites with soft floor shadows, natural `Y-Sorting` depth behind tables and chairs, subtle wooden table number plaques, and live window rain particles synced with the rain sound channel, so that the 2D space feels warm, deep, and visually crafted.
+69. As a learner, I want a 5-channel multi-layered procedural **Ambient Soundscape** (Rain with droplets & distant thunder, Café with porcelain clinks, Fireplace with wood crackles, Warm Pink/Brown Noise, and a 65 BPM Lofi Electric Piano chord progression) plus an independently toggleable **Study SFX** channel (Focus Cycle chime, Drink Delivery cup clink, Study Goal completion sound), so that background audio and study feedback feel organic and immersive.
+
 ## Implementation Decisions
 
 ### 1. Phased Vertical-Slice Delivery Architecture
@@ -177,6 +190,25 @@ type CharacterState = 'FREE_ROAM' | 'WALKING_TO_SEAT' | 'SEATED';
 - **Study Café Drink Delivery (`ADR-0009`)**: Selecting a drink routes `Phục vụ An` (`npc_server`) via client-side $A^*$ pathfinding (`GridPathfinder`) through the service counter to an adjacent walkable tile near the learner (`FREE_ROAM` or `SEATED`), plays a delivery **Chat Bubble**, and equips the drink badge upon arrival (with timeout fallback).
 - **CI/CD & Backup Hardening**: Removes illegal `secrets.*` conditionals from `if:` blocks in `.github/workflows/cd.yml` and `.github/workflows/backup-nightly.yml`, skips nightly cloud dumps with `::warning::` when DB/Redis secrets are unconfigured while verifying TiDB Cloud / Redis Labs TLS support, and fixes the **Room Shard** concurrent spillover integration test flake.
 
+### 10. Botanical Night Studio Design System (`#57` / `ADR-0010`) & Phase 10 Upgrades (`ADR-0011` & `ADR-0012`)
+- **Botanical Night Studio Semantic Token Seam (`Ticket #57` & `ADR-0010`)**:
+  - Centralizes all React HUD, Modal, and **Table Workspace** colors/surfaces in `frontend/src/index.css` (`@theme`) and mirrors them in `frontend/src/game/botanicalPalette.ts` (`BOTANICAL_PALETTE_HEX`, `BOTANICAL_PALETTE_INT`, `BOTANICAL_2D_SCENE`) for Phaser 3:
+    - **Deep Pine Night (`#0F1714`)**: Base background and 2D canvas background with subtle emerald/amber ambient organic radial glow.
+    - **Slate Leaf (`#16221E`) & Luminous Hairline Border (`#243630`)**: Cards, toolbars, **Table Workspace** panels, **Chat Bubble** fills, and **Table SOS Banner** surfaces.
+    - **Morning Mist (`#E6ECE8`) & Muted Sage (`#8FA399`)**: Primary headings/body and secondary labels in `Plus Jakarta Sans` (`--font-sans`) and `JetBrains Mono` (`--font-mono`).
+    - **Warm Amber (`#E5A93C`) + Deep Forest Ink (`#0F1714`)**: Solid primary CTAs (`.botanical-cta`), active tabs/pills, and badges MUST pair `#E5A93C` with `#0F1714` dark ink (`8.74:1` WCAG AAA contrast; white text is forbidden).
+    - **Bioluminescent Emerald (`#34D399`)**: Focus rings (`:focus-visible`), live voice/telemetry indicators, **Focus Cycle** progress, empty seat highlights, and $A^*$ path markers.
+  - Enforces Two-Tier surfaces (`.botanical-bezel-outer` + `.botanical-bezel-inner` Double-Bezel for focal frames/modals; `.botanical-glass` `backdrop-filter: blur(12px)` strictly on fixed/sticky overlay shells, never on scrolling lists), uniform `1.5px`-stroke inline SVG `StudioIcons` (no decorative chrome emojis), and zero raw `slate-*` / `sky-*` utility classes in UI chrome.
+- **Single-Node Technical Debt Paydown**: Consolidates sliding-window rate limiting across auth, chat, and table mutations into a single atomic Redis Lua script (`sliding_window_rate_limit.lua`), detects and serves accurate MIME types from magic bytes for ephemeral homework images, and supports per-author stroke undo (`UNDO_STROKE`) on **Homework Slides**.
+- **Strict Authoritative Video Sync (ADR-0011)**: Overlays an interactive `Iframe Click Shield` over the YouTube iframe (blocking local pause clicks for **Table Members** while routing **Table Host** / **Co-Host** clicks and live timeline scrubber seeks directly to `video.sync`), hooks YouTube `onStateChange` plus a 3-second drift/playstate heartbeat to keep all seated viewers locked within $\Delta t < 2.0\text{s}$, and provides automatic muted-autoplay fallback with a 1-click `.botanical-cta` (`#E5A93C` + `#0F1714` ink) unmute banner. All scrubber, badge, and transport controls strictly use **Botanical Night Studio** tokens (`#16221E`, `#243630`, `#E5A93C`, `#34D399`) and `1.5px`-stroke SVG icons.
+- **Math & Problem-Solving Workspace Suite (ADR-0012, Styled in Botanical Night Studio)**:
+  - *Instant Math Slide Templates*: Generates `1280x720` `.webp` **Homework Slides** client-side for Square Grid, Cartesian $Oxy$ axes, and Plain Board templates via the existing ephemeral upload endpoint, styled to harmonize with the `#0F1714` / `#16221E` **Table Workspace** while keeping semantic annotation pen swatches maximally legible.
+  - *Geometric & $\LaTeX$ Strokes + Per-Author Undo/Redo*: Extends `BoardStroke` with `LINE`, `ARROW`, `RECT`, `CIRCLE`, and `LATEX` tools (normalized `[0.0, 1.0]` coordinates, quick math symbol palette in `#16221E` / `#243630` / `#E5A93C`, and `authorUserId`-scoped undo/redo stacks).
+  - *$\LaTeX$ Chat & Synchronized Math Scratchpad*: Renders `$...$` and `$$...$$` math tokens in **Table Chat**, **Room Chat**, and a synchronized **Math Scratchpad** tab stored in `RedisTableState` and broadcast over the table workspace channel.
+  - *Interactive Function Grapher & Scientific Solver*: Client-side multi-function $Oxy$ plotter ($f(x), g(x), h(x)$ rendered on a `#0F1714` Deep Pine Night coordinate canvas with `#243630` gridlines, `#8FA399` `JetBrains Mono` axis labels, `#E5A93C` / `#34D399` / `#E6ECE8` curves, root/extremum/intersection inspection, and 1-click export to **Homework Slide**) paired with numerical derivative, Simpson definite integral $\int_a^b f(x)dx$, quadratic/cubic root, and $2\times2 / 3\times3$ linear system solvers.
+- **2D Study Café Visual Overhaul (Coherent with `BOTANICAL_2D_SCENE` — Ticket `#57`)**: Upgrades classroom tileset and character/NPC sprites to `32x48px` 3/4 pixel-art proportions with elliptical drop shadows, direction-aware pixel-art accessories (`SKIN`, `HAT`, `DESK_PET`), dynamic `Y-Sorting` depth ordering across tables/seats/actors, subtle wooden table badges (`#16221Ecc` / `#E6ECE8`), and nocturnal Warm Amber (`0xe5a93c`) lamp pools + window rain particle effects.
+- **Multi-Layer Procedural Soundscape & Study SFX (ADR-0012)**: Upgrades `AmbientSoundscapeEngine` to multi-layered Web Audio synthesis with random droplet/crackle/clink envelopes, adds a 5th `lofi` channel (65 BPM Electric Piano chord progression), and introduces a toggleable `StudySfxEngine` for **Focus Cycle**, **Study Goal**, seat, and **Drink Delivery** audio cues inside the `.botanical-glass` mixer popover.
+
 ## Testing Decisions
 
 ### Philosophy: External Behavior at the Highest Seams
@@ -213,7 +245,7 @@ Tests verify observable behavior across two primary seams without coupling to in
 
 ## Further Notes
 
-- Related Domain Documentation: `GLOSSARY.md` and `docs/adr/0001` through `docs/adr/0009`.
+- Related Domain Documentation: `GLOSSARY.md` and `docs/adr/0001` through `docs/adr/0012`.
 - Delivery Order:
   - **Phase 1**: Foundation, Docker Infra & Hybrid Auth
   - **Phase 2**: 2D Classroom Engine & Character State Machine (Local)
@@ -224,3 +256,4 @@ Tests verify observable behavior across two primary seams without coupling to in
   - **Phase 7**: Production Readiness — Free Infra Deploy, CI/CD, Restart Resilience & Ops (depends on Phases 1–6)
   - **Phase 8**: Realtime Hardening, Study Café & Focus Motivation (depends on Phases 1–6)
   - **Phase 9**: UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening (depends on Phases 7–8)
+  - **Phase 10**: Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (depends on Phases 8–9)

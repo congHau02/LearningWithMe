@@ -2,8 +2,8 @@
 
 - **Tên dự án:** Cùng Nhau Học Bài (Study Together 2D Web Game)
 - **Slogan:** *"Cùng nhau học bài - Không còn cô đơn trên hành trình chinh phục tri thức"*
-- **Phiên bản tài liệu:** 2.1.0 (Đồng bộ thực tế triển khai Phase 1 – Phase 7)
-- **Kiến trúc cốt lõi:** Hybrid 2D Canvas (Phaser 3) + Reactive HUD (ReactJS 18 + TailwindCSS v4) + Stateful Realtime Backend (Spring Boot 3.4, STOMP WebSocket, Redis 7, MySQL 8.0)
+- **Phiên bản tài liệu:** 2.3.0 (Đồng bộ thực tế triển khai Phase 1 – Phase 9, Giao diện Botanical Night Studio `#57` & Đặc tả Phase 10)
+- **Kiến trúc cốt lõi:** Hybrid 2D Canvas (Phaser 3) + Reactive HUD (ReactJS 18 + TailwindCSS v4 — Chủ đề **Botanical Night Studio**) + Stateful Realtime Backend (Spring Boot 3.4, STOMP WebSocket, Redis 7, MySQL 8.0)
 - **Tài liệu liên kết:** [GLOSSARY.md](GLOSSARY.md) | [docs/SPEC.md](docs/SPEC.md) | [docs/adr/](docs/adr/) | [AGENTS.md](AGENTS.md)
 
 ---
@@ -19,6 +19,25 @@ Dự án sử dụng góc nhìn **3/4 Top-Down 2D** (tương tự *Gather.town*,
 2. **Tối ưu thao tác Chạm & Tìm đường ($A^*$ Pathfinding):** Bản đồ chia theo lưới ô vuông chuẩn ($32 \times 32\text{px}$), giúp việc chạm màn hình trên điện thoại chính xác tuyệt đối và thuật toán tìm đường $A^*$ (`EasyStar.js`) hoạt động nhẹ nhàng.
 3. **Nguồn sự thật duy nhất cho Sơ đồ Phòng ([ADR-0003](docs/adr/0003-static-shared-map-topology.md)):** File cấu hình bản đồ tĩnh `shared/maps/main-library.json` được dùng chung cho cả Phaser 3 ở Frontend và `RoomTopologyService` ở Backend để xác thực tọa độ đi lại và khóa ghế mà không cần truy vấn MySQL.
 4. **Hiệu năng cao trên trình duyệt di động:** Duy trì mức $60\text{ FPS}$ ổn định ngay cả khi mở kèm trình phát YouTube, bảng vẽ HTML5 Canvas 2D và luồng âm thanh WebRTC.
+
+### 1.3. Ngôn ngữ Thiết kế Giao diện: Botanical Night Studio ("Rừng Đêm & Tập trung Sâu" — Ticket `#57` & [ADR-0010](docs/adr/0010-botanical-night-studio-token-seam.md))
+Toàn bộ lớp giao diện React HUD, các hộp thoại Modal, **Table Workspace** và ánh sáng không gian 2D **Study Café** trong Phaser 3 tuân thủ thống nhất hệ quy chuẩn thẩm mỹ **Botanical Night Studio ("Rừng Đêm & Tập trung Sâu")** qua một **Semantic Token Seam** duy nhất (`@theme` trong `frontend/src/index.css` và `BOTANICAL_2D_SCENE` trong `frontend/src/game/botanicalPalette.ts`):
+
+1. **Bảng màu Chuẩn hóa (Semantic Color Palette & Contrast Rules):**
+   - **Deep Pine Night (`#0F1714` / `--color-botanical-pine`):** Nền chính của ứng dụng và bao cảnh 2D Canvas (`BOTANICAL_2D_SCENE.canvasBackground`), kết hợp quầng sáng hữu cơ dịu nhẹ (`radial-gradient` emerald `7%` và warm amber `5%`) giúp mắt không bị mỏi trong các phiên học đêm kéo dài.
+   - **Slate Leaf (`#16221E` / `--color-botanical-leaf`):** Bề mặt thẻ, thanh công cụ, khung **Table Workspace**, ô cửa sổ quán, nền **Chat Bubble** và **SOS Banner**.
+   - **Luminous Hairline Border (`#243630` / `--color-botanical-border`):** Đường viền mảnh `1px` phân tách bề mặt thẻ, khung kính và đường lưới đồ thị.
+   - **Morning Mist (`#E6ECE8` / `--color-botanical-mist`) & Muted Sage (`#8FA399` / `--color-botanical-sage`):** Chữ tiêu đề/nội dung chính độ tương phản cao (`#E6ECE8`) và nhãn phụ/siêu dữ liệu (`#8FA399`).
+   - **Warm Amber (`#E5A93C` / `--color-botanical-amber`) + Deep Forest Ink (`#0F1714` / `--color-botanical-amber-ink`):** Màu nhấn cho nút hành động chính (`.botanical-cta`), tab đang chọn, huy hiệu **Table Host**, ánh đèn bàn học và quầy pha chế 2D. **Quy tắc tương phản bắt buộc:** Mọi nút CTA đặc và huy hiệu nền `#E5A93C` bắt buộc dùng chữ/biểu tượng màu mực tối `#0F1714` để đạt tỷ lệ tương phản **`8.74:1` (WCAG AAA)**; tuyệt đối không dùng chữ trắng trên nền `#E5A93C` (`~1.96:1`).
+   - **Bioluminescent Emerald (`#34D399` / `--color-botanical-emerald`):** Vòng focus bàn phím (`:focus-visible`), chỉ báo đang phát giọng nói WebRTC, vòng đếm **Focus Cycle**, chỉ số **Study Streak**, ô ghế trống và đường dẫn tìm đường $A^*$ trên bản đồ 2D.
+2. **Kiến trúc Bề mặt 2 Tầng (Double-Bezel & Static Glassmorphism Guardrails):**
+   - **Double-Bezel (`.botanical-bezel-outer` + `.botanical-bezel-inner`):** Áp dụng cấu trúc vỏ ngoài (`#121c18` + viền `#243630`) lồng lõi trong (`#16221E` + bóng đổ sâu) và nút CTA dạng *Button-in-Button* cho các khung tiêu điểm (Onboarding/Upgrade Modal, khung Viewport phòng học 2D, bảng Thống kê/Tùy biến nhân vật/Menu đồ uống, khung **Room Chat** nổi).
+   - **Static Glassmorphism (`.botanical-glass`):** Hiệu ứng kính mờ (`rgba(22, 34, 30, 0.85)` + `backdrop-filter: blur(12px)`) chỉ được phép đặt trên lớp vỏ cố định/nổi (`TopBar`, header thanh công cụ, popover); **không bao giờ** đặt `backdrop-blur` lên vùng danh sách cuộn (tin nhắn chat, bảng xếp hạng) để giữ tốc độ dựng hình $60\text{ FPS}$.
+   - **Chuyển động & Tiếp cận (`Motion & Accessibility`):** Toàn bộ chuyển tiếp dùng đường cong `--ease-botanical: cubic-bezier(0.32, 0.72, 0, 1)`, tự động tắt khi trình duyệt bật `prefers-reduced-motion: reduce`, đảm bảo `CLS = 0` khi bật/tắt mic hoặc đổi trạng thái và kích thước vùng chạm $\ge 44 \times 44\text{px}$ trên di động.
+3. **Typography, Bộ Icon SVG `1.5px` & Cấm Lớp Màu Thô (`No Raw Chrome Classes`):**
+   - Sử dụng font hiển thị tiếng Việt sắc nét **`Plus Jakarta Sans`** (`--font-sans`) cho toàn bộ giao diện và **`JetBrains Mono`** (`--font-mono`) cho đồng hồ đếm giờ, tọa độ, biểu thức toán học và thông số kỹ thuật.
+   - Thay thế toàn bộ emoji trang trí trên nút bấm/thanh công cụ bằng **Studio Icon Kit** (inline SVG nét mảnh `1.5px` đồng nhất, gắn `aria-hidden="true"` kèm nhãn trợ năng); chỉ giữ lại emoji cho nội dung xã hội (thả cảm xúc nhanh trong **Room Chat** và minh họa món nước trong menu **Drink Delivery**).
+   - **Cấm tuyệt đối** việc sử dụng các lớp màu Tailwind thô (`slate-*`, `sky-*`) trong UI chrome; chỉ các màu mang ngữ nghĩa nghiệp vụ (bảng màu mực vẽ bài tập trên **Homework Slide**, màu trang phục nhân vật, biểu tượng thương hiệu Google và cảnh báo lỗi/xóa) mới được giữ riêng.
 
 ---
 
@@ -145,26 +164,31 @@ Hệ thống ưu tiên trải nghiệm vào phòng học ngay lập tức (**Zer
 
 ### 3.4. Công cụ Học tập Đồng bộ, Gamification & WebRTC Voice Chat
 
-#### A. Cùng Xem Video (`Synced YouTube Player`)
+#### A. Cùng Xem Video Khóa Đồng Bộ Toàn Bàn (`Synced YouTube Player` - [ADR-0011](docs/adr/0011-authoritative-youtube-iframe-shield-and-heartbeat.md))
 - Đồng bộ siêu dữ liệu `{ videoId, isPlaying, currentTime, lastUpdatedEpoch }` qua STOMP WebSocket.
-- **Chống giật hình (`Drift Tolerance` $\Delta t = 2.0\text{s}$):** Tính thời gian đích thực tế:
+- **Chống giật hình (`Drift Tolerance` $\Delta t = 2.0\text{s}$) & Chu kỳ Heartbeat `3 giây`:** Tính thời gian đích thực tế:
   $$T_{\text{current}} = T_{\text{saved}} + \frac{\text{Epoch}_{\text{now}} - \text{Epoch}_{\text{updated}}}{1000}$$
-  Chỉ gọi `player.seekTo(T_current)` khi độ lệch $\ge 2.0\text{ giây}$. Bộ đếm thời gian phiên học (`useStudyTimer`) cũng tính theo mốc thời gian hệ thống (`Date.now()`) để không bị trình duyệt làm chậm khi ẩn tab.
+  Chỉ gọi `player.seekTo(T_current)` khi độ lệch $\ge 2.0\text{ giây}$. Lắng nghe `onStateChange` kết hợp vòng lặp Heartbeat mỗi `3 giây` để tự động kéo mọi thành viên về đúng trạng thái `isPlaying` và mốc thời gian của bàn; nếu trình duyệt chặn Autoplay có tiếng khi mới vào bàn, tự động chuyển sang `Muted Autoplay` kèm nút nổi 1 chạm bật tiếng (màu Warm Amber `#E5A93C` mực `#0F1714`).
+- **Lớp chắn Tương tác (`Iframe Click Shield`) & Thanh Tua Thời gian Trực quan:** Phủ lớp chắn DOM trên mặt `<iframe>` YouTube để ngăn `MEMBER` vô tình bấm dừng video cục bộ (chỉ giữ điều khiển âm lượng/tắt tiếng riêng), trong khi click của `TABLE_HOST` / `CO_HOST` hoặc thao tác kéo thanh tua thời gian (`mm:ss / mm:ss`) phát lệnh `video.sync` ngay lập tức cho cả bàn. Bộ đếm thời gian phiên học (`useStudyTimer`) tính theo `Date.now()` để không bị trình duyệt làm chậm khi ẩn tab.
 
-#### B. Bảng chiếu Bài tập Tạm thời (`Ephemeral Homework Board` - [ADR-0002](docs/adr/0002-native-canvas-normalized-homework-board.md))
-- **Tải ảnh & Dán nhanh (`Ctrl + V`):** Tự động nén ảnh sang định dạng `.webp` ở phía Client trước khi gửi lên `POST /api/v1/tables/{tableId}/homework-image`. Backend kiểm tra kích thước ($\le 5\text{MB}$), giới hạn tối đa **5 trang (`Homework Slide`) mỗi bàn**, và kiểm tra **magic bytes** thực tế (`JPEG`, `PNG`, `WEBP`).
-- **Chú thích Thời gian thực & Tọa độ Chuẩn hóa `[0.0, 1.0]`:** Hỗ trợ **Bút viết (`PEN`)**, **Bút dạ quang (`HIGHLIGHTER`)**, **Chèn chữ (`TEXT`)**, **Tẩy từng nét (`ERASER`)**, **Xóa toàn trang (`CLEAR`)** và **Con trỏ giảng bài (`LASER` throttle 10Hz, không lưu vào Redis)**.
+#### B. Bảng chiếu Bài tập Tạm thời & Bộ Công cụ Giải Toán (`Ephemeral Homework Board & Math Suite` - [ADR-0002](docs/adr/0002-native-canvas-normalized-homework-board.md), [ADR-0012](docs/adr/0012-ephemeral-math-workspace-and-multilayer-procedural-audio.md))
+- **Tải ảnh, Dán nhanh (`Ctrl + V`) & Trang nháp Toán dựng sẵn (`Instant Math Slide Templates`):** Tự động nén ảnh hoặc dựng mặt phẳng nháp toán `1280x720` (**Lưới ô vuông**, **Hệ trục tọa độ $Oxy$**, **Bảng trơn**) sang định dạng `.webp` ở phía Client trước khi gửi lên `POST /api/v1/tables/{tableId}/homework-image`. Backend kiểm tra kích thước ($\le 5\text{MB}$), giới hạn tối đa **5 trang (`Homework Slide`) mỗi bàn**, và kiểm tra **magic bytes** thực tế (`JPEG`, `PNG`, `WEBP`).
+- **Chú thích Hình học, Công thức $\LaTeX$ & Hoàn tác theo Người vẽ (`Per-Author Undo/Redo`):** Hỗ trợ tọa độ chuẩn hóa `[0.0, 1.0]` cho **Bút viết (`PEN`)**, **Bút dạ quang (`HIGHLIGHTER`)**, **Đoạn thẳng (`LINE`)**, **Mũi tên vector (`ARROW`)**, **Hình chữ nhật (`RECT`)**, **Đường tròn (`CIRCLE`)**, **Chèn chữ (`TEXT`)**, **Công thức toán (`LATEX` qua KaTeX kèm bảng ký hiệu nhanh)**, **Tẩy từng nét (`ERASER`)**, **Hoàn tác / Làm lại theo `authorUserId` (`UNDO_STROKE` / `Ctrl+Z` / `Ctrl+Y`)**, **Xóa toàn trang (`CLEAR`)** và **Con trỏ giảng bài (`LASER` throttle 10Hz, không lưu vào Redis)**.
+- **Sổ nháp Bước giải (`Math Scratchpad`) & Bộ Vẽ Đồ thị / Máy tính Khoa học (`Function Grapher`):**
+  - *`Math Scratchpad`:* Khung soạn thảo và xem trước trực tiếp các bước biến đổi đại số/giải tích bằng Markdown + $\LaTeX$ (`$...$`, `$$...$$`) đồng bộ thời gian thực cho cả bàn.
+  - *`Function Grapher`:* Vẽ tối đa 3 hàm số $y = f(x), g(x), h(x)$ trên hệ trục $Oxy$ chuẩn **Botanical Night Studio** (`#0F1714` nền, `#243630` lưới, đường cong `#E5A93C` / `#34D399` / `#E6ECE8`), tự động chấm nghiệm, cực trị, giao điểm, giải phương trình/hệ phương trình, tính đạo hàm $f'(x_0)$ và tích phân xác định $\int_a^b f(x)dx$, kèm nút **Xuất sang Trang bài tập (`Homework Slide`)** để cả bàn vẽ hình/chú thích đè lên đồ thị.
 - **Tự động Dọn rác (`Auto-Cleanup`):** Toàn bộ file ảnh `.webp` và dữ liệu bảng vẽ trên Redis bị xóa ngay lập tức khi người cuối cùng rời bàn ($0$ người ngồi) hoặc khi chạm TTL tối đa **6 giờ** (`EphemeralCleanupScheduler`).
 
-#### C. Giao tiếp 2 Tầng, Tín hiệu SOS, Thành tích & Đàm thoại WebRTC ([ADR-0005](docs/adr/0005-webrtc-p2p-mesh-over-stomp.md))
-- **Trò chuyện 2 tầng & Bong bóng Chat:**
+#### C. Giao tiếp 2 Tầng (Hỗ trợ $\LaTeX$), Tín hiệu SOS, Âm thanh Đa tầng & Đàm thoại WebRTC ([ADR-0005](docs/adr/0005-webrtc-p2p-mesh-over-stomp.md), [ADR-0012](docs/adr/0012-ephemeral-math-workspace-and-multilayer-procedural-audio.md))
+- **Trò chuyện 2 tầng hỗ trợ công thức $\LaTeX$ (`$...$`, `$$...$$`) & Bong bóng Chat:**
   - *Room Chat (`/app/room/{roomId}/chat`):* Trò chuyện toàn phòng kèm **`Chat Bubble`** hiển thị phía trên đầu nhân vật trên bản đồ 2D trong 4 giây.
-  - *Table Chat (`/app/table/{tableId}/chat`):* Kênh thảo luận riêng tư của những người đang ngồi cùng bàn, tự động xóa khi bàn trống.
+  - *Table Chat (`/app/table/{tableId}/chat`):* Kênh thảo luận riêng tư của những người đang ngồi cùng bàn (hiển thị trực tiếp công thức toán KaTeX), tự động xóa khi bàn trống.
 - **Biển báo Cầu cứu Bài tập (`SOS Banner`):** Trưởng bàn hoặc người đồng điều khiển có thể bật/tắt cờ SOS kèm chủ đề môn học để hiển thị biểu tượng SOS phát sáng ngay trên bàn học ngoài bản đồ 2D.
+- **Âm thanh Nền Đa tầng (`Ambient Soundscape` 5 kênh) & Âm thanh Phản hồi (`Study SFX`):** Bộ tổng hợp Web Audio `0-KB` đa tầng gồm **Tiếng mưa** (mưa rơi + hạt mưa lộp độp + sấm xa + hiệu ứng mưa ngoài cửa sổ 2D), **Quán nước** (âm nền + tiếng tách sứ), **Lò sưởi** (lửa ấm + củi nổ lách tách), **Tiếng ồn trắng/hồng êm dịu**, và **Giai điệu Lofi Electric Piano $65\text{ BPM}$**, kết hợp kênh **`Study SFX`** bật/tắt độc lập cho chuông chuyển pha `Focus Cycle`, hoàn thành `Study Goal`, ngồi ghế và nhận `Drink Delivery`.
 - **Ghi nhận Giờ học, Bảng xếp hạng & Mở khóa Vật phẩm:**
   - Mọi phiên ngồi học (`Study Session`) có thời lượng **$\ge 1\text{ phút}$** đều được tự động ghi nhận khi rời ghế (phiên $< 1\text{ phút}$ được bỏ qua để chống spam).
   - Người học theo dõi lịch sử học tập cá nhân, **Bảng xếp hạng cộng đồng (`Study Leaderboard`)**, và mở khóa/trang bị các vật phẩm **`SKIN` (Trang phục)**, **`HAT` (Mũ/Tai nghe)**, **`DESK_PET` (Thú cưng để bàn)** theo tổng số phút học tích lũy.
-- **Đàm thoại Âm thanh tại Bàn (`WebRTC P2P Mesh`):** Các thành viên ngồi cùng bàn ($\le 6$ người) có thể bật/tắt mic (`Mute/Unmute`) kết nối âm thanh trực tiếp giữa các trình duyệt qua kênh báo hiệu `/app/table/{tableId}/voice.signal`, kèm vòng sáng báo hiệu người đang nói (`voiceAudioAnalyzer`) và tự động ngắt toàn bộ luồng âm thanh ngay khi rời bàn.
+- **Đàm thoại Âm thanh tại Bàn (`WebRTC P2P Mesh`):** Các thành viên ngồi cùng bàn ($\le 6$ người) có thể bật/tắt mic (`Mute/Unmute`) kết nối âm thanh trực tiếp giữa các trình duyệt qua kênh báo hiệu `/app/table/{tableId}/voice.signal`, kèm vòng sáng báo hiệu người đang nói (`voiceAudioAnalyzer`, `CLS = 0`) và tự động ngắt toàn bộ luồng âm thanh ngay khi rời bàn.
 
 ---
 
@@ -305,8 +329,8 @@ LearningWithMe/
 │   ├── restore-backup.sh               # Khôi phục bản sao lưu MySQL + Redis từ file .tar.gz
 │   └── k6-room-load.js                 # Kịch bản kiểm thử tải k6 (10Hz STOMP move + Room Chat)
 ├── docs/
-│   ├── SPEC.md                         # Đặc tả kỹ thuật tổng thể Phases 1 – 7
-│   └── adr/                            # Architecture Decision Records (ADR-0001 .. ADR-0009)
+│   ├── SPEC.md                         # Đặc tả kỹ thuật tổng thể Phases 1 – 10 & UI Botanical Night Studio (#57)
+│   └── adr/                            # Architecture Decision Records (ADR-0001 .. ADR-0012)
 ├── shared/
 │   └── maps/
 │       └── main-library.json           # Bản đồ Tiled JSON dùng chung cho Phaser 3 & Backend
@@ -325,7 +349,7 @@ LearningWithMe/
 │   └── Dockerfile
 └── frontend/                           # React 18 + Vite 6 + TypeScript + TailwindCSS v4
     ├── src/
-    │   ├── game/                       # Logic Phaser 3 tách biệt hoàn toàn khỏi DOM
+    │   ├── game/                       # Logic Phaser 3 tách biệt hoàn toàn khỏi DOM + botanicalPalette.ts (ADR-0010)
     │   │   ├── controllers/            # InputController, keyboardMapping
     │   │   ├── entities/               # PlayerSprite, RemotePlayersRenderer, ChatBubble, TableSosOverlay, Accessories
     │   │   ├── managers/               # SeatInteractionManager
@@ -336,7 +360,8 @@ LearningWithMe/
     │   │   ├── auth/                   # GuestOnboardingModal, AccountUpgradeModal, RegisteredLoginPanel
     │   │   ├── game/                   # ClassroomCanvas
     │   │   ├── hud/                    # TopBar, RoomChatBox, StudyLeaderboardModal, StudySessionsModal, CharacterCustomizerModal
-    │   │   └── table/                  # TableWorkspaceShell, SyncedYouTubePlayer, HomeworkAnnotationCanvas, VoiceChatBar...
+    │   │   ├── table/                  # TableWorkspaceShell, SyncedYouTubePlayer, HomeworkAnnotationCanvas, VoiceChatBar...
+    │   │   └── ui/                     # StudioIcons (1.5px-stroke SVG kit — Ticket #57)
     │   ├── stores/                     # Zustand (useAuthStore, useGameStore, useTableStore, useVoiceStore)
     │   ├── hooks/                      # useAppBootstrap, useRoomSync, useTableWorkspaceSync, useStudyTimer, useTableVoiceChat...
     │   ├── services/                   # REST API clients, STOMP clients, WebRTC Mesh Manager, Audio Analyzer
@@ -431,7 +456,7 @@ Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](d
 
 ---
 
-## 8. TRẠNG THÁI TRIỂN KHAI (PHASES 1 – 7 COMPLETED)
+## 8. TRẠNG THÁI TRIỂN KHAI (PHASES 1 – 9 & UI REFACTOR #57 COMPLETED, PHASE 10 SPECIFIED)
 
 - [x] **Phase 1 — Foundation, Docker Infra & Hybrid Auth:** Docker Compose, Flyway migrations, Guest onboarding không rác DB, nâng cấp tài khoản không gián đoạn và hoán đổi định danh nguyên tử trên Redis.
 - [x] **Phase 2 — 2D Classroom Engine & Character State Machine:** Bản đồ Tiled JSON dùng chung, tìm đường $A^*$ (`EasyStar.js`), máy trạng thái `FREE_ROAM` $\leftrightarrow$ `WALKING_TO_SEAT` $\leftrightarrow$ `SEATED`, ưu tiên bàn phím tức thời và khóa di chuyển khi ngồi.
@@ -441,4 +466,6 @@ Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](d
 - [x] **Phase 6 — Study Sessions Persistence, Gamification & WebRTC Voice:** Lưu phiên học $\ge 1\text{ phút}$, bảng xếp hạng học tập, mở khóa & trang bị `SKIN` / `HAT` / `DESK_PET`, và đàm thoại âm thanh `WebRTC P2P Mesh` tại bàn học.
 - [x] **Phase 7 — Production Readiness, CI/CD, Restart Resilience & Cloud Free Tier Ops:** Cổng CI/CD GitHub Actions (`check-file-limits.mjs`, JaCoCo $\ge 70\%$), profile `prod` (rate limit IP, JSON logs, `/actuator/health`), khôi phục `Grace Period` khi khởi động lại, STOMP backoff + jitter, Managed TURN (`GET /api/v1/voice/ice-servers`), sao lưu đêm 7 ngày (`backup-nightly.yml` + `restore-backup.sh`) và kiểm thử tải `k6` 10Hz *(UptimeRobot 5-minute keep-alive tạm để ngỏ)*.
 - [x] **Phase 8 — Realtime Hardening, Study Café & Focus Motivation:** Khóa trạng thái bàn & bầu Trưởng bàn nguyên tử, cô lập kênh STOMP theo `(roomId, tableId)` và tín hiệu Voice riêng tư (`ADR-0008`), xác thực tải ảnh bài tập & rate limit, nâng cấp **Study Café** với **Ambient NPCs** (`ADR-0009`), **Focus Cycle** đồng bộ, check-off **Study Goal**, **Study Streak**, **Ambient Soundscape**, thu gọn **Table Workspace** và tối ưu camera/HUD di động.
-- [ ] **Phase 9 — UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening:** Kéo thả/hoán đổi bố cục Video & Bảng bài tập trong **Table Workspace**, chỉ báo Mic không giật (Zero-CLS) kèm điều khiển cố định ở Header bàn, tinh gọn `TopBar` một hàng, thông báo đợi **Render** Cold Start kèm tự động ping lại, nút chụp ảnh bài tập trực tiếp bằng camera điện thoại, nhân viên `Phục vụ An` tìm đường $A^*$ mang đồ uống tới chỗ người học (`Drink Delivery`), và sửa lỗi workflow CI/CD + `backup-nightly.yml` + test phân mảnh phòng.
+- [x] **Phase 9 — UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening:** Kéo thả/hoán đổi bố cục Video & Bảng bài tập trong **Table Workspace**, chỉ báo Mic không giật (Zero-CLS) kèm điều khiển cố định ở Header bàn, tinh gọn `TopBar` một hàng, thông báo đợi **Render** Cold Start kèm tự động ping lại, nút chụp ảnh bài tập trực tiếp bằng camera điện thoại, nhân viên `Phục vụ An` tìm đường $A^*$ mang đồ uống tới chỗ người học (`Drink Delivery`), và sửa lỗi workflow CI/CD + `backup-nightly.yml` + test phân mảnh phòng.
+- [x] **UI Refactor (`#57` / `ADR-0010`) — Botanical Night Studio ("Rừng Đêm & Tập trung Sâu"):** Thiết lập Semantic Token Seam dùng chung giữa React HUD (`@theme` trong `index.css`) và Phaser 3 (`botanicalPalette.ts`), bảng màu `#0F1714` Deep Pine Night / `#16221E` Slate Leaf / `#243630` Luminous Border / `#E6ECE8` Morning Mist / `#8FA399` Muted Sage / `#E5A93C` Warm Amber (mực tối `#0F1714` đạt `8.74:1`) / `#34D399` Bioluminescent Emerald, kiến trúc Double-Bezel + Static Glassmorphism, bộ `StudioIcons` SVG `1.5px` và xóa sạch toàn bộ lớp màu `slate-*`/`sky-*` thô trên UI chrome.
+- [ ] **Phase 10 (`#64`..`#71`) — Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (Bám sát Botanical Night Studio `#57` & `ADR-0010`):** Thanh toán nợ kỹ thuật Single-Node (Lua Rate Limiters nguyên tử, `Per-Author Undo/Redo`, chuẩn hóa MIME ảnh bài tập), khóa đồng bộ video YouTube toàn bàn (`Iframe Click Shield`, `onStateChange` Guard, Heartbeat `3s`, thanh tua thời gian & Muted Autoplay fallback — `ADR-0011`), bộ công cụ Giải Toán (Trang nháp Toán dựng sẵn, hình học phẳng & $\LaTeX$ `Stroke`, $\LaTeX$ trong Chat, `Math Scratchpad` đồng bộ, `Function Grapher` vẽ đồ thị $f(x)$ & máy tính khoa học — `ADR-0012`), đại tu đồ họa 2D **Study Café** (nhân vật `32x48px` có bóng đổ, nội thất pixel-art có `Y-Sorting`, hiệu ứng mưa ngoài cửa sổ đồng bộ `BOTANICAL_2D_SCENE`) và nâng cấp **Ambient Soundscape** 5 kênh đa tầng (kèm Lofi Piano) + **Study SFX**.

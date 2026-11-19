@@ -89,12 +89,20 @@ Tổ hợp giao diện học tập chung chỉ mở ra cho những người đan
 _Avoid_: Study Modal, Table Dashboard, Classroom View
 
 **Homework Slide (Trang bài tập)**:
-Một hình ảnh bài tập tạm thời được tải lên Table Workspace (tối đa 5 trang mỗi Table) làm nền cho các nét vẽ hướng dẫn giải bài và tự động hủy khi Table không còn người ngồi.
+Một trang làm việc tạm thời trong Table Workspace (tối đa 5 trang mỗi Table) được khởi tạo từ ảnh đề bài tải lên hoặc mẫu giấy nháp toán dựng sẵn (lưới ô vuông, hệ trục tọa độ, bảng trơn), tự động hủy khi Table không còn người ngồi.
 _Avoid_: Whiteboard Page, Attachment, Document
 
 **Stroke (Nét vẽ chú thích)**:
-Một đơn vị hình họa (bút viết, dạ quang, văn bản) được vẽ đè lên một Homework Slide và tồn tại suốt vòng đời của trang bài tập đó.
+Một đơn vị hình họa (bút viết tay, dạ quang, hình học phẳng, trục tọa độ, nhãn chữ hoặc công thức toán) được vẽ đè lên một Homework Slide và tồn tại suốt vòng đời của trang bài tập đó.
 _Avoid_: Drawing, Path, Mark
+
+**Math Scratchpad (Sổ nháp bước giải)**:
+Khung ghi chú biến đổi đại số và công thức toán đồng bộ theo thời gian thực giữa những người đang `SEATED` tại cùng một Table, hiển thị song song với Homework Slide.
+_Avoid_: Formula Note, Math Doc, Equation Sidebar
+
+**Function Grapher (Bộ vẽ đồ thị hàm số)**:
+Công cụ dựng đồ thị toán học trong Table Workspace cho phép khảo sát hàm số và xuất trực tiếp mặt phẳng đồ thị thành một Homework Slide để cả bàn cùng vẽ chú thích.
+_Avoid_: Plotter, Chart Builder, Calculator Graph
 
 **Laser Pointer (Con trỏ giảng bài)**:
 Tín hiệu chỉ điểm tức thời di chuyển trên bề mặt Homework Slide để thu hút sự chú ý của người cùng bàn mà không lưu lại thành Stroke.
@@ -129,8 +137,12 @@ Số ngày liên tiếp mà một người học hoàn thành ít nhất một S
 _Avoid_: Attendance Streak, Login Streak, Combo
 
 **Ambient Soundscape (Âm thanh nền học tập)**:
-Lớp âm thanh môi trường phát lặp nhẹ nhàng (tiếng mưa, quán nước, tiếng ồn trắng) do từng người học tự bật và điều chỉnh cho không gian nghe cá nhân của mình.
+Lớp âm thanh môi trường đa tầng và giai điệu không lời phát lặp nhẹ nhàng (tiếng mưa, quán nước, lò sưởi, tiếng ồn trắng, giai điệu Lofi) do từng người học tự bật và pha trộn cho không gian nghe cá nhân.
 _Avoid_: Background Music, BGM, Audio Track
+
+**Study SFX (Âm thanh phản hồi học tập)**:
+Các tín hiệu âm thanh ngắn, êm dịu phát tại máy cá nhân khi diễn ra sự kiện học tập hoặc tương tác trong Study Café (chuyển pha Focus Cycle, hoàn thành Study Goal, ngồi ghế, nhận Drink Delivery), độc lập với Ambient Soundscape.
+_Avoid_: UI Sound, Game SFX, Notification Beep
 
 **Drink Delivery (Giao đồ uống tại quán)**:
 Hành trình một Ambient NPC di chuyển qua quầy pha chế tới vị trí của người học trong Study Café để trao biểu tượng đồ uống đồng hành sau khi người học chọn món.
