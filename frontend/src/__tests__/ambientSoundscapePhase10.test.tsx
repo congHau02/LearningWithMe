@@ -15,7 +15,6 @@ import {
 import { useAuthStore } from '../stores/useAuthStore';
 import { useGameStore } from '../stores/useGameStore';
 import { useTableStore } from '../stores/useTableStore';
-import { playFocusChime } from '../utils/focusCycle';
 
 interface FakeAudioParam {
   value: number;
@@ -261,36 +260,30 @@ describe('P10-T6 Slice 2: Toggleable Study SFX Engine & Real Event Triggers', ()
 
     // Ambient muted, Study SFX still enabled -> plays
     useAmbientSoundscapeStore.setState({ isMuted: true, sfxEnabled: true });
-    playStudySfx('focusTransition');
+    playStudySfx('goalComplete');
     expect(spy.createdOscillators.length).toBeGreaterThanOrEqual(2);
 
     // Disable Study SFX -> no oscillators created
     const countBeforeDisable = spy.createdOscillators.length;
     useAmbientSoundscapeStore.setState({ sfxEnabled: false });
-    playStudySfx('focusTransition');
     playStudySfx('goalComplete');
     playStudySfx('seatSit');
     playStudySfx('drinkDelivery');
     expect(spy.createdOscillators.length).toBe(countBeforeDisable);
   });
 
-  it('triggers Study SFX on Focus Cycle transition, Seat sit, Drink Delivery, and Study Goal check-off', async () => {
+  it('triggers Study SFX on Seat sit, Drink Delivery, and Study Goal check-off', async () => {
     const spy = installRichFakeAudioContext();
     useAmbientSoundscapeStore.setState({ sfxEnabled: true });
 
-    // 1. Focus Cycle transition chime
-    const beforeFocus = spy.createdOscillators.length;
-    playFocusChime();
-    expect(spy.createdOscillators.length).toBeGreaterThan(beforeFocus);
-
-    // 2. Seat sit via confirmSeat
+    // 1. Seat sit via confirmSeat
     const beforeSit = spy.createdOscillators.length;
     act(() => {
       useGameStore.getState().confirmSeat('table_01', 'T1_S1', { x: 3, y: 4 }, 'UP');
     });
     expect(spy.createdOscillators.length).toBeGreaterThan(beforeSit);
 
-    // 3. Drink Delivery completion
+    // 2. Drink Delivery completion
     act(() => {
       useGameStore.getState().selectVirtualDrink('matcha_latte');
     });
@@ -301,7 +294,7 @@ describe('P10-T6 Slice 2: Toggleable Study SFX Engine & Real Event Triggers', ()
     });
     expect(spy.createdOscillators.length).toBeGreaterThan(beforeDrink);
 
-    // 4. Study Goal completion check-off in HUD
+    // 3. Study Goal completion check-off in HUD
     useGameStore.getState().resetGame();
     useAuthStore.setState({
       userId: 'u-sfx',
@@ -382,10 +375,12 @@ describe('P10-T6 Slice 3: Botanical Night Studio Soundscape Popover & Study SFX 
       expect(screen.getByTestId(`ambient-channel-volume-${id}`)).toBeInTheDocument();
     }
 
-    // Study SFX toggle is enabled by default and toggles independently
+    // Study SFX toggle is enabled by default, toggles independently, and does not mention retired chime
     const sfxBtn = screen.getByTestId('study-sfx-toggle-btn');
     expect(sfxBtn).toHaveAttribute('aria-pressed', 'true');
     expect(sfxBtn.className).toContain('min-h-11');
+    expect(popover.textContent).toContain('Mục tiêu, ghế & đồ uống');
+    expect(popover.textContent).not.toContain('Chuông tập trung');
 
     fireEvent.click(sfxBtn);
     expect(sfxBtn).toHaveAttribute('aria-pressed', 'false');

@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { HomeworkSlide, PermissionRequestNotification, TableChatMessage, TableMemberDto, TableScratchpadState, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
 import type { RoomEvent } from '../services/roomApi';
-import { DEFAULT_FOCUS_CYCLE_STATE, type FocusCycleState } from '../utils/focusCycle';
 import { reduceRoomSeatEvent, reduceWorkspaceEvent, type LaserPointerState } from './tableStoreReducers';
 
 export interface VideoSyncState { videoId: string | null; isPlaying: boolean; currentTime: number; lastUpdatedEpoch: number; }
@@ -18,8 +17,6 @@ export interface TableWorkspaceState {
   pendingPermissionRequests: PermissionRequestNotification[];
   permissionToast: string | null;
   videoState: VideoSyncState;
-  focusCycleState: FocusCycleState;
-  focusCycleResetSeq: number;
   recentMessages: TableChatMessage[];
   homeworkSlides: HomeworkSlide[];
   activeSlideId: string | null;
@@ -50,7 +47,7 @@ const INITIAL_TABLE_STATE = {
   tableId: null as string | null, hostUserId: null as string | null, coHostUserIds: [] as string[],
   isFreeCollab: false, sosBanner: null as string | null, sitStartTimeEpoch: null as number | null,
   members: [] as TableMemberDto[], pendingPermissionRequests: [] as PermissionRequestNotification[],
-  permissionToast: null as string | null, videoState: DEFAULT_VIDEO_STATE, focusCycleState: DEFAULT_FOCUS_CYCLE_STATE, focusCycleResetSeq: 0, recentMessages: [] as TableChatMessage[],
+  permissionToast: null as string | null, videoState: DEFAULT_VIDEO_STATE, recentMessages: [] as TableChatMessage[],
   homeworkSlides: [] as HomeworkSlide[], activeSlideId: null as string | null, scratchpadState: EMPTY_SCRATCHPAD_STATE,
   laserPointers: {} as Record<string, LaserPointerState>,
   isWorkspaceMinimized: false,
@@ -73,8 +70,6 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
         isFreeCollab: snapshot.isFreeCollab, sosBanner: snapshot.sosBanner, members: snapshot.members,
         sitStartTimeEpoch: self?.sitStartTimeEpoch || s.sitStartTimeEpoch || Date.now(),
         videoState: { ...s.videoState, ...snapshot.videoState },
-        focusCycleState: snapshot.focusCycleState ?? DEFAULT_FOCUS_CYCLE_STATE,
-        focusCycleResetSeq: 0,
         recentMessages: (snapshot.recentMessages ?? []).slice(-50),
         homeworkSlides: snapshot.homeworkSlides ?? [],
         activeSlideId: snapshot.activeSlideId ?? null,

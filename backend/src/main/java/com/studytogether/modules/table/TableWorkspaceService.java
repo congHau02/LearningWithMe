@@ -69,7 +69,6 @@ public class TableWorkspaceService {
                 stateStore.getRecentTableMessages(roomId, tableId, 50),
                 tableState.homeworkSlides(),
                 tableState.activeSlideId(),
-                tableState.focusCycleState(),
                 tableState.scratchpadState()
         );
     }

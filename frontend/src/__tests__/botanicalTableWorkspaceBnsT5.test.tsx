@@ -1,6 +1,5 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FocusCycleBar } from '../components/table/FocusCycleBar';
 import { HomeworkBoardToolbar } from '../components/table/HomeworkBoardToolbar';
 import { HomeworkSlideTabs } from '../components/table/HomeworkSlideTabs';
 import { HostPermissionToast } from '../components/table/HostPermissionToast';
@@ -18,7 +17,7 @@ import { useGameStore } from '../stores/useGameStore';
 import { useTableStore } from '../stores/useTableStore';
 import { useVoiceStore } from '../stores/useVoiceStore';
 
-describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework Board Chrome (#62)', () => {
+describe('BNS-T5: Seated Table Workspace, Voice Controls & Homework Board Chrome (#62)', () => {
   beforeEach(() => {
     window.localStorage.clear();
     useAuthStore.getState().clearSession();
@@ -182,26 +181,12 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
     });
   });
 
-  describe('Focus Cycle Bar & Minimized Workspace Bar', () => {
-    it('renders FocusCycleBar countdown in Bioluminescent Emerald with Warm Amber primary action', () => {
-      render(<FocusCycleBar tableId="table_01" canControl={true} isSeated={true} />);
-
-      const countdown = screen.getByTestId('focus-cycle-countdown');
-      expect(countdown).toHaveTextContent('25:00');
-      expect(countdown.className).toContain('border-emerald-500/40');
-      expect(countdown.className).toContain('text-emerald-300');
-
-      const startBtn = screen.getByTestId('focus-toggle-run-btn');
-      expect(startBtn.className).toContain('bg-primary');
-      expect(startBtn.className).toContain('text-primary-foreground');
-    });
-
+  describe('Minimized Workspace Bar', () => {
     it('renders MinimizedTableWorkspaceBar with Deep Pine surface, SVG icons and Emerald timer', () => {
       render(
         <MinimizedTableWorkspaceBar
           activeTableId="table_01"
           elapsedSeconds={60}
-          isSeated={true}
           onToggleMute={vi.fn()}
           onExpand={vi.fn()}
           onRequestLeaveSeat={vi.fn()}
@@ -215,10 +200,6 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
       const timer = screen.getByTestId('minimized-study-timer');
       expect(timer).toHaveTextContent('01:00');
       expect(timer.className).toContain('text-emerald-300');
-
-      const countdown = screen.getByTestId('minimized-focus-countdown');
-      expect(countdown).toHaveTextContent('25:00');
-      expect(countdown.className).toContain('text-emerald-300');
     });
   });
 
@@ -428,12 +409,10 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls, Focus Cycle & Homework
           <MinimizedTableWorkspaceBar
             activeTableId="table_01"
             elapsedSeconds={10}
-            isSeated={true}
             onToggleMute={vi.fn()}
             onExpand={vi.fn()}
             onRequestLeaveSeat={vi.fn()}
           />
-          <FocusCycleBar tableId="table_01" canControl={true} isSeated={true} />
           <SosBannerControl tableId="table_01" sosBanner={null} canControl={true} />
           <HostPermissionToast requests={[]} onRespond={vi.fn()} />
           <WorkspaceLayoutControls

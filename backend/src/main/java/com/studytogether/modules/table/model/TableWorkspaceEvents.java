@@ -45,10 +45,6 @@ public final class TableWorkspaceEvents {
                 .requesterNickname(voiceSignal != null ? voiceSignal.senderNickname() : null).voiceSignal(voiceSignal).build();
     }
 
-    public static TableWorkspaceEvent focusCycleUpdated(String tableId, String actorUserId, FocusCycleAction focusCycleAction, TableFocusCycleState focusCycleState, RedisTableState state, long now) {
-        return builder("FOCUS_CYCLE_UPDATED", tableId, actorUserId, state, now).focusCycleState(focusCycleState).focusCycleAction(focusCycleAction).build();
-    }
-
     public static TableWorkspaceEvent scratchpadUpdated(String tableId, String actorUserId, TableScratchpadState scratchpadState, RedisTableState state, long now) {
         return builder("UPDATE_SCRATCHPAD", tableId, actorUserId, state, now).scratchpadState(scratchpadState).build();
     }
@@ -70,8 +66,6 @@ public final class TableWorkspaceEvents {
         private BoardStroke stroke;
         private LaserPointerPayload laserPointer;
         private VoiceSignalPayload voiceSignal;
-        private TableFocusCycleState focusCycleState;
-        private FocusCycleAction focusCycleAction;
         private TableScratchpadState scratchpadState;
 
         private Builder(String type, String tableId, String actorUserId, RedisTableState state, long timestampEpoch) {
@@ -91,15 +85,13 @@ public final class TableWorkspaceEvents {
         private Builder erasedStrokeId(String v) { this.erasedStrokeId = v; return this; }
         private Builder laserPointer(LaserPointerPayload v) { this.laserPointer = v; return this; }
         private Builder voiceSignal(VoiceSignalPayload v) { this.voiceSignal = v; return this; }
-        private Builder focusCycleState(TableFocusCycleState v) { this.focusCycleState = v; return this; }
-        private Builder focusCycleAction(FocusCycleAction v) { this.focusCycleAction = v; return this; }
         private Builder scratchpadState(TableScratchpadState v) { this.scratchpadState = v; return this; }
 
         private TableWorkspaceEvent build() {
             return new TableWorkspaceEvent(type, null, tableId, actorUserId, targetUserId, requesterNickname,
                     action, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(), videoState, sosBanner,
                     chatMessage, homeworkSlides, state.activeSlideId(), slideId, drawAction, stroke, erasedStrokeId,
-                    laserPointer, voiceSignal, focusCycleState, focusCycleAction, scratchpadState, timestampEpoch);
+                    laserPointer, voiceSignal, scratchpadState, timestampEpoch);
         }
     }
 }

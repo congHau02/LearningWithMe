@@ -25,8 +25,6 @@ public record TableWorkspaceEvent(
         String erasedStrokeId,
         LaserPointerPayload laserPointer,
         VoiceSignalPayload voiceSignal,
-        TableFocusCycleState focusCycleState,
-        FocusCycleAction focusCycleAction,
         TableScratchpadState scratchpadState,
         long timestampEpoch
 ) {
@@ -39,6 +37,6 @@ public record TableWorkspaceEvent(
         return new TableWorkspaceEvent(type, nextRoomId, tableId, actorUserId, targetUserId, requesterNickname,
                 action, hostUserId, coHostUserIds, isFreeCollab, videoState, sosBanner, chatMessage,
                 homeworkSlides, activeSlideId, slideId, drawAction, stroke, erasedStrokeId, laserPointer, voiceSignal,
-                focusCycleState, focusCycleAction, scratchpadState, timestampEpoch);
+                scratchpadState, timestampEpoch);
     }
 }

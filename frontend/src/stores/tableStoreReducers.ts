@@ -31,12 +31,6 @@ export function reduceWorkspaceEvent(
     };
   }
   if (event.type === 'VIDEO_SYNCED' && event.videoState) return { videoState: event.videoState };
-  if (event.type === 'FOCUS_CYCLE_UPDATED' && event.focusCycleState) {
-    return {
-      focusCycleState: event.focusCycleState,
-      focusCycleResetSeq: event.focusCycleAction === 'RESET' ? s.focusCycleResetSeq + 1 : s.focusCycleResetSeq,
-    };
-  }
   if (event.type === 'UPDATE_SCRATCHPAD' && event.scratchpadState) {
     return { scratchpadState: event.scratchpadState };
   }

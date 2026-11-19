@@ -1,7 +1,7 @@
 import { useAmbientSoundscapeStore } from '../stores/useAmbientSoundscapeStore';
 import { getAudioContextConstructor } from '../utils/webAudio';
 
-export type StudySfxCue = 'focusTransition' | 'goalComplete' | 'seatSit' | 'drinkDelivery';
+export type StudySfxCue = 'goalComplete' | 'seatSit' | 'drinkDelivery';
 
 interface ToneStep {
   freqHz: number;
@@ -13,11 +13,6 @@ interface ToneStep {
 }
 
 const SFX_PATTERNS: Record<StudySfxCue, readonly ToneStep[]> = {
-  // Soft woodblock/bell chime for Focus Cycle phase transitions
-  focusTransition: [
-    { freqHz: 587.33, delaySec: 0, durationSec: 0.36, peakGain: 0.065, type: 'sine' },
-    { freqHz: 880.0, delaySec: 0.13, durationSec: 0.44, peakGain: 0.055, type: 'sine' },
-  ],
   // Gentle uplifting triad chime for Study Goal completion
   goalComplete: [
     { freqHz: 523.25, delaySec: 0, durationSec: 0.22, peakGain: 0.055, type: 'triangle' },

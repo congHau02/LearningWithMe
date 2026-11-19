@@ -8,7 +8,6 @@ import type {
   TableScratchpadState,
 } from '../services/tableApi';
 import type { VideoSyncState } from './useTableStore';
-import type { FocusCycleState } from '../utils/focusCycle';
 
 export interface LaserPointerState extends LaserPointerPayload {
   lastSeenEpoch: number;
@@ -25,8 +24,6 @@ export interface TableStoreData {
   pendingPermissionRequests: PermissionRequestNotification[];
   permissionToast: string | null;
   videoState: VideoSyncState;
-  focusCycleState: FocusCycleState;
-  focusCycleResetSeq: number;
   recentMessages: TableChatMessage[];
   homeworkSlides: HomeworkSlide[];
   activeSlideId: string | null;

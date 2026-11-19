@@ -94,14 +94,6 @@ describe('P8-T8 Slice 2: Minimized Table Workspace Bar', () => {
           isFreeCollab: false,
           sosBanner: null,
           videoState: { videoId: 'jfKfPfyJRdk', isPlaying: true, currentTime: 10, lastUpdatedEpoch: now },
-          focusCycleState: {
-            phase: 'FOCUS',
-            isRunning: false,
-            focusMinutes: 25,
-            breakMinutes: 5,
-            remainingSeconds: 1500,
-            lastUpdatedEpoch: 0,
-          },
           members: [
             {
               userId: 'u-host',
@@ -161,9 +153,9 @@ describe('P8-T8 Slice 2: Minimized Table Workspace Bar', () => {
     expect(mockPlayer.destroy).not.toHaveBeenCalled();
     expect(fakeTrack.stop).not.toHaveBeenCalled();
 
-    // Displays Study Session timer and Focus Cycle countdown
+    // Displays Study Session timer without retired countdown bar
     expect(screen.getByTestId('minimized-study-timer')).toHaveTextContent(/\d{2}:\d{2}/);
-    expect(screen.getByTestId('minimized-focus-countdown')).toHaveTextContent('25:00');
+    expect(screen.queryByTestId('minimized-focus-countdown')).not.toBeInTheDocument();
 
     // Toggle voice mute from minimized bar
     fireEvent.click(screen.getByTestId('minimized-voice-mute-btn'));

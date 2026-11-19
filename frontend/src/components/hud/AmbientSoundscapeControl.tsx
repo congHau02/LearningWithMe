@@ -176,7 +176,7 @@ export function AmbientSoundscapeControl() {
               <BellChimeIcon className="h-4 w-4 shrink-0 text-botanical-amber" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="truncate font-medium text-foreground">Âm thanh tương tác</p>
-                <p className="truncate text-[10px] text-muted-foreground">Chuông tập trung, mục tiêu, ghế &amp; đồ uống</p>
+                <p className="truncate text-[10px] text-muted-foreground">Mục tiêu, ghế &amp; đồ uống</p>
               </div>
             </div>
             <button

@@ -1,7 +1,6 @@
 import { API_BASE_URL, apiRequest, getStoredAuthToken, parseErrorResponse } from './apiClient';
 import type { VideoSyncState } from '../stores/useTableStore';
 import type { BoardDrawAction, BoardStroke } from '../utils/homeworkCanvasMath';
-import type { FocusCycleAction, FocusCycleState } from '../utils/focusCycle';
 
 export type TableRole = 'TABLE_HOST' | 'CO_HOST' | 'MEMBER';
 export type HomeworkSlideAction = 'SELECT' | 'DELETE';
@@ -91,7 +90,6 @@ export interface TableWorkspaceSnapshot {
   recentMessages?: TableChatMessage[];
   homeworkSlides?: HomeworkSlide[];
   activeSlideId?: string | null;
-  focusCycleState?: FocusCycleState | null;
   scratchpadState?: TableScratchpadState | null;
 }
 
@@ -116,7 +114,6 @@ export interface TableWorkspaceEvent {
     | 'BOARD_DRAW'
     | 'LASER_MOVE'
     | 'VOICE_SIGNAL'
-    | 'FOCUS_CYCLE_UPDATED'
     | 'UPDATE_SCRATCHPAD';
   roomId?: string | null;
   tableId: string;
@@ -138,8 +135,6 @@ export interface TableWorkspaceEvent {
   erasedStrokeId?: string | null;
   laserPointer?: LaserPointerPayload | null;
   voiceSignal?: VoiceSignalPayload | null;
-  focusCycleState?: FocusCycleState | null;
-  focusCycleAction?: FocusCycleAction | null;
   scratchpadState?: TableScratchpadState | null;
   timestampEpoch: number;
 }

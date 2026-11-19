@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.studytogether.modules.table.model.HomeworkSlide;
-import com.studytogether.modules.table.model.TableFocusCycleState;
 import com.studytogether.modules.table.model.TableScratchpadState;
 import com.studytogether.modules.table.model.TableVideoState;
 import java.util.List;
@@ -19,29 +18,13 @@ public record RedisTableState(
         TableVideoState videoState,
         List<HomeworkSlide> homeworkSlides,
         String activeSlideId,
-        TableFocusCycleState focusCycleState,
         TableScratchpadState scratchpadState
 ) {
     public RedisTableState {
         coHostUserIds = coHostUserIds == null ? List.of() : List.copyOf(coHostUserIds);
         videoState = videoState == null ? TableVideoState.empty() : videoState;
         homeworkSlides = homeworkSlides == null ? List.of() : List.copyOf(homeworkSlides);
-        focusCycleState = focusCycleState == null ? TableFocusCycleState.initial() : focusCycleState;
         scratchpadState = scratchpadState == null ? TableScratchpadState.empty() : scratchpadState;
-    }
-
-    public RedisTableState(
-            String hostUserId,
-            List<String> coHostUserIds,
-            boolean isFreeCollab,
-            String sosBanner,
-            TableVideoState videoState,
-            List<HomeworkSlide> homeworkSlides,
-            String activeSlideId,
-            TableFocusCycleState focusCycleState
-    ) {
-        this(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState, homeworkSlides, activeSlideId,
-                focusCycleState, TableScratchpadState.empty());
     }
 
     public RedisTableState(
@@ -54,7 +37,7 @@ public record RedisTableState(
             String activeSlideId
     ) {
         this(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState, homeworkSlides, activeSlideId,
-                TableFocusCycleState.initial(), TableScratchpadState.empty());
+                TableScratchpadState.empty());
     }
 
     public RedisTableState(
@@ -65,7 +48,7 @@ public record RedisTableState(
             TableVideoState videoState
     ) {
         this(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState, List.of(), null,
-                TableFocusCycleState.initial(), TableScratchpadState.empty());
+                TableScratchpadState.empty());
     }
 
     public RedisTableState(
@@ -75,41 +58,36 @@ public record RedisTableState(
             String sosBanner
     ) {
         this(hostUserId, coHostUserIds, isFreeCollab, sosBanner, TableVideoState.empty(), List.of(), null,
-                TableFocusCycleState.initial(), TableScratchpadState.empty());
+                TableScratchpadState.empty());
     }
 
     public RedisTableState withHomeworkSlides(List<HomeworkSlide> nextSlides, String nextActiveSlideId) {
         return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState,
-                nextSlides, nextActiveSlideId, focusCycleState, scratchpadState);
+                nextSlides, nextActiveSlideId, scratchpadState);
     }
 
     public RedisTableState withSosBanner(String nextSosBanner) {
         return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, nextSosBanner, videoState,
-                homeworkSlides, activeSlideId, focusCycleState, scratchpadState);
+                homeworkSlides, activeSlideId, scratchpadState);
     }
 
     public RedisTableState withVideoState(TableVideoState nextVideoState) {
         return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, sosBanner, nextVideoState,
-                homeworkSlides, activeSlideId, focusCycleState, scratchpadState);
-    }
-
-    public RedisTableState withFocusCycleState(TableFocusCycleState nextFocusCycleState) {
-        return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState,
-                homeworkSlides, activeSlideId, nextFocusCycleState, scratchpadState);
+                homeworkSlides, activeSlideId, scratchpadState);
     }
 
     public RedisTableState withScratchpadState(TableScratchpadState nextScratchpadState) {
         return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState,
-                homeworkSlides, activeSlideId, focusCycleState, nextScratchpadState);
+                homeworkSlides, activeSlideId, nextScratchpadState);
     }
 
     public RedisTableState withPermissions(String nextHostUserId, List<String> nextCoHostUserIds, boolean nextFreeCollab) {
         return new RedisTableState(nextHostUserId, nextCoHostUserIds, nextFreeCollab, sosBanner, videoState,
-                homeworkSlides, activeSlideId, focusCycleState, scratchpadState);
+                homeworkSlides, activeSlideId, scratchpadState);
     }
 
     public static RedisTableState empty() {
         return new RedisTableState(null, List.of(), false, null, TableVideoState.empty(), List.of(), null,
-                TableFocusCycleState.initial(), TableScratchpadState.empty());
+                TableScratchpadState.empty());
     }
 }

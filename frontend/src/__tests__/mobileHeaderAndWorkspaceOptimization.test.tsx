@@ -183,7 +183,7 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
     expect(collabBtn).toHaveFocus();
   });
 
-  it('hides FocusCycleBar and minimized focus countdown on mobile while preserving them on desktop', () => {
+  it('does not render retired timer bar or minimized countdown on either mobile or desktop', () => {
     useAuthStore.setState({ userId: 'u-1', nickname: 'Learner' });
     useGameStore.setState({ characterState: 'SEATED', currentTableId: 'table_03', currentSeatId: 'T3_S1' });
     useTableStore.setState({
@@ -211,7 +211,7 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
       setViewportWidth(1280);
     });
     rerender(<TableWorkspaceShell />);
-    expect(screen.getByTestId('focus-cycle-bar')).toBeInTheDocument();
+    expect(screen.queryByTestId('focus-cycle-bar')).not.toBeInTheDocument();
 
     // Also check MinimizedTableWorkspaceBar
     cleanup();
@@ -220,7 +220,6 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
       <MinimizedTableWorkspaceBar
         activeTableId="table_03"
         elapsedSeconds={60}
-        isSeated={true}
         onToggleMute={vi.fn()}
         onExpand={vi.fn()}
         onRequestLeaveSeat={vi.fn()}
@@ -235,12 +234,11 @@ describe('Mobile Header & Compact Table Workspace Optimization', () => {
       <MinimizedTableWorkspaceBar
         activeTableId="table_03"
         elapsedSeconds={60}
-        isSeated={true}
         onToggleMute={vi.fn()}
         onExpand={vi.fn()}
         onRequestLeaveSeat={vi.fn()}
       />,
     );
-    expect(screen.getByTestId('minimized-focus-countdown')).toBeInTheDocument();
+    expect(screen.queryByTestId('minimized-focus-countdown')).not.toBeInTheDocument();
   });
 });

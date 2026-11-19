@@ -1,14 +1,12 @@
 import { useEffect } from 'react';
 import { useStudyTimer } from '../../hooks/useStudyTimer';
 import { useTableVoiceChat } from '../../hooks/useTableVoiceChat';
-import { useViewportIsMobile } from '../../hooks/useViewportIsMobile';
 import { sendTablePermissionRequest, sendTablePermissionRespond } from '../../services/tableStompClient';
 import type { PermissionAction } from '../../services/tableApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { HostPermissionToast } from './HostPermissionToast';
-import { FocusCycleBar } from './FocusCycleBar';
 import { MinimizedTableWorkspaceBar } from './MinimizedTableWorkspaceBar';
 import { SosBannerControl } from './SosBannerControl';
 import { TableChatPanel } from './TableChatPanel';
@@ -17,7 +15,6 @@ import { TableWorkspaceHeader } from './TableWorkspaceHeader';
 import { WorkspacePrimaryPanels } from './WorkspacePrimaryPanels';
 
 export function TableWorkspaceShell() {
-  const isMobile = useViewportIsMobile();
   const characterState = useGameStore((s) => s.characterState);
   const currentTableId = useGameStore((s) => s.currentTableId);
   const requestLeaveSeat = useGameStore((s) => s.requestLeaveSeat);
@@ -129,14 +126,6 @@ export function TableWorkspaceShell() {
             canControl={canControl}
           />
 
-          {!isMobile ? (
-            <FocusCycleBar
-              tableId={activeTableId}
-              canControl={canControl}
-              isSeated={isSeated}
-            />
-          ) : null}
-
           <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
             <WorkspacePrimaryPanels activeTableId={activeTableId} canControl={canControl} />
 
@@ -157,7 +146,6 @@ export function TableWorkspaceShell() {
         <MinimizedTableWorkspaceBar
           activeTableId={activeTableId}
           elapsedSeconds={elapsedSeconds}
-          isSeated={isSeated}
           onToggleMute={() => void toggleMute()}
           onExpand={() => setWorkspaceMinimized(false)}
           onRequestLeaveSeat={requestLeaveSeat}

@@ -1,14 +1,10 @@
-import { useFocusCycleTimer } from '../../hooks/useFocusCycleTimer';
 import { formatStudyDuration } from '../../hooks/useStudyTimer';
 import { useViewportIsMobile } from '../../hooks/useViewportIsMobile';
 import { useTableStore } from '../../stores/useTableStore';
-import { formatFocusCountdown } from '../../utils/focusCycle';
 import {
   ChatIcon,
-  CoffeeIcon,
   DoorIcon,
   MaximizeIcon,
-  TargetIcon,
   TimerIcon,
 } from '../icons';
 import { VoiceErrorBanner } from './VoiceErrorBanner';
@@ -17,7 +13,6 @@ import { VoiceMicToggleButton } from './VoiceMicToggleButton';
 interface MinimizedTableWorkspaceBarProps {
   activeTableId: string;
   elapsedSeconds: number;
-  isSeated: boolean;
   onToggleMute: () => void;
   onExpand: () => void;
   onRequestLeaveSeat: () => void;
@@ -30,18 +25,12 @@ interface MinimizedTableWorkspaceBarProps {
 export function MinimizedTableWorkspaceBar({
   activeTableId,
   elapsedSeconds,
-  isSeated,
   onToggleMute,
   onExpand,
   onRequestLeaveSeat,
 }: MinimizedTableWorkspaceBarProps) {
   const isMobile = useViewportIsMobile();
-  const focusCycleState = useTableStore((s) => s.focusCycleState);
-  const focusCycleResetSeq = useTableStore((s) => s.focusCycleResetSeq);
   const unreadChatCount = useTableStore((s) => s.unreadChatCount);
-
-  const { remainingSeconds } = useFocusCycleTimer(focusCycleState, focusCycleResetSeq, isSeated && !isMobile);
-  const isFocusPhase = focusCycleState.phase === 'FOCUS';
 
   return (
     <aside
@@ -62,24 +51,6 @@ export function MinimizedTableWorkspaceBar({
             <TimerIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
             <span>{formatStudyDuration(elapsedSeconds)}</span>
           </span>
-
-          {!isMobile ? (
-            <span
-              data-testid="minimized-focus-countdown"
-              className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 font-mono font-semibold tabular-nums ${
-                isFocusPhase
-                  ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300'
-                  : 'border-primary/50 bg-primary/20 text-primary'
-              }`}
-            >
-              {isFocusPhase ? (
-                <TargetIcon className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
-              ) : (
-                <CoffeeIcon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-              )}
-              <span>{formatFocusCountdown(remainingSeconds)}</span>
-            </span>
-          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
