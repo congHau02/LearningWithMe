@@ -122,7 +122,7 @@ describe('P10-T9 Clear View (Chế độ rõ ràng)', () => {
     expect(screen.queryByTestId('synced-youtube-player')).not.toBeInTheDocument();
   });
 
-  it('hides video, layout switcher, members & math tabs in Clear View while keeping board, chat, SOS, toasts, mic & leave controls', () => {
+  it('hides video, layout switcher, members, math tabs, SOS & chat math symbols in Clear View while keeping board, chat, toasts, mic & leave controls', () => {
     useTableStore.setState({
       permissionToast: 'Đã cấp quyền điều khiển cho Lan',
       pendingPermissionRequests: [{ requesterUserId: 'u-2', requesterNickname: 'Minh', timestampEpoch: Date.now() }],
@@ -131,20 +131,34 @@ describe('P10-T9 Clear View (Chế độ rõ ràng)', () => {
     setViewportWidth(375);
     render(<TableWorkspaceShell />);
 
-    // Clear View active on mobile: only Homework Slide board + Table Chat
+    // Clear View active on mobile: only Homework Slide board + Table Chat (without SOS or chat math symbols)
     expect(screen.queryByTestId('synced-youtube-player')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-layout-controls')).not.toBeInTheDocument();
     expect(screen.queryByTestId('table-members-panel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('math-workspace-tabs-panel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('math-workspace-tab-scratchpad')).not.toBeInTheDocument();
     expect(screen.queryByTestId('math-workspace-tab-grapher')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('active-sos-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sos-open-form-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('table-chat-math-sym-bar')).not.toBeInTheDocument();
 
     expect(screen.getByTestId('homework-deck-panel')).toBeInTheDocument();
     expect(screen.getByTestId('table-chat-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('active-sos-banner')).toBeInTheDocument();
     expect(screen.getByTestId('table-permission-toast')).toBeInTheDocument();
     expect(screen.getByTestId('host-permission-toast')).toBeInTheDocument();
     expect(screen.getByTestId('header-voice-mic-pill')).toBeInTheDocument();
+
+    // Also hides sos-open-form-btn when sosBanner is null in Clear View
+    act(() => {
+      useTableStore.setState({ sosBanner: null });
+    });
+    expect(screen.queryByTestId('sos-open-form-btn')).not.toBeInTheDocument();
+
+    // Toggling Clear View OFF restores SOS controls and chat math symbol bar
+    fireEvent.click(screen.getByTestId('clear-view-toggle-btn'));
+    expect(screen.getByTestId('sos-open-form-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('table-chat-math-sym-bar')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('clear-view-toggle-btn'));
 
     // Layout structure: mobile 60%/40% stack & desktop 2/3 beside 1/3
     const clearLayout = screen.getByTestId('clear-view-layout');

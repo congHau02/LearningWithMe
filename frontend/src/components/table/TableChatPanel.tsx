@@ -17,11 +17,12 @@ export interface TableChatPanelProps {
   tableId: string;
   onSend?: (content: string) => void;
   fillHeight?: boolean;
+  clearView?: boolean;
 }
 
 const TABLE_QUICK_EMOJIS = ['👍', '💡', '🔥', '👏', '❓', '☕'] as const;
 
-export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend, fillHeight = false }) => {
+export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend, fillHeight = false, clearView = false }) => {
   const messagesListRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement | null>(null);
   const recentMessages = useTableStore((s) => s.recentMessages);
@@ -144,13 +145,15 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend,
         ))}
       </div>
 
-      <MathSymbolQuickBar
-        snippets={CHAT_MATH_SNIPPETS}
-        onInsert={handleInsertMathSymbol}
-        label="Chèn nhanh ký hiệu toán vào Chat bàn"
-        testIdPrefix="table-chat-math-sym"
-        compact
-      />
+      {!clearView ? (
+        <MathSymbolQuickBar
+          snippets={CHAT_MATH_SNIPPETS}
+          onInsert={handleInsertMathSymbol}
+          label="Chèn nhanh ký hiệu toán vào Chat bàn"
+          testIdPrefix="table-chat-math-sym"
+          compact
+        />
+      ) : null}
 
       <form
         onSubmit={handleSubmit((values) => dispatchMessage(values.content))}

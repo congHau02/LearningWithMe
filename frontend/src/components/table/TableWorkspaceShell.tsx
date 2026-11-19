@@ -125,12 +125,6 @@ export function TableWorkspaceShell() {
             />
           ) : null}
 
-          <SosBannerControl
-            tableId={activeTableId}
-            sosBanner={sosBanner}
-            canControl={canControl}
-          />
-
           {isClearView ? (
             <div
               data-testid="clear-view-layout"
@@ -146,23 +140,30 @@ export function TableWorkspaceShell() {
                 data-testid="clear-view-chat-pane"
                 className="flex min-h-[15rem] flex-[2_1_0%] flex-col overflow-hidden lg:col-span-1 lg:min-h-0"
               >
-                <TableChatPanel tableId={activeTableId} fillHeight />
+                <TableChatPanel tableId={activeTableId} fillHeight clearView={true} />
               </div>
             </div>
           ) : (
-            <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-              <WorkspacePrimaryPanels activeTableId={activeTableId} canControl={canControl} />
+            <>
+              <SosBannerControl
+                tableId={activeTableId}
+                sosBanner={sosBanner}
+                canControl={canControl}
+              />
+              <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+                <WorkspacePrimaryPanels activeTableId={activeTableId} canControl={canControl} />
 
-              <div className="flex flex-col gap-4">
-                <TableMembersPanel
-                  members={members}
-                  selfUserId={selfUserId}
-                  isSelfHost={isHost}
-                  onAction={(action, targetUserId) => handlePermissionAction(action, targetUserId)}
-                />
-                <TableChatPanel tableId={activeTableId} />
+                <div className="flex flex-col gap-4">
+                  <TableMembersPanel
+                    members={members}
+                    selfUserId={selfUserId}
+                    isSelfHost={isHost}
+                    onAction={(action, targetUserId) => handlePermissionAction(action, targetUserId)}
+                  />
+                  <TableChatPanel tableId={activeTableId} />
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </section>
