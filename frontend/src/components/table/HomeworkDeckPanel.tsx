@@ -1,46 +1,61 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { MAX_HOMEWORK_SLIDES, useHomeworkSlideUpload } from '../../hooks/useHomeworkSlideUpload';
 import { useHomeworkUndoRedo } from '../../hooks/useHomeworkUndoRedo';
-import { formatApiError } from '../../services/apiClient';
-import { uploadHomeworkImage } from '../../services/tableApi';
 import { sendBoardDraw, sendHomeworkSlideAction } from '../../services/tableStompClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { compressImageToWebp } from '../../utils/homeworkImageCompression';
 import type { BoardTool } from '../../utils/homeworkCanvasMath';
-import { generateMathTemplateFile, type MathTemplateId } from '../../utils/mathSlideTemplates';
 import { CameraIcon, UploadIcon } from '../icons';
 import { HomeworkAnnotationCanvas } from './HomeworkAnnotationCanvas';
-import { HomeworkBoardToolbar } from './HomeworkBoardToolbar';
+import { CLEAR_VIEW_BOARD_TOOLS, HomeworkBoardToolbar } from './HomeworkBoardToolbar';
 import { HomeworkSlideTabs } from './HomeworkSlideTabs';
 import { HomeworkTemplatePicker } from './HomeworkTemplatePicker';
-
-const MAX_SLIDES = 5;
-
-const extractImageFile = (data: DataTransfer | null | undefined): File | null => {
-  const item = Array.from(data?.items ?? []).find((entry) => entry.type.startsWith('image/'));
-  return item ? item.getAsFile() : null;
-};
 
 interface HomeworkDeckPanelProps {
   tableId: string;
   canControl: boolean;
+  clearView?: boolean;
   dragHandle?: ReactNode;
 }
 
-export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkDeckPanelProps) {
+export function HomeworkDeckPanel({
+  tableId,
+  canControl,
+  clearView = false,
+  dragHandle,
+}: HomeworkDeckPanelProps) {
   const slides = useTableStore((s) => s.homeworkSlides);
   const activeSlideId = useTableStore((s) => s.activeSlideId);
+  const tool = useTableStore((s) => s.boardTool);
+  const color = useTableStore((s) => s.boardColor);
+  const lineWidth = useTableStore((s) => s.boardLineWidth);
+  const setTool = useTableStore((s) => s.setBoardTool);
+  const setColor = useTableStore((s) => s.setBoardColor);
+  const setLineWidth = useTableStore((s) => s.setBoardLineWidth);
   const selfUserId = useAuthStore((s) => s.userId);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const cameraInputRef = useRef<HTMLInputElement | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [tool, setTool] = useState<BoardTool>('PEN');
-  const [color, setColor] = useState('#ef4444');
-  const [lineWidth, setLineWidth] = useState(3);
+
+  const shouldFallbackToPen = clearView && !CLEAR_VIEW_BOARD_TOOLS.has(tool);
+  const effectiveTool: BoardTool = shouldFallbackToPen ? 'PEN' : tool;
+
+  useEffect(() => {
+    if (shouldFallbackToPen) {
+      setTool('PEN');
+    }
+  }, [shouldFallbackToPen, setTool]);
 
   const activeSlide = activeSlideId ? (slides.find((s) => s.imageId === activeSlideId) ?? null) : null;
-  const isDeckFull = slides.length >= MAX_SLIDES;
+  const isDeckFull = slides.length >= MAX_HOMEWORK_SLIDES;
+
+  const {
+    fileInputRef,
+    cameraInputRef,
+    isUploading,
+    errorMsg,
+    setErrorMsg,
+    handleFileChange,
+    handlePasteEvent,
+    handleCreateTemplate,
+  } = useHomeworkSlideUpload({ tableId, canControl, isDeckFull });
 
   const { canUndo, canRedo, handleUndo, handleRedo, clearRedoForSlide } = useHomeworkUndoRedo({
     tableId,
@@ -49,57 +64,6 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
     canControl,
     selfUserId,
   });
-
-  const runSlideUpload = useCallback(async (buildWebpFile: () => Promise<File>) => {
-    if (!canControl || isUploading) return;
-    if (isDeckFull) {
-      setErrorMsg('Bàn học đã đạt tối đa 5 trang bài tập.');
-      return;
-    }
-    setErrorMsg(null);
-    setIsUploading(true);
-    try {
-      const webpFile = await buildWebpFile();
-      await uploadHomeworkImage(tableId, webpFile);
-    } catch (err) {
-      setErrorMsg(formatApiError(err, 'Không thể tải ảnh bài tập lên.', true));
-    } finally {
-      setIsUploading(false);
-    }
-  }, [canControl, isDeckFull, isUploading, tableId]);
-
-  const processAndUpload = useCallback(
-    (rawFile: File) => runSlideUpload(() => compressImageToWebp(rawFile, { maxDimension: 1920, quality: 0.85 })),
-    [runSlideUpload],
-  );
-  const handleCreateTemplate = useCallback(
-    (templateId: MathTemplateId) => void runSlideUpload(() => generateMathTemplateFile(templateId)),
-    [runSlideUpload],
-  );
-
-  const uploadRef = useRef(processAndUpload);
-  uploadRef.current = processAndUpload;
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (file) void processAndUpload(file);
-  };
-
-  const handlePasteEvent = useCallback((e: { clipboardData: DataTransfer | null; defaultPrevented: boolean; preventDefault: () => void }) => {
-    if (!canControl || e.defaultPrevented) return;
-    const file = extractImageFile(e.clipboardData);
-    if (file) {
-      e.preventDefault();
-      void uploadRef.current(file);
-    }
-  }, [canControl]);
-
-  useEffect(() => {
-    if (!canControl) return;
-    window.addEventListener('paste', handlePasteEvent);
-    return () => window.removeEventListener('paste', handlePasteEvent);
-  }, [canControl, handlePasteEvent]);
 
   return (
     <div
@@ -116,7 +80,7 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
             data-testid="homework-slide-counter"
             className="rounded-md border border-border bg-[#0F1714] px-2 py-0.5 font-mono text-xs text-muted-foreground"
           >
-            {slides.length}/{MAX_SLIDES}
+            {slides.length}/{MAX_HOMEWORK_SLIDES}
           </span>
         </div>
 
@@ -150,7 +114,9 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
         )}
       </div>
 
-      {canControl ? <HomeworkTemplatePicker disabled={isUploading || isDeckFull} onCreateTemplate={handleCreateTemplate} /> : null}
+      {canControl && !clearView ? (
+        <HomeworkTemplatePicker disabled={isUploading || isDeckFull} onCreateTemplate={handleCreateTemplate} />
+      ) : null}
 
       {errorMsg ? (
         <p data-testid="homework-upload-error" role="alert" className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs text-rose-200">
@@ -170,7 +136,7 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
         <div className="flex flex-col gap-2">
           {canControl ? (
             <HomeworkBoardToolbar
-              tool={tool} color={color} lineWidth={lineWidth} canUndo={canUndo} canRedo={canRedo}
+              tool={effectiveTool} color={color} lineWidth={lineWidth} clearView={clearView} canUndo={canUndo} canRedo={canRedo}
               onToolChange={setTool} onColorChange={setColor} onLineWidthChange={setLineWidth}
               onUndo={handleUndo} onRedo={handleRedo}
               onClearSlide={() => {
@@ -182,14 +148,16 @@ export function HomeworkDeckPanel({ tableId, canControl, dragHandle }: HomeworkD
           <HomeworkAnnotationCanvas
             tableId={tableId} slideId={activeSlide.imageId} imageUrl={activeSlide.url} fileName={activeSlide.fileName}
             strokes={activeSlide.strokes ?? []} canControl={canControl} selfUserId={selfUserId}
-            tool={tool} color={color} lineWidth={lineWidth}
+            tool={effectiveTool} color={color} lineWidth={lineWidth}
             onStrokeError={setErrorMsg} onNewStrokeCommitted={() => clearRedoForSlide(activeSlide.imageId)}
           />
         </div>
       ) : (
         <div data-testid="homework-empty-state" className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-[#0F1714]/40 px-4 text-center text-xs text-muted-foreground">
           {canControl
-            ? 'Chưa có trang bài tập nào. Chọn mẫu giấy nháp toán ở trên, tải ảnh (.jpg, .png, .webp) hoặc nhấn Ctrl + V để dán.'
+            ? clearView
+              ? 'Chưa có trang bài tập nào. Chụp ảnh bài tập, tải ảnh (.jpg, .png, .webp) hoặc nhấn Ctrl + V để dán.'
+              : 'Chưa có trang bài tập nào. Chọn mẫu giấy nháp toán ở trên, tải ảnh (.jpg, .png, .webp) hoặc nhấn Ctrl + V để dán.'
             : 'Chưa có trang bài tập nào được chia sẻ tại bàn này.'}
         </div>
       )}

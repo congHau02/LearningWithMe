@@ -140,7 +140,7 @@ export function TableWorkspaceShell() {
                 data-testid="clear-view-board-pane"
                 className="flex min-h-0 flex-[3_1_0%] flex-col overflow-y-auto lg:col-span-2"
               >
-                <HomeworkDeckPanel tableId={activeTableId} canControl={canControl} />
+                <HomeworkDeckPanel tableId={activeTableId} canControl={canControl} clearView={true} />
               </div>
               <div
                 data-testid="clear-view-chat-pane"

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { HomeworkSlide, PermissionRequestNotification, TableChatMessage, TableMemberDto, TableScratchpadState, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
 import type { RoomEvent } from '../services/roomApi';
+import type { BoardTool } from '../utils/homeworkCanvasMath';
 import { reduceRoomSeatEvent, reduceWorkspaceEvent, type LaserPointerState } from './tableStoreReducers';
 
 export interface VideoSyncState { videoId: string | null; isPlaying: boolean; currentTime: number; lastUpdatedEpoch: number; }
@@ -24,6 +25,9 @@ export interface TableWorkspaceState {
   laserPointers: Record<string, LaserPointerState>;
   isWorkspaceMinimized: boolean;
   unreadChatCount: number;
+  boardTool: BoardTool;
+  boardColor: string;
+  boardLineWidth: number;
   setTableState: (payload: { tableId: string; hostUserId: string | null; coHostUserIds?: string[]; isFreeCollab?: boolean; sosBanner?: string | null; sitStartTimeEpoch?: number | null; videoState?: Partial<VideoSyncState>; }) => void;
   applyWorkspaceSnapshot: (snapshot: TableWorkspaceSnapshot, selfUserId: string | null) => void;
   applyWorkspaceEvent: (event: TableWorkspaceEvent, selfUserId: string | null) => void;
@@ -38,6 +42,9 @@ export interface TableWorkspaceState {
   updateMemberStudyGoal: (userId: string, studyGoal: string, studyGoalCompleted: boolean) => void;
   swapParticipantIdentity: (oldUserId: string, newUserId: string) => void;
   setWorkspaceMinimized: (minimized: boolean) => void;
+  setBoardTool: (tool: BoardTool) => void;
+  setBoardColor: (color: string) => void;
+  setBoardLineWidth: (lineWidth: number) => void;
   leaveTable: () => void;
 }
 
@@ -52,6 +59,9 @@ const INITIAL_TABLE_STATE = {
   laserPointers: {} as Record<string, LaserPointerState>,
   isWorkspaceMinimized: false,
   unreadChatCount: 0,
+  boardTool: 'PEN' as BoardTool,
+  boardColor: '#ef4444',
+  boardLineWidth: 3,
 };
 
 export const useTableStore = create<TableWorkspaceState>((set) => ({
@@ -113,5 +123,8 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
       isWorkspaceMinimized: minimized,
       unreadChatCount: minimized ? s.unreadChatCount : 0,
     })),
+  setBoardTool: (boardTool) => set({ boardTool }),
+  setBoardColor: (boardColor) => set({ boardColor }),
+  setBoardLineWidth: (boardLineWidth) => set({ boardLineWidth }),
   leaveTable: () => set({ ...INITIAL_TABLE_STATE }),
 }));
