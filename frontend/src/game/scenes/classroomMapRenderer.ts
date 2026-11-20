@@ -99,14 +99,12 @@ export function buildClassroomTilemap(scene: Phaser.Scene, topology: RoomTopolog
       g.lineStyle?.(1, BOTANICAL_2D_SCENE.furniture.woodHighlight, 0.9);
       g.strokeRoundedRect?.(leftPx + 3, topPx + 3, widthPx - 6, heightPx - 10, 4);
 
-      // Glowing Warm Amber desk lamp + study notebook
+      // Desk lamp pedestal (reactive Warm Amber shade & light pool drawn by StudyCafeLightingSystem)
       const lampX = cx + 8;
       const lampY = cy - 4;
-      g.fillStyle?.(BOTANICAL_2D_SCENE.lighting.lampWarm, 0.16);
-      g.fillCircle?.(lampX, lampY + 2, 18);
       g.fillStyle?.(BOTANICAL_PALETTE_INT.luminousBorder, 1);
       g.fillRect?.(lampX - 3, lampY + 2, 6, 3);
-      g.fillStyle?.(BOTANICAL_2D_SCENE.lighting.lampWarm, 0.98);
+      g.fillStyle?.(BOTANICAL_PALETTE_INT.slateLeaf, 1);
       g.fillRoundedRect?.(lampX - 5, lampY - 4, 10, 6, 2);
 
       g.fillStyle?.(BOTANICAL_PALETTE_INT.morningMist, 0.95);

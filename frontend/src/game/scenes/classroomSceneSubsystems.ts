@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
+import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import { AmbientNpcManager } from '../cafe/AmbientNpcManager';
@@ -12,6 +13,7 @@ import { ChatBubble } from '../entities/ChatBubble';
 import type { PlayerSprite } from '../entities/PlayerSprite';
 import { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
 import { TableSosOverlay } from '../entities/TableSosOverlay';
+import { StudyCafeLightingSystem } from '../lighting/StudyCafeLightingSystem';
 import type { RoomTopology } from '../topology/roomTopology';
 import {
   buildClassroomTilemap,
@@ -36,6 +38,7 @@ export interface ClassroomSceneSubsystems {
   readonly seatGraphicsById: Map<string, Phaser.GameObjects.Graphics>;
   readonly dynamicGraphics: Phaser.GameObjects.Graphics;
   readonly ambientVfx: StudyCafeAmbientVfx;
+  readonly lightingSystem: StudyCafeLightingSystem;
   readonly remotePlayersRenderer: RemotePlayersRenderer;
   readonly tableSosOverlay: TableSosOverlay;
   readonly ambientNpcManager: AmbientNpcManager;
@@ -65,6 +68,7 @@ export function createClassroomSceneSubsystems(
   }
 
   const ambientVfx = new StudyCafeAmbientVfx(scene, topology);
+  const lightingSystem = new StudyCafeLightingSystem(scene, topology);
   const remotePlayersRenderer = new RemotePlayersRenderer({ scene, tileSize: topology.tileSize });
   const tableSosOverlay = new TableSosOverlay(scene, topology);
   const ambientNpcManager = new AmbientNpcManager({ scene, tileSize: topology.tileSize, topology });
@@ -101,6 +105,7 @@ export function createClassroomSceneSubsystems(
     seatGraphicsById,
     dynamicGraphics,
     ambientVfx,
+    lightingSystem,
     remotePlayersRenderer,
     tableSosOverlay,
     ambientNpcManager,
@@ -144,6 +149,19 @@ export function updateClassroomSceneSubsystems(options: {
   subsystems.tableSosOverlay.update(game.roomTables, time);
   subsystems.ambientNpcManager.update(delta, now);
   subsystems.ambientVfx.update(time);
+  const display = useStudyCafeDisplayStore.getState();
+  subsystems.lightingSystem.update({
+    mood: display.ambienceMood,
+    policy: display.graphicsPolicy,
+    occupancyInput: {
+      characterState: game.characterState,
+      currentTableId: game.currentTableId,
+      occupiedSeats: game.occupiedSeats,
+      remotePlayers: game.remotePlayers,
+    },
+    timeMs: time,
+    deltaMs: delta,
+  });
 
   const pos = playerSprite.interpolatePosition(0.35);
   const breathingOffset = computeIdleBreathingOffset(time, 0, game.isMoving);
@@ -205,6 +223,7 @@ export function destroyClassroomSceneSubsystems(subsystems?: ClassroomSceneSubsy
   subsystems.tableSosOverlay.destroy();
   subsystems.ambientNpcManager.destroy();
   subsystems.ambientVfx.destroy();
+  subsystems.lightingSystem.destroy();
   for (const sg of subsystems.seatGraphicsById.values()) sg.destroy?.();
   subsystems.seatGraphicsById.clear();
 }

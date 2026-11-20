@@ -4,6 +4,9 @@ import { computeYSortDepth } from '../scenes/ySortDepth';
 import type { RoomTopology } from '../topology/roomTopology';
 import { SERVICE_COUNTER_TILES } from './studyCafeConfig';
 
+export const NORTH_WINDOW_TILE_STARTS = [8, 13] as const;
+export const READING_LAMP_TILE_XS = [4, 19] as const;
+
 /**
  * Draws nocturnal Study Café ambience: twilight north windows with nocturnal wash,
  * woven under-table area rugs, Warm Amber reading lamp halos, Chill Lounge accents,
@@ -29,24 +32,18 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
     g.strokeRoundedRect?.(rugX + 2, rugY + 2, rugW - 4, rugH - 4, 6);
   }
 
-  // 2. Twilight windows along north wall (x = 8..10 and 13..15) with nocturnal wash
-  const windowStarts = [8, 13];
-  for (const wx of windowStarts) {
+  // 2. North window base frames (exterior skyline & mood twilight shafts rendered by WindowDepthRenderer)
+  for (const wx of NORTH_WINDOW_TILE_STARTS) {
     const px = wx * ts;
     g.fillStyle?.(BOTANICAL_2D_SCENE.windows.paneFill, 0.9);
     g.fillRoundedRect?.(px + 4, 4, ts * 2 - 8, 18, 3);
     g.lineStyle?.(1.5, BOTANICAL_2D_SCENE.windows.frame, 1);
     g.strokeRoundedRect?.(px + 4, 4, ts * 2 - 8, 18, 3);
     g.lineBetween?.(px + ts, 4, px + ts, 22);
-
-    // Soft translucent twilight wash onto floor below window
-    g.fillStyle?.(BOTANICAL_2D_SCENE.windows.twilightBeam, BOTANICAL_2D_SCENE.windows.beamAlpha);
-    g.fillTriangle?.(px + 4, 24, px + ts * 2 - 4, 24, px + ts * 2 + 12, ts * 3.2);
-    g.fillTriangle?.(px + 4, 24, px + ts * 2 + 12, ts * 3.2, px - 6, ts * 3.2);
   }
 
-  // 3. Warm Amber lamp glow around top reading lamps at (4,1) and (19,1)
-  for (const lampX of [4, 19]) {
+  // 3. Base Warm Amber glow around top reading lamps at (4,1) and (19,1)
+  for (const lampX of READING_LAMP_TILE_XS) {
     g.fillStyle?.(BOTANICAL_2D_SCENE.lighting.lampWarm, BOTANICAL_2D_SCENE.lighting.lampAlpha);
     g.fillCircle?.((lampX + 0.5) * ts, 1.5 * ts, ts * 1.45);
   }

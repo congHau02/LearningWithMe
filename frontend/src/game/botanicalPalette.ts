@@ -112,6 +112,33 @@ export const BOTANICAL_2D_SCENE = {
   shadow: {
     floorInt: 0x050807,
   },
+  ambience: {
+    warmSunset: {
+      ambientWash: 0x382418,
+      skyTop: 0x261d24,
+      skyHorizon: 0x94572a,
+      skylineFar: 0x1c1e1e,
+      skylineNear: 0x121917,
+      bloom: 0xf4c46a,
+    },
+    deepFocusNight: {
+      ambientWash: BOTANICAL_PALETTE_INT.deepPineNight,
+      skyTop: 0x0a1310,
+      skyHorizon: 0x172b24,
+      skylineFar: 0x111f1a,
+      skylineNear: 0x0b1512,
+      bloom: BOTANICAL_PALETTE_INT.warmAmber,
+    },
+    rainyNight: {
+      ambientWash: 0x0d2120,
+      skyTop: 0x0c1a1c,
+      skyHorizon: 0x1f3d38,
+      skylineFar: 0x102221,
+      skylineNear: 0x0a1616,
+      beam: 0x1e3c36,
+      bloom: 0xd9a84e,
+    },
+  },
 } as const;
 
 export function hexToInt(hex: string): number {

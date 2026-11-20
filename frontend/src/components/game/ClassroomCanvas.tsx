@@ -8,6 +8,7 @@ import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore'
 import { ClassroomTelemetryBar } from '../hud/ClassroomTelemetryBar';
 import { CoffeeIcon } from '../icons';
 import { DoubleBezelCard } from '../ui/DoubleBezelCard';
+import { ClassroomAmbienceControl } from './ClassroomAmbienceControl';
 import { ClassroomCameraControls } from './ClassroomCameraControls';
 import { ClassroomGraphicsControl } from './ClassroomGraphicsControl';
 
@@ -82,6 +83,7 @@ export function ClassroomCanvas() {
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ClassroomAmbienceControl />
           <ClassroomGraphicsControl />
           <button
             type="button"
