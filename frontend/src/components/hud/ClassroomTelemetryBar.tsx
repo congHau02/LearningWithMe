@@ -10,7 +10,10 @@ export function ClassroomTelemetryBar() {
   const sosBanner = useTableStore((s) => s.sosBanner);
 
   return (
-    <div className="grid w-full grid-cols-2 gap-2 text-left text-xs sm:grid-cols-4 sm:gap-2.5">
+    <div
+      data-testid="classroom-telemetry-bar"
+      className="grid w-full grid-cols-2 gap-2 pb-14 text-left text-xs sm:grid-cols-4 sm:gap-2.5 sm:pb-0 sm:pr-36"
+    >
       <div className="rounded-lg border border-[#243630] bg-[#16221E] p-2 shadow-sm">
         <span className="text-[11px] text-[#8FA399]">Tọa độ lưới:</span>
         <p

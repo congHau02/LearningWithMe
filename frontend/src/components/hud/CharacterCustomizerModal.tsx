@@ -151,7 +151,10 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
           </p>
         ) : null}
 
-        <div className="mt-4 grid flex-1 grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2">
+        <div
+          data-testid="customizer-items-grid"
+          className="mt-4 grid h-[min(45dvh,280px)] content-start grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:h-[264px] sm:grid-cols-2"
+        >
           {loading ? (
             <p className="col-span-full py-6 text-center text-xs text-muted-foreground">Đang tải danh sách vật phẩm...</p>
           ) : (

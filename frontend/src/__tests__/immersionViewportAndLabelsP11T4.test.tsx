@@ -290,10 +290,10 @@ describe('P11-T4: Immersive Full-Height Study Café Viewport & Crisp Hi-DPI Viet
         });
       });
 
-      // Self bubble & centered projection at (288, 192) with scroll (-96, -64) at 2× zoom => 50% left
+      // Self bubble & centered projection at (288, 192) with scroll (-96, -64) at 2× zoom => 50cqw GPU transform
       const selfBubble = screen.getByTestId('map-label-bubble-self');
       expect(selfBubble).toHaveTextContent('Chào cả phòng, cùng cố gắng nhé! 🔥');
-      expect(selfBubble.style.left).toBe('50%');
+      expect(selfBubble.style.transform).toContain('translate3d(50cqw,');
 
       const peerLabel = screen.getByTestId('map-label-remote-u-peer-1');
       expect(peerLabel).toHaveTextContent('👑 Thảo Nguyên • Đang học');

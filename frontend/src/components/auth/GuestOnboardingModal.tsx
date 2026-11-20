@@ -142,7 +142,7 @@ export function GuestOnboardingModal({
               currentLength={nicknameLength}
               placeholder="VD: Minh Hậu"
               autoFocus
-              autoComplete="nickname"
+              autoComplete="off"
               registration={register('nickname')}
               error={errors.nickname}
             />

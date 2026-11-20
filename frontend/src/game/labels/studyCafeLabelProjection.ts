@@ -28,6 +28,9 @@ export type {
   StudyCafeProjectedLabelItem,
 } from './studyCafeLabelTypes';
 
+const COUNTER_STAFF_LABEL_OFFSET_Y = 14;
+const COUNTER_STAFF_BUBBLE_OFFSET_Y = -68;
+
 export function projectWorldPointToOverlay(
   worldX: number,
   worldY: number,
@@ -161,7 +164,7 @@ export function buildDynamicStudyCafeMapLabels(options: {
       id: 'bubble-self', testId: 'map-label-bubble-self', kind: 'chat-bubble',
       text: live.self.bubbleText, worldX: selfWorldX,
       worldY: selfWorldY + ACTOR_BUBBLE_OFFSET_Y + (motion?.offsetY ?? 0),
-      originY: 'center', alpha: motion?.alpha ?? 1, scale: motion?.scale ?? 1,
+      originY: 'bottom', alpha: motion?.alpha ?? 1, scale: motion?.scale ?? 1,
     });
   }
 
@@ -186,7 +189,7 @@ export function buildDynamicStudyCafeMapLabels(options: {
         id: `bubble-${rp.userId}`, testId: `map-label-bubble-${rp.userId}`, kind: 'chat-bubble',
         text: rp.bubbleText, worldX: rp.worldX,
         worldY: rp.worldY + ACTOR_BUBBLE_OFFSET_Y + (rp.bubbleMotion?.offsetY ?? 0),
-        originY: 'center', alpha: rp.bubbleMotion?.alpha ?? 1, scale: rp.bubbleMotion?.scale ?? 1,
+        originY: 'bottom', alpha: rp.bubbleMotion?.alpha ?? 1, scale: rp.bubbleMotion?.scale ?? 1,
       });
     }
   }
@@ -204,15 +207,15 @@ export function buildDynamicStudyCafeMapLabels(options: {
     items.push({
       id: `npc-${npc.npcId}`, testId: `map-label-npc-${npc.npcId}`, kind: 'ambient-npc',
       text: npc.displayName, worldX: npc.worldX,
-      worldY: npc.isCounterStaff ? npc.worldY + 14 : npc.worldY + ACTOR_LABEL_OFFSET_Y,
+      worldY: npc.isCounterStaff ? npc.worldY + COUNTER_STAFF_LABEL_OFFSET_Y : npc.worldY + ACTOR_LABEL_OFFSET_Y,
       originY: npc.isCounterStaff ? 'top' : 'bottom', alpha: 1, scale: 1,
     });
     if (npc.bubbleText) {
       items.push({
         id: `bubble-${npc.npcId}`, testId: `map-label-bubble-${npc.npcId}`, kind: 'chat-bubble',
         text: npc.bubbleText, worldX: npc.worldX,
-        worldY: (npc.isCounterStaff ? npc.worldY - 82 : npc.worldY + ACTOR_BUBBLE_OFFSET_Y) + (npc.bubbleMotion?.offsetY ?? 0),
-        originY: 'center', alpha: npc.bubbleMotion?.alpha ?? 1, scale: npc.bubbleMotion?.scale ?? 1,
+        worldY: (npc.isCounterStaff ? npc.worldY + COUNTER_STAFF_BUBBLE_OFFSET_Y : npc.worldY + ACTOR_BUBBLE_OFFSET_Y) + (npc.bubbleMotion?.offsetY ?? 0),
+        originY: 'bottom', alpha: npc.bubbleMotion?.alpha ?? 1, scale: npc.bubbleMotion?.scale ?? 1,
       });
     }
   }

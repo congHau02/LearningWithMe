@@ -14,27 +14,37 @@ import { useGameStore } from '../../stores/useGameStore';
 import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
 import { useTableStore } from '../../stores/useTableStore';
 
-const ORIGIN_Y_TRANSFORM: Record<StudyCafeProjectedLabelItem['originY'], string> = {
-  top: 'translate(-50%, 0%)',
-  center: 'translate(-50%, -50%)',
-  bottom: 'translate(-50%, -100%)',
+const ORIGIN_Y_PERCENT: Record<StudyCafeProjectedLabelItem['originY'], string> = {
+  top: '0%',
+  center: '-50%',
+  bottom: '-100%',
 };
+
+const MOBILE_EDGE_LEFT_THRESHOLD_PERCENT = 28;
+const MOBILE_EDGE_RIGHT_THRESHOLD_PERCENT = 72;
+
+function resolveMobileEdgeAnchorClass(item: StudyCafeProjectedLabelItem, leftPercent: number): string {
+  if (item.kind !== 'zone-sign' && item.kind !== 'chat-bubble') return '';
+  if (leftPercent > MOBILE_EDGE_RIGHT_THRESHOLD_PERCENT) return 'max-sm:[--label-anchor-x:-85%]';
+  if (leftPercent < MOBILE_EDGE_LEFT_THRESHOLD_PERCENT) return 'max-sm:[--label-anchor-x:-15%]';
+  return '';
+}
 
 const KIND_BADGE_CLASSES: Record<StudyCafeProjectedLabelItem['kind'], string> = {
   'table-plaque':
-    'rounded border border-border/90 bg-card/95 px-1.5 py-0.5 font-sans text-[10px] font-bold tracking-tight text-foreground shadow-sm',
+    'rounded border border-border/90 bg-card/95 px-1.5 py-0.5 font-sans text-[10px] font-bold tracking-tight text-foreground shadow-sm max-sm:px-1 max-sm:py-0 max-sm:text-[8px] max-sm:leading-tight',
   'zone-sign':
-    'rounded-md border border-border/90 bg-card/95 px-2 py-0.5 font-sans text-[10px] font-semibold text-foreground shadow-sm',
+    'rounded-md border border-border/90 bg-card/95 px-2 py-0.5 font-sans text-[10px] font-semibold text-foreground shadow-sm max-sm:px-1.5 max-sm:py-0 max-sm:text-[8px] max-sm:leading-tight',
   'self-player':
-    'rounded-md border border-primary/45 bg-card/95 px-2 py-0.5 text-center font-sans text-[11px] font-semibold leading-tight text-foreground shadow-md',
+    'rounded-md border border-primary/45 bg-card/95 px-2 py-0.5 text-center font-sans text-[11px] font-semibold leading-tight text-foreground shadow-md max-sm:px-1 max-sm:py-0 max-sm:text-[9px]',
   'remote-player':
-    'rounded-md border border-border/90 bg-card/95 px-2 py-0.5 text-center font-sans text-[11px] font-medium leading-tight text-foreground shadow-md',
+    'rounded-md border border-border/90 bg-card/95 px-2 py-0.5 text-center font-sans text-[11px] font-medium leading-tight text-foreground shadow-md max-sm:px-1 max-sm:py-0 max-sm:text-[9px]',
   'ambient-npc':
-    'rounded-md border border-border/85 bg-card/92 px-1.5 py-0.5 text-center font-sans text-[10px] font-semibold text-foreground shadow-sm',
+    'rounded-md border border-border/85 bg-card/92 px-1.5 py-0.5 text-center font-sans text-[10px] font-semibold text-foreground shadow-sm max-sm:px-1 max-sm:py-0 max-sm:text-[8px] max-sm:leading-tight',
   'chat-bubble':
-    'max-w-[168px] rounded-lg border border-border bg-card/95 px-2.5 py-1 text-center font-sans text-[11px] font-medium leading-snug text-foreground shadow-lg',
+    'max-w-[168px] rounded-lg border border-border bg-card/95 px-2.5 py-1 text-center font-sans text-[11px] font-medium leading-snug text-foreground shadow-lg max-sm:max-w-[132px] max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[9px]',
   'sos-banner':
-    'rounded-lg border border-primary/80 bg-card/95 px-2.5 py-1 text-center font-sans text-[11px] font-bold text-foreground shadow-lg ring-1 ring-primary/40',
+    'rounded-lg border border-primary/80 bg-card/95 px-2.5 py-1 text-center font-sans text-[11px] font-bold text-foreground shadow-lg ring-1 ring-primary/40 max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[9px]',
 };
 
 /**
@@ -135,15 +145,17 @@ export function StudyCafeMapLabelsOverlay() {
       className={
         isWorkspaceCovered
           ? 'hidden'
-          : 'pointer-events-none absolute inset-0 z-[5] select-none overflow-hidden'
+          : 'pointer-events-none absolute inset-0 z-[5] select-none overflow-hidden [container-type:size]'
       }
     >
       {allLabels.map((item) => {
         const projected = projectWorldPointToOverlay(item.worldX, item.worldY, cameraState);
         if (!projected.inBounds || item.alpha <= 0.01) return null;
-        const baseTransform = ORIGIN_Y_TRANSFORM[item.originY];
-        const scaleTransform =
-          item.scale !== 1 ? `${baseTransform} scale(${item.scale.toFixed(3)})` : baseTransform;
+        const mobileEdgeAnchorClass = resolveMobileEdgeAnchorClass(item, projected.leftPercent);
+        const anchorY = ORIGIN_Y_PERCENT[item.originY];
+        const positionTransform = `translate3d(${projected.leftPercent}cqw, ${projected.topPercent}cqh, 0) translate(var(--label-anchor-x, -50%), ${anchorY})`;
+        const fullTransform =
+          item.scale !== 1 ? `${positionTransform} scale(${item.scale.toFixed(3)})` : positionTransform;
 
         return (
           <div
@@ -151,12 +163,12 @@ export function StudyCafeMapLabelsOverlay() {
             data-testid={item.testId}
             data-label-kind={item.kind}
             style={{
-              left: `${projected.leftPercent}%`,
-              top: `${projected.topPercent}%`,
-              transform: scaleTransform,
+              left: 0,
+              top: 0,
+              transform: fullTransform,
               opacity: item.alpha,
             }}
-            className={`pointer-events-none absolute w-max whitespace-pre-line ${KIND_BADGE_CLASSES[item.kind]}`}
+            className={`pointer-events-none absolute w-max whitespace-pre-line ${mobileEdgeAnchorClass} ${KIND_BADGE_CLASSES[item.kind]}`}
           >
             {item.text}
           </div>
