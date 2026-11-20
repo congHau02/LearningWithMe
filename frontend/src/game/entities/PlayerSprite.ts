@@ -3,8 +3,9 @@ import type {
   TileCoordinate,
 } from '../topology/roomTopology';
 import type { CharacterState } from '../../stores/useGameStore';
+import type { SeatTransitionKind } from '../fx/seatTransitionJuice';
 
-export type CharacterPosture = 'STANDING' | 'STEPPING' | 'SEATED';
+export type CharacterPosture = 'STANDING' | 'STEPPING' | 'SITTING' | 'STANDING_UP' | 'SEATED';
 
 export type StarterAvatarKey =
   | 'default_student'
@@ -55,6 +56,8 @@ export class PlayerSprite {
   private readonly tileSize: number;
   private facingDir: FacingDirection;
   private posture: CharacterPosture;
+  private characterState: CharacterState = 'FREE_ROAM';
+  private isMoving = false;
   private nickname: string;
   private avatarId: StarterAvatarKey;
   private skinId: string;
@@ -92,6 +95,8 @@ export class PlayerSprite {
     facingDir: FacingDirection;
     characterState: CharacterState;
     isMoving: boolean;
+    isSeatTransitioning?: boolean;
+    seatTransitionKind?: SeatTransitionKind;
     nickname?: string;
     avatarId?: string;
     hatId?: string;
@@ -101,28 +106,36 @@ export class PlayerSprite {
     this.tileX = state.tileX;
     this.tileY = state.tileY;
     this.facingDir = state.facingDir;
-    if (state.nickname !== undefined) {
-      this.nickname = state.nickname;
-    }
+    this.characterState = state.characterState;
+    this.isMoving = state.isMoving;
+    if (state.nickname !== undefined) this.nickname = state.nickname;
     if (state.avatarId !== undefined) {
       this.skinId = state.avatarId;
       this.avatarId = resolveAvatarTextureKey(state.avatarId);
     }
-    if (state.hatId !== undefined) {
-      this.hatId = state.hatId;
-    }
-    if (state.deskPetId !== undefined) {
-      this.deskPetId = state.deskPetId;
+    if (state.hatId !== undefined) this.hatId = state.hatId;
+    if (state.deskPetId !== undefined) this.deskPetId = state.deskPetId;
+
+    if (state.characterState === 'SEATED' && (state.snapImmediately ?? true)) {
+      const center = tileToWorldCenter(this.tileX, this.tileY, this.tileSize);
+      this.pixelX = center.x;
+      this.pixelY = center.y;
     }
 
-    if (state.characterState === 'SEATED') {
+    const transitionKind: SeatTransitionKind =
+      state.seatTransitionKind ??
+      (state.isSeatTransitioning ? (state.characterState === 'SEATED' ? 'sit' : 'stand') : 'idle');
+    this.setSeatTransitionKind(transitionKind);
+  }
+
+  public setSeatTransitionKind(kind: SeatTransitionKind): void {
+    if (kind === 'sit') {
+      this.posture = 'SITTING';
+    } else if (kind === 'stand' && !this.isMoving) {
+      this.posture = 'STANDING_UP';
+    } else if (this.characterState === 'SEATED') {
       this.posture = 'SEATED';
-      if (state.snapImmediately ?? true) {
-        const center = tileToWorldCenter(this.tileX, this.tileY, this.tileSize);
-        this.pixelX = center.x;
-        this.pixelY = center.y;
-      }
-    } else if (state.isMoving) {
+    } else if (this.isMoving) {
       this.posture = 'STEPPING';
     } else {
       this.posture = 'STANDING';
@@ -134,12 +147,8 @@ export class PlayerSprite {
     const clampedFactor = Math.max(0, Math.min(1, lerpFactor));
     this.pixelX += (target.x - this.pixelX) * clampedFactor;
     this.pixelY += (target.y - this.pixelY) * clampedFactor;
-    if (Math.abs(target.x - this.pixelX) < 0.5) {
-      this.pixelX = target.x;
-    }
-    if (Math.abs(target.y - this.pixelY) < 0.5) {
-      this.pixelY = target.y;
-    }
+    if (Math.abs(target.x - this.pixelX) < 0.5) this.pixelX = target.x;
+    if (Math.abs(target.y - this.pixelY) < 0.5) this.pixelY = target.y;
     return { x: this.pixelX, y: this.pixelY };
   }
 

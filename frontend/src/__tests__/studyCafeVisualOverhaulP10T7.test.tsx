@@ -11,6 +11,11 @@ vi.mock('phaser', () => ({
 import { renderBakedStaticRoomLayer } from '../game/atlas/bakedStaticRoomLayer';
 import { SeatSpriteLayer } from '../game/atlas/seatSpriteLayer';
 import {
+  STUDY_CAFE_CHARACTERS_ATLAS_IMAGE,
+  STUDY_CAFE_CHARACTERS_ATLAS_JSON,
+  STUDY_CAFE_CHARACTERS_ATLAS_KEY,
+} from '../game/atlas/paperDollManifest';
+import {
   STUDY_CAFE_ENV_ATLAS_IMAGE,
   STUDY_CAFE_ENV_ATLAS_JSON,
   STUDY_CAFE_ENV_ATLAS_KEY,
@@ -81,26 +86,12 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
         STUDY_CAFE_ENV_ATLAS_IMAGE,
         STUDY_CAFE_ENV_ATLAS_JSON,
       );
-      expect(spritesheetSpy).toHaveBeenCalledWith(
-        'default_student',
-        '/assets/sprites/default_student.png',
-        { frameWidth: 32, frameHeight: 48 },
+      expect(atlasSpy).toHaveBeenCalledWith(
+        STUDY_CAFE_CHARACTERS_ATLAS_KEY,
+        STUDY_CAFE_CHARACTERS_ATLAS_IMAGE,
+        STUDY_CAFE_CHARACTERS_ATLAS_JSON,
       );
-      expect(spritesheetSpy).toHaveBeenCalledWith(
-        'student_glasses',
-        '/assets/sprites/student_glasses.png',
-        { frameWidth: 32, frameHeight: 48 },
-      );
-      expect(spritesheetSpy).toHaveBeenCalledWith(
-        'student_hoodie',
-        '/assets/sprites/student_hoodie.png',
-        { frameWidth: 32, frameHeight: 48 },
-      );
-      expect(spritesheetSpy).toHaveBeenCalledWith(
-        'student_sprout',
-        '/assets/sprites/student_sprout.png',
-        { frameWidth: 32, frameHeight: 48 },
-      );
+      expect(spritesheetSpy).not.toHaveBeenCalled();
     });
 
     it('computes dynamic Y-Sorting depth (depth = baseLayer + pixelY * 0.01) so actors walk behind or in front of furniture', () => {
@@ -228,26 +219,29 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
   });
 
   describe('Slice 2: Elliptical Shadows, Direction-Aware Accessories & Dynamic Actor Y-Sorting', () => {
-    it('renders elliptical floor shadow, direction-aware SKIN/HAT/DESK_PET offsets, and dynamic Y-Sorted depth in CharacterAccessoriesOverlay', () => {
-      const fillStyleSpy = vi.fn();
-      const setDepthSpy = vi.fn().mockReturnThis();
-      const mockGraphics = {
-        clear: vi.fn(),
-        setAlpha: vi.fn(),
-        setDepth: setDepthSpy,
-        fillStyle: fillStyleSpy,
-        lineStyle: vi.fn(),
-        fillRoundedRect: vi.fn(),
-        strokeRoundedRect: vi.fn(),
-        fillRect: vi.fn(),
-        fillCircle: vi.fn(),
-        strokeCircle: vi.fn(),
-        fillTriangle: vi.fn(),
-        lineBetween: vi.fn(),
+    it('renders elliptical floor shadow, direction-aware SKIN/HAT/DESK_PET atlas layers, and dynamic Y-Sorted depth in CharacterAccessoriesOverlay', () => {
+      const setDepthSpy = vi.fn();
+      const makeSpriteObj = () => {
+        const obj = {
+          setOrigin: vi.fn().mockReturnThis(),
+          setDepth: vi.fn((d: number) => {
+            setDepthSpy(d);
+            return obj;
+          }),
+          setPosition: vi.fn().mockReturnThis(),
+          setScale: vi.fn().mockReturnThis(),
+          setAlpha: vi.fn().mockReturnThis(),
+          setVisible: vi.fn().mockReturnThis(),
+          setFlipX: vi.fn().mockReturnThis(),
+          play: vi.fn().mockReturnThis(),
+          destroy: vi.fn(),
+        };
+        return obj;
       };
       const mockScene = {
         add: {
-          graphics: vi.fn(() => mockGraphics),
+          image: vi.fn(makeSpriteObj),
+          sprite: vi.fn(makeSpriteObj),
         },
       } as unknown as Phaser.Scene;
 
@@ -541,7 +535,7 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
       decorHandle.destroy();
     });
 
-    it('ships 128x192 (4x4 frames of 32x48px) character spritesheets and packed 512x256 Botanical environment texture atlas PNG', async () => {
+    it('ships packed 1024x1024 Paper-Doll character atlas and 512x256 Botanical environment texture atlas PNGs', async () => {
       const fsModName = 'fs';
       const fsMod = (await import(/* @vite-ignore */ fsModName)) as {
         readFileSync: (filePath: string) => {
@@ -554,17 +548,10 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
       expect(atlasBuf.readUInt32BE(20)).toBe(256);
       expect(atlasBuf.length).toBeGreaterThan(4000);
 
-      for (const avatarKey of [
-        'default_student',
-        'student_glasses',
-        'student_hoodie',
-        'student_sprout',
-      ]) {
-        const spriteBuf = fsMod.readFileSync(`public/assets/sprites/${avatarKey}.png`);
-        // 4 columns * 32px = 128px width; 4 rows * 48px = 192px height
-        expect(spriteBuf.readUInt32BE(16)).toBe(128);
-        expect(spriteBuf.readUInt32BE(20)).toBe(192);
-      }
+      const charAtlasBuf = fsMod.readFileSync('public/assets/sprites/study-cafe-characters.png');
+      expect(charAtlasBuf.readUInt32BE(16)).toBe(1024);
+      expect(charAtlasBuf.readUInt32BE(20)).toBe(1024);
+      expect(charAtlasBuf.length).toBeGreaterThan(5000);
     });
   });
 });

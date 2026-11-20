@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0",
+  "project": "LearningWithMe \u2014 Study Caf\u00e9 (Botanical Night Studio)",
+  "ticket": "P11-T7 (#83)",
+  "paletteLock": "Botanical Night Studio (ADR-0010 / ADR-0013)",
+  "assets": [
+    {
+      "id": "study-cafe-characters",
+      "kind": "paper-doll-texture-atlas",
+      "path": "/assets/sprites/study-cafe-characters.png",
+      "atlasJson": "/assets/sprites/study-cafe-characters.json",
+      "dimensions": {
+        "width": 1024,
+        "height": 1024
+      },
+      "frameCount": 646,
+      "colorCount": 41,
+      "source": {
+        "kind": "original-procedural-pixel-art",
+        "tool": "scripts/generate-study-cafe-characters-atlas.py (Python + Pillow)",
+        "createdAt": "2026-11-20",
+        "externalThirdPartyContent": false
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "cost": "0-cost",
+        "repoSafe": true,
+        "attributionRequired": false,
+        "notes": "100% original repo-authored 32x48 Paper-Doll pixel art dedicated under CC0-1.0."
+      },
+      "technical_checks_passed": true
+    }
+  ]
+}

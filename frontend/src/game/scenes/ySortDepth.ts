@@ -1,9 +1,7 @@
-import type Phaser from 'phaser';
-import { BOTANICAL_2D_SCENE, BOTANICAL_PALETTE_INT } from '../botanicalPalette';
 import type { FacingDirection } from '../topology/roomTopology';
 
 /**
- * 32x48px 3/4 Top-Down RPG Character Proportions & Dynamic Y-Sorting Depth Seam (P10-T7).
+ * 32x48px 3/4 Top-Down RPG Character Proportions & Dynamic Y-Sorting Depth Seam.
  * Anchors taller 32x48px character sprites to the 32x32px logical tile grid via origin(0.5, 0.75)
  * and computes dynamic Phaser render depth: depth = baseLayer + pixelY * 0.01.
  */
@@ -70,16 +68,4 @@ export function formatTablePlaqueLabel(tableId: string, fallbackIndex = 0): stri
   const match = /(\d+)/.exec(tableId);
   const num = match ? Math.max(1, parseInt(match[1], 10)) : fallbackIndex + 1;
   return `Bàn ${String(num).padStart(2, '0')}`;
-}
-
-export function drawEllipticalFloorShadow(
-  g: Partial<Phaser.GameObjects.Graphics> | undefined,
-  x: number,
-  y: number,
-): void {
-  if (!g) return;
-  g.fillStyle?.(BOTANICAL_2D_SCENE.shadow.floorInt, 0.42);
-  g.fillRoundedRect?.(x - 10, y + 7, 20, 7, 3);
-  g.fillStyle?.(BOTANICAL_PALETTE_INT.deepPineNight, 0.28);
-  g.fillRoundedRect?.(x - 7, y + 8, 14, 5, 2);
 }

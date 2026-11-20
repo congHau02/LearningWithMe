@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import type { RoomPlayerDto } from '../../services/roomApi';
+import type { PaperDollPosture } from '../atlas/paperDollManifest';
 import {
   computeIdleBreathingOffset,
   computeYSortDepth,
@@ -11,6 +12,8 @@ import {
   isPlayerTableHost,
   type RemotePlayerEntry,
 } from './remotePlayerEntryHelper';
+
+const REMOTE_SIT_TRANSITION_MS = 180;
 
 export interface RemotePlayerRenderSnapshot {
   userId: string;
@@ -60,7 +63,17 @@ export class RemotePlayersRenderer {
       } else {
         const movedTile =
           existing.data.x !== player.x || existing.data.y !== player.y;
+        const toggledSeatState = existing.data.state !== player.state;
         existing.data = player;
+        if (toggledSeatState) {
+          existing.sitTransitionPending = true;
+          existing.sitTransitionKind = player.state === 'SEATED' ? 'sit' : 'stand';
+          existing.sitTransitionUntilMs = 0;
+        }
+        const activeTransitionKind =
+          existing.sitTransitionPending || existing.sitTransitionUntilMs > 0
+            ? existing.sitTransitionKind
+            : 'idle';
         existing.model.syncFromStore({
           tileX: player.x,
           tileY: player.y,
@@ -69,6 +82,7 @@ export class RemotePlayersRenderer {
           isMoving:
             (player.isMoving !== undefined ? player.isMoving : movedTile) &&
             player.state !== 'SEATED',
+          seatTransitionKind: activeTransitionKind,
           nickname: player.nickname,
           avatarId: player.avatarId,
           hatId: player.hatId,
@@ -82,7 +96,18 @@ export class RemotePlayersRenderer {
     let idx = 0;
     for (const entry of this.entries.values()) {
       idx += 1;
+      if (entry.sitTransitionPending) {
+        entry.sitTransitionPending = false;
+        entry.sitTransitionUntilMs = now + REMOTE_SIT_TRANSITION_MS;
+      }
+      if (entry.sitTransitionUntilMs > 0 && now >= entry.sitTransitionUntilMs) {
+        entry.sitTransitionUntilMs = 0;
+        entry.sitTransitionKind = 'idle';
+        entry.model.setSeatTransitionKind('idle');
+      }
+
       const pos = entry.model.interpolatePosition(lerpFactor);
+      const posture = entry.model.getPosture().toLowerCase() as PaperDollPosture;
       const nextAnim = entry.model.getAnimationKey();
       const alpha = entry.data.connected ? 1 : 0.55;
       const isMoving = entry.model.getPosture() === 'STEPPING';
@@ -119,6 +144,8 @@ export class RemotePlayersRenderer {
         hatId: entry.model.getHatId(),
         deskPetId: entry.model.getDeskPetId(),
         facingDir: entry.model.getFacingDir(),
+        posture,
+        isSeated: entry.data.state === 'SEATED',
         breathingOffsetY: breathingOffset,
         alpha,
       });

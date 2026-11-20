@@ -1,11 +1,28 @@
 import type Phaser from 'phaser';
-import { BOTANICAL_2D_SCENE, BOTANICAL_PALETTE_INT } from '../botanicalPalette';
 import {
+  ACTOR_SHADOW_FRAME,
+  PET_SHADOW_FRAME,
+  STUDY_CAFE_CHARACTERS_ATLAS_KEY,
+  buildDeskPetAnimKey,
+  buildPaperDollAnimKey,
+  buildPaperDollFrameName,
+  resolvePaperDollLayers,
+  type DeskPetId,
+  type HatOverlayId,
+  type NpcApronLayerId,
+  type OutfitOverlayId,
+  type PaperDollPosture,
+} from '../atlas/paperDollManifest';
+import {
+  CHARACTER_ORIGIN_X,
+  CHARACTER_ORIGIN_Y,
   computeFloorShadowYSortDepth,
   computeYSortDepth,
-  drawEllipticalFloorShadow,
 } from '../scenes/ySortDepth';
 import type { FacingDirection } from '../topology/roomTopology';
+import { computeDeskPetPlacement, type DeskPetPlacement } from './deskPetPlacement';
+
+export { computeDeskPetPlacement, type DeskPetPlacement };
 
 export interface CharacterAccessoryRenderParams {
   x: number;
@@ -14,177 +31,156 @@ export interface CharacterAccessoryRenderParams {
   hatId: string;
   deskPetId: string;
   facingDir?: FacingDirection;
+  posture?: PaperDollPosture;
+  isSeated?: boolean;
   breathingOffsetY?: number;
+  scaleX?: number;
+  scaleY?: number;
   alpha?: number;
 }
 
 export interface CharacterAccessorySnapshot {
+  readonly x: number;
+  readonly y: number;
+  readonly facingDir: FacingDirection;
+  readonly posture: PaperDollPosture;
+  readonly isSeated: boolean;
+  readonly depth: number;
+  readonly hatDepth: number;
+  readonly shadowDepth: number;
+  readonly hasFloorShadow: boolean;
+  readonly usesProceduralGraphics: false;
+  readonly outfitLayerId: OutfitOverlayId | NpcApronLayerId | null;
+  readonly outfitAnimKey: string | null;
+  readonly hatLayerId: HatOverlayId | null;
+  readonly hatAnimKey: string | null;
+  readonly deskPetId: DeskPetId | null;
+  readonly deskPetAnimKey: string | null;
+  readonly petOffsetX: number;
+  readonly petOffsetY: number;
+  readonly hatTasselOffsetX: number;
+}
+
+interface OverlayLayerSlot {
+  sprite?: Phaser.GameObjects.Sprite;
+  lastAnim: string | null;
+}
+
+interface OverlayTransform {
   x: number;
   y: number;
-  facingDir: FacingDirection;
   depth: number;
-  shadowDepth: number;
-  hasFloorShadow: boolean;
-  petOffsetX: number;
-  hatTasselOffsetX: number;
+  scaleX: number;
+  scaleY: number;
+  alpha: number;
 }
 
 /**
- * Draws elliptical floor shadows (strictly below sprite depth), direction-aware SKIN collar/hood accents,
- * HAT, and DESK_PET pixel-art companions for 32x48px characters anchored at origin(0.5, 0.75).
+ * Paper-Doll layered sprite renderer for actor shadow, unlockable SKIN outfits,
+ * HAT overlays, and animated DESK_PET companions (zero procedural Graphics shapes).
  */
 export class CharacterAccessoriesOverlay {
-  private shadowGraphics?: Phaser.GameObjects.Graphics;
-  private graphics?: Phaser.GameObjects.Graphics;
+  private shadowImage?: Phaser.GameObjects.Image;
+  private petShadowImage?: Phaser.GameObjects.Image;
+  private readonly outfitSlot: OverlayLayerSlot = { lastAnim: null };
+  private readonly hatSlot: OverlayLayerSlot = { lastAnim: null };
+  private readonly petSlot: OverlayLayerSlot = { lastAnim: null };
   private lastSnapshot: CharacterAccessorySnapshot | null = null;
 
   constructor(options: { scene?: Phaser.Scene; depth?: number } = {}) {
-    if (options.scene) {
-      const baseDepth = options.depth ?? 10;
-      this.shadowGraphics = options.scene.add.graphics().setDepth(baseDepth - 0.002);
-      this.graphics = options.scene.add.graphics().setDepth(baseDepth);
+    const scene = options.scene;
+    if (!scene?.add) return;
+    const baseDepth = options.depth ?? 10;
+
+    if (typeof scene.add.image === 'function') {
+      this.shadowImage = scene.add.image(0, 0, STUDY_CAFE_CHARACTERS_ATLAS_KEY, ACTOR_SHADOW_FRAME);
+      this.shadowImage.setOrigin?.(0.5, 0.5);
+      this.shadowImage.setDepth?.(baseDepth - 0.002);
+
+      this.petShadowImage = scene.add.image(0, 0, STUDY_CAFE_CHARACTERS_ATLAS_KEY, PET_SHADOW_FRAME);
+      this.petShadowImage.setOrigin?.(0.5, 0.5);
+      this.petShadowImage.setDepth?.(baseDepth - 0.002);
+      this.petShadowImage.setVisible?.(false);
+    }
+
+    if (typeof scene.add.sprite === 'function') {
+      this.outfitSlot.sprite = this.createOverlaySprite(
+        scene,
+        buildPaperDollFrameName('outfit_skin_hoodie_blue', 'DOWN', 'standing', 0),
+        CHARACTER_ORIGIN_X,
+        CHARACTER_ORIGIN_Y,
+        baseDepth,
+      );
+      this.hatSlot.sprite = this.createOverlaySprite(
+        scene,
+        buildPaperDollFrameName('hat_headphones', 'DOWN', 'standing', 0),
+        CHARACTER_ORIGIN_X,
+        CHARACTER_ORIGIN_Y,
+        baseDepth + 0.001,
+      );
+      this.petSlot.sprite = this.createOverlaySprite(scene, 'pet_sprout_pot_0', 0.5, 0.5, baseDepth + 0.002);
     }
   }
 
   public update(params: CharacterAccessoryRenderParams): void {
     const {
-      x,
-      y,
-      skinId,
-      hatId,
-      deskPetId,
+      x, y, skinId, hatId, deskPetId,
       facingDir = 'DOWN',
+      posture = 'standing',
+      isSeated = posture === 'seated',
       breathingOffsetY = 0,
+      scaleX = 1,
+      scaleY = 1,
       alpha = 1,
     } = params;
 
-    const depth = computeYSortDepth(y, 10, 0.001);
+    const layers = resolvePaperDollLayers({ avatarId: skinId, skinId, hatId, deskPetId });
     const shadowDepth = computeFloorShadowYSortDepth(y);
-    const petOffsetX = facingDir === 'RIGHT' ? -14 : 14;
-    const hatTasselOffsetX =
-      facingDir === 'LEFT' ? -8 : facingDir === 'UP' ? -7 : 8;
+    const outfitDepth = computeYSortDepth(y, 10, 0.001);
+    const hatDepth = computeYSortDepth(y, 10, 0.002);
+    const bodyY = y + breathingOffsetY;
+
+    const outfitAnimKey = layers.outfitLayerId
+      ? buildPaperDollAnimKey(layers.outfitLayerId, posture, facingDir)
+      : null;
+    const hatAnimKey = layers.hatLayerId
+      ? buildPaperDollAnimKey(layers.hatLayerId, posture, facingDir)
+      : null;
+    const deskPetAnimKey = layers.deskPetId ? buildDeskPetAnimKey(layers.deskPetId) : null;
+    const pet = computeDeskPetPlacement({ x, y, facingDir, isSeated, breathingOffsetY });
 
     this.lastSnapshot = {
-      x,
-      y,
-      facingDir,
-      depth,
-      shadowDepth,
-      hasFloorShadow: true,
-      petOffsetX,
-      hatTasselOffsetX,
+      x, y, facingDir, posture, isSeated,
+      depth: outfitDepth, hatDepth, shadowDepth,
+      hasFloorShadow: true, usesProceduralGraphics: false,
+      outfitLayerId: layers.outfitLayerId, outfitAnimKey,
+      hatLayerId: layers.hatLayerId, hatAnimKey,
+      deskPetId: layers.deskPetId, deskPetAnimKey,
+      petOffsetX: pet.offsetX, petOffsetY: pet.offsetY,
+      hatTasselOffsetX: facingDir === 'LEFT' ? -8 : facingDir === 'UP' ? -7 : 8,
     };
 
-    const sg = this.shadowGraphics as Partial<Phaser.GameObjects.Graphics> | undefined;
-    if (sg) {
-      sg.clear?.();
-      sg.setAlpha?.(alpha);
-      sg.setDepth?.(shadowDepth);
-      // 1. Soft elliptical pixel-art floor shadow strictly below 32x48px sprite feet
-      drawEllipticalFloorShadow(sg, x, y);
-      if (
-        deskPetId === 'pet_sleepy_cat' ||
-        deskPetId === 'pet_wise_owl' ||
-        deskPetId === 'pet_sprout_pot'
-      ) {
-        sg.fillStyle?.(BOTANICAL_2D_SCENE.shadow.floorInt, 0.32);
-        sg.fillRoundedRect?.(x + petOffsetX - 4, y + 8, 8, 3, 1);
-      }
-    }
+    this.shadowImage?.setPosition?.(x, y + 7);
+    this.shadowImage?.setDepth?.(shadowDepth);
+    this.shadowImage?.setAlpha?.(alpha);
+    this.shadowImage?.setVisible?.(true);
 
-    const g = this.graphics as Partial<Phaser.GameObjects.Graphics> | undefined;
-    if (!g) {
-      return;
-    }
+    this.syncSlot(this.outfitSlot, outfitAnimKey, { x, y: bodyY, depth: outfitDepth, scaleX, scaleY, alpha });
+    this.syncSlot(this.hatSlot, hatAnimKey, { x, y: bodyY, depth: hatDepth, scaleX, scaleY, alpha });
 
-    g.clear?.();
-    g.setAlpha?.(alpha);
-    g.setDepth?.(depth);
+    if (deskPetAnimKey) {
+      this.petShadowImage?.setPosition?.(pet.shadowX, pet.shadowY);
+      this.petShadowImage?.setDepth?.(pet.shadowDepth);
+      this.petShadowImage?.setAlpha?.(alpha * 0.85);
+      this.petShadowImage?.setVisible?.(true);
 
-    const bodyY = y + breathingOffsetY;
-    const dirShiftX = facingDir === 'LEFT' ? -2 : facingDir === 'RIGHT' ? 2 : 0;
-
-    // 2. Direction-aware SKIN torso & collar pixel-art details (torso at y - 10..y + 2)
-    if (skinId === 'skin_scholar_blazer') {
-      g.fillStyle?.(0x6d28d9, 0.96);
-      g.fillRoundedRect?.(x - 7 + dirShiftX * 0.5, bodyY - 9, 14, 11, 2);
-      if (facingDir !== 'UP') {
-        g.fillStyle?.(0xfde68a, 1);
-        g.fillTriangle?.(
-          x - 2 + dirShiftX,
-          bodyY - 9,
-          x + 2 + dirShiftX,
-          bodyY - 9,
-          x + dirShiftX,
-          bodyY - 2,
-        );
-        g.fillStyle?.(BOTANICAL_PALETTE_INT.warmAmber, 1);
-        g.fillRect?.(x + 2 + dirShiftX, bodyY - 6, 2, 2);
-      }
-    } else if (skinId === 'skin_hoodie_blue') {
-      g.fillStyle?.(0x2563eb, 0.96);
-      g.fillRoundedRect?.(x - 7 + dirShiftX * 0.5, bodyY - 9, 14, 11, 2);
-      g.fillStyle?.(0x1d4ed8, 0.95);
-      if (facingDir === 'UP') {
-        g.fillRoundedRect?.(x - 5, bodyY - 12, 10, 4, 2);
-      } else {
-        g.fillRect?.(x - 4 + dirShiftX, bodyY - 3, 8, 3);
-      }
-    }
-
-    // 3. Direction-aware HAT pixel-art overlay (head crown around y - 28..y - 18)
-    if (hatId === 'hat_headphones') {
-      g.lineStyle?.(2, BOTANICAL_PALETTE_INT.morningMist, 1);
-      g.strokeCircle?.(x, bodyY - 21, 8);
-      g.fillStyle?.(BOTANICAL_PALETTE_INT.bioluminescentEmerald, 1);
-      if (facingDir === 'LEFT' || facingDir === 'RIGHT') {
-        const earX = x + (facingDir === 'LEFT' ? -1 : -3);
-        g.fillRoundedRect?.(earX, bodyY - 24, 4, 7, 1.5);
-      } else {
-        g.fillRoundedRect?.(x - 10, bodyY - 24, 3, 7, 1);
-        g.fillRoundedRect?.(x + 7, bodyY - 24, 3, 7, 1);
-      }
-    } else if (hatId === 'hat_graduation_cap') {
-      g.fillStyle?.(BOTANICAL_PALETTE_INT.slateLeaf, 1);
-      g.fillTriangle?.(x, bodyY - 33, x - 10, bodyY - 28, x + 10, bodyY - 28);
-      g.fillTriangle?.(x, bodyY - 24, x - 10, bodyY - 28, x + 10, bodyY - 28);
-      g.lineStyle?.(1.5, BOTANICAL_PALETTE_INT.warmAmber, 1);
-      g.lineBetween?.(
-        x + hatTasselOffsetX * 0.7,
-        bodyY - 28,
-        x + hatTasselOffsetX,
-        bodyY - 21,
-      );
-      g.fillStyle?.(BOTANICAL_PALETTE_INT.warmAmber, 1);
-      g.fillCircle?.(x + hatTasselOffsetX, bodyY - 21, 1.6);
-    }
-
-    // 4. Direction-aware DESK_PET companion (mini floor shadow painted on shadowGraphics)
-    const petX = x + petOffsetX;
-    const petY = y + 5 + breathingOffsetY * 0.6;
-
-    if (deskPetId === 'pet_sleepy_cat') {
-      g.fillStyle?.(BOTANICAL_PALETTE_INT.warmAmber, 1);
-      g.fillCircle?.(petX, petY, 4.2);
-      g.fillTriangle?.(petX - 3.5, petY - 2, petX - 2, petY - 6.5, petX, petY - 3);
-      g.fillTriangle?.(petX + 3.5, petY - 2, petX + 2, petY - 6.5, petX, petY - 3);
-      g.fillStyle?.(BOTANICAL_PALETTE_INT.deepPineNight, 0.9);
-      g.fillRect?.(petX - 2, petY - 0.5, 1.5, 1);
-      g.fillRect?.(petX + 0.8, petY - 0.5, 1.5, 1);
-    } else if (deskPetId === 'pet_wise_owl') {
-      g.fillStyle?.(0x92400e, 1);
-      g.fillCircle?.(petX, petY, 4.2);
-      g.fillStyle?.(0xfef08a, 1);
-      g.fillCircle?.(petX - 1.5, petY - 0.8, 1.4);
-      g.fillCircle?.(petX + 1.5, petY - 0.8, 1.4);
-      g.fillStyle?.(BOTANICAL_PALETTE_INT.warmAmber, 1);
-      g.fillTriangle?.(petX - 1, petY + 0.2, petX + 1, petY + 0.2, petX, petY + 2);
-    } else if (deskPetId === 'pet_sprout_pot') {
-      g.fillStyle?.(0xc2410c, 1);
-      g.fillRoundedRect?.(petX - 3, petY + 0.5, 6, 4.5, 1);
-      g.fillStyle?.(BOTANICAL_PALETTE_INT.bioluminescentEmerald, 1);
-      g.fillCircle?.(petX - 1.6, petY - 1.8, 1.6);
-      g.fillCircle?.(petX + 1.6, petY - 1.8, 1.6);
+      this.petSlot.sprite?.setFlipX?.(pet.flipX);
+      this.syncSlot(this.petSlot, deskPetAnimKey, {
+        x: pet.x, y: pet.y, depth: pet.petDepth, scaleX: 1, scaleY: 1, alpha,
+      });
+    } else {
+      this.petShadowImage?.setVisible?.(false);
+      this.syncSlot(this.petSlot, null, { x: 0, y: 0, depth: 0, scaleX: 1, scaleY: 1, alpha });
     }
   }
 
@@ -193,10 +189,50 @@ export class CharacterAccessoriesOverlay {
   }
 
   public destroy(): void {
-    this.shadowGraphics?.destroy?.();
-    this.shadowGraphics = undefined;
-    this.graphics?.destroy?.();
-    this.graphics = undefined;
+    this.shadowImage?.destroy?.();
+    this.petShadowImage?.destroy?.();
+    this.outfitSlot.sprite?.destroy?.();
+    this.hatSlot.sprite?.destroy?.();
+    this.petSlot.sprite?.destroy?.();
+    this.shadowImage = undefined;
+    this.petShadowImage = undefined;
+    this.outfitSlot.sprite = undefined;
+    this.hatSlot.sprite = undefined;
+    this.petSlot.sprite = undefined;
+    this.outfitSlot.lastAnim = null;
+    this.hatSlot.lastAnim = null;
+    this.petSlot.lastAnim = null;
     this.lastSnapshot = null;
+  }
+
+  private createOverlaySprite(
+    scene: Phaser.Scene,
+    frame: string,
+    originX: number,
+    originY: number,
+    depth: number,
+  ): Phaser.GameObjects.Sprite {
+    const sprite = scene.add.sprite(0, 0, STUDY_CAFE_CHARACTERS_ATLAS_KEY, frame);
+    sprite.setOrigin?.(originX, originY);
+    sprite.setDepth?.(depth);
+    sprite.setVisible?.(false);
+    return sprite;
+  }
+
+  private syncSlot(slot: OverlayLayerSlot, animKey: string | null, transform: OverlayTransform): void {
+    if (!animKey) {
+      slot.sprite?.setVisible?.(false);
+      slot.lastAnim = null;
+      return;
+    }
+    slot.sprite?.setPosition?.(transform.x, transform.y);
+    slot.sprite?.setDepth?.(transform.depth);
+    slot.sprite?.setScale?.(transform.scaleX, transform.scaleY);
+    slot.sprite?.setAlpha?.(transform.alpha);
+    slot.sprite?.setVisible?.(true);
+    if (animKey !== slot.lastAnim) {
+      slot.lastAnim = animKey;
+      slot.sprite?.play?.(animKey, true);
+    }
   }
 }

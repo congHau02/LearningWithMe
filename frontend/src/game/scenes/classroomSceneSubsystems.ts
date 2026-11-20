@@ -177,6 +177,8 @@ export function updateClassroomSceneSubsystems(options: {
     deltaMs: delta,
   });
 
+  playerSprite.setSeatTransitionKind(juice.seatTransition.kind);
+
   updateLocalActorAndLabelFrame({
     scene,
     topology,

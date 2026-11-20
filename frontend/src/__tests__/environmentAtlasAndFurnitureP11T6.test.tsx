@@ -9,6 +9,11 @@ vi.mock('phaser', () => ({
 }));
 
 import {
+  STUDY_CAFE_CHARACTERS_ATLAS_IMAGE,
+  STUDY_CAFE_CHARACTERS_ATLAS_JSON,
+  STUDY_CAFE_CHARACTERS_ATLAS_KEY,
+} from '../game/atlas/paperDollManifest';
+import {
   FLOOR_WOOD_FRAMES,
   REQUIRED_ENV_ATLAS_FRAMES,
   STUDY_CAFE_ENV_ATLAS_IMAGE,
@@ -293,7 +298,7 @@ describe('P11-T6: Wave 2 Environment Pixel-Art Atlas, 2-Layer Y-Sorted Furniture
   });
 
   describe('Slice 3: Baked Static Floor/Wall/Rug Layer & Sprite-Based Furniture / Café Decor (Zero Procedural Furniture)', () => {
-    it('preloads the study-cafe-env texture atlas alongside starter character sheets', () => {
+    it('preloads both study-cafe-env and study-cafe-characters texture atlases', () => {
       const atlasSpy = vi.fn();
       const spritesheetSpy = vi.fn();
       const mockScene = {
@@ -310,7 +315,12 @@ describe('P11-T6: Wave 2 Environment Pixel-Art Atlas, 2-Layer Y-Sorted Furniture
         STUDY_CAFE_ENV_ATLAS_IMAGE,
         STUDY_CAFE_ENV_ATLAS_JSON,
       );
-      expect(spritesheetSpy).toHaveBeenCalledTimes(4);
+      expect(atlasSpy).toHaveBeenCalledWith(
+        STUDY_CAFE_CHARACTERS_ATLAS_KEY,
+        STUDY_CAFE_CHARACTERS_ATLAS_IMAGE,
+        STUDY_CAFE_CHARACTERS_ATLAS_JSON,
+      );
+      expect(spritesheetSpy).not.toHaveBeenCalled();
     });
 
     it('bakes multi-variant wood floors, 3/4 walls, under-table rugs, and Chill Lounge carpet in a single batched RenderTexture pass', () => {

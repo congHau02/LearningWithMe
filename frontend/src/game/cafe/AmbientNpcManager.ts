@@ -9,7 +9,7 @@ import {
   type RoomTopology,
   type TileCoordinate,
 } from '../topology/roomTopology';
-import { createNpcVisualParts, syncNpcVisuals } from './ambientNpcRenderHelper';
+import { createNpcVisualParts, syncNpcVisuals, type NpcVisualParts } from './ambientNpcRenderHelper';
 import {
   advanceDrinkDelivery,
   createDrinkDeliveryState,
@@ -39,7 +39,7 @@ export interface AmbientNpcSnapshot {
   activeBubbleText: string | null;
 }
 
-interface NpcRuntimeEntry {
+interface NpcRuntimeEntry extends NpcVisualParts {
   def: AmbientNpcDefinition;
   waypointIndex: number;
   pauseRemainingMs: number;
@@ -52,10 +52,6 @@ interface NpcRuntimeEntry {
   nextBubbleAtMs: number;
   lineCursor: number;
   chatBubble: ChatBubble;
-  shadow?: Phaser.GameObjects.Graphics;
-  sprite?: Phaser.GameObjects.Sprite;
-  apron?: Phaser.GameObjects.Graphics;
-  label?: Phaser.GameObjects.Text;
   returnPath?: TileCoordinate[];
   returnWaypointIndex?: number;
 }

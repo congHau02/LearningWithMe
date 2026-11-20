@@ -1,5 +1,10 @@
 import type Phaser from 'phaser';
 import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
+import {
+  STUDY_CAFE_CHARACTERS_ATLAS_KEY,
+  resolveInitialBaseFrame,
+  type PaperDollPosture,
+} from '../atlas/paperDollManifest';
 import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import type { AmbientNpcManager } from '../cafe/AmbientNpcManager';
 import { formatSelfCharacterLabel } from '../cafe/studyCafeConfig';
@@ -32,8 +37,12 @@ export function createLocalActorVisuals(
 ): LocalActorVisuals {
   const pos = playerSprite.getPixelPosition();
   const initialDepth = computeYSortDepth(pos.y);
+  const initialFrame = resolveInitialBaseFrame(
+    playerSprite.getAvatarId(),
+    playerSprite.getFacingDir(),
+  );
   const actorSprite = scene.add
-    .sprite(pos.x, pos.y, playerSprite.getAvatarId(), 0)
+    .sprite(pos.x, pos.y, STUDY_CAFE_CHARACTERS_ATLAS_KEY, initialFrame)
     .setDepth(initialDepth);
   actorSprite.setOrigin?.(CHARACTER_ORIGIN_X, CHARACTER_ORIGIN_Y);
   const currentAnimKey = playerSprite.getAnimationKey();
@@ -101,6 +110,7 @@ export function updateLocalActorAndLabelFrame(options: {
     ? 0
     : computeIdleBreathingOffset(time, 0, isMoving);
   const selfDepth = computeYSortDepth(renderY);
+  const posture = playerSprite.getPosture().toLowerCase() as PaperDollPosture;
 
   visuals.selfAccessoriesOverlay.update({
     x: renderX,
@@ -109,7 +119,11 @@ export function updateLocalActorAndLabelFrame(options: {
     hatId: playerSprite.getHatId(),
     deskPetId: playerSprite.getDeskPetId(),
     facingDir: playerSprite.getFacingDir(),
+    posture,
+    isSeated,
     breathingOffsetY: breathingOffset + offsetY,
+    scaleX,
+    scaleY,
   });
   visuals.selfChatBubble.update(
     now,

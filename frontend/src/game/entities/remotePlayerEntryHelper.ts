@@ -1,6 +1,10 @@
 import type Phaser from 'phaser';
 import type { RoomPlayerDto } from '../../services/roomApi';
 import { useGameStore } from '../../stores/useGameStore';
+import {
+  STUDY_CAFE_CHARACTERS_ATLAS_KEY,
+  resolveInitialBaseFrame,
+} from '../atlas/paperDollManifest';
 import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import { appendGoalCompletionBadge } from '../cafe/studyCafeConfig';
 import {
@@ -11,12 +15,16 @@ import {
 import { CharacterAccessoriesOverlay } from './CharacterAccessoriesOverlay';
 import { ChatBubble } from './ChatBubble';
 import { PlayerSprite, tileToWorldCenter } from './PlayerSprite';
+import type { SeatTransitionKind } from '../fx/seatTransitionJuice';
 
 export interface RemotePlayerEntry {
   data: RoomPlayerDto;
   model: PlayerSprite;
   animKey: string;
   depth: number;
+  sitTransitionPending: boolean;
+  sitTransitionKind: SeatTransitionKind;
+  sitTransitionUntilMs: number;
   chatBubble: ChatBubble;
   accessories: CharacterAccessoriesOverlay;
   lastLabel?: string;
@@ -84,12 +92,16 @@ export function createRemotePlayerEntry(
     model,
     animKey: model.getAnimationKey(),
     depth: initialDepth,
+    sitTransitionPending: false,
+    sitTransitionKind: 'idle',
+    sitTransitionUntilMs: 0,
     chatBubble,
     accessories,
   };
 
   if (scene) {
-    const sprite = scene.add.sprite(pos.x, pos.y, model.getAvatarId(), 0);
+    const initialFrame = resolveInitialBaseFrame(model.getAvatarId(), model.getFacingDir());
+    const sprite = scene.add.sprite(pos.x, pos.y, STUDY_CAFE_CHARACTERS_ATLAS_KEY, initialFrame);
     sprite.setOrigin?.(CHARACTER_ORIGIN_X, CHARACTER_ORIGIN_Y);
     sprite.setDepth?.(initialDepth);
     sprite.play?.(entry.animKey, true);
