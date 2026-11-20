@@ -1,6 +1,5 @@
 import type Phaser from 'phaser';
-import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
-import { computeYSortDepth, formatTablePlaqueLabel } from '../scenes/ySortDepth';
+import { computeYSortDepth } from '../scenes/ySortDepth';
 import type { RoomTopology } from '../topology/roomTopology';
 import { computeTileBounds } from './bakedStaticRoomLayer';
 import {
@@ -135,21 +134,6 @@ export function renderStudyCafeFurnitureSprites(
     if (widthPx >= ts * 3) {
       collector.addImage(leftPx + widthPx - 26, topPx + 5, 'prop_laptop', propDepth);
     }
-
-    // Legacy compatibility plaque object (hidden; crisp Hi-DPI plaque projected by StudyCafeLabelOverlay)
-    const plaqueText = scene.add
-      ?.text?.(leftPx + 22, topPx + 1, formatTablePlaqueLabel(table.tableId, index), {
-        fontFamily: 'sans-serif',
-        fontSize: '9px',
-        fontStyle: 'bold',
-        color: BOTANICAL_2D_SCENE.tableLabels.textColor,
-        backgroundColor: BOTANICAL_2D_SCENE.tableLabels.backgroundColor,
-        padding: { x: 3, y: 1 },
-      })
-      ?.setOrigin?.(0.5)
-      ?.setDepth?.(tableDepth + 0.05);
-    plaqueText?.setAlpha?.(0);
-    collector.track(plaqueText);
   });
 
   return { destroy: collector.destroy };

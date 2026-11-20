@@ -151,7 +151,7 @@ describe('P3-T3 (#17): Atomic Seat Lock, Mid-Walk Abort & Initial Table Host Ass
     expect(useGameStore.getState().characterState).toBe('FREE_ROAM');
   });
 
-  it('renders Table Host crown badge on HUD when seated as host, and transfers crown on succession', () => {
+  it('renders Table Host crown badge on HUD when seated as host, and transfers crown on succession', async () => {
     const { rerender } = render(<App />);
 
     // Initially FREE_ROAM -> no crown
@@ -173,7 +173,7 @@ describe('P3-T3 (#17): Atomic Seat Lock, Mid-Walk Abort & Initial Table Host Ass
     expect(crown).toBeInTheDocument();
     expect(crown).toHaveTextContent('👑');
     expect(screen.queryByTestId('seated-table-badge')).toBeNull();
-    expect(screen.getByTestId('workspace-table-title')).toHaveTextContent('table_01');
+    expect(await screen.findByTestId('workspace-table-title', {}, { timeout: 4000 })).toHaveTextContent('table_01');
 
     // When leaving table via requestLeaveSeat
     act(() => {

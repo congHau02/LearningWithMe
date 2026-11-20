@@ -158,99 +158,31 @@ describe('BNS-T4: Phaser 2D Study Café Night Lighting, Overlays & Classroom Vie
   });
 
   describe('Phaser 2D Runtime Visual Objects Integration', () => {
-    it('renders ChatBubble using Botanical Slate Leaf background and luminous border', () => {
-      const fillStyleSpy = vi.fn();
-      const lineStyleSpy = vi.fn();
-      const textStyleSpy = vi.fn();
-
-      const mockGraphics = {
-        clear: vi.fn(),
-        fillStyle: fillStyleSpy,
-        lineStyle: lineStyleSpy,
-        fillRoundedRect: vi.fn(),
-        strokeRoundedRect: vi.fn(),
-        fillTriangle: vi.fn(),
-        lineBetween: vi.fn(),
-      };
-
-      const mockText = {
-        width: 80,
-        height: 18,
-        setText: vi.fn(),
-        setOrigin: vi.fn().mockReturnThis(),
-      };
-
-      const mockContainer = {
-        setDepth: vi.fn().mockReturnThis(),
-        setVisible: vi.fn().mockReturnThis(),
-        setAlpha: vi.fn().mockReturnThis(),
-        setPosition: vi.fn().mockReturnThis(),
-        destroy: vi.fn(),
-      };
-
+    it('tracks ChatBubble 4-second lifecycle and pop motion state for DOM projection without hidden Phaser text objects', () => {
+      const addText = vi.fn();
       const mockScene = {
         add: {
-          graphics: vi.fn(() => mockGraphics),
-          text: vi.fn((_x, _y, _txt, style) => {
-            textStyleSpy(style);
-            return mockText;
-          }),
-          container: vi.fn(() => mockContainer),
+          text: addText,
         },
       } as unknown as Phaser.Scene;
 
       const bubble = new ChatBubble({ scene: mockScene });
-      expect(textStyleSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          color: BOTANICAL_2D_SCENE.chatBubble.textColor,
-        }),
-      );
-
       bubble.show('Đang học nhóm!', 1000);
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.chatBubble.bgInt,
-        expect.any(Number),
-      );
-      expect(lineStyleSpy).toHaveBeenCalledWith(
-        1,
-        BOTANICAL_2D_SCENE.chatBubble.borderInt,
-        expect.any(Number),
-      );
+      bubble.update(1300, 100, 100, false);
+
+      expect(bubble.isActive()).toBe(true);
+      expect(bubble.getText()).toBe('Đang học nhóm!');
+      expect(bubble.getVisualState()).toEqual({ scale: 1, alpha: 1, offsetY: 0 });
+      expect(addText).not.toHaveBeenCalled();
     });
 
-    it('renders TableSosOverlay in Slate Leaf background with luminous border and amber pulse', () => {
-      const fillStyleSpy = vi.fn();
-      const lineStyleSpy = vi.fn();
-      const textStyleSpy = vi.fn();
-
-      const mockGraphics = {
-        clear: vi.fn(),
-        fillStyle: fillStyleSpy,
-        lineStyle: lineStyleSpy,
-        fillRoundedRect: vi.fn(),
-        strokeRoundedRect: vi.fn(),
-        setDepth: vi.fn().mockReturnThis(),
-        destroy: vi.fn(),
-      };
-
-      const mockText = {
-        width: 100,
-        height: 20,
-        setText: vi.fn(),
-        setPosition: vi.fn(),
-        setVisible: vi.fn(),
-        setOrigin: vi.fn().mockReturnThis(),
-        setDepth: vi.fn().mockReturnThis(),
-        destroy: vi.fn(),
-      };
-
+    it('tracks TableSosOverlay active entries and Botanical motion state without hidden Phaser graphics/text shells', () => {
+      const addGraphics = vi.fn();
+      const addText = vi.fn();
       const mockScene = {
         add: {
-          graphics: vi.fn(() => mockGraphics),
-          text: vi.fn((_x, _y, _txt, style) => {
-            textStyleSpy(style);
-            return mockText;
-          }),
+          graphics: addGraphics,
+          text: addText,
         },
       } as unknown as Phaser.Scene;
 
@@ -272,25 +204,13 @@ describe('BNS-T4: Phaser 2D Study Café Night Lighting, Overlays & Classroom Vie
         500,
       );
 
-      expect(textStyleSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          color: BOTANICAL_2D_SCENE.tableSos.textColor,
-          backgroundColor: BOTANICAL_2D_SCENE.tableSos.textBg,
-        }),
-      );
-
-      // Verify Slate Leaf background & luminous border calls
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.tableSos.bgInt,
-        expect.any(Number),
-      );
-      expect(lineStyleSpy).toHaveBeenCalledWith(
-        1.5,
-        BOTANICAL_2D_SCENE.tableSos.borderInt,
-        expect.any(Number),
-      );
-      expect(mockGraphics.fillRoundedRect).toHaveBeenCalledTimes(1);
-      expect(mockGraphics.strokeRoundedRect).toHaveBeenCalledTimes(1);
+      expect(overlay.getActiveSosTableIds()).toEqual(['table_01']);
+      expect(overlay.getLabelEntries()[0]).toMatchObject({
+        tableId: 'table_01',
+        text: '🆘 Cần giải bài tập Toán',
+      });
+      expect(addGraphics).not.toHaveBeenCalled();
+      expect(addText).not.toHaveBeenCalled();
     });
 
     it('renders drawDynamicOverlay seats and pathfinder using Bioluminescent Emerald', () => {
@@ -336,8 +256,8 @@ describe('BNS-T4: Phaser 2D Study Café Night Lighting, Overlays & Classroom Vie
 
       // Active & occupied seats render through 2-layer Botanical atlas sprites
       const byId = new Map(seatLayer.getSeatRenderSnapshots().map((s) => [s.seatId, s]));
-      expect(byId.get('seat_01')?.baseFrame).toBe('chair_base_down_current');
-      expect(byId.get('seat_02')?.baseFrame).toBe('chair_base_down_occupied');
+      expect(byId.get('seat_01')?.baseFrame).toBe('seat_base_down_current');
+      expect(byId.get('seat_02')?.baseFrame).toBe('seat_base_down_occupied');
 
       // Pathfinder step marker uses Bioluminescent Emerald (0x34d399)
       expect(fillStyleSpy).toHaveBeenCalledWith(

@@ -181,8 +181,8 @@ describe('P8-T7 Live Study Goal check-off & consecutive Study Streak tracking', 
     expect(useGameStore.getState().characterState).toBe('SEATED');
 
     // Table member list also reflects completed badge
-    expect(screen.getByTestId(`member-goal-${userId}`)).toHaveTextContent('Giải xong đề Toán');
-    expect(screen.getByTestId(`member-goal-completed-${userId}`)).toHaveTextContent('✅');
+    expect(await screen.findByTestId(`member-goal-${userId}`, {}, { timeout: 4000 })).toHaveTextContent('Giải xong đề Toán');
+    expect(await screen.findByTestId(`member-goal-completed-${userId}`, {}, { timeout: 4000 })).toHaveTextContent('✅');
   });
 
   it('syncs PLAYER_UPDATED goal check-off into TableMembersPanel and overhead Room labels', () => {

@@ -25,8 +25,8 @@ const MOBILE_EDGE_RIGHT_THRESHOLD_PERCENT = 72;
 
 function resolveMobileEdgeAnchorClass(item: StudyCafeProjectedLabelItem, leftPercent: number): string {
   if (item.kind !== 'zone-sign' && item.kind !== 'chat-bubble') return '';
-  if (leftPercent > MOBILE_EDGE_RIGHT_THRESHOLD_PERCENT) return 'max-sm:[--label-anchor-x:-85%]';
-  if (leftPercent < MOBILE_EDGE_LEFT_THRESHOLD_PERCENT) return 'max-sm:[--label-anchor-x:-15%]';
+  if (leftPercent > MOBILE_EDGE_RIGHT_THRESHOLD_PERCENT) return 'max-sm:[--label-anchor-x:-100%]';
+  if (leftPercent < MOBILE_EDGE_LEFT_THRESHOLD_PERCENT) return 'max-sm:[--label-anchor-x:0%]';
   return '';
 }
 
@@ -151,9 +151,13 @@ export function StudyCafeMapLabelsOverlay() {
       {allLabels.map((item) => {
         const projected = projectWorldPointToOverlay(item.worldX, item.worldY, cameraState);
         if (!projected.inBounds || item.alpha <= 0.01) return null;
-        const mobileEdgeAnchorClass = resolveMobileEdgeAnchorClass(item, projected.leftPercent);
+        const clampedLeftPercent =
+          item.kind === 'zone-sign'
+            ? Math.min(98, Math.max(2, projected.leftPercent))
+            : projected.leftPercent;
+        const mobileEdgeAnchorClass = resolveMobileEdgeAnchorClass(item, clampedLeftPercent);
         const anchorY = ORIGIN_Y_PERCENT[item.originY];
-        const positionTransform = `translate3d(${projected.leftPercent}cqw, ${projected.topPercent}cqh, 0) translate(var(--label-anchor-x, -50%), ${anchorY})`;
+        const positionTransform = `translate3d(${clampedLeftPercent}cqw, ${projected.topPercent}cqh, 0) translate(var(--label-anchor-x, -50%), ${anchorY})`;
         const fullTransform =
           item.scale !== 1 ? `${positionTransform} scale(${item.scale.toFixed(3)})` : positionTransform;
 
@@ -168,9 +172,16 @@ export function StudyCafeMapLabelsOverlay() {
               transform: fullTransform,
               opacity: item.alpha,
             }}
-            className={`pointer-events-none absolute w-max whitespace-pre-line ${mobileEdgeAnchorClass} ${KIND_BADGE_CLASSES[item.kind]}`}
+            className={`pointer-events-none absolute w-max whitespace-pre-line max-sm:max-w-[92cqw] ${mobileEdgeAnchorClass} ${KIND_BADGE_CLASSES[item.kind]}`}
           >
-            {item.text}
+            {item.mobileText ? (
+              <>
+                <span className="max-sm:hidden">{item.text}</span>
+                <span className="sm:hidden">{item.mobileText}</span>
+              </>
+            ) : (
+              item.text
+            )}
           </div>
         );
       })}

@@ -23,7 +23,6 @@ export interface AmbientNpcDefinition {
   role: AmbientNpcRole;
   displayName: string;
   avatarKey: StarterAvatarKey;
-  apronColor: number;
   waypoints: readonly AmbientNpcWaypoint[];
   ambientLines: readonly string[];
   greetingLine: string;
@@ -113,7 +112,6 @@ export const AMBIENT_NPC_DEFINITIONS: readonly AmbientNpcDefinition[] = [
     role: 'BARISTA',
     displayName: 'Barista Minh',
     avatarKey: 'default_student',
-    apronColor: 0xb45309,
     waypoints: [
       { tileX: 16, tileY: 13, facingDir: 'UP', pauseMs: 3600 },
       { tileX: 17, tileY: 13, facingDir: 'UP', pauseMs: 2800 },
@@ -132,7 +130,6 @@ export const AMBIENT_NPC_DEFINITIONS: readonly AmbientNpcDefinition[] = [
     role: 'CASHIER',
     displayName: 'Thu ngân Linh',
     avatarKey: 'student_glasses',
-    apronColor: 0x0f766e,
     waypoints: [
       { tileX: 20, tileY: 13, facingDir: 'UP', pauseMs: 4200 },
     ],
@@ -150,7 +147,6 @@ export const AMBIENT_NPC_DEFINITIONS: readonly AmbientNpcDefinition[] = [
     role: 'SERVER',
     displayName: 'Phục vụ An',
     avatarKey: 'student_sprout',
-    apronColor: 0xbe123c,
     waypoints: [
       { tileX: 15, tileY: 11, facingDir: 'RIGHT', pauseMs: 2200 },
       { tileX: 15, tileY: 9, facingDir: 'UP', pauseMs: 800 },

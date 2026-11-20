@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
 import { AppModals } from './components/hud/AppModals';
 import { ReconnectingBanner } from './components/hud/ReconnectingBanner';
 import { ServerWakeUpNotice } from './components/hud/ServerWakeUpNotice';
 import { SessionReplacedBanner } from './components/hud/SessionReplacedBanner';
 import { TopBar } from './components/hud/TopBar';
-import { TableWorkspaceShell } from './components/table/TableWorkspaceShell';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { useAppHudEffects } from './hooks/useAppHudEffects';
 import { useRoomSync } from './hooks/useRoomSync';
@@ -14,10 +13,17 @@ import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
 import { useTableStore } from './stores/useTableStore';
 
+const TableWorkspaceShell = lazy(() =>
+  import('./components/table/TableWorkspaceShell').then((m) => ({
+    default: m.TableWorkspaceShell,
+  })),
+);
+
 export function App() {
   // Atomic Zustand selectors per AGENTS.md 2.1 to avoid full HUD re-renders
   const roomId = useGameStore((s) => s.roomId);
   const connectionStatus = useGameStore((s) => s.connectionStatus);
+  const lastError = useGameStore((s) => s.lastError);
   const characterState = useGameStore((s) => s.characterState);
   const currentTableId = useGameStore((s) => s.currentTableId);
   const currentSeatId = useGameStore((s) => s.currentSeatId);
@@ -62,6 +68,15 @@ export function App() {
   useTableWorkspaceSync();
 
   const hasOpenModal = isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen || isCustomizerOpen || isDrinkMenuOpen;
+  const isAnyModalOpen = !token || hasOpenModal || (isSeated && isLeaveConfirmOpen);
+  const backgroundShellRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const shell = backgroundShellRef.current as (HTMLDivElement & { inert?: boolean }) | null;
+    if (shell) {
+      shell.inert = isAnyModalOpen;
+    }
+  }, [isAnyModalOpen]);
   const { handleUpdateStudyGoal, handleAccountUpgraded } = useAppHudEffects({
     roomId,
     token,
@@ -78,7 +93,12 @@ export function App() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
-      <TopBar
+      <div
+        ref={backgroundShellRef}
+        aria-hidden={isAnyModalOpen || undefined}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <TopBar
         roomId={roomId}
         characterState={characterState}
         nickname={nickname}
@@ -105,6 +125,9 @@ export function App() {
 
       {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
       {connectionStatus === 'RECONNECTING' ? <ReconnectingBanner /> : null}
+      {connectionStatus === 'ERROR' && lastError?.code === 'WS_CONFIG_MISSING' ? (
+        <div role="alert" data-testid="connection-error-banner" className="border-b border-destructive/40 bg-destructive/15 px-4 py-1.5 text-center text-xs font-medium text-rose-300">{lastError.message}</div>
+      ) : null}
       {token && showColdStartNotice && backendStatus !== 'UP' && connectionStatus !== 'REPLACED' ? (
         <ServerWakeUpNotice
           variant="banner"
@@ -136,7 +159,12 @@ export function App() {
           </div>
         </main>
 
-        <TableWorkspaceShell />
+        {isSeated ? (
+          <Suspense fallback={null}>
+            <TableWorkspaceShell />
+          </Suspense>
+        ) : null}
+      </div>
       </div>
 
       <AppModals

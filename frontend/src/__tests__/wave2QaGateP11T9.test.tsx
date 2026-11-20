@@ -53,10 +53,10 @@ describe('P11-T9: Wave 2 Final QA Gate — Zero-CLS Labels, Mobile Polish, Audit
     const baristaLabel = screen.getByTestId('map-label-npc-npc_barista');
     expect(baristaLabel.className).toContain('max-sm:text-[8px]');
 
-    // Right-edge Service Counter zone sign stays centered on desktop and shifts inward only on mobile (<640px)
+    // Right-edge Service Counter zone sign stays centered on desktop and shifts fully inward on mobile (<640px)
     const serviceCounterSign = screen.getByTestId('map-label-zone-service-counter');
     expect(serviceCounterSign.style.transform).toContain('translate(var(--label-anchor-x, -50%), -100%)');
-    expect(serviceCounterSign.className).toContain('max-sm:[--label-anchor-x:-85%]');
+    expect(serviceCounterSign.className).toContain('max-sm:[--label-anchor-x:-100%]');
   });
 
   it('anchors actor, patrolling NPC, and counter-staff chat bubbles at bottom origin so multi-line Vietnamese bubbles never overlap nameplates', () => {

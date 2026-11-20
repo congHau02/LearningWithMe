@@ -3,6 +3,7 @@ import { findVirtualDrink } from '../../game/cafe/studyCafeConfig';
 import { bootClassroomPhaserGame } from '../../game/graphics/bootClassroomGame';
 import { computeDefaultCameraPreset } from '../../game/scenes/classroomCameraController';
 import { MAIN_LIBRARY_TOPOLOGY } from '../../game/topology/roomTopology';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
 import { ClassroomTelemetryBar } from '../hud/ClassroomTelemetryBar';
@@ -22,6 +23,7 @@ function canBootPhaserCanvas(): boolean {
 }
 
 export function ClassroomCanvas() {
+  const token = useAuthStore((s) => s.token);
   const roomId = useGameStore((s) => s.roomId);
   const selectedDrinkId = useGameStore((s) => s.selectedDrinkId);
   const pendingDrinkOrder = useGameStore((s) => s.pendingDrinkOrder);
@@ -57,13 +59,17 @@ export function ClassroomCanvas() {
   }, [setPrefersReducedMotion]);
 
   useEffect(() => {
-    if (!canBootPhaserCanvas() || !canvasMountRef.current) return undefined;
+    // Defer 1.48 MB Phaser WebGL boot while GuestOnboardingModal covers the viewport so initial LCP stays fast.
+    if (!token || !canBootPhaserCanvas() || !canvasMountRef.current) {
+      setIsCanvasReady(false);
+      return undefined;
+    }
     return bootClassroomPhaserGame({
       parent: canvasMountRef.current,
       topology: MAIN_LIBRARY_TOPOLOGY,
       onReady: () => setIsCanvasReady(true),
     });
-  }, []);
+  }, [token]);
 
   return (
     <DoubleBezelCard
@@ -104,7 +110,7 @@ export function ClassroomCanvas() {
             <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
               Study Café
             </span>
-            <span className="text-border">•</span>
+            <span aria-hidden="true" className="text-border">•</span>
             <h2 className="font-mono text-xs font-bold tracking-tight text-foreground">
               {roomId}
             </h2>

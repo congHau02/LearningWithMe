@@ -5,30 +5,35 @@ import {
   resolveInitialBaseFrame,
   type PaperDollPosture,
 } from '../atlas/paperDollManifest';
-import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import type { AmbientNpcManager } from '../cafe/AmbientNpcManager';
-import { formatSelfCharacterLabel } from '../cafe/studyCafeConfig';
 import { CharacterAccessoriesOverlay } from '../entities/CharacterAccessoriesOverlay';
 import { ChatBubble } from '../entities/ChatBubble';
 import type { PlayerSprite } from '../entities/PlayerSprite';
 import type { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
 import type { TableSosOverlay } from '../entities/TableSosOverlay';
+import type { JuiceFrameOutput } from '../fx/studyCafeJuiceCoordinator';
+import {
+  areLiveSceneLabelFramesEqual,
+  hasDiscreteLabelFrameChange,
+  quantizeLiveSceneLabelFrame,
+} from '../labels/liveLabelFrameEquality';
 import type { RoomTopology } from '../topology/roomTopology';
 import {
   ACTOR_BUBBLE_OFFSET_Y,
-  ACTOR_LABEL_OFFSET_Y,
   CHARACTER_ORIGIN_X,
   CHARACTER_ORIGIN_Y,
   computeIdleBreathingOffset,
   computeYSortDepth,
 } from './ySortDepth';
 
+const MIN_POSITION_LABEL_COMMIT_MS = 40;
+
 export interface LocalActorVisuals {
   readonly actorSprite: Phaser.GameObjects.Sprite;
   readonly selfAccessoriesOverlay: CharacterAccessoriesOverlay;
-  readonly nicknameLabel: Phaser.GameObjects.Text;
   readonly selfChatBubble: ChatBubble;
   currentAnimKey: string;
+  lastLabelCommitTimeMs?: number;
 }
 
 export function createLocalActorVisuals(
@@ -52,23 +57,10 @@ export function createLocalActorVisuals(
     scene,
     depth: computeYSortDepth(pos.y, 10, 0.001),
   });
-  const nicknameLabel = scene.add
-    .text(pos.x, pos.y + ACTOR_LABEL_OFFSET_Y, playerSprite.getNickname(), {
-      fontFamily: 'sans-serif',
-      fontSize: '11px',
-      color: BOTANICAL_2D_SCENE.playerLabels.selfTextColor,
-      backgroundColor: BOTANICAL_2D_SCENE.playerLabels.selfTextBg,
-      padding: { x: 4, y: 2 },
-      align: 'center',
-    })
-    .setOrigin(0.5, 1)
-    .setDepth(initialDepth + 2);
-  nicknameLabel.setAlpha?.(0);
 
   return {
     actorSprite,
     selfAccessoriesOverlay,
-    nicknameLabel,
     selfChatBubble: new ChatBubble({ scene }),
     currentAnimKey,
   };
@@ -82,18 +74,9 @@ export function updateLocalActorAndLabelFrame(options: {
   remotePlayersRenderer: RemotePlayersRenderer;
   ambientNpcManager: AmbientNpcManager;
   tableSosOverlay: TableSosOverlay;
-  renderX: number;
-  renderY: number;
-  offsetY: number;
-  scaleX: number;
-  scaleY: number;
+  juice: Pick<JuiceFrameOutput, 'renderX' | 'renderY' | 'offsetY' | 'scaleX' | 'scaleY'>;
   isMoving: boolean;
-  isHost: boolean;
   isSeated: boolean;
-  nickname: string;
-  selectedDrinkId: string | null;
-  studyGoal: string;
-  studyGoalCompleted: boolean;
   prefersReducedMotion: boolean;
   fallbackZoom: number;
   time: number;
@@ -101,10 +84,10 @@ export function updateLocalActorAndLabelFrame(options: {
 }): void {
   const {
     scene, topology, visuals, playerSprite, remotePlayersRenderer,
-    ambientNpcManager, tableSosOverlay, renderX, renderY, offsetY, scaleX, scaleY,
-    isMoving, isHost, isSeated, nickname, selectedDrinkId, studyGoal, studyGoalCompleted,
+    ambientNpcManager, tableSosOverlay, juice, isMoving, isSeated,
     prefersReducedMotion, fallbackZoom, time, now,
   } = options;
+  const { renderX, renderY, offsetY, scaleX, scaleY } = juice;
 
   const breathingOffset = prefersReducedMotion
     ? 0
@@ -141,21 +124,8 @@ export function updateLocalActorAndLabelFrame(options: {
     visuals.actorSprite.play(animKey, true);
   }
 
-  visuals.nicknameLabel.setText(
-    formatSelfCharacterLabel({
-      nickname,
-      isHost,
-      isSeated,
-      drinkId: selectedDrinkId,
-      studyGoal,
-      studyGoalCompleted,
-    }),
-  );
-  visuals.nicknameLabel.setPosition(renderX, renderY + ACTOR_LABEL_OFFSET_Y);
-  visuals.nicknameLabel.setDepth?.(selfDepth + 2);
-
   const mainCam = scene?.cameras?.main;
-  useStudyCafeDisplayStore.getState().setLiveSceneLabelFrame({
+  const nextFrame = quantizeLiveSceneLabelFrame({
     camera: {
       worldWidth: topology.width * topology.tileSize,
       worldHeight: topology.height * topology.tileSize,
@@ -173,4 +143,19 @@ export function updateLocalActorAndLabelFrame(options: {
     npcs: ambientNpcManager.getLabelEntries(),
     sosBanners: tableSosOverlay.getLabelEntries(),
   });
+
+  const displayStore = useStudyCafeDisplayStore.getState();
+  const prevFrame = displayStore.liveSceneLabelFrame;
+  if (areLiveSceneLabelFramesEqual(prevFrame, nextFrame)) {
+    return;
+  }
+
+  const discreteChange = hasDiscreteLabelFrameChange(prevFrame, nextFrame);
+  const elapsedMs =
+    visuals.lastLabelCommitTimeMs === undefined ? Infinity : time - visuals.lastLabelCommitTimeMs;
+  if (!discreteChange && elapsedMs >= 0 && elapsedMs < MIN_POSITION_LABEL_COMMIT_MS) {
+    return;
+  }
+  visuals.lastLabelCommitTimeMs = time;
+  displayStore.setLiveSceneLabelFrame(nextFrame);
 }

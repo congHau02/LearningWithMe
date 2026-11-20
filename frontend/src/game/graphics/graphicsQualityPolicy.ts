@@ -89,8 +89,15 @@ export function resolveGraphicsPolicy(input: GraphicsPolicyInput): ResolvedGraph
     effectiveQuality = requestedQuality;
   }
 
-  const allowParticles = !prefersReducedMotion && effectiveQuality !== 'low';
+  const allowParticles = !prefersReducedMotion;
   const allowWebGlFx = isWebGl && !prefersReducedMotion && effectiveQuality !== 'low';
+  const particleDensityScale = !allowParticles
+    ? 0
+    : effectiveQuality === 'high'
+      ? 1
+      : effectiveQuality === 'medium'
+        ? 0.5
+        : 0.25;
 
   return {
     effectiveQuality,
@@ -102,7 +109,7 @@ export function resolveGraphicsPolicy(input: GraphicsPolicyInput): ResolvedGraph
     allowPointLights: isWebGl && effectiveQuality !== 'low',
     allowParticles,
     allowCameraJuice: !prefersReducedMotion && effectiveQuality !== 'low',
-    particleDensityScale: !allowParticles ? 0 : effectiveQuality === 'high' ? 1 : 0.5,
+    particleDensityScale,
   };
 }
 

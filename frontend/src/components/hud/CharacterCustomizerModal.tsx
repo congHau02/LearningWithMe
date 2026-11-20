@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { formatApiError } from '../../services/apiClient';
 import {
   fetchCharacterItemsCatalog,
@@ -38,8 +39,10 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const dialogContainerRef = useRef<HTMLDivElement>(null);
 
   useEscapeToClose(onClose);
+  useFocusTrap(dialogContainerRef);
 
   useEffect(() => {
     let active = true;
@@ -80,9 +83,7 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
     try {
       const updated = await updateMyCustomization({ skinId, hatId, deskPetId });
       useAuthStore.getState().updateCustomization({
-        skinId: updated.skinId,
-        hatId: updated.hatId,
-        deskPetId: updated.deskPetId,
+        skinId: updated.skinId, hatId: updated.hatId, deskPetId: updated.deskPetId,
       });
       onClose();
     } catch (err) {
@@ -95,7 +96,7 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
   const tabItems = items.filter((item) => item.itemType === activeTab);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+    <div ref={dialogContainerRef} className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
       <DoubleBezelCard
         role="dialog"
         aria-modal="true"

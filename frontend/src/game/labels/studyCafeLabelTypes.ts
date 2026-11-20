@@ -29,6 +29,7 @@ export interface StudyCafeProjectedLabelItem {
   readonly testId: string;
   readonly kind: StudyCafeLabelKind;
   readonly text: string;
+  readonly mobileText?: string;
   readonly worldX: number;
   readonly worldY: number;
   readonly originY: 'top' | 'center' | 'bottom';

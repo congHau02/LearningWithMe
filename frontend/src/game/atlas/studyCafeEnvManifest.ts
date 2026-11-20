@@ -1,4 +1,5 @@
 import type { FacingDirection } from '../topology/roomTopology';
+import { validateAtlasSchema, type AtlasValidationReport } from './atlasSchemaValidator';
 
 export const STUDY_CAFE_ENV_ATLAS_KEY = 'study-cafe-env';
 export const STUDY_CAFE_ENV_ATLAS_IMAGE = '/assets/tilesets/study-cafe-env.png';
@@ -7,8 +8,8 @@ export const STUDY_CAFE_ENV_PROVENANCE_PATH = '/assets/tilesets/study-cafe-env.m
 
 export type SeatVisualState = 'idle' | 'hovered' | 'current' | 'occupied';
 export type LowerFacingDirection = Lowercase<FacingDirection>;
-export type SeatBaseFrameName = `chair_base_${LowerFacingDirection}_${SeatVisualState}`;
-export type SeatBackrestFrameName = `chair_backrest_${LowerFacingDirection}`;
+export type SeatBaseFrameName = `seat_base_${LowerFacingDirection}_${SeatVisualState}`;
+export type SeatBackrestFrameName = `seat_backrest_${LowerFacingDirection}`;
 
 export const FLOOR_WOOD_FRAMES = [
   'floor_wood_0',
@@ -73,11 +74,11 @@ export function resolveSeatBaseFrame(
   facingDir: FacingDirection,
   state: SeatVisualState,
 ): SeatBaseFrameName {
-  return `chair_base_${facingDir.toLowerCase() as LowerFacingDirection}_${state}`;
+  return `seat_base_${facingDir.toLowerCase() as LowerFacingDirection}_${state}`;
 }
 
 export function resolveSeatBackrestFrame(facingDir: FacingDirection): SeatBackrestFrameName {
-  return `chair_backrest_${facingDir.toLowerCase() as LowerFacingDirection}`;
+  return `seat_backrest_${facingDir.toLowerCase() as LowerFacingDirection}`;
 }
 
 export const SEAT_BASE_FRAMES: readonly SeatBaseFrameName[] = SEAT_DIRS.flatMap((dir) =>
@@ -138,63 +139,17 @@ export function resolveWallFrame(
   return 'wall_east';
 }
 
-export interface EnvAtlasValidationReport {
-  readonly valid: boolean;
-  readonly frameCount: number;
-  readonly missingFrames: string[];
-  readonly sheetCount: number;
-  readonly provenanceValid: boolean;
-}
-
-interface PhaserHashAtlasLike {
-  frames?: Record<string, { frame?: { x?: number; y?: number; w?: number; h?: number } }>;
-  meta?: { image?: string; size?: { w?: number; h?: number } };
-}
-
-interface ProvenanceManifestLike {
-  assets?: Array<{
-    id?: string;
-    path?: string;
-    license?: { spdx?: string; cost?: string; repoSafe?: boolean };
-    source?: { kind?: string; tool?: string };
-    technical_checks_passed?: boolean;
-  }>;
-}
+export type EnvAtlasValidationReport = AtlasValidationReport;
 
 export function validateEnvAtlasSchema(
   atlasJson: unknown,
   provenanceManifest: unknown,
 ): EnvAtlasValidationReport {
-  const atlas = (atlasJson ?? {}) as PhaserHashAtlasLike;
-  const frames = atlas.frames ?? {};
-  const missingFrames = REQUIRED_ENV_ATLAS_FRAMES.filter((frameName) => {
-    const rect = frames[frameName]?.frame;
-    return !rect || typeof rect.w !== 'number' || rect.w <= 0 || typeof rect.h !== 'number' || rect.h <= 0;
+  return validateAtlasSchema({
+    atlasJson,
+    provenanceManifest,
+    requiredFrames: REQUIRED_ENV_ATLAS_FRAMES,
+    atlasKey: STUDY_CAFE_ENV_ATLAS_KEY,
+    atlasImagePath: STUDY_CAFE_ENV_ATLAS_IMAGE,
   });
-
-  const metaW = atlas.meta?.size?.w ?? 0;
-  const metaH = atlas.meta?.size?.h ?? 0;
-  const metaValid = Boolean(atlas.meta?.image) && metaW > 0 && metaH > 0 && metaW % 4 === 0 && metaH % 4 === 0;
-
-  const prov = (provenanceManifest ?? {}) as ProvenanceManifestLike;
-  const assets = Array.isArray(prov.assets) ? prov.assets : [];
-  const atlasRecord = assets.find((a) => a.id === STUDY_CAFE_ENV_ATLAS_KEY);
-  const provenanceValid = Boolean(
-    atlasRecord &&
-      atlasRecord.path === STUDY_CAFE_ENV_ATLAS_IMAGE &&
-      atlasRecord.license?.spdx === 'CC0-1.0' &&
-      atlasRecord.license?.cost === '0-cost' &&
-      atlasRecord.license?.repoSafe === true &&
-      atlasRecord.source?.kind &&
-      atlasRecord.technical_checks_passed === true,
-  );
-
-  const sheetCount = assets.filter((a) => a.path?.endsWith('.png')).length || 1;
-  return {
-    valid: missingFrames.length === 0 && metaValid && provenanceValid && sheetCount <= 2,
-    frameCount: Object.keys(frames).length,
-    missingFrames,
-    sheetCount,
-    provenanceValid,
-  };
 }

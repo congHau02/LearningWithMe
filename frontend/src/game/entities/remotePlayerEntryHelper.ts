@@ -5,7 +5,6 @@ import {
   STUDY_CAFE_CHARACTERS_ATLAS_KEY,
   resolveInitialBaseFrame,
 } from '../atlas/paperDollManifest';
-import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import { appendGoalCompletionBadge } from '../cafe/studyCafeConfig';
 import {
   CHARACTER_ORIGIN_X,
@@ -27,9 +26,7 @@ export interface RemotePlayerEntry {
   sitTransitionUntilMs: number;
   chatBubble: ChatBubble;
   accessories: CharacterAccessoriesOverlay;
-  lastLabel?: string;
   sprite?: Phaser.GameObjects.Sprite;
-  label?: Phaser.GameObjects.Text;
 }
 
 export function isPlayerTableHost(player: RoomPlayerDto): boolean {
@@ -106,22 +103,6 @@ export function createRemotePlayerEntry(
     sprite.setDepth?.(initialDepth);
     sprite.play?.(entry.animKey, true);
     entry.sprite = sprite;
-
-    const isHost = isPlayerTableHost(player);
-    const initialLabel = formatRemoteLabel(player, isHost);
-    entry.lastLabel = initialLabel;
-    entry.label = scene.add
-      .text(pos.x, pos.y - 36, initialLabel, {
-        fontFamily: 'sans-serif',
-        fontSize: '11px',
-        color: BOTANICAL_2D_SCENE.playerLabels.remoteTextColor,
-        backgroundColor: BOTANICAL_2D_SCENE.playerLabels.remoteTextBg,
-        padding: { x: 4, y: 2 },
-        align: 'center',
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(initialDepth + 2);
-    entry.label.setAlpha?.(0);
   }
 
   return entry;

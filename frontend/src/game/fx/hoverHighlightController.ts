@@ -26,7 +26,6 @@ export interface HoverHighlightSnapshot {
   readonly hoveredSeatId: string | null;
   readonly hoveredNpcId: string | null;
   readonly mode: 'webgl-glow' | 'canvas-ring' | 'none';
-  readonly suppressesSeatHoverRect: boolean;
 }
 
 interface GlowPostFxLike {
@@ -38,7 +37,6 @@ const EMPTY_SNAPSHOT: HoverHighlightSnapshot = {
   hoveredSeatId: null,
   hoveredNpcId: null,
   mode: 'none',
-  suppressesSeatHoverRect: false,
 };
 
 /**
@@ -85,7 +83,6 @@ export class HoverHighlightController {
       hoveredSeatId: hoveredSeat?.seatId ?? null,
       hoveredNpcId: hoveredNpc?.npcId ?? null,
       mode,
-      suppressesSeatHoverRect: seatState !== 'none',
     };
   }
 

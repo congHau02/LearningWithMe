@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { CharacterState } from '../../stores/useGameStore';
+import { useGameStore, type CharacterState } from '../../stores/useGameStore';
 import type { StudyCafeAmbientVfx } from '../cafe/studyCafeAmbientVfx';
 import { tileToWorldCenter } from '../entities/PlayerSprite';
 import type { ResolvedGraphicsPolicy } from '../graphics/graphicsQualityPolicy';
@@ -45,7 +45,6 @@ export interface JuiceFrameOutput {
   readonly offsetY: number;
   readonly scaleX: number;
   readonly scaleY: number;
-  readonly suppressesSeatHoverRect: boolean;
   readonly seatTransition: SeatTransitionSample;
   readonly hover: HoverHighlightSnapshot;
   readonly navigation: TileNavigationJuiceSnapshot;
@@ -63,6 +62,8 @@ export class StudyCafeJuiceCoordinator {
   private readonly navJuice: TileNavigationJuice;
   private readonly hoverController: HoverHighlightController;
   private lastCharacterState: CharacterState = 'FREE_ROAM';
+  private sawSeatedSinceLastFrame = false;
+  private readonly gameStateUnsub: () => void;
   private lastRenderX = 0;
   private lastRenderY = 0;
   private hasInitializedPos = false;
@@ -77,6 +78,13 @@ export class StudyCafeJuiceCoordinator {
     this.ambientVfx = ambientVfx;
     this.navJuice = new TileNavigationJuice(scene, topology.tileSize);
     this.hoverController = new HoverHighlightController(scene, topology);
+    this.lastCharacterState = useGameStore.getState().characterState;
+    // Track SEATED visits while Phaser loop is in GPU sleep so stand-up tween & frames still play on wake.
+    this.gameStateUnsub = useGameStore.subscribe((state) => {
+      if (state.characterState === 'SEATED') {
+        this.sawSeatedSinceLastFrame = true;
+      }
+    });
   }
 
   public onWalkableTileClick(tile: TileCoordinate, nowMs: number, prefersReducedMotion: boolean): void {
@@ -92,10 +100,18 @@ export class StudyCafeJuiceCoordinator {
     const prevX = this.hasInitializedPos ? this.lastRenderX : input.pixelX;
     const prevY = this.hasInitializedPos ? this.lastRenderY : input.pixelY;
 
-    if (this.hasInitializedPos && input.characterState !== this.lastCharacterState) {
+    const effectivePrevState: CharacterState =
+      this.sawSeatedSinceLastFrame && input.characterState !== 'SEATED'
+        ? 'SEATED'
+        : this.lastCharacterState;
+
+    if (
+      (this.hasInitializedPos || this.sawSeatedSinceLastFrame) &&
+      input.characterState !== effectivePrevState
+    ) {
       const seatCenter = tileToWorldCenter(input.tileX, input.tileY, this.tileSize);
       this.seatJuice.onStateTransition({
-        prevState: this.lastCharacterState,
+        prevState: effectivePrevState,
         nextState: input.characterState,
         fromX: prevX,
         fromY: prevY,
@@ -105,6 +121,7 @@ export class StudyCafeJuiceCoordinator {
       });
     }
     this.lastCharacterState = input.characterState;
+    this.sawSeatedSinceLastFrame = false;
 
     const seatSample = this.seatJuice.step(input.deltaMs);
     const renderX = seatSample.active && seatSample.kind === 'sit' ? seatSample.x : input.pixelX;
@@ -157,7 +174,6 @@ export class StudyCafeJuiceCoordinator {
       offsetY: seatSample.offsetY,
       scaleX: seatSample.scaleX,
       scaleY: seatSample.scaleY,
-      suppressesSeatHoverRect: hover.suppressesSeatHoverRect,
       seatTransition: seatSample,
       hover,
       navigation: this.navJuice.getSnapshot(),
@@ -165,6 +181,7 @@ export class StudyCafeJuiceCoordinator {
   }
 
   public destroy(): void {
+    this.gameStateUnsub();
     this.navJuice.destroy();
     this.hoverController.destroy();
   }

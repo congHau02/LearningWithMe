@@ -8,13 +8,12 @@ import {
   resolvePaperDollLayers,
   type NpcApronLayerId,
 } from '../atlas/paperDollManifest';
-import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
 import type { ChatBubble } from '../entities/ChatBubble';
 import {
   ACTOR_BUBBLE_OFFSET_Y,
-  ACTOR_LABEL_OFFSET_Y,
   CHARACTER_ORIGIN_X,
   CHARACTER_ORIGIN_Y,
+  COUNTER_STAFF_BUBBLE_OFFSET_Y,
   computeFloorShadowYSortDepth,
   computeIdleBreathingOffset,
   computeYSortDepth,
@@ -28,7 +27,6 @@ export interface NpcVisualParts {
   apron?: Phaser.GameObjects.Sprite;
   apronLayerId?: NpcApronLayerId | null;
   apronAnimKey?: string;
-  label?: Phaser.GameObjects.Text;
 }
 
 export function createNpcVisualParts(
@@ -68,20 +66,7 @@ export function createNpcVisualParts(
     apron.play?.(apronAnimKey, true);
   }
 
-  const isCounterStaff = def.role === 'BARISTA' || def.role === 'CASHIER';
-  const label = scene.add
-    .text(x, isCounterStaff ? y + 14 : y + ACTOR_LABEL_OFFSET_Y, def.displayName, {
-      fontFamily: 'sans-serif',
-      fontSize: '10px',
-      fontStyle: 'bold',
-      color: BOTANICAL_2D_SCENE.counter.textColor,
-      backgroundColor: BOTANICAL_2D_SCENE.counter.backgroundColor,
-      padding: { x: 4, y: 2 },
-    })
-    .setOrigin(0.5, isCounterStaff ? 0 : 1)
-    .setDepth(depth + 2);
-  label.setAlpha?.(0);
-  return { shadow, sprite, apron, apronLayerId, apronAnimKey, label };
+  return { shadow, sprite, apron, apronLayerId, apronAnimKey };
 }
 
 export function syncNpcVisuals(
@@ -97,10 +82,13 @@ export function syncNpcVisuals(
   },
   nowMs: number,
   phaseSeed = 0,
+  prefersReducedMotion = false,
 ): void {
   const depth = computeYSortDepth(entry.pixelY);
   entry.depth = depth;
-  const breathingOffset = computeIdleBreathingOffset(nowMs, phaseSeed, entry.isMoving);
+  const breathingOffset = prefersReducedMotion
+    ? 0
+    : computeIdleBreathingOffset(nowMs, phaseSeed, entry.isMoving);
   const posture = entry.isMoving ? 'stepping' : 'standing';
   const bodyY = entry.pixelY + breathingOffset;
 
@@ -130,14 +118,12 @@ export function syncNpcVisuals(
   }
 
   const isCounterStaff = entry.def.role === 'BARISTA' || entry.def.role === 'CASHIER';
-  entry.label?.setPosition(
-    entry.pixelX,
-    isCounterStaff ? entry.pixelY + 14 : entry.pixelY + ACTOR_LABEL_OFFSET_Y,
-  );
-  entry.label?.setDepth?.(depth + 2);
   entry.chatBubble.update(
     nowMs,
     entry.pixelX,
-    isCounterStaff ? entry.pixelY - 82 : entry.pixelY + ACTOR_BUBBLE_OFFSET_Y,
+    isCounterStaff
+      ? entry.pixelY + COUNTER_STAFF_BUBBLE_OFFSET_Y
+      : entry.pixelY + ACTOR_BUBBLE_OFFSET_Y,
+    prefersReducedMotion,
   );
 }

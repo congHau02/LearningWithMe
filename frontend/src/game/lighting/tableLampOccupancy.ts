@@ -1,5 +1,6 @@
 import type { RoomPlayerDto } from '../../services/roomApi';
 import type { CharacterState } from '../../stores/gameStoreTypes';
+import { computeTileBounds } from '../atlas/bakedStaticRoomLayer';
 import { SERVICE_COUNTER_TILES } from '../cafe/studyCafeConfig';
 import { READING_LAMP_TILE_XS } from '../cafe/studyCafeDecorRenderer';
 import { computeYSortDepth } from '../scenes/ySortDepth';
@@ -44,12 +45,11 @@ export function computeTableDeskLampAnchors(topology: RoomTopology): TableDeskLa
   const anchors: TableDeskLampAnchor[] = [];
   for (const table of topology.tables) {
     if (table.obstacleTiles.length === 0) continue;
-    const xs = table.obstacleTiles.map((t) => t.tileX);
-    const ys = table.obstacleTiles.map((t) => t.tileY);
-    const leftPx = Math.min(...xs) * ts;
-    const topPx = Math.min(...ys) * ts;
-    const widthPx = (Math.max(...xs) - Math.min(...xs) + 1) * ts;
-    const heightPx = (Math.max(...ys) - Math.min(...ys) + 1) * ts;
+    const b = computeTileBounds(table.obstacleTiles);
+    const leftPx = b.minX * ts;
+    const topPx = b.minY * ts;
+    const widthPx = (b.maxX - b.minX + 1) * ts;
+    const heightPx = (b.maxY - b.minY + 1) * ts;
     const cx = leftPx + widthPx / 2;
     const cy = topPx + heightPx / 2;
     anchors.push({
@@ -76,14 +76,12 @@ export function computeStaticLightAnchors(topology: RoomTopology): StaticLightAn
     intensityScale: 0.72,
   }));
   if (SERVICE_COUNTER_TILES.length > 0) {
-    const minX = Math.min(...SERVICE_COUNTER_TILES.map((t) => t.tileX));
-    const maxX = Math.max(...SERVICE_COUNTER_TILES.map((t) => t.tileX));
-    const counterY = SERVICE_COUNTER_TILES[0].tileY;
+    const b = computeTileBounds(SERVICE_COUNTER_TILES);
     anchors.push({
       id: 'service_counter',
       kind: 'service_counter',
-      x: ((minX + maxX + 1) / 2) * ts,
-      y: (counterY + 0.4) * ts,
+      x: ((b.minX + b.maxX + 1) / 2) * ts,
+      y: (b.minY + 0.4) * ts,
       radius: ts * 3.1,
       haloAlpha: 0.16,
       intensityScale: 0.85,

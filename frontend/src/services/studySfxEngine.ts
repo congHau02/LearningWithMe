@@ -72,14 +72,14 @@ export function playStudySfx(cue: StudySfxCue): void {
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
     if (typeof ctx.createOscillator !== 'function') {
-      void ctx.close().catch(() => undefined);
+      void ctx.close?.()?.catch?.(() => undefined);
       return;
     }
     const now = ctx.currentTime ?? 0;
     for (const step of SFX_PATTERNS[cue]) {
       scheduleTone(ctx, step, now);
     }
-    window.setTimeout(() => void ctx.close().catch(() => undefined), 900);
+    window.setTimeout(() => void ctx.close?.()?.catch?.(() => undefined), 900);
   } catch {
     // Ignore autoplay or headless WebAudio absence
   }

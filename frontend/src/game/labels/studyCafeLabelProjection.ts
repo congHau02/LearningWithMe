@@ -1,4 +1,5 @@
 import type { RoomPlayerDto, RoomTableSummary } from '../../services/roomApi';
+import { computeTileBounds } from '../atlas/bakedStaticRoomLayer';
 import {
   AMBIENT_NPC_DEFINITIONS,
   SERVICE_COUNTER_TILES,
@@ -10,6 +11,9 @@ import { clampCameraZoom } from '../scenes/classroomCameraController';
 import {
   ACTOR_BUBBLE_OFFSET_Y,
   ACTOR_LABEL_OFFSET_Y,
+  COUNTER_STAFF_BUBBLE_OFFSET_Y,
+  COUNTER_STAFF_LABEL_OFFSET_Y,
+  formatSosBannerLabel,
   formatTablePlaqueLabel,
 } from '../scenes/ySortDepth';
 import { MAIN_LIBRARY_TOPOLOGY, type RoomTopology } from '../topology/roomTopology';
@@ -27,9 +31,6 @@ export type {
   StudyCafeLabelKind,
   StudyCafeProjectedLabelItem,
 } from './studyCafeLabelTypes';
-
-const COUNTER_STAFF_LABEL_OFFSET_Y = 14;
-const COUNTER_STAFF_BUBBLE_OFFSET_Y = -68;
 
 export function projectWorldPointToOverlay(
   worldX: number,
@@ -81,34 +82,32 @@ export function buildStaticStudyCafeMapLabels(
 
   topology.tables.forEach((table, index) => {
     if (table.obstacleTiles.length === 0) return;
-    const xs = table.obstacleTiles.map((t) => t.tileX);
-    const ys = table.obstacleTiles.map((t) => t.tileY);
+    const b = computeTileBounds(table.obstacleTiles);
     items.push({
       id: `table-${table.tableId}`, testId: `map-label-table-${table.tableId}`,
       kind: 'table-plaque', text: formatTablePlaqueLabel(table.tableId, index),
-      worldX: Math.min(...xs) * ts + 22, worldY: Math.min(...ys) * ts + 1,
+      worldX: b.minX * ts + 22, worldY: b.minY * ts + 1,
       originY: 'center', alpha: 1, scale: 1,
     });
   });
 
   if (topology.afkZone.length > 0) {
-    const xs = topology.afkZone.map((t) => t.tileX);
-    const ys = topology.afkZone.map((t) => t.tileY);
+    const b = computeTileBounds(topology.afkZone);
     items.push({
       id: 'zone-chill-lounge', testId: 'map-label-zone-chill-lounge',
       kind: 'zone-sign', text: '🛋️ Chill Lounge (AFK)',
-      worldX: ((Math.min(...xs) + Math.max(...xs) + 1) / 2) * ts, worldY: Math.min(...ys) * ts - 6,
+      worldX: ((b.minX + b.maxX + 1) / 2) * ts, worldY: b.minY * ts - 6,
       originY: 'bottom', alpha: 1, scale: 1,
     });
   }
 
   if (SERVICE_COUNTER_TILES.length > 0) {
-    const xs = SERVICE_COUNTER_TILES.map((t) => t.tileX);
-    const counterY = SERVICE_COUNTER_TILES[0].tileY;
+    const b = computeTileBounds(SERVICE_COUNTER_TILES);
     items.push({
       id: 'zone-service-counter', testId: 'map-label-zone-service-counter',
       kind: 'zone-sign', text: '☕ Quầy Study Café • Bấm chọn đồ uống',
-      worldX: ((Math.min(...xs) + Math.max(...xs) + 1) / 2) * ts, worldY: counterY * ts - 6,
+      mobileText: '☕ Quầy Study Café',
+      worldX: ((b.minX + b.maxX + 1) / 2) * ts, worldY: b.minY * ts - 6,
       originY: 'bottom', alpha: 1, scale: 1,
     });
   }
@@ -223,12 +222,10 @@ export function buildDynamicStudyCafeMapLabels(options: {
   const sosEntries = live?.sosBanners ?? topology.tables.flatMap((table) => {
     const topic = options.roomTables.find((t) => t.tableId === table.tableId)?.sosBanner?.trim();
     if (!topic || table.obstacleTiles.length === 0) return [];
-    const xs = table.obstacleTiles.map((t) => t.tileX);
-    const ys = table.obstacleTiles.map((t) => t.tileY);
-    const displayTopic = topic.length > 26 ? `${topic.slice(0, 25)}…` : topic;
+    const b = computeTileBounds(table.obstacleTiles);
     return [{
-      tableId: table.tableId, text: `🆘 ${displayTopic}`,
-      worldX: ((Math.min(...xs) + Math.max(...xs) + 1) / 2) * ts, worldY: Math.min(...ys) * ts - 12,
+      tableId: table.tableId, text: formatSosBannerLabel(topic),
+      worldX: ((b.minX + b.maxX + 1) / 2) * ts, worldY: b.minY * ts - 12,
       alpha: 1, scale: 1,
     }];
   });

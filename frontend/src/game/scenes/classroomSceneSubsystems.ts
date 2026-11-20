@@ -47,12 +47,12 @@ export interface ClassroomSceneSubsystems {
   readonly ambientNpcManager: AmbientNpcManager;
   readonly actorSprite: Phaser.GameObjects.Sprite;
   readonly selfAccessoriesOverlay: CharacterAccessoriesOverlay;
-  readonly nicknameLabel: Phaser.GameObjects.Text;
   readonly selfChatBubble: ChatBubble;
   readonly storeUnsub: () => void;
   readonly npcReactionUnsub: () => void;
   readonly goalCelebrationUnsub: () => void;
   currentAnimKey: string;
+  lastLabelCommitTimeMs?: number;
 }
 
 export function createClassroomSceneSubsystems(
@@ -135,9 +135,9 @@ export function updateClassroomSceneSubsystems(options: {
 
   subsystems.envAnimController.update(time, display.graphicsPolicy);
   subsystems.remotePlayersRenderer.syncPlayers(game.remotePlayers);
-  subsystems.remotePlayersRenderer.update(0.28, now);
+  subsystems.remotePlayersRenderer.update(0.28, now, display.prefersReducedMotion);
   subsystems.tableSosOverlay.update(game.roomTables, time, display.prefersReducedMotion);
-  subsystems.ambientNpcManager.update(delta, now);
+  subsystems.ambientNpcManager.update(delta, now, display.prefersReducedMotion);
   subsystems.ambientVfx.update(time, { policy: display.graphicsPolicy });
   subsystems.lightingSystem.update({
     mood: display.ambienceMood,
@@ -187,18 +187,9 @@ export function updateClassroomSceneSubsystems(options: {
     remotePlayersRenderer: subsystems.remotePlayersRenderer,
     ambientNpcManager: subsystems.ambientNpcManager,
     tableSosOverlay: subsystems.tableSosOverlay,
-    renderX: juice.renderX,
-    renderY: juice.renderY,
-    offsetY: juice.offsetY,
-    scaleX: juice.scaleX,
-    scaleY: juice.scaleY,
+    juice,
     isMoving: game.isMoving,
-    isHost,
     isSeated: game.characterState === 'SEATED',
-    nickname: auth.nickname,
-    selectedDrinkId: game.selectedDrinkId,
-    studyGoal: auth.studyGoal,
-    studyGoalCompleted: auth.studyGoalCompleted,
     prefersReducedMotion: display.prefersReducedMotion,
     fallbackZoom: game.cameraZoom,
     time,

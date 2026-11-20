@@ -519,8 +519,8 @@ describe('P11-T7: Wave 2 Paper-Doll Layered Character & NPC Sprites (#83)', () =
         nowMs: 1000,
       });
 
-      // Only the 3 hidden ChatBubble containers invoke add.graphics (0 for shadows or aprons)
-      expect(graphicsSpy).toHaveBeenCalledTimes(3);
+      // Zero procedural Phaser Graphics (shadows, aprons, and DOM-projected chat bubbles use zero Graphics)
+      expect(graphicsSpy).not.toHaveBeenCalled();
       expect(sprites).toHaveLength(6);
       expect(images.filter((i) => i.frame === 'shadow_actor')).toHaveLength(3);
       expect(sprites.every((s) => s.texture === STUDY_CAFE_CHARACTERS_ATLAS_KEY)).toBe(true);
@@ -571,7 +571,7 @@ describe('P11-T7: Wave 2 Paper-Doll Layered Character & NPC Sprites (#83)', () =
 
       renderer.syncPlayers({ 'u-1': freeRoamPlayer });
       renderer.update(1, 1000);
-      expect(graphicsSpy).toHaveBeenCalledTimes(1);
+      expect(graphicsSpy).not.toHaveBeenCalled();
       expect(sprites.every((s) => s.texture === STUDY_CAFE_CHARACTERS_ATLAS_KEY)).toBe(true);
 
       // Frame 1 of FREE_ROAM -> SEATED (disconnected)

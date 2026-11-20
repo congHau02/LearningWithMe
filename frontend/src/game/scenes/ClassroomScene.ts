@@ -25,6 +25,7 @@ export class ClassroomScene extends Phaser.Scene {
   private lastTimeMs = 0;
   private appliedCameraZoom = -1;
   private appliedCameraFollow: boolean | null = null;
+  private appliedAllowCameraJuice: boolean | null = null;
 
   constructor(topology: RoomTopology = MAIN_LIBRARY_TOPOLOGY) {
     super({ key: 'ClassroomScene' });
@@ -98,21 +99,25 @@ export class ClassroomScene extends Phaser.Scene {
 
   private syncCameraFromStore(game: { cameraZoom: number; cameraFollowEnabled: boolean }): void {
     const mainCamera = this.cameras?.main;
+    const allowCameraJuice = useStudyCafeDisplayStore.getState().graphicsPolicy.allowCameraJuice;
     if (
       !mainCamera ||
       (this.appliedCameraZoom === game.cameraZoom &&
-        this.appliedCameraFollow === game.cameraFollowEnabled)
+        this.appliedCameraFollow === game.cameraFollowEnabled &&
+        this.appliedAllowCameraJuice === allowCameraJuice)
     ) {
       return;
     }
     this.appliedCameraZoom = game.cameraZoom;
     this.appliedCameraFollow = game.cameraFollowEnabled;
+    this.appliedAllowCameraJuice = allowCameraJuice;
     applyCameraViewportState({
       camera: mainCamera,
       target: this.subsystems?.actorSprite,
       worldWidth: this.topology.width * this.topology.tileSize,
       worldHeight: this.topology.height * this.topology.tileSize,
       view: { zoom: game.cameraZoom, followEnabled: game.cameraFollowEnabled },
+      allowCameraJuice,
     });
   }
 }

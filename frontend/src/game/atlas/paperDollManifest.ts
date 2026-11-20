@@ -5,6 +5,7 @@ import {
   type StarterAvatarKey,
 } from '../entities/PlayerSprite';
 import type { FacingDirection } from '../topology/roomTopology';
+import { validateAtlasSchema, type AtlasValidationReport } from './atlasSchemaValidator';
 
 export const STUDY_CAFE_CHARACTERS_ATLAS_KEY = 'study-cafe-characters';
 export const STUDY_CAFE_CHARACTERS_ATLAS_IMAGE = '/assets/sprites/study-cafe-characters.png';
@@ -147,13 +148,7 @@ export function resolveInitialBaseFrame(
   return buildPaperDollFrameName(`base_${avatarKey}` as BaseCharacterLayerId, facingDir, 'standing', 0);
 }
 
-export interface PaperDollAtlasValidationReport {
-  readonly valid: boolean;
-  readonly frameCount: number;
-  readonly missingFrames: string[];
-  readonly sheetCount: number;
-  readonly provenanceValid: boolean;
-}
+export type PaperDollAtlasValidationReport = AtlasValidationReport;
 
 function collectRequiredPaperDollFrames(): string[] {
   const required: string[] = [ACTOR_SHADOW_FRAME, PET_SHADOW_FRAME];
@@ -180,45 +175,11 @@ export function validatePaperDollAtlasSchema(
   atlasJson: unknown,
   provenanceManifest: unknown,
 ): PaperDollAtlasValidationReport {
-  const atlas = (atlasJson ?? {}) as {
-    frames?: Record<string, { frame?: { w?: number; h?: number } }>;
-    meta?: { image?: string; size?: { w?: number; h?: number } };
-  };
-  const frames = atlas.frames ?? {};
-  const missingFrames = REQUIRED_PAPER_DOLL_ATLAS_FRAMES.filter((name) => {
-    const rect = frames[name]?.frame;
-    return !rect || typeof rect.w !== 'number' || rect.w <= 0 || typeof rect.h !== 'number' || rect.h <= 0;
+  return validateAtlasSchema({
+    atlasJson,
+    provenanceManifest,
+    requiredFrames: REQUIRED_PAPER_DOLL_ATLAS_FRAMES,
+    atlasKey: STUDY_CAFE_CHARACTERS_ATLAS_KEY,
+    atlasImagePath: STUDY_CAFE_CHARACTERS_ATLAS_IMAGE,
   });
-  const metaW = atlas.meta?.size?.w ?? 0;
-  const metaH = atlas.meta?.size?.h ?? 0;
-  const metaValid = Boolean(atlas.meta?.image) && metaW > 0 && metaH > 0 && metaW % 4 === 0 && metaH % 4 === 0;
-
-  const prov = (provenanceManifest ?? {}) as {
-    assets?: Array<{
-      id?: string;
-      path?: string;
-      license?: { spdx?: string; cost?: string; repoSafe?: boolean };
-      source?: { kind?: string };
-      technical_checks_passed?: boolean;
-    }>;
-  };
-  const assets = Array.isArray(prov.assets) ? prov.assets : [];
-  const record = assets.find((a) => a.id === STUDY_CAFE_CHARACTERS_ATLAS_KEY);
-  const provenanceValid = Boolean(
-    record &&
-      record.path === STUDY_CAFE_CHARACTERS_ATLAS_IMAGE &&
-      record.license?.spdx === 'CC0-1.0' &&
-      record.license?.cost === '0-cost' &&
-      record.license?.repoSafe === true &&
-      record.source?.kind &&
-      record.technical_checks_passed === true,
-  );
-  const sheetCount = assets.filter((a) => a.path?.endsWith('.png')).length || 1;
-  return {
-    valid: missingFrames.length === 0 && metaValid && provenanceValid && sheetCount <= 2,
-    frameCount: Object.keys(frames).length,
-    missingFrames,
-    sheetCount,
-    provenanceValid,
-  };
 }

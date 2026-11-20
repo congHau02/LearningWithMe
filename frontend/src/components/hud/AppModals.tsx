@@ -1,16 +1,29 @@
+import { Suspense, lazy, useRef } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { UpgradeAccountResponse } from '../../services/authApi';
 import type { AuthProvider } from '../../stores/useAuthStore';
-import type { CharacterState } from '../../stores/useGameStore';
+import { useGameStore, type CharacterState } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { AccountUpgradeModal } from '../auth/AccountUpgradeModal';
 import { GuestOnboardingModal } from '../auth/GuestOnboardingModal';
-import { CharacterCustomizerModal } from './CharacterCustomizerModal';
 import { LeaveTableConfirmModal } from './LeaveTableConfirmModal';
-import { RoomChatBox } from './RoomChatBox';
-import { StudyLeaderboardModal } from './StudyLeaderboardModal';
-import { StudySessionsModal } from './StudySessionsModal';
 import type { BackendConnectionStatus } from './TopBar';
-import { VirtualDrinkMenuModal } from './VirtualDrinkMenuModal';
+
+const CharacterCustomizerModal = lazy(() =>
+  import('./CharacterCustomizerModal').then((m) => ({ default: m.CharacterCustomizerModal })),
+);
+const RoomChatBox = lazy(() =>
+  import('./RoomChatBox').then((m) => ({ default: m.RoomChatBox })),
+);
+const StudyLeaderboardModal = lazy(() =>
+  import('./StudyLeaderboardModal').then((m) => ({ default: m.StudyLeaderboardModal })),
+);
+const StudySessionsModal = lazy(() =>
+  import('./StudySessionsModal').then((m) => ({ default: m.StudySessionsModal })),
+);
+const VirtualDrinkMenuModal = lazy(() =>
+  import('./VirtualDrinkMenuModal').then((m) => ({ default: m.VirtualDrinkMenuModal })),
+);
 
 interface AppModalsProps {
   token: string | null;
@@ -63,49 +76,74 @@ export function AppModals({
   onCloseCustomizer,
 }: AppModalsProps) {
   const isWorkspaceMinimized = useTableStore((s) => s.isWorkspaceMinimized);
-  const showFloatingRoomChat = Boolean(token) && (characterState !== 'SEATED' || isWorkspaceMinimized);
+  const isDrinkMenuOpen = useGameStore((s) => s.isDrinkMenuOpen);
+  const modalsTrapRef = useRef<HTMLDivElement>(null);
+  const hasActiveModal =
+    !token ||
+    (characterState === 'SEATED' && isLeaveConfirmOpen) ||
+    Boolean(
+      token &&
+        ((authProvider === 'GUEST' && isUpgradeModalOpen) ||
+          isStudySessionsOpen ||
+          isLeaderboardOpen ||
+          isCustomizerOpen ||
+          isDrinkMenuOpen),
+    );
+  useFocusTrap(modalsTrapRef, hasActiveModal);
+  const showFloatingRoomChat =
+    Boolean(token) && !hasActiveModal && (characterState !== 'SEATED' || isWorkspaceMinimized);
 
   return (
     <>
-      {characterState === 'SEATED' && isLeaveConfirmOpen ? (
-        <LeaveTableConfirmModal
-          tableId={currentTableId}
-          seatId={currentSeatId}
-          onConfirmLeave={onConfirmLeave}
-          onCancel={onCancelLeave}
-        />
-      ) : null}
+      <div ref={modalsTrapRef}>
+        {!token ? (
+          <GuestOnboardingModal
+            backendStatus={backendStatus}
+            showColdStartNotice={showColdStartNotice}
+            coldStartElapsedSeconds={coldStartElapsedSeconds}
+            onRetryBackendHealth={onRetryBackendHealth}
+          />
+        ) : null}
 
-      {!token ? (
-        <GuestOnboardingModal
-          backendStatus={backendStatus}
-          showColdStartNotice={showColdStartNotice}
-          coldStartElapsedSeconds={coldStartElapsedSeconds}
-          onRetryBackendHealth={onRetryBackendHealth}
-        />
-      ) : null}
-      {token && authProvider === 'GUEST' && isUpgradeModalOpen ? (
-        <AccountUpgradeModal onClose={onCloseUpgrade} onUpgraded={onUpgraded} />
-      ) : null}
-      {token && isStudySessionsOpen ? (
-        <StudySessionsModal authProvider={authProvider} onClose={onCloseStudySessions} />
-      ) : null}
-      {token && isLeaderboardOpen ? (
-        <StudyLeaderboardModal
-          onClose={onCloseLeaderboard}
-          onRequestUpgrade={authProvider === 'GUEST' ? () => {
-            onCloseLeaderboard();
-            onOpenUpgrade();
-          } : undefined}
-        />
-      ) : null}
-      {token && isCustomizerOpen ? (
-        <CharacterCustomizerModal onClose={onCloseCustomizer} />
-      ) : null}
+        {characterState === 'SEATED' && isLeaveConfirmOpen ? (
+          <LeaveTableConfirmModal
+            tableId={currentTableId}
+            seatId={currentSeatId}
+            onConfirmLeave={onConfirmLeave}
+            onCancel={onCancelLeave}
+          />
+        ) : null}
 
-      {token ? <VirtualDrinkMenuModal /> : null}
+        {token && authProvider === 'GUEST' && isUpgradeModalOpen ? (
+          <AccountUpgradeModal onClose={onCloseUpgrade} onUpgraded={onUpgraded} />
+        ) : null}
 
-      {showFloatingRoomChat ? <RoomChatBox /> : null}
+        <Suspense fallback={null}>
+          {token && isStudySessionsOpen ? (
+            <StudySessionsModal authProvider={authProvider} onClose={onCloseStudySessions} />
+          ) : null}
+          {token && isLeaderboardOpen ? (
+            <StudyLeaderboardModal
+              onClose={onCloseLeaderboard}
+              onRequestUpgrade={authProvider === 'GUEST' ? () => {
+                onCloseLeaderboard();
+                onOpenUpgrade();
+              } : undefined}
+            />
+          ) : null}
+          {token && isCustomizerOpen ? (
+            <CharacterCustomizerModal onClose={onCloseCustomizer} />
+          ) : null}
+
+          {token ? <VirtualDrinkMenuModal /> : null}
+        </Suspense>
+      </div>
+
+      {showFloatingRoomChat ? (
+        <Suspense fallback={null}>
+          <RoomChatBox />
+        </Suspense>
+      ) : null}
     </>
   );
 }

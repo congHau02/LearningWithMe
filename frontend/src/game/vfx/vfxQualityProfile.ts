@@ -38,11 +38,12 @@ const REDUCED_MOTION_PROFILE: VfxEmissionProfile = {
  * and WebGL hover glow capability for Study Café.
  */
 export function resolveVfxEmissionProfile(policy: ResolvedGraphicsPolicy): VfxEmissionProfile {
-  if (policy.prefersReducedMotion) {
+  const scale = policy.particleDensityScale;
+  if (policy.prefersReducedMotion || !policy.allowParticles || scale <= 0) {
     return REDUCED_MOTION_PROFILE;
   }
 
-  if (policy.effectiveQuality === 'high') {
+  if (scale >= 0.85 || policy.effectiveQuality === 'high') {
     return {
       graphicsQuality: 'high',
       prefersReducedMotion: false,
@@ -59,7 +60,7 @@ export function resolveVfxEmissionProfile(policy: ResolvedGraphicsPolicy): VfxEm
     };
   }
 
-  if (policy.effectiveQuality === 'medium') {
+  if (scale >= 0.45 || policy.effectiveQuality === 'medium') {
     return {
       graphicsQuality: 'medium',
       prefersReducedMotion: false,

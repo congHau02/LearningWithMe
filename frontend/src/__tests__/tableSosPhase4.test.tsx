@@ -19,6 +19,7 @@ import {
 } from '../services/roomStompClient';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useGameStore } from '../stores/useGameStore';
+import { useStudyCafeDisplayStore } from '../stores/useStudyCafeDisplayStore';
 import { useTableStore } from '../stores/useTableStore';
 
 function createMockPhaserScene() {
@@ -238,8 +239,8 @@ describe('P4-T3 Table SOS Banner Toggle, Room Broadcast & 2D Map Glowing Indicat
     expect(useGameStore.getState().roomTables[0]?.sosBanner).toBeNull();
   });
 
-  it('renders glowing SOS badge on 2D map above active SOS tables and hides it when cleared', () => {
-    const { scene, graphics, createdTexts } = createMockPhaserScene();
+  it('tracks active SOS badge state and DOM projection entries above active SOS tables and clears them when turned off', () => {
+    const { scene } = createMockPhaserScene();
     const overlay = new TableSosOverlay(scene as never, MAIN_LIBRARY_TOPOLOGY);
 
     overlay.update(
@@ -259,10 +260,10 @@ describe('P4-T3 Table SOS Banner Toggle, Room Broadcast & 2D Map Glowing Indicat
     );
 
     expect(overlay.getActiveSosTableIds()).toEqual(['table_01']);
-    expect(graphics.fillRoundedRect).toHaveBeenCalledTimes(1);
-    expect(graphics.strokeRoundedRect).toHaveBeenCalledTimes(1);
-    expect(createdTexts[0]?.text).toBe('🆘 Cần giúp Hóa hữu cơ');
-    expect(createdTexts[0]?.visible).toBe(true);
+    const activeEntries = overlay.getLabelEntries();
+    expect(activeEntries).toHaveLength(1);
+    expect(activeEntries[0]?.text).toBe('🆘 Cần giúp Hóa hữu cơ');
+    expect(activeEntries[0]?.alpha).toBeGreaterThan(0);
 
     const clearedTables = [
       {
@@ -281,12 +282,12 @@ describe('P4-T3 Table SOS Banner Toggle, Room Broadcast & 2D Map Glowing Indicat
     overlay.update(clearedTables, 1700);
 
     expect(overlay.getActiveSosTableIds()).toEqual([]);
-    expect(createdTexts[0]?.visible).toBe(false);
+    expect(overlay.getLabelEntries()).toHaveLength(0);
     overlay.destroy();
   });
 
-  it('instantiates TableSosOverlay inside ClassroomScene.create() and updates SOS badges on update()', () => {
-    const { scene, createdTexts } = createMockPhaserScene();
+  it('instantiates TableSosOverlay inside ClassroomScene.create() and publishes SOS entries to StudyCafeDisplayStore on update()', () => {
+    const { scene } = createMockPhaserScene();
     const classroomScene = new ClassroomScene(MAIN_LIBRARY_TOPOLOGY);
 
     const noop = () => {};
@@ -340,6 +341,7 @@ describe('P4-T3 Table SOS Banner Toggle, Room Broadcast & 2D Map Glowing Indicat
 
     classroomScene.update(1000, 16);
 
-    expect(createdTexts.some((entry) => entry.text === '🆘 Cần giúp Đạo hàm' && entry.visible)).toBe(true);
+    const liveFrame = useStudyCafeDisplayStore.getState().liveSceneLabelFrame;
+    expect(liveFrame?.sosBanners?.some((entry) => entry.text === '🆘 Cần giúp Đạo hàm')).toBe(true);
   });
 });

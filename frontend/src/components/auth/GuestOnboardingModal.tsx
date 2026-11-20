@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { formatApiError } from '../../services/apiClient';
 import { createGuestSession } from '../../services/authApi';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -35,24 +36,17 @@ export function GuestOnboardingModal({
 }: GuestOnboardingModalProps) {
   const [activeTab, setActiveTab] = useState<OnboardingEntryTab>('GUEST');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const dialogContainerRef = useRef<HTMLDivElement>(null);
   const setSession = useAuthStore((s) => s.setSession);
   const isBackendWaiting = showColdStartNotice && backendStatus !== 'UP';
+  useFocusTrap(dialogContainerRef);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<GuestOnboardingFormValues>({
-    resolver: guestOnboardingResolver,
-    mode: 'onChange',
-    defaultValues: {
-      nickname: '',
-      avatarId: DEFAULT_AVATAR_ID,
-      studyGoal: '',
-    },
-  });
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } =
+    useForm<GuestOnboardingFormValues>({
+      resolver: guestOnboardingResolver,
+      mode: 'onChange',
+      defaultValues: { nickname: '', avatarId: DEFAULT_AVATAR_ID, studyGoal: '' },
+    });
 
   const selectedAvatarId = watch('avatarId');
   const nicknameLength = (watch('nickname') ?? '').trim().length;
@@ -78,7 +72,7 @@ export function GuestOnboardingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+    <div ref={dialogContainerRef} className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
       <DoubleBezelCard
         role="dialog"
         aria-modal="true"

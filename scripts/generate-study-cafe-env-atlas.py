@@ -882,7 +882,7 @@ def make_wall_clock(frame_idx: int) -> Image.Image:
 # ---------------------------------------------------------------------------
 # 11. 2-Layer Wooden Cushioned Chairs (All 4 Facing Directions x 4 Cushion States)
 # ---------------------------------------------------------------------------
-def make_chair_base(facing: str, state: str) -> Image.Image:
+def make_seat_base(facing: str, state: str) -> Image.Image:
     cv = PixelCanvas(32, 32)
     cushion_styles = {
         "idle": ("SLATE0", "SLATE1", "BORD1", None),
@@ -919,7 +919,7 @@ def make_chair_base(facing: str, state: str) -> Image.Image:
     return cv.img
 
 
-def make_chair_backrest(facing: str) -> Image.Image:
+def make_seat_backrest(facing: str) -> Image.Image:
     cv = PixelCanvas(32, 32)
     if facing == "DOWN":
         # North-edge curved walnut spindle backrest (sits behind DOWN-facing seated actor)
@@ -1008,8 +1008,8 @@ def build_all_frames() -> tuple[list[tuple[str, Image.Image, bool]], set[str]]:
 
     for direction in ("up", "down", "left", "right"):
         for state in ("idle", "hovered", "current", "occupied"):
-            frames.append((f"chair_base_{direction}_{state}", make_chair_base(direction.upper(), state), False))
-        frames.append((f"chair_backrest_{direction}", make_chair_backrest(direction.upper()), False))
+            frames.append((f"seat_base_{direction}_{state}", make_seat_base(direction.upper(), state), False))
+        frames.append((f"seat_backrest_{direction}", make_seat_backrest(direction.upper()), False))
 
     return frames, {name for name, _, _ in frames}
 
@@ -1228,8 +1228,8 @@ def render_previews(frames_map: dict[str, Image.Image], preview_dir: Path) -> No
         props = {p["name"]: p["value"] for p in obj["properties"]}
         d = props["facingDir"].lower()
         sx, sy = int(obj["x"]), int(obj["y"])
-        room.alpha_composite(frames_map[f"chair_base_{d}_idle"], (sx, sy))
-        room.alpha_composite(frames_map[f"chair_backrest_{d}"], (sx, sy))
+        room.alpha_composite(frames_map[f"seat_base_{d}_idle"], (sx, sy))
+        room.alpha_composite(frames_map[f"seat_backrest_{d}"], (sx, sy))
 
     room.resize((w * ts * 2, h * ts * 2), Image.Resampling.NEAREST).save(
         preview_dir / "room-composite-preview.png"
@@ -1247,7 +1247,7 @@ def main() -> int:
     sheet_path = TILESETS_DIR / "study-cafe-env.png"
     json_path = TILESETS_DIR / "study-cafe-env.json"
     sheet.save(sheet_path, format="PNG", optimize=True)
-    json_path.write_text(json.dumps(atlas_json, indent=2) + "\n", encoding="utf-8")
+    json_path.write_text(json.dumps(atlas_json, separators=(",", ":")) + "\n", encoding="utf-8")
 
     colors = sheet.convert("RGBA").getcolors(maxcolors=256)
     color_count = len(colors) if colors is not None else 256

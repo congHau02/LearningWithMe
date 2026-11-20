@@ -267,11 +267,11 @@ describe('P11-T6: Wave 2 Environment Pixel-Art Atlas, 2-Layer Y-Sorted Furniture
       });
 
       const byId = new Map(seatLayer.getSeatRenderSnapshots().map((s) => [s.seatId, s]));
-      expect(byId.get('T1_S1')?.baseFrame).toBe('chair_base_right_current');
-      expect(byId.get('T1_S1')?.backrestFrame).toBe('chair_backrest_right');
-      expect(byId.get('T2_S1')?.baseFrame).toBe('chair_base_down_occupied');
-      expect(byId.get('T2_S3')?.baseFrame).toBe('chair_base_up_hovered');
-      expect(byId.get('T3_S6')?.baseFrame).toBe('chair_base_up_idle');
+      expect(byId.get('T1_S1')?.baseFrame).toBe('seat_base_right_current');
+      expect(byId.get('T1_S1')?.backrestFrame).toBe('seat_backrest_right');
+      expect(byId.get('T2_S1')?.baseFrame).toBe('seat_base_down_occupied');
+      expect(byId.get('T2_S3')?.baseFrame).toBe('seat_base_up_hovered');
+      expect(byId.get('T3_S6')?.baseFrame).toBe('seat_base_up_idle');
 
       // Calling sync again with unchanged state performs zero redundant setFrame updates
       const totalCallsAfterFirstSync = images.reduce((sum, img) => sum + img.setFrameCalls.length, 0);
@@ -779,7 +779,7 @@ describe('P11-T6: Wave 2 Environment Pixel-Art Atlas, 2-Layer Y-Sorted Furniture
       const hoveredSnap = subsystems.seatSpriteLayer
         .getSeatRenderSnapshots()
         .find((s) => s.seatId === 'T1_S1');
-      expect(hoveredSnap?.baseFrame).toBe('chair_base_right_hovered');
+      expect(hoveredSnap?.baseFrame).toBe('seat_base_right_hovered');
 
       destroyClassroomSceneSubsystems(subsystems);
       expect(subsystems.seatSpriteLayer.getSeatRenderSnapshots()).toHaveLength(0);

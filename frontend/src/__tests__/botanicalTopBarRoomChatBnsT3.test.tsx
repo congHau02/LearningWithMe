@@ -252,14 +252,14 @@ describe('BNS-T3: Streamlined Botanical TopBar, Telemetry Bar & Floating Room Ch
 
       const gridPos = screen.getByTestId('grid-position-readout');
       expect(gridPos).toHaveTextContent('(10, 15) • DOWN');
-      expect(gridPos.className).toContain('text-[#E6ECE8]');
+      expect(gridPos.className).toContain('text-foreground');
 
       const parentCard = gridPos.closest('div');
-      expect(parentCard?.className).toContain('bg-[#16221E]');
-      expect(parentCard?.className).toContain('border-[#243630]');
+      expect(parentCard?.className).toContain('bg-card');
+      expect(parentCard?.className).toContain('border-border');
 
       const label = parentCard?.querySelector('span');
-      expect(label?.className).toContain('text-[#8FA399]');
+      expect(label?.className).toContain('text-muted-foreground');
 
       const pathReadout = screen.getByTestId('path-queue-readout');
       expect(pathReadout).toHaveTextContent('Còn 1 bước');

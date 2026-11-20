@@ -13,6 +13,8 @@ export const CHARACTER_ORIGIN_Y = 0.75;
 
 export const ACTOR_LABEL_OFFSET_Y = -36;
 export const ACTOR_BUBBLE_OFFSET_Y = -56;
+export const COUNTER_STAFF_LABEL_OFFSET_Y = 14;
+export const COUNTER_STAFF_BUBBLE_OFFSET_Y = -68;
 
 export const YSORT_BASE_DEPTH = 10;
 export const YSORT_SCALE = 0.01;
@@ -68,4 +70,9 @@ export function formatTablePlaqueLabel(tableId: string, fallbackIndex = 0): stri
   const match = /(\d+)/.exec(tableId);
   const num = match ? Math.max(1, parseInt(match[1], 10)) : fallbackIndex + 1;
   return `Bàn ${String(num).padStart(2, '0')}`;
+}
+
+export function formatSosBannerLabel(topic: string): string {
+  const displayTopic = topic.length > 26 ? `${topic.slice(0, 25)}…` : topic;
+  return `🆘 ${displayTopic}`;
 }

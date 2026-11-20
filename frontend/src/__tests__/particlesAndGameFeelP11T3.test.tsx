@@ -538,7 +538,6 @@ describe('P11-T3: ParticleEmitter Ambient VFX & Tactile Game Feel (Juice) (#79)'
         hoveredSeatId: firstSeat.seatId,
         hoveredNpcId: null,
         mode: 'webgl-glow',
-        suppressesSeatHoverRect: true,
       });
       expect(seatPostFX.addGlow).toHaveBeenCalledTimes(1);
       expect(seatHighlightGraphics.fillCircle).toHaveBeenCalled();
@@ -578,7 +577,6 @@ describe('P11-T3: ParticleEmitter Ambient VFX & Tactile Game Feel (Juice) (#79)'
       expect(hoverController.getSnapshot()).toMatchObject({
         hoveredNpcId: 'npc_barista',
         mode: 'canvas-ring',
-        suppressesSeatHoverRect: false,
       });
       expect(npcFallbackGraphics.strokeCircle).toHaveBeenCalled();
 
@@ -598,7 +596,6 @@ describe('P11-T3: ParticleEmitter Ambient VFX & Tactile Game Feel (Juice) (#79)'
       expect(hoverController.getSnapshot()).toMatchObject({
         hoveredSeatId: firstSeat.seatId,
         mode: 'canvas-ring',
-        suppressesSeatHoverRect: true,
       });
 
       hoverController.destroy();
@@ -637,37 +634,7 @@ describe('P11-T3: ParticleEmitter Ambient VFX & Tactile Game Feel (Juice) (#79)'
 
   describe('Slice 4: Chat Bubble & SOS Banner Pop Easing, Study Goal Sparkles, Footsteps & Host Crown Emphasis', () => {
     it('animates ChatBubble with crisp pop-in and pop-out easing while snapping instantly under prefers-reduced-motion', () => {
-      const setScaleSpy = vi.fn().mockReturnThis();
-      const setAlphaSpy = vi.fn().mockReturnThis();
-      const mockScene = {
-        add: {
-          graphics: vi.fn(() => ({
-            clear: vi.fn(),
-            fillStyle: vi.fn(),
-            lineStyle: vi.fn(),
-            fillRoundedRect: vi.fn(),
-            strokeRoundedRect: vi.fn(),
-            fillTriangle: vi.fn(),
-            lineBetween: vi.fn(),
-          })),
-          text: vi.fn(() => ({
-            width: 72,
-            height: 16,
-            setText: vi.fn(),
-            setOrigin: vi.fn().mockReturnThis(),
-          })),
-          container: vi.fn(() => ({
-            setDepth: vi.fn().mockReturnThis(),
-            setVisible: vi.fn().mockReturnThis(),
-            setAlpha: setAlphaSpy,
-            setScale: setScaleSpy,
-            setPosition: vi.fn().mockReturnThis(),
-            destroy: vi.fn(),
-          })),
-        },
-      } as unknown as Phaser.Scene;
-
-      const bubble = new ChatBubble({ scene: mockScene });
+      const bubble = new ChatBubble();
       bubble.show('Cố lên nhé!', 10_000);
 
       // Pop-in at 50ms -> partially scaled/faded in
@@ -676,7 +643,6 @@ describe('P11-T3: ParticleEmitter Ambient VFX & Tactile Game Feel (Juice) (#79)'
       expect(popIn.alpha).toBeGreaterThan(0);
       expect(popIn.alpha).toBeLessThanOrEqual(1);
       expect(popIn.scale).not.toBe(1);
-      expect(setScaleSpy).toHaveBeenCalled();
 
       // Mid-lifetime at 11_000ms -> settled at exact rest (scale: 1, alpha: 1)
       bubble.update(11_000, 200, 180, false);
@@ -700,36 +666,7 @@ describe('P11-T3: ParticleEmitter Ambient VFX & Tactile Game Feel (Juice) (#79)'
     });
 
     it('animates TableSosOverlay pop-in/out easing and respects prefers-reduced-motion', () => {
-      const setScaleSpy = vi.fn().mockReturnThis();
-      const setAlphaSpy = vi.fn().mockReturnThis();
-      const setVisibleSpy = vi.fn().mockReturnThis();
-      const mockScene = {
-        add: {
-          graphics: vi.fn(() => ({
-            clear: vi.fn(),
-            fillStyle: vi.fn(),
-            lineStyle: vi.fn(),
-            fillRoundedRect: vi.fn(),
-            strokeRoundedRect: vi.fn(),
-            setDepth: vi.fn().mockReturnThis(),
-            destroy: vi.fn(),
-          })),
-          text: vi.fn(() => ({
-            width: 96,
-            height: 18,
-            setText: vi.fn(),
-            setPosition: vi.fn(),
-            setVisible: setVisibleSpy,
-            setScale: setScaleSpy,
-            setAlpha: setAlphaSpy,
-            setOrigin: vi.fn().mockReturnThis(),
-            setDepth: vi.fn().mockReturnThis(),
-            destroy: vi.fn(),
-          })),
-        },
-      } as unknown as Phaser.Scene;
-
-      const overlay = new TableSosOverlay(mockScene, MAIN_LIBRARY_TOPOLOGY);
+      const overlay = new TableSosOverlay(undefined, MAIN_LIBRARY_TOPOLOGY);
       const sosTable = {
         tableId: 'table_01',
         label: 'Bàn 1',
@@ -748,7 +685,7 @@ describe('P11-T3: ParticleEmitter Ambient VFX & Tactile Game Feel (Juice) (#79)'
       const appearing = overlay.getBannerMotionState('table_01');
       expect(appearing.phase).toBe('in');
       expect(appearing.alpha).toBeGreaterThan(0);
-      expect(setScaleSpy).toHaveBeenCalled();
+      expect(overlay.getLabelEntries()[0]?.text).toBe('🆘 Giúp giải tích phân');
 
       // Settled at t=1300
       overlay.update([sosTable], 1300, false);
@@ -768,7 +705,7 @@ describe('P11-T3: ParticleEmitter Ambient VFX & Tactile Game Feel (Juice) (#79)'
 
       overlay.update([], 2250, false);
       expect(overlay.getBannerMotionState('table_01').phase).toBe('hidden');
-      expect(setVisibleSpy).toHaveBeenCalledWith(false);
+      expect(overlay.getLabelEntries()).toHaveLength(0);
 
       // prefers-reduced-motion snaps immediately on show & hide
       overlay.update([sosTable], 3000, true);

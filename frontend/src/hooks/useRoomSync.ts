@@ -102,7 +102,9 @@ export function useRoomSync(backendStatus: BackendConnectionStatus = 'UP'): void
     }
 
     if (!sessionRef.current) {
-      const session = createRoomStompSession({
+      let session: RoomStompSession;
+      try {
+        session = createRoomStompSession({
         onStatusChange: (status, err) =>
           useGameStore.getState().setConnectionStatus(status, err),
         onSnapshot: (snapshot) => {
@@ -203,6 +205,18 @@ export function useRoomSync(backendStatus: BackendConnectionStatus = 'UP'): void
           }
         },
       });
+      } catch (err) {
+        useGameStore.getState().setConnectionStatus('ERROR', {
+          code: 'WS_CONFIG_MISSING',
+          message:
+            err instanceof Error
+              ? err.message
+              : 'Thiếu cấu hình máy chủ WebSocket (VITE_API_BASE_URL / VITE_WS_BASE_URL).',
+          details: {},
+          timestampEpoch: Date.now(),
+        });
+        return;
+      }
       sessionRef.current = session;
       setActiveRoomStompSession(session);
       prevTokenRef.current = token;

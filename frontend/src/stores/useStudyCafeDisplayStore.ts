@@ -10,6 +10,7 @@ import {
   type RendererKind,
   type ResolvedGraphicsPolicy,
 } from '../game/graphics/graphicsQualityPolicy';
+import { areLiveSceneLabelFramesEqual } from '../game/labels/liveLabelFrameEquality';
 import type { LiveSceneLabelFrame } from '../game/labels/studyCafeLabelTypes';
 
 export const STUDY_CAFE_DISPLAY_STORAGE_KEY = 'study_together_cafe_display_v1';
@@ -119,6 +120,9 @@ export const useStudyCafeDisplayStore = create<StudyCafeDisplayStore>((set, get)
       commit({ qualityPreference: s.qualityPreference, moodPreference: s.moodPreference }, s.rendererKind, prefersReducedMotion, false);
     },
     setLiveSceneLabelFrame: (liveSceneLabelFrame) => {
+      if (areLiveSceneLabelFramesEqual(get().liveSceneLabelFrame, liveSceneLabelFrame)) {
+        return;
+      }
       set({ liveSceneLabelFrame });
     },
     hydrateFromStorage: (now) => {

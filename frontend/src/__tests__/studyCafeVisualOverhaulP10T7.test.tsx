@@ -20,7 +20,6 @@ import {
   STUDY_CAFE_ENV_ATLAS_JSON,
   STUDY_CAFE_ENV_ATLAS_KEY,
 } from '../game/atlas/studyCafeEnvManifest';
-import { BOTANICAL_2D_SCENE } from '../game/botanicalPalette';
 import { AmbientNpcManager } from '../game/cafe/AmbientNpcManager';
 import {
   StudyCafeAmbientVfx,
@@ -30,8 +29,8 @@ import { AMBIENT_NPC_DEFINITIONS } from '../game/cafe/studyCafeConfig';
 import { renderStudyCafeDecor } from '../game/cafe/studyCafeDecorRenderer';
 import { CharacterAccessoriesOverlay } from '../game/entities/CharacterAccessoriesOverlay';
 import { RemotePlayersRenderer } from '../game/entities/RemotePlayersRenderer';
+import { buildStaticStudyCafeMapLabels } from '../game/labels/studyCafeLabelProjection';
 import {
-  buildClassroomTilemap,
   drawDynamicOverlay,
   preloadClassroomAssets,
 } from '../game/scenes/classroomMapRenderer';
@@ -127,44 +126,13 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
       expect(formatTablePlaqueLabel('table_03')).toBe('Bàn 03');
       expect(formatTablePlaqueLabel('table_06')).toBe('Bàn 06');
 
-      const textCalls: Array<{ x: number; y: number; text: string; style: Record<string, unknown> }> = [];
-      const mockGraphics = {
-        fillStyle: vi.fn(),
-        lineStyle: vi.fn(),
-        fillRoundedRect: vi.fn(),
-        strokeRoundedRect: vi.fn(),
-        fillCircle: vi.fn(),
-        fillRect: vi.fn(),
-        lineBetween: vi.fn(),
-        setDepth: vi.fn().mockReturnThis(),
-      };
-      const mockScene = {
-        make: {
-          tilemap: vi.fn(() => ({
-            addTilesetImage: vi.fn(() => ({})),
-            createLayer: vi.fn(),
-          })),
-        },
-        add: {
-          graphics: vi.fn(() => mockGraphics),
-          text: vi.fn((x: number, y: number, text: string, style: Record<string, unknown>) => {
-            textCalls.push({ x, y, text, style });
-            return {
-              setOrigin: vi.fn().mockReturnThis(),
-              setDepth: vi.fn().mockReturnThis(),
-            };
-          }),
-        },
-      } as unknown as Phaser.Scene;
-
-      buildClassroomTilemap(mockScene, MAIN_LIBRARY_TOPOLOGY);
-
-      expect(textCalls.map((c) => c.text)).toEqual(['Bàn 01', 'Bàn 02', 'Bàn 03']);
-      for (const call of textCalls) {
-        expect(call.text).not.toMatch(/^table[-_]/i);
-        expect(call.style.fontFamily).not.toBe('monospace');
-        expect(call.style.color).toBe(BOTANICAL_2D_SCENE.tableLabels.textColor);
-        expect(call.style.backgroundColor).toBe(BOTANICAL_2D_SCENE.tableLabels.backgroundColor);
+      const staticLabels = buildStaticStudyCafeMapLabels(MAIN_LIBRARY_TOPOLOGY);
+      const plaques = staticLabels.filter((item) => item.kind === 'table-plaque');
+      expect(plaques.map((p) => p.text)).toEqual(['Bàn 01', 'Bàn 02', 'Bàn 03']);
+      for (const plaque of plaques) {
+        expect(plaque.text).not.toMatch(/^table[-_]/i);
+        expect(plaque.worldX).toBeGreaterThan(0);
+        expect(plaque.worldY).toBeGreaterThan(0);
       }
     });
 
@@ -209,11 +177,11 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
 
       const byId = new Map(seatLayer.getSeatRenderSnapshots().map((s) => [s.seatId, s]));
       // Idle empty seat uses neutral idle cushion sprite and direction-aware backrest
-      expect(byId.get('T1_S1')?.baseFrame).toBe('chair_base_right_idle');
-      expect(byId.get('T1_S1')?.backrestFrame).toBe('chair_backrest_right');
+      expect(byId.get('T1_S1')?.baseFrame).toBe('seat_base_right_idle');
+      expect(byId.get('T1_S1')?.backrestFrame).toBe('seat_backrest_right');
       // Hovered seat uses hovered cushion sprite and direction-aware backrest
-      expect(byId.get('T2_S1')?.baseFrame).toBe('chair_base_down_hovered');
-      expect(byId.get('T2_S1')?.backrestFrame).toBe('chair_backrest_down');
+      expect(byId.get('T2_S1')?.baseFrame).toBe('seat_base_down_hovered');
+      expect(byId.get('T2_S1')?.backrestFrame).toBe('seat_backrest_down');
       seatLayer.destroy();
     });
   });

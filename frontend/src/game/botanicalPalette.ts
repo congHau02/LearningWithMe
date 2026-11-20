@@ -70,8 +70,6 @@ export const BOTANICAL_2D_SCENE = {
   afkLounge: {
     accent: BOTANICAL_PALETTE_INT.warmAmber,
     glowAlpha: 0.08,
-    cushionWarm: BOTANICAL_PALETTE_INT.warmAmber,
-    cushionEmerald: BOTANICAL_PALETTE_INT.bioluminescentEmerald,
     textColor: BOTANICAL_PALETTE_HEX.morningMist,
     backgroundColor: '#16221Ecc',
   },
@@ -101,16 +99,6 @@ export const BOTANICAL_2D_SCENE = {
     selfTextBg: '#16221Ecc',
     remoteTextColor: BOTANICAL_PALETTE_HEX.morningMist,
     remoteTextBg: '#16221Ecc',
-  },
-  furniture: {
-    woodDark: 0x4a2e1b,
-    woodMedium: 0x6b442a,
-    woodWarm: 0x7c4d2b,
-    woodHighlight: 0x8c5a38,
-    cushionIdle: BOTANICAL_PALETTE_INT.slateLeaf,
-  },
-  shadow: {
-    floorInt: 0x050807,
   },
   ambience: {
     warmSunset: {

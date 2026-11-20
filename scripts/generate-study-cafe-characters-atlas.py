@@ -1034,7 +1034,7 @@ def pack_atlas(preview_dir: Path | None = None) -> dict:
             "scale": "1",
         },
     }
-    json_path.write_text(json.dumps(atlas_json, indent=2) + "\n", encoding="utf-8")
+    json_path.write_text(json.dumps(atlas_json, separators=(",", ":")) + "\n", encoding="utf-8")
 
     manifest_json = {
         "schemaVersion": "1.0",

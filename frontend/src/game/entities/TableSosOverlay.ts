@@ -1,8 +1,9 @@
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import type { RoomTableSummary } from '../../services/roomApi';
 import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
-import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
+import { computeTileBounds } from '../atlas/bakedStaticRoomLayer';
 import { computePopMotion } from '../fx/easingMotion';
+import { formatSosBannerLabel } from '../scenes/ySortDepth';
 import type { RoomTopology, TableMetadata } from '../topology/roomTopology';
 
 interface TableAnchor {
@@ -31,18 +32,16 @@ const SOS_POP_IN_MS = 200;
 const SOS_POP_OUT_MS = 160;
 const HIDDEN_STATE: SosBannerMotionState = { phase: 'hidden', scale: 1, alpha: 0, offsetY: 0 };
 
+/**
+ * Tracks active table SOS banners and their pop-in/out motion curves for crisp
+ * DOM projection by StudyCafeMapLabelsOverlay without hidden Phaser text shells.
+ */
 export class TableSosOverlay {
-  private readonly scene: Phaser.Scene;
-  private readonly graphics: Phaser.GameObjects.Graphics;
   private readonly anchors: TableAnchor[];
-  private readonly labels = new Map<string, Phaser.GameObjects.Text>();
   private readonly runtimeByTable = new Map<string, TableBannerRuntime>();
   private readonly activeTableIds = new Set<string>();
 
-  constructor(scene: Phaser.Scene, topology: RoomTopology) {
-    this.scene = scene;
-    this.graphics = scene.add.graphics().setDepth(15);
-    this.graphics.setAlpha?.(0);
+  constructor(_scene: Phaser.Scene | undefined, topology: RoomTopology) {
     this.anchors = topology.tables
       .map((table) => computeTableAnchor(table, topology.tileSize))
       .filter((anchor): anchor is TableAnchor => anchor !== null);
@@ -53,7 +52,6 @@ export class TableSosOverlay {
     time: number,
     prefersReducedMotion = useStudyCafeDisplayStore.getState().prefersReducedMotion,
   ): void {
-    this.graphics.clear();
     this.activeTableIds.clear();
 
     const summaryById = new Map<string, RoomTableSummary>();
@@ -61,47 +59,14 @@ export class TableSosOverlay {
       summaryById.set(summary.tableId, summary);
     }
 
-    const pulse = prefersReducedMotion ? 0.7 : 0.55 + 0.35 * Math.sin(time / 220);
-
     for (const anchor of this.anchors) {
       const summary = summaryById.get(anchor.tableId);
       const topic = summary?.sosBanner?.trim() || null;
       const runtime = this.stepBannerRuntime(anchor.tableId, topic, time, prefersReducedMotion);
 
-      if (runtime.phase === 'hidden') {
-        this.labels.get(anchor.tableId)?.setVisible(false);
-        continue;
-      }
-
-      if (topic) {
+      if (runtime.phase !== 'hidden' && topic) {
         this.activeTableIds.add(anchor.tableId);
       }
-
-      const text = runtime.lastText;
-      const label = this.ensureLabel(anchor, text);
-      const { scale, alpha, offsetY } = runtime.motion;
-      const anchorY = anchor.topY - 12 + offsetY;
-
-      label.setText(text);
-      label.setPosition(anchor.cx, anchorY);
-      label.setScale?.(scale);
-      label.setAlpha?.(0);
-      label.setVisible(true);
-
-      const width = Math.max(64, (label.width || text.length * 6) + 10) * scale;
-      const height = ((label.height || 18) + 6) * scale;
-      const boxX = anchor.cx - width / 2;
-      const boxY = anchorY - height + 3;
-
-      // Slate Leaf background with subtle luminous border (ADR-0010)
-      this.graphics.fillStyle(BOTANICAL_2D_SCENE.tableSos.bgInt, Number((0.9 * alpha).toFixed(3)));
-      this.graphics.fillRoundedRect(boxX - 4, boxY - 4, width + 8, height + 8, 9);
-      this.graphics.lineStyle(
-        1.5,
-        BOTANICAL_2D_SCENE.tableSos.borderInt,
-        Number(((0.5 + pulse * 0.45) * alpha).toFixed(3)),
-      );
-      this.graphics.strokeRoundedRect(boxX - 1, boxY - 1, width + 2, height + 2, 7);
     }
   }
 
@@ -138,32 +103,8 @@ export class TableSosOverlay {
   }
 
   public destroy(): void {
-    this.graphics.destroy();
-    for (const label of this.labels.values()) {
-      label.destroy();
-    }
-    this.labels.clear();
     this.runtimeByTable.clear();
     this.activeTableIds.clear();
-  }
-
-  private ensureLabel(anchor: TableAnchor, text: string): Phaser.GameObjects.Text {
-    let label = this.labels.get(anchor.tableId);
-    if (!label) {
-      label = this.scene.add
-        .text(anchor.cx, anchor.topY - 12, text, {
-          fontFamily: 'sans-serif',
-          fontSize: '10px',
-          fontStyle: 'bold',
-          color: BOTANICAL_2D_SCENE.tableSos.textColor,
-          backgroundColor: BOTANICAL_2D_SCENE.tableSos.textBg,
-          padding: { x: 6, y: 3 },
-        })
-        .setOrigin(0.5, 1)
-        .setDepth(16);
-      this.labels.set(anchor.tableId, label);
-    }
-    return label;
   }
 
   private stepBannerRuntime(
@@ -179,8 +120,7 @@ export class TableSosOverlay {
     }
 
     if (topic) {
-      const displayTopic = topic.length > 26 ? `${topic.slice(0, 25)}…` : topic;
-      runtime.lastText = `🆘 ${displayTopic}`;
+      runtime.lastText = formatSosBannerLabel(topic);
 
       if (prefersReducedMotion) {
         runtime.phase = 'steady';
@@ -208,7 +148,6 @@ export class TableSosOverlay {
       return runtime;
     }
 
-    // Topic cleared -> transition out or hide immediately on reduced motion
     if (runtime.phase === 'hidden' || prefersReducedMotion) {
       runtime.phase = 'hidden';
       runtime.motion = HIDDEN_STATE;
@@ -239,9 +178,8 @@ function computeTableAnchor(table: TableMetadata, tileSize: number): TableAnchor
       : table.seats.map((s) => ({ tileX: s.tileX, tileY: s.tileY }));
   if (tiles.length === 0) return null;
 
-  const xs = tiles.map((t) => t.tileX);
-  const ys = tiles.map((t) => t.tileY);
-  const cx = ((Math.min(...xs) + Math.max(...xs) + 1) / 2) * tileSize;
-  const topY = Math.min(...ys) * tileSize;
+  const bounds = computeTileBounds(tiles);
+  const cx = ((bounds.minX + bounds.maxX + 1) / 2) * tileSize;
+  const topY = bounds.minY * tileSize;
   return { tableId: table.tableId, cx, topY };
 }

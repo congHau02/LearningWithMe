@@ -103,7 +103,7 @@ export class AmbientNpcManager {
     }
   }
 
-  public update(deltaMs: number, nowMs = Date.now()): void {
+  public update(deltaMs: number, nowMs = Date.now(), prefersReducedMotion = false): void {
     const safeDelta = Math.max(0, Math.min(deltaMs, 250));
 
     this.entries.forEach((entry, index) => {
@@ -131,7 +131,7 @@ export class AmbientNpcManager {
         }
       }
 
-      syncNpcVisuals(entry, nowMs, index * 1.1);
+      syncNpcVisuals(entry, nowMs, index * 1.1, prefersReducedMotion);
     });
   }
 
@@ -215,7 +215,7 @@ export class AmbientNpcManager {
 
   public destroy(): void {
     for (const e of this.entries) {
-      e.shadow?.destroy(); e.sprite?.destroy(); e.apron?.destroy(); e.label?.destroy(); e.chatBubble.destroy();
+      e.shadow?.destroy(); e.sprite?.destroy(); e.apron?.destroy(); e.chatBubble.destroy();
     }
     this.entries.length = 0;
   }

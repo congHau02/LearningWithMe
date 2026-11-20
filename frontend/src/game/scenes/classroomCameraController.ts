@@ -51,15 +51,21 @@ export function applyCameraViewportState(options: {
   worldWidth: number;
   worldHeight: number;
   view: CameraViewState;
+  allowCameraJuice?: boolean;
 }): void {
-  const { camera, target, worldWidth, worldHeight, view } = options;
+  const { camera, target, worldWidth, worldHeight, view, allowCameraJuice = true } = options;
   const clampedZoom = clampCameraZoom(view.zoom);
   camera.roundPixels = true;
   camera.setBounds(0, 0, worldWidth, worldHeight);
   camera.setZoom(clampedZoom);
   if (view.followEnabled && target) {
-    camera.startFollow(target, true, CAMERA_FOLLOW_LERP, CAMERA_FOLLOW_LERP);
-    camera.setDeadzone?.(CAMERA_FOLLOW_DEADZONE.width, CAMERA_FOLLOW_DEADZONE.height);
+    if (allowCameraJuice) {
+      camera.startFollow(target, true, CAMERA_FOLLOW_LERP, CAMERA_FOLLOW_LERP);
+      camera.setDeadzone?.(CAMERA_FOLLOW_DEADZONE.width, CAMERA_FOLLOW_DEADZONE.height);
+    } else {
+      camera.startFollow(target, true, 1, 1);
+      camera.setDeadzone?.();
+    }
     return;
   }
   camera.stopFollow();
