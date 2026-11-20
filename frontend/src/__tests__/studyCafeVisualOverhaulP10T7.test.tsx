@@ -8,6 +8,13 @@ vi.mock('phaser', () => ({
   },
 }));
 
+import { renderBakedStaticRoomLayer } from '../game/atlas/bakedStaticRoomLayer';
+import { SeatSpriteLayer } from '../game/atlas/seatSpriteLayer';
+import {
+  STUDY_CAFE_ENV_ATLAS_IMAGE,
+  STUDY_CAFE_ENV_ATLAS_JSON,
+  STUDY_CAFE_ENV_ATLAS_KEY,
+} from '../game/atlas/studyCafeEnvManifest';
 import { BOTANICAL_2D_SCENE } from '../game/botanicalPalette';
 import { AmbientNpcManager } from '../game/cafe/AmbientNpcManager';
 import {
@@ -56,10 +63,10 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
       expect(CHARACTER_ORIGIN_Y).toBe(0.75);
 
       const spritesheetSpy = vi.fn();
-      const imageSpy = vi.fn();
+      const atlasSpy = vi.fn();
       const mockScene = {
         load: {
-          image: imageSpy,
+          atlas: atlasSpy,
           spritesheet: spritesheetSpy,
         },
         cache: {
@@ -69,9 +76,10 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
 
       preloadClassroomAssets(mockScene);
 
-      expect(imageSpy).toHaveBeenCalledWith(
-        'classroom-tiles',
-        '/assets/tilesets/classroom-tiles.png',
+      expect(atlasSpy).toHaveBeenCalledWith(
+        STUDY_CAFE_ENV_ATLAS_KEY,
+        STUDY_CAFE_ENV_ATLAS_IMAGE,
+        STUDY_CAFE_ENV_ATLAS_JSON,
       );
       expect(spritesheetSpy).toHaveBeenCalledWith(
         'default_student',
@@ -169,56 +177,53 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
       }
     });
 
-    it('renders cushioned wooden chairs with direction-aware backrests and hover/selection-only highlight rings', () => {
-      const fillStyleSpy = vi.fn();
-      const lineStyleSpy = vi.fn();
-      const fillRoundedRectSpy = vi.fn();
-      const strokeRoundedRectSpy = vi.fn();
-
+    it('renders 2-layer cushioned wooden chairs with direction-aware backrests and hover/selection state frames', () => {
       const mockGraphics = {
         clear: vi.fn(),
-        fillStyle: fillStyleSpy,
-        lineStyle: lineStyleSpy,
-        fillRoundedRect: fillRoundedRectSpy,
-        strokeRoundedRect: strokeRoundedRectSpy,
-        fillRect: vi.fn(),
+        fillStyle: vi.fn(),
         fillCircle: vi.fn(),
       } as unknown as Phaser.GameObjects.Graphics;
 
-      drawDynamicOverlay(mockGraphics, {
-        tileSize: 32,
+      const mockScene = {
+        add: {
+          image: vi.fn(() => {
+            const img = {
+              setDepth: vi.fn().mockReturnThis(),
+              setFrame: vi.fn().mockReturnThis(),
+              destroy: vi.fn(),
+            };
+            return img;
+          }),
+        },
+      } as unknown as Phaser.Scene;
+
+      const twoSeatTopology = {
+        ...MAIN_LIBRARY_TOPOLOGY,
         seats: [
-          { seatId: 'T1_S1', tableId: 'table_01', tileX: 3, tileY: 4, facingDir: 'RIGHT' },
-          { seatId: 'T2_S1', tableId: 'table_02', tileX: 11, tileY: 3, facingDir: 'DOWN' },
+          { seatId: 'T1_S1', tableId: 'table_01', tileX: 3, tileY: 4, facingDir: 'RIGHT' as const },
+          { seatId: 'T2_S1', tableId: 'table_02', tileX: 11, tileY: 3, facingDir: 'DOWN' as const },
         ],
+      };
+      const seatLayer = new SeatSpriteLayer(mockScene, twoSeatTopology);
+      seatLayer.sync({
         occupiedSeats: {},
         activeSeatId: null,
         hoveredSeatId: 'T2_S1',
+      });
+
+      drawDynamicOverlay(mockGraphics, {
+        tileSize: 32,
         pathQueue: [],
       });
 
-      // Idle empty seat uses neutral Slate Leaf cushion (no permanent bright emerald highlight)
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.furniture.cushionIdle,
-        expect.any(Number),
-      );
-      expect(fillStyleSpy).not.toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.seats.empty,
-        expect.any(Number),
-      );
-      // Hovered seat uses Warm Amber fill and draws the only highlight ring
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.seats.hover,
-        expect.any(Number),
-      );
-      expect(lineStyleSpy).toHaveBeenCalledWith(
-        1.5,
-        BOTANICAL_2D_SCENE.seats.hoverBorder,
-        expect.any(Number),
-      );
-      expect(strokeRoundedRectSpy).toHaveBeenCalledTimes(1);
-      // Wooden chair frame / backrest is drawn in addition to the cushion
-      expect(fillRoundedRectSpy.mock.calls.length).toBeGreaterThanOrEqual(4);
+      const byId = new Map(seatLayer.getSeatRenderSnapshots().map((s) => [s.seatId, s]));
+      // Idle empty seat uses neutral idle cushion sprite and direction-aware backrest
+      expect(byId.get('T1_S1')?.baseFrame).toBe('chair_base_right_idle');
+      expect(byId.get('T1_S1')?.backrestFrame).toBe('chair_backrest_right');
+      // Hovered seat uses hovered cushion sprite and direction-aware backrest
+      expect(byId.get('T2_S1')?.baseFrame).toBe('chair_base_down_hovered');
+      expect(byId.get('T2_S1')?.backrestFrame).toBe('chair_backrest_down');
+      seatLayer.destroy();
     });
   });
 
@@ -487,46 +492,56 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
       vfx.destroy();
     });
 
-    it('renders woven under-table rugs, espresso machine counter details, and Warm Amber lamp halos in renderStudyCafeDecor', () => {
-      const fillStyleSpy = vi.fn();
-      const fillRoundedRectSpy = vi.fn();
-      const mockGraphics = {
-        fillStyle: fillStyleSpy,
-        lineStyle: vi.fn(),
-        fillRoundedRect: fillRoundedRectSpy,
-        strokeRoundedRect: vi.fn(),
-        lineBetween: vi.fn(),
-        fillTriangle: vi.fn(),
-        fillCircle: vi.fn(),
-        fillRect: vi.fn(),
-        setDepth: vi.fn().mockReturnThis(),
-      };
+    it('renders woven under-table rugs and espresso machine counter atlas sprites across baked room and café decor', () => {
+      const bakedFrames: string[] = [];
+      const decorFrames: string[] = [];
       const mockScene = {
         add: {
-          graphics: vi.fn(() => mockGraphics),
+          renderTexture: vi.fn(() => {
+            const rt = {
+              setOrigin: vi.fn().mockReturnThis(),
+              setDepth: vi.fn().mockReturnThis(),
+              drawFrame: vi.fn((_key: string, frame: string) => {
+                bakedFrames.push(frame);
+                return rt;
+              }),
+              destroy: vi.fn(),
+            };
+            return rt;
+          }),
+          image: vi.fn((_x: number, _y: number, _key: string, frame: string) => {
+            decorFrames.push(frame);
+            return {
+              setOrigin: vi.fn().mockReturnThis(),
+              setDepth: vi.fn().mockReturnThis(),
+              destroy: vi.fn(),
+            };
+          }),
           text: vi.fn(() => ({
             setOrigin: vi.fn().mockReturnThis(),
             setDepth: vi.fn().mockReturnThis(),
+            setAlpha: vi.fn().mockReturnThis(),
+            destroy: vi.fn(),
           })),
         },
       } as unknown as Phaser.Scene;
 
-      renderStudyCafeDecor(mockScene, MAIN_LIBRARY_TOPOLOGY);
+      const staticHandle = renderBakedStaticRoomLayer(mockScene, MAIN_LIBRARY_TOPOLOGY);
+      const decorHandle = renderStudyCafeDecor(mockScene, MAIN_LIBRARY_TOPOLOGY);
 
-      // Uses Botanical Night Studio tokens for windows, lamps, and counter
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.windows.paneFill,
-        expect.any(Number),
-      );
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.lighting.lampWarm,
-        BOTANICAL_2D_SCENE.lighting.lampAlpha,
-      );
-      // Renders woven under-table rugs and espresso machine details
-      expect(fillRoundedRectSpy.mock.calls.length).toBeGreaterThanOrEqual(8);
+      expect(bakedFrames).toContain('rug_tl');
+      expect(bakedFrames).toContain('lounge_rug_tl');
+      expect(decorFrames).toContain('window_north_frame');
+      expect(decorFrames).toContain('counter_espresso_0');
+      expect(decorFrames).toContain('counter_pastry_dome');
+      expect(decorFrames).toContain('counter_pos_0');
+      expect(decorFrames).toContain('chalkboard_menu');
+
+      staticHandle.destroy();
+      decorHandle.destroy();
     });
 
-    it('ships 128x192 (4x4 frames of 32x48px) character spritesheets and rich 352x32 nocturnal pixel-art tileset PNGs', async () => {
+    it('ships 128x192 (4x4 frames of 32x48px) character spritesheets and packed 512x256 Botanical environment texture atlas PNG', async () => {
       const fsModName = 'fs';
       const fsMod = (await import(/* @vite-ignore */ fsModName)) as {
         readFileSync: (filePath: string) => {
@@ -534,10 +549,10 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
           readUInt32BE: (offset: number) => number;
         };
       };
-      const tilesetBuf = fsMod.readFileSync('public/assets/tilesets/classroom-tiles.png');
-      expect(tilesetBuf.readUInt32BE(16)).toBe(352);
-      expect(tilesetBuf.readUInt32BE(20)).toBe(32);
-      expect(tilesetBuf.length).toBeGreaterThan(1800);
+      const atlasBuf = fsMod.readFileSync('public/assets/tilesets/study-cafe-env.png');
+      expect(atlasBuf.readUInt32BE(16)).toBe(512);
+      expect(atlasBuf.readUInt32BE(20)).toBe(256);
+      expect(atlasBuf.length).toBeGreaterThan(4000);
 
       for (const avatarKey of [
         'default_student',

@@ -110,6 +110,7 @@ export function parseTiledRoomTopology(raw: unknown): RoomTopology {
 
   const walls: TileCoordinate[] = [];
   const furniture: TileCoordinate[] = [];
+  const furnitureGids: Record<string, number> = {};
   const afkZone: TileCoordinate[] = [];
   const tableTileLookup = new Map<string, TileCoordinate>();
   const seats: SeatMetadata[] = [];
@@ -123,7 +124,9 @@ export function parseTiledRoomTopology(raw: unknown): RoomTopology {
         if (layer.name === 'Walls') walls.push(coord);
         else if (layer.name === 'Furniture') {
           furniture.push(coord);
-          if (gid === TABLE_GID) tableTileLookup.set(coordKey(coord.tileX, coord.tileY), coord);
+          const key = coordKey(coord.tileX, coord.tileY);
+          furnitureGids[key] = gid;
+          if (gid === TABLE_GID) tableTileLookup.set(key, coord);
         } else if (layer.name === 'AFK') afkZone.push(coord);
       });
     } else if (layer.type === 'objectgroup' && layer.name === 'Seats') {
@@ -189,5 +192,5 @@ export function parseTiledRoomTopology(raw: unknown): RoomTopology {
     throw new Error('Room topology must define at least 3 study tables');
   }
 
-  return { roomId, tileSize, width: map.width, height: map.height, spawnTile, layers: layerNames, walls, furniture, afkZone, tables, seats };
+  return { roomId, tileSize, width: map.width, height: map.height, spawnTile, layers: layerNames, walls, furniture, furnitureGids, afkZone, tables, seats };
 }

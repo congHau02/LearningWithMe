@@ -10,6 +10,8 @@ vi.mock('phaser', () => ({
 }));
 
 import { ClassroomCanvas } from '../components/game/ClassroomCanvas';
+import { SeatSpriteLayer } from '../game/atlas/seatSpriteLayer';
+import { STUDY_CAFE_ENV_ATLAS_KEY } from '../game/atlas/studyCafeEnvManifest';
 import {
   BOTANICAL_2D_SCENE,
   BOTANICAL_PALETTE_HEX,
@@ -293,107 +295,92 @@ describe('BNS-T4: Phaser 2D Study Café Night Lighting, Overlays & Classroom Vie
 
     it('renders drawDynamicOverlay seats and pathfinder using Bioluminescent Emerald', () => {
       const fillStyleSpy = vi.fn();
-      const lineStyleSpy = vi.fn();
 
       const mockGraphics = {
         clear: vi.fn(),
         fillStyle: fillStyleSpy,
-        lineStyle: lineStyleSpy,
-        fillRoundedRect: vi.fn(),
-        strokeRoundedRect: vi.fn(),
         fillCircle: vi.fn(),
       } as unknown as Phaser.GameObjects.Graphics;
 
-      drawDynamicOverlay(mockGraphics, {
-        tileSize: 32,
+      const mockScene = {
+        add: {
+          image: vi.fn(() => {
+            const img = {
+              setDepth: vi.fn().mockReturnThis(),
+              setFrame: vi.fn().mockReturnThis(),
+              destroy: vi.fn(),
+            };
+            return img;
+          }),
+        },
+      } as unknown as Phaser.Scene;
+
+      const twoSeatTopology = {
+        ...MAIN_LIBRARY_TOPOLOGY,
         seats: [
-          { seatId: 'seat_01', tableId: 'table_01', tileX: 3, tileY: 4, facingDir: 'DOWN' },
-          { seatId: 'seat_02', tableId: 'table_01', tileX: 6, tileY: 4, facingDir: 'DOWN' },
+          { seatId: 'seat_01', tableId: 'table_01', tileX: 3, tileY: 4, facingDir: 'DOWN' as const },
+          { seatId: 'seat_02', tableId: 'table_01', tileX: 6, tileY: 4, facingDir: 'DOWN' as const },
         ],
+      };
+      const seatLayer = new SeatSpriteLayer(mockScene, twoSeatTopology);
+      seatLayer.sync({
         occupiedSeats: { seat_02: 'user_bob' },
         activeSeatId: 'seat_01',
         hoveredSeatId: null,
+      });
+
+      drawDynamicOverlay(mockGraphics, {
+        tileSize: 32,
         pathQueue: [{ tileX: 4, tileY: 5 }],
       });
 
-      // Active seat uses current emerald (0x34d399) and mist border (0xe6ece8)
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.seats.current,
-        expect.any(Number),
-      );
-      expect(lineStyleSpy).toHaveBeenCalledWith(
-        1.5,
-        BOTANICAL_2D_SCENE.seats.currentBorder,
-        expect.any(Number),
-      );
-
-      // Occupied seat uses occupied color (0xef4444)
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.seats.occupied,
-        expect.any(Number),
-      );
+      // Active & occupied seats render through 2-layer Botanical atlas sprites
+      const byId = new Map(seatLayer.getSeatRenderSnapshots().map((s) => [s.seatId, s]));
+      expect(byId.get('seat_01')?.baseFrame).toBe('chair_base_down_current');
+      expect(byId.get('seat_02')?.baseFrame).toBe('chair_base_down_occupied');
 
       // Pathfinder step marker uses Bioluminescent Emerald (0x34d399)
       expect(fillStyleSpy).toHaveBeenCalledWith(
         BOTANICAL_2D_SCENE.pathfinder.markerInt,
         expect.any(Number),
       );
+      seatLayer.destroy();
     });
 
-    it('renders renderStudyCafeDecor with window twilight tint and amber glows', () => {
-      const fillStyleSpy = vi.fn();
-      const lineStyleSpy = vi.fn();
-
-      const mockGraphics = {
-        fillStyle: fillStyleSpy,
-        lineStyle: lineStyleSpy,
-        fillRoundedRect: vi.fn(),
-        strokeRoundedRect: vi.fn(),
-        lineBetween: vi.fn(),
-        fillTriangle: vi.fn(),
-        fillCircle: vi.fn(),
-        fillRect: vi.fn(),
-        setDepth: vi.fn().mockReturnThis(),
-      };
+    it('renders renderStudyCafeDecor with framed north windows, Chill Lounge cushions, and Barista counter atlas sprites', () => {
+      const createdSprites: Array<{ texture: string; frame: string }> = [];
 
       const mockScene = {
         add: {
-          graphics: vi.fn(() => mockGraphics),
+          image: vi.fn((_x: number, _y: number, texture: string, frame: string) => {
+            createdSprites.push({ texture, frame });
+            return {
+              setOrigin: vi.fn().mockReturnThis(),
+              setDepth: vi.fn().mockReturnThis(),
+              destroy: vi.fn(),
+            };
+          }),
           text: vi.fn(() => ({
             setOrigin: vi.fn().mockReturnThis(),
             setDepth: vi.fn().mockReturnThis(),
+            setAlpha: vi.fn().mockReturnThis(),
+            destroy: vi.fn(),
           })),
         },
       } as unknown as Phaser.Scene;
 
-      renderStudyCafeDecor(mockScene, MAIN_LIBRARY_TOPOLOGY);
+      const handle = renderStudyCafeDecor(mockScene, MAIN_LIBRARY_TOPOLOGY);
+      const frames = new Set(createdSprites.map((s) => s.frame));
 
-      // Window twilight pane fill
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.windows.paneFill,
-        expect.any(Number),
-      );
-      // Window frame luminous border
-      expect(lineStyleSpy).toHaveBeenCalledWith(
-        expect.any(Number),
-        BOTANICAL_2D_SCENE.windows.frame,
-        expect.any(Number),
-      );
-      // Reading lamps Warm Amber glow
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.lighting.lampWarm,
-        BOTANICAL_2D_SCENE.lighting.lampAlpha,
-      );
-      // Service Counter Warm Amber glow
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.counter.glowFill,
-        expect.any(Number),
-      );
-      // Counter chalkboard menu board Slate Leaf background
-      expect(fillStyleSpy).toHaveBeenCalledWith(
-        BOTANICAL_2D_SCENE.counter.menuBoardBg,
-        expect.any(Number),
-      );
+      expect(createdSprites.every((s) => s.texture === STUDY_CAFE_ENV_ATLAS_KEY)).toBe(true);
+      expect(frames.has('window_north_frame')).toBe(true);
+      expect(frames.has('wall_clock_0')).toBe(true);
+      expect(frames.has('cushion_amber')).toBe(true);
+      expect(frames.has('cushion_emerald')).toBe(true);
+      expect(frames.has('counter_left')).toBe(true);
+      expect(frames.has('counter_espresso_0')).toBe(true);
+      expect(frames.has('chalkboard_menu')).toBe(true);
+      handle.destroy();
     });
   });
 });

@@ -3,37 +3,41 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { BOTANICAL_2D_SCENE } from '../botanicalPalette';
+import { EnvironmentAnimationController } from '../atlas/environmentAnimationController';
+import { SeatSpriteLayer } from '../atlas/seatSpriteLayer';
+import type { DestroyableHandle } from '../atlas/studyCafeFurnitureRenderer';
 import { AmbientNpcManager } from '../cafe/AmbientNpcManager';
 import { StudyCafeAmbientVfx } from '../cafe/studyCafeAmbientVfx';
-import { formatSelfCharacterLabel } from '../cafe/studyCafeConfig';
 import { renderStudyCafeDecor } from '../cafe/studyCafeDecorRenderer';
-import { CharacterAccessoriesOverlay } from '../entities/CharacterAccessoriesOverlay';
-import { ChatBubble } from '../entities/ChatBubble';
+import type { CharacterAccessoriesOverlay } from '../entities/CharacterAccessoriesOverlay';
+import type { ChatBubble } from '../entities/ChatBubble';
 import type { PlayerSprite } from '../entities/PlayerSprite';
 import { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
 import { TableSosOverlay } from '../entities/TableSosOverlay';
 import { StudyCafeJuiceCoordinator } from '../fx/studyCafeJuiceCoordinator';
 import { StudyCafeLightingSystem } from '../lighting/StudyCafeLightingSystem';
 import type { RoomTopology } from '../topology/roomTopology';
-import { buildClassroomTilemap, drawDynamicOverlay, registerCharacterAnimations } from './classroomMapRenderer';
+import {
+  buildClassroomTilemap,
+  drawDynamicOverlay,
+  registerCharacterAnimations,
+  type ClassroomMapHandles,
+} from './classroomMapRenderer';
 import {
   subscribeGoalCelebrations,
   subscribeNpcDrinkReactions,
   subscribeSceneChatBubbles,
 } from './classroomSceneBindings';
 import {
-  ACTOR_BUBBLE_OFFSET_Y,
-  ACTOR_LABEL_OFFSET_Y,
-  CHARACTER_ORIGIN_X,
-  CHARACTER_ORIGIN_Y,
-  computeChairYSortDepth,
-  computeIdleBreathingOffset,
-  computeYSortDepth,
-} from './ySortDepth';
+  createLocalActorVisuals,
+  updateLocalActorAndLabelFrame,
+} from './classroomSceneLabelSync';
 
 export interface ClassroomSceneSubsystems {
-  readonly seatGraphicsById: Map<string, Phaser.GameObjects.Graphics>;
+  readonly mapHandles: ClassroomMapHandles;
+  readonly decorHandle: DestroyableHandle;
+  readonly seatSpriteLayer: SeatSpriteLayer;
+  readonly envAnimController: EnvironmentAnimationController;
   readonly dynamicGraphics: Phaser.GameObjects.Graphics;
   readonly ambientVfx: StudyCafeAmbientVfx;
   readonly lightingSystem: StudyCafeLightingSystem;
@@ -56,16 +60,16 @@ export function createClassroomSceneSubsystems(
   topology: RoomTopology,
   playerSprite: PlayerSprite,
 ): ClassroomSceneSubsystems {
-  buildClassroomTilemap(scene, topology);
+  const envAnimController = new EnvironmentAnimationController();
+  const registerAnim = (prop: Parameters<EnvironmentAnimationController['registerProp']>[0]) => {
+    envAnimController.registerProp(prop);
+  };
+  const mapHandles = buildClassroomTilemap(scene, topology, registerAnim);
   registerCharacterAnimations(scene);
-  renderStudyCafeDecor(scene, topology);
+  const decorHandle = renderStudyCafeDecor(scene, topology, registerAnim);
 
   const dynamicGraphics = scene.add.graphics().setDepth(4);
-  const seatGraphicsById = new Map<string, Phaser.GameObjects.Graphics>();
-  for (const seat of topology.seats) {
-    const cy = seat.tileY * topology.tileSize + topology.tileSize / 2;
-    seatGraphicsById.set(seat.seatId, scene.add.graphics().setDepth(computeChairYSortDepth(cy)));
-  }
+  const seatSpriteLayer = new SeatSpriteLayer(scene, topology);
 
   const ambientVfx = new StudyCafeAmbientVfx(scene, topology);
   const lightingSystem = new StudyCafeLightingSystem(scene, topology);
@@ -73,37 +77,30 @@ export function createClassroomSceneSubsystems(
   const remotePlayersRenderer = new RemotePlayersRenderer({ scene, tileSize: topology.tileSize });
   const tableSosOverlay = new TableSosOverlay(scene, topology);
   const ambientNpcManager = new AmbientNpcManager({ scene, tileSize: topology.tileSize, topology });
+  const localVisuals = createLocalActorVisuals(scene, playerSprite);
 
-  const pos = playerSprite.getPixelPosition();
-  const initialDepth = computeYSortDepth(pos.y);
-  const actorSprite = scene.add.sprite(pos.x, pos.y, playerSprite.getAvatarId(), 0).setDepth(initialDepth);
-  actorSprite.setOrigin?.(CHARACTER_ORIGIN_X, CHARACTER_ORIGIN_Y);
-  const currentAnimKey = playerSprite.getAnimationKey();
-  actorSprite.play(currentAnimKey, true);
-
-  const selfAccessoriesOverlay = new CharacterAccessoriesOverlay({ scene, depth: computeYSortDepth(pos.y, 10, 0.001) });
-  const nicknameLabel = scene.add
-    .text(pos.x, pos.y + ACTOR_LABEL_OFFSET_Y, playerSprite.getNickname(), {
-      fontFamily: 'sans-serif',
-      fontSize: '11px',
-      color: BOTANICAL_2D_SCENE.playerLabels.selfTextColor,
-      backgroundColor: BOTANICAL_2D_SCENE.playerLabels.selfTextBg,
-      padding: { x: 4, y: 2 },
-      align: 'center',
-    })
-    .setOrigin(0.5, 1)
-    .setDepth(initialDepth + 2);
-  nicknameLabel.setAlpha?.(0);
-
-  const selfChatBubble = new ChatBubble({ scene });
-  const storeUnsub = subscribeSceneChatBubbles(selfChatBubble, remotePlayersRenderer);
+  const storeUnsub = subscribeSceneChatBubbles(localVisuals.selfChatBubble, remotePlayersRenderer);
   const npcReactionUnsub = subscribeNpcDrinkReactions(ambientNpcManager);
-  const goalCelebrationUnsub = subscribeGoalCelebrations(() => juiceCoordinator.triggerGoalCelebration());
+  const goalCelebrationUnsub = subscribeGoalCelebrations(() =>
+    juiceCoordinator.triggerGoalCelebration(),
+  );
 
   return {
-    seatGraphicsById, dynamicGraphics, ambientVfx, lightingSystem, juiceCoordinator,
-    remotePlayersRenderer, tableSosOverlay, ambientNpcManager, actorSprite, selfAccessoriesOverlay,
-    nicknameLabel, selfChatBubble, storeUnsub, npcReactionUnsub, goalCelebrationUnsub, currentAnimKey,
+    mapHandles,
+    decorHandle,
+    seatSpriteLayer,
+    envAnimController,
+    dynamicGraphics,
+    ambientVfx,
+    lightingSystem,
+    juiceCoordinator,
+    remotePlayersRenderer,
+    tableSosOverlay,
+    ambientNpcManager,
+    ...localVisuals,
+    storeUnsub,
+    npcReactionUnsub,
+    goalCelebrationUnsub,
   };
 }
 
@@ -136,6 +133,7 @@ export function updateClassroomSceneSubsystems(options: {
     snapImmediately: display.prefersReducedMotion,
   });
 
+  subsystems.envAnimController.update(time, display.graphicsPolicy);
   subsystems.remotePlayersRenderer.syncPlayers(game.remotePlayers);
   subsystems.remotePlayersRenderer.update(0.28, now);
   subsystems.tableSosOverlay.update(game.roomTables, time, display.prefersReducedMotion);
@@ -179,70 +177,59 @@ export function updateClassroomSceneSubsystems(options: {
     deltaMs: delta,
   });
 
-  const breathingOffset = display.prefersReducedMotion
-    ? 0
-    : computeIdleBreathingOffset(time, 0, game.isMoving);
-  const selfDepth = computeYSortDepth(juice.renderY);
-
-  subsystems.selfAccessoriesOverlay.update({
-    x: juice.renderX,
-    y: juice.renderY,
-    skinId: playerSprite.getSkinId(),
-    hatId: playerSprite.getHatId(),
-    deskPetId: playerSprite.getDeskPetId(),
-    facingDir: playerSprite.getFacingDir(),
-    breathingOffsetY: breathingOffset + juice.offsetY,
-  });
-  subsystems.selfChatBubble.update(now, juice.renderX, juice.renderY + ACTOR_BUBBLE_OFFSET_Y, display.prefersReducedMotion);
-
-  const animKey = playerSprite.getAnimationKey();
-  subsystems.actorSprite.setPosition(juice.renderX, juice.renderY + breathingOffset + juice.offsetY);
-  subsystems.actorSprite.setScale?.(juice.scaleX, juice.scaleY);
-  subsystems.actorSprite.setDepth?.(selfDepth);
-  if (animKey !== subsystems.currentAnimKey) {
-    subsystems.currentAnimKey = animKey;
-    subsystems.actorSprite.play(animKey, true);
-  }
-
-  subsystems.nicknameLabel.setText(
-    formatSelfCharacterLabel({
-      nickname: auth.nickname,
-      isHost,
-      isSeated: game.characterState === 'SEATED',
-      drinkId: game.selectedDrinkId,
-      studyGoal: auth.studyGoal,
-      studyGoalCompleted: auth.studyGoalCompleted,
-    }),
-  );
-  subsystems.nicknameLabel.setPosition(juice.renderX, juice.renderY + ACTOR_LABEL_OFFSET_Y);
-  subsystems.nicknameLabel.setDepth?.(selfDepth + 2);
-
-  const mainCam = scene?.cameras?.main;
-  display.setLiveSceneLabelFrame({
-    camera: {
-      worldWidth: topology.width * topology.tileSize, worldHeight: topology.height * topology.tileSize,
-      zoom: mainCam?.zoom ?? game.cameraZoom, scrollX: mainCam?.scrollX ?? 0, scrollY: mainCam?.scrollY ?? 0,
-    },
-    self: {
-      worldX: juice.renderX, worldY: juice.renderY,
-      bubbleText: subsystems.selfChatBubble.isActive() ? subsystems.selfChatBubble.getText() : null,
-      bubbleMotion: subsystems.selfChatBubble.getVisualState(),
-    },
-    remotePlayers: subsystems.remotePlayersRenderer.getLabelEntries(),
-    npcs: subsystems.ambientNpcManager.getLabelEntries(),
-    sosBanners: subsystems.tableSosOverlay.getLabelEntries(),
+  updateLocalActorAndLabelFrame({
+    scene,
+    topology,
+    visuals: subsystems,
+    playerSprite,
+    remotePlayersRenderer: subsystems.remotePlayersRenderer,
+    ambientNpcManager: subsystems.ambientNpcManager,
+    tableSosOverlay: subsystems.tableSosOverlay,
+    renderX: juice.renderX,
+    renderY: juice.renderY,
+    offsetY: juice.offsetY,
+    scaleX: juice.scaleX,
+    scaleY: juice.scaleY,
+    isMoving: game.isMoving,
+    isHost,
+    isSeated: game.characterState === 'SEATED',
+    nickname: auth.nickname,
+    selectedDrinkId: game.selectedDrinkId,
+    studyGoal: auth.studyGoal,
+    studyGoalCompleted: auth.studyGoalCompleted,
+    prefersReducedMotion: display.prefersReducedMotion,
+    fallbackZoom: game.cameraZoom,
+    time,
+    now,
   });
 
-  drawDynamicOverlay(subsystems.dynamicGraphics, { tileSize: topology.tileSize, seats: topology.seats, occupiedSeats: game.occupiedSeats, activeSeatId: game.currentSeatId, hoveredSeatId, suppressSeatHoverRect: juice.suppressesSeatHoverRect, pathQueue: game.pathQueue, seatGraphicsById: subsystems.seatGraphicsById });
+  subsystems.seatSpriteLayer.sync({
+    occupiedSeats: game.occupiedSeats,
+    activeSeatId: game.currentSeatId,
+    hoveredSeatId,
+  });
+  drawDynamicOverlay(subsystems.dynamicGraphics, {
+    tileSize: topology.tileSize,
+    pathQueue: game.pathQueue,
+  });
 }
 
 export function destroyClassroomSceneSubsystems(s?: ClassroomSceneSubsystems): void {
   useStudyCafeDisplayStore.getState().setLiveSceneLabelFrame(null);
   if (!s) return;
-  s.storeUnsub(); s.npcReactionUnsub(); s.goalCelebrationUnsub();
-  s.juiceCoordinator.destroy(); s.selfAccessoriesOverlay.destroy(); s.selfChatBubble.destroy();
-  s.remotePlayersRenderer.destroy(); s.tableSosOverlay.destroy(); s.ambientNpcManager.destroy();
-  s.ambientVfx.destroy(); s.lightingSystem.destroy();
-  for (const sg of s.seatGraphicsById.values()) sg.destroy?.();
-  s.seatGraphicsById.clear();
+  s.storeUnsub();
+  s.npcReactionUnsub();
+  s.goalCelebrationUnsub();
+  s.juiceCoordinator.destroy();
+  s.selfAccessoriesOverlay.destroy();
+  s.selfChatBubble.destroy();
+  s.remotePlayersRenderer.destroy();
+  s.tableSosOverlay.destroy();
+  s.ambientNpcManager.destroy();
+  s.ambientVfx.destroy();
+  s.lightingSystem.destroy();
+  s.envAnimController.destroy();
+  s.seatSpriteLayer.destroy();
+  s.decorHandle.destroy();
+  s.mapHandles.destroy();
 }

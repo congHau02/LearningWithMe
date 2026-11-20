@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import { BOTANICAL_2D_SCENE, BOTANICAL_PALETTE_INT } from '../botanicalPalette';
+import type { FacingDirection } from '../topology/roomTopology';
 
 /**
  * 32x48px 3/4 Top-Down RPG Character Proportions & Dynamic Y-Sorting Depth Seam (P10-T7).
@@ -18,6 +19,9 @@ export const ACTOR_BUBBLE_OFFSET_Y = -56;
 export const YSORT_BASE_DEPTH = 10;
 export const YSORT_SCALE = 0.01;
 export const CHAIR_YSORT_OFFSET = -0.005;
+export const SEAT_BACKREST_UP_OFFSET = 0.04;
+export const SEAT_BACKREST_SIDE_OFFSET = 0.025;
+export const SEAT_BACKREST_DOWN_OFFSET = -0.003;
 export const FLOOR_SHADOW_YSORT_OFFSET = -0.002;
 
 export function computeYSortDepth(
@@ -31,6 +35,19 @@ export function computeYSortDepth(
 
 export function computeChairYSortDepth(seatPixelY: number): number {
   return computeYSortDepth(seatPixelY, YSORT_BASE_DEPTH, CHAIR_YSORT_OFFSET);
+}
+
+export function computeSeatBackrestYSortDepth(
+  seatPixelY: number,
+  facingDir: FacingDirection,
+): number {
+  if (facingDir === 'UP') {
+    return computeYSortDepth(seatPixelY, YSORT_BASE_DEPTH, SEAT_BACKREST_UP_OFFSET);
+  }
+  if (facingDir === 'LEFT' || facingDir === 'RIGHT') {
+    return computeYSortDepth(seatPixelY, YSORT_BASE_DEPTH, SEAT_BACKREST_SIDE_OFFSET);
+  }
+  return computeYSortDepth(seatPixelY, YSORT_BASE_DEPTH, SEAT_BACKREST_DOWN_OFFSET);
 }
 
 export function computeFloorShadowYSortDepth(actorPixelY: number): number {

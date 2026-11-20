@@ -35,6 +35,7 @@ export interface RoomTopology {
   layers: TileLayerName[];
   walls: TileCoordinate[];
   furniture: TileCoordinate[];
+  furnitureGids?: Readonly<Record<string, number>>;
   afkZone: TileCoordinate[];
   tables: TableMetadata[];
   seats: SeatMetadata[];
