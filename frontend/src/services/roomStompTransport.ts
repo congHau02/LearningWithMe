@@ -54,7 +54,10 @@ export function createStompJsTransport(config: StompTransportConfig): StompTrans
       const subscription = client.subscribe(destination, (frame) => handler(frame.body));
       return () => subscription.unsubscribe();
     },
-    publish: (destination, body) => client.publish({ destination, body }),
+    publish: (destination, body) => {
+      if (!client.connected) return;
+      client.publish({ destination, body });
+    },
     disableReconnect: () => {
       client.reconnectDelay = 0;
     },

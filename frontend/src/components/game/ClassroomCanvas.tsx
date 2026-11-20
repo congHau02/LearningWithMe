@@ -74,10 +74,10 @@ export function ClassroomCanvas() {
       outerClassName="flex min-h-0 w-full flex-1 flex-col"
       innerClassName="flex min-h-0 flex-1 flex-col items-center justify-between gap-2 p-1.5 sm:p-2 text-center"
     >
-      <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-border/80 bg-[#0F1714]">
+      <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-border/80 bg-[#0F1714] [container-type:size]">
         <div
           data-testid="study-cafe-fitted-stage"
-          className="relative flex aspect-[3/2] max-h-full max-w-full flex-1 items-center justify-center overflow-hidden bg-[#0F1714]"
+          className="relative flex aspect-[3/2] w-[min(100cqw,calc(100cqh*1.5))] max-h-full max-w-full shrink-0 items-center justify-center overflow-hidden bg-[#0F1714]"
         >
           <div
             ref={canvasMountRef}

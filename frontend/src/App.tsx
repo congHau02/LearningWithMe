@@ -125,19 +125,11 @@ export function App() {
       ) : null}
 
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <main
-          className={
-            isExpandedWorkspace
-              ? 'relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden p-1.5 sm:p-2'
-              : 'relative flex min-h-0 flex-1 flex-col items-stretch justify-stretch overflow-hidden p-1.5 sm:p-2'
-          }
-        >
+        <main className="relative flex min-h-0 flex-1 flex-col items-stretch justify-stretch overflow-hidden p-1.5 sm:p-2">
           <div
-            className={
-              isExpandedWorkspace
-                ? 'pointer-events-none flex h-full w-full items-center justify-center overflow-hidden opacity-25'
-                : 'flex min-h-0 w-full flex-1 flex-col items-stretch justify-stretch'
-            }
+            className={`flex min-h-0 w-full flex-1 flex-col items-stretch justify-stretch${
+              isExpandedWorkspace ? ' pointer-events-none opacity-25' : ''
+            }`}
             aria-hidden={isExpandedWorkspace || undefined}
           >
             <ClassroomCanvas />

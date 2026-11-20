@@ -40,7 +40,7 @@ export function ClassroomAmbienceControl() {
         data-testid="ambience-mood-options-row"
         className={`${
           isMobileOpen
-            ? 'absolute right-0 top-full z-30 mt-1.5 flex flex-col gap-1 rounded-xl border border-border bg-card/98 p-1.5 shadow-xl'
+            ? 'max-sm:absolute max-sm:right-0 max-sm:top-full max-sm:z-30 max-sm:mt-1.5 max-sm:flex max-sm:flex-col max-sm:gap-1 max-sm:rounded-xl max-sm:border max-sm:border-border max-sm:bg-card/98 max-sm:p-1.5 max-sm:shadow-xl sm:inline-flex sm:items-center sm:gap-0.5'
             : 'hidden sm:inline-flex sm:items-center sm:gap-0.5'
         }`}
       >

@@ -156,7 +156,7 @@ export function StudyCafeMapLabelsOverlay() {
               transform: scaleTransform,
               opacity: item.alpha,
             }}
-            className={`pointer-events-none absolute whitespace-pre-line ${KIND_BADGE_CLASSES[item.kind]}`}
+            className={`pointer-events-none absolute w-max whitespace-pre-line ${KIND_BADGE_CLASSES[item.kind]}`}
           >
             {item.text}
           </div>

@@ -95,7 +95,15 @@ export function wireClassroomPhaserLifecycle(options: {
     sleepLoop: () => game.loop.sleep(),
     wakeLoop: () => game.loop.wake(true),
     refreshScale: () => {
-      if (!disposed) game.scale.refresh();
+      if (disposed) return;
+      game.scale.refresh();
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => {
+          if (!disposed && !gpuSleepController.isSleeping()) {
+            game.scale.refresh();
+          }
+        });
+      }
     },
     onVisibilityResume: (handler) => {
       let visibilityBound = false;
