@@ -61,6 +61,13 @@ describe('P1-T2 Zero-Friction Guest Onboarding', () => {
     const dialog = screen.getByRole('dialog', { name: /Thiết lập nhân vật/i });
     expect(dialog).toBeInTheDocument();
 
+    const avatarGroup = screen.getByRole('radiogroup', { name: /Chọn ngoại hình nhân vật/i });
+    expect(avatarGroup.querySelector('svg')).toBeNull();
+    expect(avatarGroup.querySelectorAll('[data-portrait-renderer="paper-doll-pixel"]').length).toBe(4);
+    expect(
+      avatarGroup.querySelector('[data-frame-name="base_student_glasses_down_idle_0"]'),
+    ).not.toBeNull();
+
     const nicknameInput = screen.getByLabelText(/Tên hiển thị/i);
     const studyGoalInput = screen.getByLabelText(/Mục tiêu học tập/i);
     const submitButton = screen.getByRole('button', { name: /Vào phòng học/i });
@@ -158,6 +165,12 @@ describe('P1-T2 Zero-Friction Guest Onboarding', () => {
       '11111111-2222-4333-8444-555555555555',
     );
     expect(useAuthStore.getState().avatarSpriteId).toBe('student_glasses');
+    const topbarPortrait = screen.getByTestId('topbar-avatar-portrait');
+    expect(topbarPortrait).toHaveAttribute('data-portrait-renderer', 'paper-doll-pixel');
+    expect(topbarPortrait.querySelector('svg')).toBeNull();
+    expect(
+      topbarPortrait.querySelector('[data-frame-name="base_student_glasses_down_idle_0"]'),
+    ).not.toBeNull();
     expect(screen.getAllByText('Minh Hậu').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Học React & Spring Boot')).toBeInTheDocument();
   });

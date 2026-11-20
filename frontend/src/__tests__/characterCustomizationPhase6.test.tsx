@@ -207,6 +207,20 @@ describe('P6-T3 Character Customizer Modal, Avatar Layering & Live Sync', () => 
     expect(within(modal).getByText(/Cần thêm 460 phút/i)).toBeTruthy();
     fireEvent.click(within(modal).getByTestId('customizer-item-hat_headphones'));
 
+    const previewPortrait = within(modal).getByTestId('customizer-preview-portrait');
+    expect(previewPortrait).toHaveAttribute('data-portrait-renderer', 'paper-doll-pixel');
+    expect(previewPortrait.querySelector('svg')).toBeNull();
+    expect(
+      Array.from(previewPortrait.querySelectorAll('[data-portrait-layer]')).map((el) =>
+        el.getAttribute('data-frame-name'),
+      ),
+    ).toEqual([
+      'base_student_hoodie_down_idle_0',
+      'outfit_skin_hoodie_blue_down_idle_0',
+      'hat_headphones_down_idle_0',
+      'pet_sprout_pot_0',
+    ]);
+
     fireEvent.click(within(modal).getByTestId('customizer-tab-DESK_PET'));
     expect(within(modal).getByText(/Cần thêm 40 phút/i)).toBeTruthy();
 
@@ -227,8 +241,21 @@ describe('P6-T3 Character Customizer Modal, Avatar Layering & Live Sync', () => 
     expect(useGameStore.getState().characterState).toBe('SEATED');
 
     const portrait = screen.getByTestId('topbar-avatar-portrait');
+    expect(portrait.getAttribute('data-portrait-renderer')).toBe('paper-doll-pixel');
+    expect(portrait.querySelector('svg')).toBeNull();
+    expect(portrait.getAttribute('data-avatar-id')).toBe('skin_hoodie_blue');
     expect(portrait.getAttribute('data-hat-id')).toBe('hat_headphones');
     expect(portrait.getAttribute('data-desk-pet-id')).toBe('pet_sprout_pot');
+    expect(
+      Array.from(portrait.querySelectorAll('[data-portrait-layer]')).map((el) =>
+        el.getAttribute('data-frame-name'),
+      ),
+    ).toEqual([
+      'base_student_hoodie_down_idle_0',
+      'outfit_skin_hoodie_blue_down_idle_0',
+      'hat_headphones_down_idle_0',
+      'pet_sprout_pot_0',
+    ]);
   });
 
   it('displays server 403 ProblemDetail error without mutating equipped store when save fails', async () => {
