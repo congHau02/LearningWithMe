@@ -144,6 +144,14 @@ _Avoid_: Background Music, BGM, Audio Track
 Các tín hiệu âm thanh ngắn, êm dịu phát tại máy cá nhân khi diễn ra sự kiện học tập hoặc tương tác trong Study Café (hoàn thành Study Goal, ngồi ghế, nhận Drink Delivery), độc lập với Ambient Soundscape.
 _Avoid_: UI Sound, Game SFX, Notification Beep
 
+**Ambience Mood (Bầu không khí quán)**:
+Chế độ ánh sáng và sắc độ hiển thị cá nhân của Study Café trong dải dịu mắt Botanical Night Studio (Hoàng hôn ấm, Đêm tập trung, Đêm mưa), tự gợi ý theo giờ thiết bị hoặc do từng người học tự chọn mà không ảnh hưởng người khác.
+_Avoid_: Day/Night Cycle, Lighting Preset, Weather Toggle, Theme Mode
+
+**Graphics Quality (Mức chất lượng đồ họa)**:
+Cấp độ dựng hình cá nhân của bản đồ Study Café (`Thấp`, `Trung bình`, `Cao`) quyết định mật độ ánh sáng động, hạt môi trường và hiệu ứng chuyển động bổ trợ (tôn trọng `prefers-reduced-motion`) nhằm giữ mượt trên mọi thiết bị.
+_Avoid_: Performance Mode, Visual Tier, FPS Setting
+
 **Drink Delivery (Giao đồ uống tại quán)**:
 Hành trình một Ambient NPC di chuyển qua quầy pha chế tới vị trí của người học trong Study Café để trao biểu tượng đồ uống đồng hành sau khi người học chọn món.
 _Avoid_: Beverage Spawn, Instant Drink, Order Dispatch
