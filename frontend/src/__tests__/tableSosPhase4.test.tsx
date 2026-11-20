@@ -264,21 +264,21 @@ describe('P4-T3 Table SOS Banner Toggle, Room Broadcast & 2D Map Glowing Indicat
     expect(createdTexts[0]?.text).toBe('🆘 Cần giúp Hóa hữu cơ');
     expect(createdTexts[0]?.visible).toBe(true);
 
-    overlay.update(
-      [
-        {
-          tableId: 'table_01',
-          label: 'Bàn 1',
-          capacity: 4,
-          hostUserId: null,
-          coHostUserIds: [],
-          isFreeCollab: false,
-          sosBanner: null,
-          occupiedSeats: 0,
-        },
-      ],
-      1500,
-    );
+    const clearedTables = [
+      {
+        tableId: 'table_01',
+        label: 'Bàn 1',
+        capacity: 4,
+        hostUserId: null,
+        coHostUserIds: [],
+        isFreeCollab: false,
+        sosBanner: null,
+        occupiedSeats: 0,
+      },
+    ];
+    overlay.update(clearedTables, 1500);
+    // Allow brief P11-T3 pop-out easing (160ms) to finish before hiding completely
+    overlay.update(clearedTables, 1700);
 
     expect(overlay.getActiveSosTableIds()).toEqual([]);
     expect(createdTexts[0]?.visible).toBe(false);

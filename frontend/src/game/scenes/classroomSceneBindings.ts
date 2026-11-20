@@ -8,7 +8,7 @@ import {
 } from '../controllers/InputController';
 import type { ChatBubble } from '../entities/ChatBubble';
 import type { RemotePlayersRenderer } from '../entities/RemotePlayersRenderer';
-import type { RoomTopology } from '../topology/roomTopology';
+import type { RoomTopology, TileCoordinate } from '../topology/roomTopology';
 import {
   CAMERA_ZOOM_STEP,
 } from './classroomCameraController';
@@ -16,6 +16,17 @@ import {
   handleClassroomPointerDown,
   resolveClassroomHoverState,
 } from './classroomPointerHandler';
+
+export function subscribeGoalCelebrations(onGoalCompleted: () => void): () => void {
+  let prevCompleted = useAuthStore.getState().studyGoalCompleted;
+  return useAuthStore.subscribe((state) => {
+    const nowCompleted = Boolean(state.studyGoalCompleted && state.studyGoal.trim().length > 0);
+    if (!prevCompleted && nowCompleted) {
+      onGoalCompleted();
+    }
+    prevCompleted = nowCompleted;
+  });
+}
 
 export function subscribeNpcDrinkReactions(ambientNpcManager?: AmbientNpcManager): () => void {
   let lastSeq = useGameStore.getState().npcBubbleOrder?.seq ?? 0;
@@ -64,12 +75,13 @@ export function subscribeSceneChatBubbles(
     if (latest && latest.id !== lastChatId) {
       lastChatId = latest.id;
       const selfId = useAuthStore.getState().userId;
-      const now = latest.createdAtEpoch || Date.now();
-      if (Date.now() - now < 4000) {
+      const localNow = Date.now();
+      const createdAt = latest.createdAtEpoch || localNow;
+      if (localNow - createdAt < 4000) {
         if (latest.userId === selfId) {
-          selfChatBubble?.show(latest.content, now);
+          selfChatBubble?.show(latest.content, localNow);
         } else {
-          remotePlayersRenderer?.showChatBubble(latest.userId, latest.content, now);
+          remotePlayersRenderer?.showChatBubble(latest.userId, latest.content, localNow);
         }
       }
     }
@@ -82,6 +94,8 @@ export function bindClassroomSceneInputs(options: {
   inputController: InputController;
   ambientNpcManager?: AmbientNpcManager;
   onHoverSeatChange: (seatId: string | null) => void;
+  onHoverNpcChange?: (npcId: string | null) => void;
+  onWalkableTileClick?: (destination: TileCoordinate) => void;
   onShutdownCleanup: () => void;
 }): void {
   const {
@@ -90,6 +104,8 @@ export function bindClassroomSceneInputs(options: {
     inputController,
     ambientNpcManager,
     onHoverSeatChange,
+    onHoverNpcChange,
+    onWalkableTileClick,
     onShutdownCleanup,
   } = options;
 
@@ -102,6 +118,7 @@ export function bindClassroomSceneInputs(options: {
       ambientNpcManager,
     });
     onHoverSeatChange(hover.hoveredSeatId);
+    onHoverNpcChange?.(hover.hoveredNpcId);
     scene.input.setDefaultCursor?.(
       hover.hoveredSeatId || hover.isHoveringCafeInteractive ? 'pointer' : 'default',
     );
@@ -115,6 +132,7 @@ export function bindClassroomSceneInputs(options: {
       topology,
       inputController,
       ambientNpcManager,
+      onWalkableTileClick,
     });
   });
 

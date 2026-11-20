@@ -2,7 +2,7 @@ import { useGameStore } from '../../stores/useGameStore';
 import type { AmbientNpcManager } from '../cafe/AmbientNpcManager';
 import { isServiceCounterTile } from '../cafe/studyCafeConfig';
 import type { InputController } from '../controllers/InputController';
-import type { RoomTopology } from '../topology/roomTopology';
+import type { RoomTopology, TileCoordinate } from '../topology/roomTopology';
 
 export function resolveClassroomHoverState(options: {
   worldX: number;
@@ -10,19 +10,20 @@ export function resolveClassroomHoverState(options: {
   topology: RoomTopology;
   inputController: InputController;
   ambientNpcManager?: AmbientNpcManager;
-}): { hoveredSeatId: string | null; isHoveringCafeInteractive: boolean } {
+}): { hoveredSeatId: string | null; hoveredNpcId: string | null; isHoveringCafeInteractive: boolean } {
   const { worldX, worldY, topology, inputController, ambientNpcManager } = options;
   const tileX = Math.floor(worldX / topology.tileSize);
   const tileY = Math.floor(worldY / topology.tileSize);
 
-  const isHoveringNpc = ambientNpcManager?.isPointerOverNpc(worldX, worldY) ?? false;
+  const hoveredNpcId = ambientNpcManager?.getHoveredNpcId(worldX, worldY) ?? null;
   const isHoveringCounter = isServiceCounterTile(tileX, tileY);
   const seat = inputController.getSeatManager().getSeatAtTile(tileX, tileY);
   const isOccupied = seat?.seatId ? Boolean(useGameStore.getState().occupiedSeats[seat.seatId]) : false;
 
   return {
     hoveredSeatId: seat && !isOccupied ? seat.seatId : null,
-    isHoveringCafeInteractive: isHoveringNpc || isHoveringCounter,
+    hoveredNpcId,
+    isHoveringCafeInteractive: Boolean(hoveredNpcId) || isHoveringCounter,
   };
 }
 
@@ -32,8 +33,9 @@ export function handleClassroomPointerDown(options: {
   topology: RoomTopology;
   inputController: InputController;
   ambientNpcManager?: AmbientNpcManager;
+  onWalkableTileClick?: (destination: TileCoordinate) => void;
 }): boolean {
-  const { worldX, worldY, topology, inputController, ambientNpcManager } = options;
+  const { worldX, worldY, topology, inputController, ambientNpcManager, onWalkableTileClick } = options;
   const hitNpc = ambientNpcManager?.handlePointerClick(worldX, worldY);
   if (hitNpc) {
     useGameStore.getState().openDrinkMenu(hitNpc.displayName, hitNpc.npcId);
@@ -51,5 +53,10 @@ export function handleClassroomPointerDown(options: {
     return true;
   }
 
-  return inputController.handleTileClick(tileX, tileY).moved;
+  const result = inputController.handleTileClick(tileX, tileY);
+  if (result.moved) {
+    const dest = result.path.at(-1) ?? { tileX, tileY };
+    onWalkableTileClick?.(dest);
+  }
+  return result.moved;
 }

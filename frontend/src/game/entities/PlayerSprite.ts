@@ -96,6 +96,7 @@ export class PlayerSprite {
     avatarId?: string;
     hatId?: string;
     deskPetId?: string;
+    snapImmediately?: boolean;
   }): void {
     this.tileX = state.tileX;
     this.tileY = state.tileY;
@@ -116,9 +117,11 @@ export class PlayerSprite {
 
     if (state.characterState === 'SEATED') {
       this.posture = 'SEATED';
-      const center = tileToWorldCenter(this.tileX, this.tileY, this.tileSize);
-      this.pixelX = center.x;
-      this.pixelY = center.y;
+      if (state.snapImmediately ?? true) {
+        const center = tileToWorldCenter(this.tileX, this.tileY, this.tileSize);
+        this.pixelX = center.x;
+        this.pixelY = center.y;
+      }
     } else if (state.isMoving) {
       this.posture = 'STEPPING';
     } else {

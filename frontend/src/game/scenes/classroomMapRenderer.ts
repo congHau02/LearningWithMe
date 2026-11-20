@@ -150,11 +150,21 @@ export function drawDynamicOverlay(
     occupiedSeats?: Record<string, string>;
     activeSeatId: string | null;
     hoveredSeatId: string | null;
+    suppressSeatHoverRect?: boolean;
     pathQueue: TileCoordinate[];
     seatGraphicsById?: Map<string, Phaser.GameObjects.Graphics>;
   },
 ): void {
-  const { tileSize, seats, occupiedSeats, activeSeatId, hoveredSeatId, pathQueue, seatGraphicsById } = options;
+  const {
+    tileSize,
+    seats,
+    occupiedSeats,
+    activeSeatId,
+    hoveredSeatId,
+    suppressSeatHoverRect = false,
+    pathQueue,
+    seatGraphicsById,
+  } = options;
   const g = graphics as Partial<Phaser.GameObjects.Graphics>;
   g.clear?.();
 
@@ -188,7 +198,7 @@ export function drawDynamicOverlay(
 
     seatG.fillStyle?.(fillColor, fillAlpha);
     seatG.fillRoundedRect?.(cx - 7, cy - 5, 14, 11, 3);
-    if (isSeatedHere || isHovered) {
+    if (isSeatedHere || (isHovered && !suppressSeatHoverRect)) {
       const ringColor = isSeatedHere
         ? BOTANICAL_2D_SCENE.seats.currentBorder
         : BOTANICAL_2D_SCENE.seats.hoverBorder;
@@ -203,8 +213,12 @@ export function drawDynamicOverlay(
     else seatG.fillRoundedRect?.(cx - 10, cy - 8, 4, 15, 2);
   }
 
-  for (const step of pathQueue) {
-    g.fillStyle?.(BOTANICAL_2D_SCENE.pathfinder.markerInt, 0.85);
-    g.fillCircle?.(step.tileX * tileSize + tileSize / 2, step.tileY * tileSize + tileSize / 2, 4);
-  }
+  const totalSteps = pathQueue.length;
+  pathQueue.forEach((step, idx) => {
+    const progress = totalSteps <= 1 ? 1 : (idx + 1) / totalSteps;
+    const dotAlpha = Number((0.45 + 0.45 * progress).toFixed(2));
+    const dotRadius = idx === totalSteps - 1 ? 4.2 : Number((2.6 + 1.1 * progress).toFixed(2));
+    g.fillStyle?.(BOTANICAL_2D_SCENE.pathfinder.markerInt, dotAlpha);
+    g.fillCircle?.(step.tileX * tileSize + tileSize / 2, step.tileY * tileSize + tileSize / 2, dotRadius);
+  });
 }

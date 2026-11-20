@@ -1,28 +1,49 @@
 import type Phaser from 'phaser';
 import type { AmbientPreferences } from '../../services/ambientSoundscapeEngine';
 import { useAmbientSoundscapeStore } from '../../stores/useAmbientSoundscapeStore';
-import { BOTANICAL_2D_SCENE, BOTANICAL_PALETTE_INT } from '../botanicalPalette';
+import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
+import type { GraphicsQuality, ResolvedGraphicsPolicy } from '../graphics/graphicsQualityPolicy';
 import { computeYSortDepth } from '../scenes/ySortDepth';
 import type { RoomTopology } from '../topology/roomTopology';
+import {
+  createCelebrationEmitterConfig,
+  createDustMoteEmitterConfig,
+  createFootstepEmitterConfig,
+  createRainEmitterConfig,
+  createSteamEmitterConfig,
+  ensureParticleTextures,
+  PARTICLE_TEXTURE_KEYS,
+} from '../vfx/particleTextures';
+import { resolveVfxEmissionProfile, type VfxEmissionProfile } from '../vfx/vfxQualityProfile';
 import { SERVICE_COUNTER_TILES } from './studyCafeConfig';
+import { NORTH_WINDOW_TILE_STARTS } from './studyCafeDecorRenderer';
 
 export interface StudyCafeVfxSnapshot {
   rainActive: boolean;
   rainDropletCount: number;
   steamWispCount: number;
+  dustMotesActive: boolean;
+  footstepBurstCount: number;
+  goalBurstCount: number;
+  hostCrownSparkleCount: number;
+  graphicsQuality: GraphicsQuality;
+  usesParticleEmitters: boolean;
 }
 
-interface RainDropSeed {
-  windowStartX: number;
-  normX: number;
-  phase: number;
-  speed: number;
-  length: number;
+export interface StudyCafeVfxUpdateOptions {
+  policy?: ResolvedGraphicsPolicy;
+  rainActiveOverride?: boolean;
 }
 
-const NORTH_WINDOW_STARTS = [8, 13] as const;
-const DROPS_PER_WINDOW = 8;
-const STEAM_WISP_COUNT = 3;
+type ParticleEmitterLike = Partial<Phaser.GameObjects.Particles.ParticleEmitter>;
+type AddParticlesFn = (
+  x: number,
+  y: number,
+  texture: string,
+  config: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig,
+) => ParticleEmitterLike;
+
+const FOOTSTEP_THROTTLE_MS = 180;
 
 export function isRainSoundscapeActive(
   prefs: Pick<AmbientPreferences, 'isMuted' | 'channels'> = useAmbientSoundscapeStore.getState(),
@@ -35,94 +56,127 @@ export function isRainSoundscapeActive(
 }
 
 /**
- * Renders live animated north window rain droplets when the learner's Rain Ambient Soundscape
- * channel is active, plus gentle rising steam at the espresso machine and Warm Amber lamp halos.
+ * Pooled Phaser 3.90 ParticleEmitter system for Study Café ambient VFX & study milestones:
+ * north-window rainfall (synced to Ambient Soundscape), espresso counter steam,
+ * drifting window-beam dust motes, footstep dust puffs, Study Goal sparkles, and Host crown shimmer.
  */
 export class StudyCafeAmbientVfx {
-  private readonly topology: RoomTopology;
-  private readonly windowRainGraphics?: Phaser.GameObjects.Graphics;
-  private readonly counterSteamGraphics?: Phaser.GameObjects.Graphics;
-  private readonly rainSeeds: RainDropSeed[];
-  private lastSnapshot: StudyCafeVfxSnapshot = {
-    rainActive: false,
-    rainDropletCount: 0,
-    steamWispCount: 0,
-  };
+  private readonly rainEmitters: ParticleEmitterLike[] = [];
+  private readonly dustMoteEmitters: ParticleEmitterLike[] = [];
+  private readonly steamEmitter?: ParticleEmitterLike;
+  private readonly footstepEmitter?: ParticleEmitterLike;
+  private readonly celebrationEmitter?: ParticleEmitterLike;
+  private readonly usesParticleEmitters: boolean;
+  private profile: VfxEmissionProfile;
+  private lastFootstepAtMs = -Infinity;
+  private readonly lastCrownSparkleById = new Map<string, number>();
+  private footstepBurstCount = 0;
+  private goalBurstCount = 0;
+  private hostCrownSparkleCount = 0;
+  private lastSnapshot: StudyCafeVfxSnapshot;
 
   constructor(scene: Phaser.Scene | undefined, topology: RoomTopology) {
-    this.topology = topology;
-    this.rainSeeds = buildRainSeeds();
+    this.profile = resolveVfxEmissionProfile(useStudyCafeDisplayStore.getState().graphicsPolicy);
+    const addParticles = (scene?.add as { particles?: AddParticlesFn } | undefined)?.particles;
 
-    if (scene) {
-      this.windowRainGraphics = scene.add.graphics().setDepth(3.6);
-      const counterY = (SERVICE_COUNTER_TILES[0]?.tileY ?? 12) * topology.tileSize + 16;
-      this.counterSteamGraphics = scene.add
-        .graphics()
-        .setDepth(computeYSortDepth(counterY, 10, 0.08));
+    if (scene && typeof addParticles === 'function') {
+      ensureParticleTextures(scene);
+      const ts = topology.tileSize;
+      const winWidth = ts * 2 - 12;
+
+      for (const windowStartX of NORTH_WINDOW_TILE_STARTS) {
+        const winLeft = windowStartX * ts + 6;
+        const rainEmitter = addParticles.call(scene.add, winLeft, 6, PARTICLE_TEXTURE_KEYS.rain, createRainEmitterConfig(winWidth));
+        rainEmitter?.setDepth?.(3.6);
+        if (rainEmitter) this.rainEmitters.push(rainEmitter);
+
+        const dustEmitter = addParticles.call(scene.add, winLeft, 24, PARTICLE_TEXTURE_KEYS.softDot, createDustMoteEmitterConfig(winWidth, ts));
+        dustEmitter?.setDepth?.(3.5);
+        if (dustEmitter) this.dustMoteEmitters.push(dustEmitter);
+      }
+
+      const counterY = (SERVICE_COUNTER_TILES[0]?.tileY ?? 12) * ts + 16;
+      this.steamEmitter = addParticles.call(scene.add, 16.55 * ts + 4, 12 * ts - 1, PARTICLE_TEXTURE_KEYS.softDot, createSteamEmitterConfig());
+      this.steamEmitter?.setDepth?.(computeYSortDepth(counterY, 10, 0.08));
+
+      this.footstepEmitter = addParticles.call(scene.add, 0, 0, PARTICLE_TEXTURE_KEYS.softDot, createFootstepEmitterConfig());
+      this.footstepEmitter?.setDepth?.(9.2);
+
+      this.celebrationEmitter = addParticles.call(scene.add, 0, 0, PARTICLE_TEXTURE_KEYS.sparkle, createCelebrationEmitterConfig());
+      this.celebrationEmitter?.setDepth?.(22);
+      this.usesParticleEmitters = true;
+    } else {
+      this.usesParticleEmitters = false;
     }
+
+    this.lastSnapshot = this.buildSnapshot(false, false, false);
   }
 
-  public update(timeMs: number, rainActiveOverride?: boolean): void {
-    const safeTime = Number.isFinite(timeMs) ? timeMs : 0;
-    const ts = this.topology.tileSize;
-    const rainActive = rainActiveOverride ?? isRainSoundscapeActive();
+  public update(
+    _timeMs: number,
+    optionsOrRainOverride?: boolean | StudyCafeVfxUpdateOptions,
+  ): void {
+    const opts: StudyCafeVfxUpdateOptions =
+      typeof optionsOrRainOverride === 'boolean'
+        ? { rainActiveOverride: optionsOrRainOverride }
+        : (optionsOrRainOverride ?? {});
 
-    const rainG = this.windowRainGraphics as Partial<Phaser.GameObjects.Graphics> | undefined;
-    rainG?.clear?.();
+    const policy = opts.policy ?? useStudyCafeDisplayStore.getState().graphicsPolicy;
+    this.profile = resolveVfxEmissionProfile(policy);
 
-    let drawnDrops = 0;
-    if (rainActive) {
-      for (const seed of this.rainSeeds) {
-        const winLeft = seed.windowStartX * ts + 6;
-        const winWidth = ts * 2 - 12;
-        const cycle = ((safeTime * seed.speed + seed.phase) % 1000) / 1000;
-        const dropX = winLeft + seed.normX * winWidth - cycle * 4;
-        const dropY = 5 + cycle * 15;
+    const soundscapeRain = opts.rainActiveOverride ?? isRainSoundscapeActive();
+    const rainActive = soundscapeRain && this.profile.rainFrequencyMs > 0;
+    const steamActive = this.profile.steamFrequencyMs > 0;
+    const dustMotesActive = this.profile.dustMotesFrequencyMs > 0;
 
-        const color =
-          drawnDrops % 3 === 0
-            ? BOTANICAL_PALETTE_INT.bioluminescentEmerald
-            : BOTANICAL_PALETTE_INT.morningMist;
-        rainG?.lineStyle?.(1, color, 0.55 - cycle * 0.2);
-        rainG?.lineBetween?.(dropX, dropY, dropX - 2, Math.min(21, dropY + seed.length));
-
-        // Tiny sill splash ripple when droplet reaches bottom of window pane
-        if (cycle > 0.82) {
-          rainG?.fillStyle?.(BOTANICAL_PALETTE_INT.mutedSage, 0.35);
-          rainG?.fillCircle?.(dropX - 2, 21, 1.2);
-        }
-        drawnDrops += 1;
-      }
+    for (const emitter of this.rainEmitters) {
+      syncContinuousEmitter(emitter, rainActive, this.profile.rainFrequencyMs, this.profile.rainMaxAlive);
+    }
+    syncContinuousEmitter(this.steamEmitter, steamActive, this.profile.steamFrequencyMs, this.profile.steamMaxAlive);
+    for (const emitter of this.dustMoteEmitters) {
+      syncContinuousEmitter(
+        emitter,
+        dustMotesActive,
+        this.profile.dustMotesFrequencyMs,
+        this.profile.dustMotesMaxAlive,
+      );
+    }
+    if (this.profile.prefersReducedMotion) {
+      this.footstepEmitter?.killAll?.();
+      this.celebrationEmitter?.killAll?.();
     }
 
-    const steamG = this.counterSteamGraphics as Partial<Phaser.GameObjects.Graphics> | undefined;
-    steamG?.clear?.();
+    this.lastSnapshot = this.buildSnapshot(rainActive, steamActive, dustMotesActive);
+  }
 
-    const espressoBaseX = 16.55 * ts;
-    const espressoBaseY = 12 * ts - 1;
-    const lampPulse = 0.08 + 0.03 * Math.sin(safeTime / 650);
+  public emitFootstepDust(x: number, y: number, timeMs: number): boolean {
+    if (this.profile.footstepBurstCount <= 0) return false;
+    if (timeMs - this.lastFootstepAtMs < FOOTSTEP_THROTTLE_MS) return false;
+    this.lastFootstepAtMs = timeMs;
+    this.footstepEmitter?.explode?.(this.profile.footstepBurstCount, x, y + 6);
+    this.footstepBurstCount += 1;
+    this.lastSnapshot = { ...this.lastSnapshot, footstepBurstCount: this.footstepBurstCount };
+    return true;
+  }
 
-    // Subtle breathing Warm Amber halo over the espresso machine & reading lamps
-    steamG?.fillStyle?.(BOTANICAL_2D_SCENE.lighting.lampWarm, lampPulse);
-    steamG?.fillCircle?.(espressoBaseX + 10, espressoBaseY + 12, ts * 0.9);
+  public emitGoalCelebration(x: number, y: number): boolean {
+    if (this.profile.goalSparkleBurstCount <= 0) return false;
+    this.celebrationEmitter?.explode?.(this.profile.goalSparkleBurstCount, x, y);
+    this.goalBurstCount += 1;
+    this.lastSnapshot = { ...this.lastSnapshot, goalBurstCount: this.goalBurstCount };
+    return true;
+  }
 
-    for (let i = 0; i < STEAM_WISP_COUNT; i += 1) {
-      const progress = ((safeTime / 1400 + i / STEAM_WISP_COUNT) % 1);
-      const sway = Math.sin(safeTime / 340 + i * 1.9) * 2.4;
-      const wispX = espressoBaseX + i * 4 + sway;
-      const wispY = espressoBaseY - progress * 14;
-      const alpha = (1 - progress) * 0.38;
-      const radius = 1.6 + progress * 1.8;
-
-      steamG?.fillStyle?.(BOTANICAL_PALETTE_INT.morningMist, alpha);
-      steamG?.fillCircle?.(wispX, wispY, radius);
-    }
-
-    this.lastSnapshot = {
-      rainActive,
-      rainDropletCount: drawnDrops,
-      steamWispCount: STEAM_WISP_COUNT,
-    };
+  public emitHostCrownSparkle(hostId: string, x: number, y: number, timeMs: number): boolean {
+    const interval = this.profile.hostCrownSparkleIntervalMs;
+    if (interval <= 0) return false;
+    const prev = this.lastCrownSparkleById.get(hostId) ?? -Infinity;
+    if (timeMs - prev < interval) return false;
+    this.lastCrownSparkleById.set(hostId, timeMs);
+    this.celebrationEmitter?.explode?.(1, x, y);
+    this.hostCrownSparkleCount += 1;
+    this.lastSnapshot = { ...this.lastSnapshot, hostCrownSparkleCount: this.hostCrownSparkleCount };
+    return true;
   }
 
   public getSnapshot(): StudyCafeVfxSnapshot {
@@ -130,23 +184,51 @@ export class StudyCafeAmbientVfx {
   }
 
   public destroy(): void {
-    this.windowRainGraphics?.destroy?.();
-    this.counterSteamGraphics?.destroy?.();
+    for (const emitter of this.rainEmitters) emitter.destroy?.();
+    for (const emitter of this.dustMoteEmitters) emitter.destroy?.();
+    this.rainEmitters.length = 0;
+    this.dustMoteEmitters.length = 0;
+    this.steamEmitter?.destroy?.();
+    this.footstepEmitter?.destroy?.();
+    this.celebrationEmitter?.destroy?.();
+    this.lastCrownSparkleById.clear();
+  }
+
+  private buildSnapshot(
+    rainActive: boolean,
+    steamActive: boolean,
+    dustMotesActive: boolean,
+  ): StudyCafeVfxSnapshot {
+    return {
+      rainActive,
+      rainDropletCount: rainActive ? NORTH_WINDOW_TILE_STARTS.length * this.profile.rainMaxAlive : 0,
+      steamWispCount: steamActive ? this.profile.steamMaxAlive : 0,
+      dustMotesActive,
+      footstepBurstCount: this.footstepBurstCount,
+      goalBurstCount: this.goalBurstCount,
+      hostCrownSparkleCount: this.hostCrownSparkleCount,
+      graphicsQuality: this.profile.graphicsQuality,
+      usesParticleEmitters: this.usesParticleEmitters,
+    };
   }
 }
 
-function buildRainSeeds(): RainDropSeed[] {
-  const seeds: RainDropSeed[] = [];
-  for (const windowStartX of NORTH_WINDOW_STARTS) {
-    for (let i = 0; i < DROPS_PER_WINDOW; i += 1) {
-      seeds.push({
-        windowStartX,
-        normX: (i + 0.5) / DROPS_PER_WINDOW,
-        phase: (i * 173 + windowStartX * 41) % 1000,
-        speed: 0.75 + (i % 3) * 0.18,
-        length: 4 + (i % 2) * 2,
-      });
+function syncContinuousEmitter(
+  emitter: ParticleEmitterLike | undefined,
+  shouldEmit: boolean,
+  frequencyMs: number,
+  maxAlive: number,
+): void {
+  if (!emitter) return;
+  if (shouldEmit) {
+    if (emitter.frequency !== frequencyMs) {
+      emitter.setFrequency?.(frequencyMs);
     }
+    emitter.maxAliveParticles = maxAlive;
+    if (!emitter.emitting) {
+      emitter.start?.();
+    }
+  } else if (emitter.emitting) {
+    emitter.stop?.(true);
   }
-  return seeds;
 }

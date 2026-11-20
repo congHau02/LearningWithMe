@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
+import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
 import { InputController } from '../controllers/InputController';
 import { PlayerSprite } from '../entities/PlayerSprite';
 import { MAIN_LIBRARY_TOPOLOGY, type RoomTopology } from '../topology/roomTopology';
@@ -20,6 +21,8 @@ export class ClassroomScene extends Phaser.Scene {
   private readonly playerSprite: PlayerSprite;
   private subsystems?: ClassroomSceneSubsystems;
   private hoveredSeatId: string | null = null;
+  private hoveredNpcId: string | null = null;
+  private lastTimeMs = 0;
   private appliedCameraZoom = -1;
   private appliedCameraFollow: boolean | null = null;
 
@@ -58,6 +61,16 @@ export class ClassroomScene extends Phaser.Scene {
       onHoverSeatChange: (seatId) => {
         this.hoveredSeatId = seatId;
       },
+      onHoverNpcChange: (npcId) => {
+        this.hoveredNpcId = npcId;
+      },
+      onWalkableTileClick: (destination) => {
+        this.subsystems?.juiceCoordinator.onWalkableTileClick(
+          destination,
+          this.lastTimeMs || this.time?.now || 0,
+          useStudyCafeDisplayStore.getState().prefersReducedMotion,
+        );
+      },
       onShutdownCleanup: () => {
         destroyClassroomSceneSubsystems(this.subsystems);
         this.subsystems = undefined;
@@ -66,6 +79,7 @@ export class ClassroomScene extends Phaser.Scene {
   }
 
   public update(time: number, delta: number): void {
+    this.lastTimeMs = time;
     this.inputController.update(delta);
     if (this.subsystems) {
       updateClassroomSceneSubsystems({
@@ -73,6 +87,7 @@ export class ClassroomScene extends Phaser.Scene {
         topology: this.topology,
         playerSprite: this.playerSprite,
         hoveredSeatId: this.hoveredSeatId,
+        hoveredNpcId: this.hoveredNpcId,
         time,
         delta,
       });

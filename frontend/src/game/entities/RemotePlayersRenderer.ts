@@ -143,6 +143,17 @@ export class RemotePlayersRenderer {
     return Array.from(this.entries.keys());
   }
 
+  public getHostPositions(): Array<{ userId: string; pixelX: number; pixelY: number }> {
+    const hosts: Array<{ userId: string; pixelX: number; pixelY: number }> = [];
+    for (const entry of this.entries.values()) {
+      if (isPlayerTableHost(entry.data)) {
+        const px = entry.model.getPixelPosition();
+        hosts.push({ userId: entry.data.userId, pixelX: px.x, pixelY: px.y });
+      }
+    }
+    return hosts;
+  }
+
   public getSnapshot(userId: string): RemotePlayerRenderSnapshot | null {
     const entry = this.entries.get(userId);
     if (!entry) return null;

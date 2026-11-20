@@ -413,63 +413,76 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
       useAmbientSoundscapeStore.getState().resetPreferences();
       expect(isRainSoundscapeActive()).toBe(false);
 
-      const lineBetweenSpy = vi.fn();
-      const fillCircleSpy = vi.fn();
-      const mockGraphics = {
-        clear: vi.fn(),
-        setDepth: vi.fn().mockReturnThis(),
-        fillStyle: vi.fn(),
-        lineStyle: vi.fn(),
-        lineBetween: lineBetweenSpy,
-        fillCircle: fillCircleSpy,
-        fillRoundedRect: vi.fn(),
-        strokeRoundedRect: vi.fn(),
-        fillRect: vi.fn(),
-        destroy: vi.fn(),
-      };
+      const rainEmitters: Array<{ emitting: boolean; start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }> = [];
       const mockScene = {
         add: {
-          graphics: vi.fn(() => mockGraphics),
+          particles: vi.fn((_x: number, _y: number, texture: string, config: { emitting?: boolean } = {}) => {
+            const emitter = {
+              emitting: config.emitting !== false,
+              frequency: 120,
+              maxAliveParticles: 10,
+              setDepth: vi.fn().mockReturnThis(),
+              setFrequency: vi.fn((freq: number) => {
+                emitter.frequency = freq;
+                return emitter;
+              }),
+              start: vi.fn(() => {
+                emitter.emitting = true;
+                return emitter;
+              }),
+              stop: vi.fn(() => {
+                emitter.emitting = false;
+                return emitter;
+              }),
+              explode: vi.fn(),
+              destroy: vi.fn(),
+            };
+            if (texture === 'vfx_rain_drop') {
+              rainEmitters.push(emitter);
+            }
+            return emitter;
+          }),
         },
       } as unknown as Phaser.Scene;
 
       const vfx = new StudyCafeAmbientVfx(mockScene, MAIN_LIBRARY_TOPOLOGY);
 
-      // 1. Rain channel disabled by default -> no window rain droplets rendered, but espresso steam & lamp halos remain active
+      // 1. Rain channel disabled by default -> no window rain particles emitted, espresso steam remains active
       vfx.update(1000);
       expect(vfx.getSnapshot().rainActive).toBe(false);
       expect(vfx.getSnapshot().rainDropletCount).toBe(0);
       expect(vfx.getSnapshot().steamWispCount).toBeGreaterThan(0);
-      expect(lineBetweenSpy).not.toHaveBeenCalled();
+      expect(rainEmitters.every((e) => !e.emitting)).toBe(true);
 
-      // 2. Enable Rain channel in useAmbientSoundscapeStore -> live window rain droplets appear automatically
+      // 2. Enable Rain channel in useAmbientSoundscapeStore -> live window rain ParticleEmitters start automatically
       useAmbientSoundscapeStore.getState().toggleChannel('rain');
       expect(isRainSoundscapeActive()).toBe(true);
 
       vfx.update(1200);
       expect(vfx.getSnapshot().rainActive).toBe(true);
       expect(vfx.getSnapshot().rainDropletCount).toBeGreaterThanOrEqual(12);
-      expect(lineBetweenSpy).toHaveBeenCalled();
+      expect(rainEmitters.every((e) => e.emitting)).toBe(true);
 
-      // 3. Muting master soundscape hides window rain VFX immediately
-      lineBetweenSpy.mockClear();
+      // 3. Muting master soundscape stops window rain ParticleEmitters immediately
       useAmbientSoundscapeStore.getState().toggleMute();
       expect(isRainSoundscapeActive()).toBe(false);
 
       vfx.update(1400);
       expect(vfx.getSnapshot().rainActive).toBe(false);
       expect(vfx.getSnapshot().rainDropletCount).toBe(0);
-      expect(lineBetweenSpy).not.toHaveBeenCalled();
+      expect(rainEmitters.every((e) => !e.emitting)).toBe(true);
 
-      // 4. Unmuting restores window rain VFX, and disabling Rain channel hides it again
+      // 4. Unmuting restores window rain VFX, and disabling Rain channel stops it again
       useAmbientSoundscapeStore.getState().toggleMute();
       vfx.update(1600);
       expect(vfx.getSnapshot().rainActive).toBe(true);
+      expect(rainEmitters.every((e) => e.emitting)).toBe(true);
 
       useAmbientSoundscapeStore.getState().toggleChannel('rain');
       vfx.update(1800);
       expect(vfx.getSnapshot().rainActive).toBe(false);
       expect(vfx.getSnapshot().rainDropletCount).toBe(0);
+      expect(rainEmitters.every((e) => !e.emitting)).toBe(true);
 
       vfx.destroy();
     });

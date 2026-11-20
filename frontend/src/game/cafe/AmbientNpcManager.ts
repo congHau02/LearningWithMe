@@ -150,9 +150,20 @@ export class AmbientNpcManager {
   }
 
   public isPointerOverNpc(worldX: number, worldY: number): boolean {
-    return this.entries.some(
-      (entry) => Math.hypot(worldX - entry.pixelX, worldY - entry.pixelY) <= NPC_HIT_RADIUS_PX,
+    return this.getHoveredNpcId(worldX, worldY) !== null;
+  }
+
+  public getHoveredNpcId(worldX: number, worldY: number): string | null {
+    const entry = this.entries.find(
+      (e) => Math.hypot(worldX - e.pixelX, worldY - e.pixelY) <= NPC_HIT_RADIUS_PX,
     );
+    return entry?.def.npcId ?? null;
+  }
+
+  public getNpcHoverTarget(npcId: string | null) {
+    if (!npcId) return null;
+    const entry = this.entries.find((e) => e.def.npcId === npcId);
+    return entry ? { npcId: entry.def.npcId, sprite: entry.sprite, pixelX: entry.pixelX, pixelY: entry.pixelY } : null;
   }
 
   public triggerStaffReaction(npcId: string | null, text: string, nowMs = Date.now()): boolean {
