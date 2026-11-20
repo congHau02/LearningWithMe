@@ -158,7 +158,7 @@ describe('P1-T2 Zero-Friction Guest Onboarding', () => {
       '11111111-2222-4333-8444-555555555555',
     );
     expect(useAuthStore.getState().avatarSpriteId).toBe('student_glasses');
-    expect(screen.getByText('Minh Hậu')).toBeInTheDocument();
+    expect(screen.getAllByText('Minh Hậu').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Học React & Spring Boot')).toBeInTheDocument();
   });
 
@@ -241,7 +241,7 @@ describe('P1-T2 Zero-Friction Guest Onboarding', () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText('Thảo Nguyên')).toBeInTheDocument();
+      expect(screen.getAllByText('Thảo Nguyên').length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.getByText('Giải bài tập Giải tích')).toBeInTheDocument();
     expect(

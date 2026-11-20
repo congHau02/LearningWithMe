@@ -207,13 +207,19 @@ export class AmbientNpcManager {
     return this.entries.map((entry) => this.toSnapshot(entry));
   }
 
+  public getLabelEntries() {
+    return this.entries.map((e) => ({
+      npcId: e.def.npcId, displayName: e.def.displayName,
+      isCounterStaff: e.def.role === 'BARISTA' || e.def.role === 'CASHIER',
+      worldX: e.pixelX, worldY: e.pixelY,
+      bubbleText: e.chatBubble.isActive() ? e.chatBubble.getText() : null,
+      bubbleMotion: e.chatBubble.getVisualState(),
+    }));
+  }
+
   public destroy(): void {
-    for (const entry of this.entries) {
-      entry.shadow?.destroy();
-      entry.sprite?.destroy();
-      entry.apron?.destroy();
-      entry.label?.destroy();
-      entry.chatBubble.destroy();
+    for (const e of this.entries) {
+      e.shadow?.destroy(); e.sprite?.destroy(); e.apron?.destroy(); e.label?.destroy(); e.chatBubble.destroy();
     }
     this.entries.length = 0;
   }
@@ -231,19 +237,12 @@ export class AmbientNpcManager {
     entry.nextBubbleAtMs = nowMs + entry.def.bubbleIntervalMs;
   }
 
-  private toSnapshot(entry: NpcRuntimeEntry): AmbientNpcSnapshot {
+  private toSnapshot(e: NpcRuntimeEntry): AmbientNpcSnapshot {
     return {
-      npcId: entry.def.npcId,
-      role: entry.def.role,
-      displayName: entry.def.displayName,
-      tileX: Math.floor(entry.pixelX / this.tileSize),
-      tileY: Math.floor(entry.pixelY / this.tileSize),
-      pixelX: entry.pixelX,
-      pixelY: entry.pixelY,
-      depth: entry.depth,
-      facingDir: entry.facingDir,
-      isMoving: entry.isMoving,
-      activeBubbleText: entry.chatBubble.isActive() ? entry.chatBubble.getText() : null,
+      npcId: e.def.npcId, role: e.def.role, displayName: e.def.displayName,
+      tileX: Math.floor(e.pixelX / this.tileSize), tileY: Math.floor(e.pixelY / this.tileSize),
+      pixelX: e.pixelX, pixelY: e.pixelY, depth: e.depth, facingDir: e.facingDir,
+      isMoving: e.isMoving, activeBubbleText: e.chatBubble.isActive() ? e.chatBubble.getText() : null,
     };
   }
 }

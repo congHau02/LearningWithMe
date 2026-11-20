@@ -109,6 +109,7 @@ export function createRemotePlayerEntry(
       })
       .setOrigin(0.5, 1)
       .setDepth(initialDepth + 2);
+    entry.label.setAlpha?.(0);
   }
 
   return entry;

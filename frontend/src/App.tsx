@@ -50,7 +50,6 @@ export function App() {
   const isWorkspaceMinimized = useTableStore((s) => s.isWorkspaceMinimized);
   const isSeated = characterState === 'SEATED' && Boolean(currentTableId);
   const isExpandedWorkspace = isSeated && !isWorkspaceMinimized;
-  const isMinimizedSeated = isSeated && isWorkspaceMinimized;
   const isTableHost = isSeated && Boolean(tableHostUserId && selfUserId && tableHostUserId === selfUserId);
 
   const {
@@ -78,13 +77,7 @@ export function App() {
   const handleLeaveSeat = () => requestLeaveSeat();
 
   return (
-    <div
-      className={
-        isExpandedWorkspace
-          ? 'flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground'
-          : 'flex min-h-[100dvh] flex-col bg-background text-foreground'
-      }
-    >
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       <TopBar
         roomId={roomId}
         characterState={characterState}
@@ -125,7 +118,7 @@ export function App() {
           role="status"
           aria-live="polite"
           data-testid="seat-toast-message"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-amber-500/40 bg-slate-900/95 px-4 py-2 text-xs font-medium text-amber-200 shadow-xl backdrop-blur-md"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-primary/40 bg-card/95 px-4 py-2 text-xs font-medium text-primary shadow-xl backdrop-blur-md"
         >
           {toastMessage}
         </aside>
@@ -135,17 +128,15 @@ export function App() {
         <main
           className={
             isExpandedWorkspace
-              ? 'relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden p-2 sm:p-4'
-              : isMinimizedSeated
-                ? 'relative flex flex-1 flex-col items-center justify-start p-2 sm:justify-center sm:p-3'
-                : 'relative flex flex-1 flex-col items-center justify-start p-2 pb-20 sm:justify-center sm:p-3 sm:pb-16'
+              ? 'relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden p-1.5 sm:p-2'
+              : 'relative flex min-h-0 flex-1 flex-col items-stretch justify-stretch overflow-hidden p-1.5 sm:p-2'
           }
         >
           <div
             className={
               isExpandedWorkspace
                 ? 'pointer-events-none flex h-full w-full items-center justify-center overflow-hidden opacity-25'
-                : 'flex w-full flex-1 flex-col items-center justify-center'
+                : 'flex min-h-0 w-full flex-1 flex-col items-stretch justify-stretch'
             }
             aria-hidden={isExpandedWorkspace || undefined}
           >

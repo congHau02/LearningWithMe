@@ -36,6 +36,8 @@ export class ChatBubble {
       this.container = this.scene.add.container(0, 0, [this.bg, this.label]);
       this.container.setDepth(25);
       this.container.setVisible(false);
+      this.label.setAlpha?.(0);
+      this.bg.setAlpha?.(0);
     }
   }
 

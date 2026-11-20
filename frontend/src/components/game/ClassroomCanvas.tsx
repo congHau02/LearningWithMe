@@ -11,6 +11,7 @@ import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 import { ClassroomAmbienceControl } from './ClassroomAmbienceControl';
 import { ClassroomCameraControls } from './ClassroomCameraControls';
 import { ClassroomGraphicsControl } from './ClassroomGraphicsControl';
+import { StudyCafeMapLabelsOverlay } from './StudyCafeMapLabelsOverlay';
 
 function canBootPhaserCanvas(): boolean {
   return (
@@ -70,26 +71,51 @@ export function ClassroomCanvas() {
       id="phaser-classroom-viewport"
       data-testid="classroom-viewport"
       aria-label="Không gian bản đồ phòng học 2D"
-      outerClassName="w-full max-w-5xl"
-      innerClassName="flex flex-col items-center justify-start gap-2.5 p-2.5 sm:gap-2.5 sm:p-3 text-center"
+      outerClassName="flex min-h-0 w-full flex-1 flex-col"
+      innerClassName="flex min-h-0 flex-1 flex-col items-center justify-between gap-2 p-1.5 sm:p-2 text-center"
     >
-      <div className="flex w-full flex-wrap items-center justify-between gap-2 text-left">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
-            Study Café • 3/4 Top-Down 2D Orthogonal
-          </p>
-          <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
-            Phòng học: {roomId}
-          </h2>
+      <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-border/80 bg-[#0F1714]">
+        <div
+          data-testid="study-cafe-fitted-stage"
+          className="relative flex aspect-[3/2] max-h-full max-w-full flex-1 items-center justify-center overflow-hidden bg-[#0F1714]"
+        >
+          <div
+            ref={canvasMountRef}
+            data-testid="phaser-canvas-host"
+            className="relative flex h-full w-full touch-manipulation items-center justify-center overflow-hidden bg-[#0F1714] [&_canvas]:!m-0 [&_canvas]:!max-h-full [&_canvas]:!max-w-full"
+          >
+            {!isCanvasReady ? (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                Đang tải bản đồ Study Café 2D...
+              </div>
+            ) : null}
+          </div>
+
+          <StudyCafeMapLabelsOverlay />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ClassroomAmbienceControl />
-          <ClassroomGraphicsControl />
+
+        {/* Top-Left Floating HUD Cluster: Room Identity & Warm Amber Drink Menu CTA (WCAG AAA #E5A93C / #0F1714) */}
+        <div
+          data-testid="floating-hud-top-left"
+          aria-label="Cụm điều khiển quầy đồ uống và phòng học"
+          className="pointer-events-none absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1.5"
+        >
+          <div className="pointer-events-auto hidden items-center gap-1.5 rounded-xl border border-border/80 bg-card/95 px-2.5 py-1 text-left shadow-md backdrop-blur-none md:inline-flex">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+              Study Café
+            </span>
+            <span className="text-border">•</span>
+            <h2 className="font-mono text-xs font-bold tracking-tight text-foreground">
+              {roomId}
+            </h2>
+          </div>
+
           <button
             type="button"
             data-testid="open-drink-menu-btn"
+            aria-label="Mở menu quầy đồ uống Study Café"
             onClick={() => openDrinkMenu('Quầy Study Café', 'npc_barista')}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-primary/40 bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-md transition hover:brightness-105 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:py-1"
+            className="pointer-events-auto inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-lg transition hover:brightness-105 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 sm:py-1"
           >
             {activeDrink ? (
               <span data-testid="selected-drink-badge">
@@ -106,24 +132,23 @@ export function ClassroomCanvas() {
               </>
             )}
           </button>
-          <p className="hidden text-xs text-muted-foreground lg:block">
-            Dùng <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[11px]">WASD</kbd> / Mũi tên hoặc chạm bản đồ, ghế trống &amp; nhân viên quán.
-          </p>
         </div>
-      </div>
 
-      <div className="relative flex w-full flex-col items-center justify-center">
+        {/* Top-Right Floating HUD Cluster: Ambience Mood & Graphics Quality */}
         <div
-          ref={canvasMountRef}
-          data-testid="phaser-canvas-host"
-          className="relative flex aspect-[3/2] w-full touch-manipulation items-center justify-center overflow-hidden rounded-xl border border-border/80 bg-[#0F1714] sm:aspect-auto sm:h-[min(430px,calc(100dvh-19.5rem))] sm:min-h-[260px] [&_canvas]:!m-0 [&_canvas]:!max-h-full [&_canvas]:!max-w-full"
+          data-testid="floating-hud-top-right"
+          aria-label="Cụm điều khiển bầu không khí và chất lượng đồ họa"
+          className="pointer-events-none absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1.5"
         >
-          {!isCanvasReady ? (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-              Đang tải bản đồ Study Café 2D...
-            </div>
-          ) : null}
+          <div className="pointer-events-auto">
+            <ClassroomAmbienceControl />
+          </div>
+          <div className="pointer-events-auto">
+            <ClassroomGraphicsControl />
+          </div>
         </div>
+
+        {/* Bottom-Left Floating HUD Cluster: Integer Zoom (1× / 2× / 3×) & Camera Follow */}
         <ClassroomCameraControls />
       </div>
 

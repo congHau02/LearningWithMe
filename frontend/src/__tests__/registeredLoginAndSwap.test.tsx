@@ -114,7 +114,7 @@ describe('P1-T4 Registered User Login & Existing-Account Upgrade Swap', () => {
     expect(window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toBe(accessToken);
     expect(useAuthStore.getState().userId).toBe(userId);
     expect(useAuthStore.getState().totalStudyMinutes).toBe(245);
-    expect(screen.getByText('Thành Viên Cũ')).toBeInTheDocument();
+    expect(screen.getAllByText('Thành Viên Cũ').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByTestId('study-minutes-badge')).toHaveTextContent('245 phút');
     fireEvent.click(screen.getByTestId('profile-menu-trigger'));
     expect(screen.getByTestId('auth-provider-badge')).toHaveTextContent('LOCAL');

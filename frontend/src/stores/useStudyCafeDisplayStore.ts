@@ -10,6 +10,7 @@ import {
   type RendererKind,
   type ResolvedGraphicsPolicy,
 } from '../game/graphics/graphicsQualityPolicy';
+import type { LiveSceneLabelFrame } from '../game/labels/studyCafeLabelTypes';
 
 export const STUDY_CAFE_DISPLAY_STORAGE_KEY = 'study_together_cafe_display_v1';
 
@@ -76,10 +77,12 @@ export interface StudyCafeDisplayStore {
   graphicsQuality: GraphicsQuality;
   ambienceMood: AmbienceMood;
   graphicsPolicy: ResolvedGraphicsPolicy;
+  liveSceneLabelFrame: LiveSceneLabelFrame | null;
   setGraphicsQuality: (quality: GraphicsQuality | null) => void;
   setAmbienceMood: (mood: AmbienceMood | null, now?: Date) => void;
   setRendererKind: (rendererKind: RendererKind) => void;
   setPrefersReducedMotion: (prefersReducedMotion: boolean) => void;
+  setLiveSceneLabelFrame: (frame: LiveSceneLabelFrame | null) => void;
   hydrateFromStorage: (now?: Date) => void;
   resetPreferences: (now?: Date) => void;
 }
@@ -98,6 +101,7 @@ export const useStudyCafeDisplayStore = create<StudyCafeDisplayStore>((set, get)
 
   return {
     ...deriveDisplayState(readStoredPreferences(), 'headless', detectPrefersReducedMotion()),
+    liveSceneLabelFrame: null,
     setGraphicsQuality: (qualityPreference) => {
       const s = get();
       commit({ qualityPreference, moodPreference: s.moodPreference }, s.rendererKind, s.prefersReducedMotion, true);
@@ -114,12 +118,18 @@ export const useStudyCafeDisplayStore = create<StudyCafeDisplayStore>((set, get)
       const s = get();
       commit({ qualityPreference: s.qualityPreference, moodPreference: s.moodPreference }, s.rendererKind, prefersReducedMotion, false);
     },
+    setLiveSceneLabelFrame: (liveSceneLabelFrame) => {
+      set({ liveSceneLabelFrame });
+    },
     hydrateFromStorage: (now) => {
       const s = get();
       commit(readStoredPreferences(), s.rendererKind, s.prefersReducedMotion, false, now);
     },
     resetPreferences: (now) => {
-      set(deriveDisplayState(EMPTY_PREFS, 'headless', detectPrefersReducedMotion(), now));
+      set({
+        ...deriveDisplayState(EMPTY_PREFS, 'headless', detectPrefersReducedMotion(), now),
+        liveSceneLabelFrame: null,
+      });
     },
   };
 });

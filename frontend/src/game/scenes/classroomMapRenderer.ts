@@ -128,7 +128,7 @@ export function buildClassroomTilemap(scene: Phaser.Scene, topology: RoomTopolog
       g.strokeRoundedRect?.(leftPx + 3, topPx - 5, 38, 13, 3);
     }
 
-    scene.add
+    const plaqueText = scene.add
       .text(leftPx + 22, topPx + 1, formatTablePlaqueLabel(table.tableId, index), {
         fontFamily: 'sans-serif',
         fontSize: '9px',
@@ -139,6 +139,7 @@ export function buildClassroomTilemap(scene: Phaser.Scene, topology: RoomTopolog
       })
       .setOrigin(0.5)
       .setDepth(propDepth + 0.05);
+    plaqueText.setAlpha?.(0);
   });
 }
 

@@ -93,6 +93,7 @@ export function createClassroomSceneSubsystems(
     })
     .setOrigin(0.5, 1)
     .setDepth(initialDepth + 2);
+  nicknameLabel.setAlpha?.(0);
 
   const selfChatBubble = new ChatBubble({ scene });
   const storeUnsub = subscribeSceneChatBubbles(selfChatBubble, remotePlayersRenderer);
@@ -107,6 +108,7 @@ export function createClassroomSceneSubsystems(
 }
 
 export function updateClassroomSceneSubsystems(options: {
+  scene?: Phaser.Scene;
   subsystems: ClassroomSceneSubsystems;
   topology: RoomTopology;
   playerSprite: PlayerSprite;
@@ -115,7 +117,7 @@ export function updateClassroomSceneSubsystems(options: {
   time: number;
   delta: number;
 }): void {
-  const { subsystems, topology, playerSprite, hoveredSeatId, hoveredNpcId, time, delta } = options;
+  const { scene, subsystems, topology, playerSprite, hoveredSeatId, hoveredNpcId, time, delta } = options;
   const game = useGameStore.getState();
   const auth = useAuthStore.getState();
   const display = useStudyCafeDisplayStore.getState();
@@ -215,31 +217,32 @@ export function updateClassroomSceneSubsystems(options: {
   subsystems.nicknameLabel.setPosition(juice.renderX, juice.renderY + ACTOR_LABEL_OFFSET_Y);
   subsystems.nicknameLabel.setDepth?.(selfDepth + 2);
 
-  drawDynamicOverlay(subsystems.dynamicGraphics, {
-    tileSize: topology.tileSize,
-    seats: topology.seats,
-    occupiedSeats: game.occupiedSeats,
-    activeSeatId: game.currentSeatId,
-    hoveredSeatId,
-    suppressSeatHoverRect: juice.suppressesSeatHoverRect,
-    pathQueue: game.pathQueue,
-    seatGraphicsById: subsystems.seatGraphicsById,
+  const mainCam = scene?.cameras?.main;
+  display.setLiveSceneLabelFrame({
+    camera: {
+      worldWidth: topology.width * topology.tileSize, worldHeight: topology.height * topology.tileSize,
+      zoom: mainCam?.zoom ?? game.cameraZoom, scrollX: mainCam?.scrollX ?? 0, scrollY: mainCam?.scrollY ?? 0,
+    },
+    self: {
+      worldX: juice.renderX, worldY: juice.renderY,
+      bubbleText: subsystems.selfChatBubble.isActive() ? subsystems.selfChatBubble.getText() : null,
+      bubbleMotion: subsystems.selfChatBubble.getVisualState(),
+    },
+    remotePlayers: subsystems.remotePlayersRenderer.getLabelEntries(),
+    npcs: subsystems.ambientNpcManager.getLabelEntries(),
+    sosBanners: subsystems.tableSosOverlay.getLabelEntries(),
   });
+
+  drawDynamicOverlay(subsystems.dynamicGraphics, { tileSize: topology.tileSize, seats: topology.seats, occupiedSeats: game.occupiedSeats, activeSeatId: game.currentSeatId, hoveredSeatId, suppressSeatHoverRect: juice.suppressesSeatHoverRect, pathQueue: game.pathQueue, seatGraphicsById: subsystems.seatGraphicsById });
 }
 
-export function destroyClassroomSceneSubsystems(subsystems?: ClassroomSceneSubsystems): void {
-  if (!subsystems) return;
-  subsystems.storeUnsub();
-  subsystems.npcReactionUnsub();
-  subsystems.goalCelebrationUnsub();
-  subsystems.juiceCoordinator.destroy();
-  subsystems.selfAccessoriesOverlay.destroy();
-  subsystems.selfChatBubble.destroy();
-  subsystems.remotePlayersRenderer.destroy();
-  subsystems.tableSosOverlay.destroy();
-  subsystems.ambientNpcManager.destroy();
-  subsystems.ambientVfx.destroy();
-  subsystems.lightingSystem.destroy();
-  for (const sg of subsystems.seatGraphicsById.values()) sg.destroy?.();
-  subsystems.seatGraphicsById.clear();
+export function destroyClassroomSceneSubsystems(s?: ClassroomSceneSubsystems): void {
+  useStudyCafeDisplayStore.getState().setLiveSceneLabelFrame(null);
+  if (!s) return;
+  s.storeUnsub(); s.npcReactionUnsub(); s.goalCelebrationUnsub();
+  s.juiceCoordinator.destroy(); s.selfAccessoriesOverlay.destroy(); s.selfChatBubble.destroy();
+  s.remotePlayersRenderer.destroy(); s.tableSosOverlay.destroy(); s.ambientNpcManager.destroy();
+  s.ambientVfx.destroy(); s.lightingSystem.destroy();
+  for (const sg of s.seatGraphicsById.values()) sg.destroy?.();
+  s.seatGraphicsById.clear();
 }

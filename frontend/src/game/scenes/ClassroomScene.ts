@@ -83,6 +83,7 @@ export class ClassroomScene extends Phaser.Scene {
     this.inputController.update(delta);
     if (this.subsystems) {
       updateClassroomSceneSubsystems({
+        scene: this,
         subsystems: this.subsystems,
         topology: this.topology,
         playerSprite: this.playerSprite,

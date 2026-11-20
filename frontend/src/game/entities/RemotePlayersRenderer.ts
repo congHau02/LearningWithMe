@@ -108,7 +108,7 @@ export class RemotePlayersRenderer {
           entry.label.setText(nextLabel);
         }
         entry.label.setPosition(pos.x, pos.y - 36);
-        entry.label.setAlpha(alpha);
+        entry.label.setAlpha(0);
         entry.label.setDepth?.(depth + 2);
       }
 
@@ -152,6 +152,23 @@ export class RemotePlayersRenderer {
       }
     }
     return hosts;
+  }
+
+  public getLabelEntries() {
+    return Array.from(this.entries.values()).map((entry) => {
+      const px = entry.model.getPixelPosition();
+      const isHost = isPlayerTableHost(entry.data);
+      return {
+        userId: entry.data.userId,
+        labelText: entry.lastLabel ?? formatRemoteLabel(entry.data, isHost),
+        isHost,
+        worldX: px.x,
+        worldY: px.y,
+        alpha: entry.data.connected ? 1 : 0.55,
+        bubbleText: entry.chatBubble.isActive() ? entry.chatBubble.getText() : null,
+        bubbleMotion: entry.chatBubble.getVisualState(),
+      };
+    });
   }
 
   public getSnapshot(userId: string): RemotePlayerRenderSnapshot | null {

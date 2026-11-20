@@ -42,6 +42,7 @@ export class TableSosOverlay {
   constructor(scene: Phaser.Scene, topology: RoomTopology) {
     this.scene = scene;
     this.graphics = scene.add.graphics().setDepth(15);
+    this.graphics.setAlpha?.(0);
     this.anchors = topology.tables
       .map((table) => computeTableAnchor(table, topology.tileSize))
       .filter((anchor): anchor is TableAnchor => anchor !== null);
@@ -84,7 +85,7 @@ export class TableSosOverlay {
       label.setText(text);
       label.setPosition(anchor.cx, anchorY);
       label.setScale?.(scale);
-      label.setAlpha?.(alpha);
+      label.setAlpha?.(0);
       label.setVisible(true);
 
       const width = Math.max(64, (label.width || text.length * 6) + 10) * scale;
@@ -110,6 +111,30 @@ export class TableSosOverlay {
 
   public getBannerMotionState(tableId: string): SosBannerMotionState {
     return this.runtimeByTable.get(tableId)?.motion ?? HIDDEN_STATE;
+  }
+
+  public getLabelEntries() {
+    const entries: Array<{
+      tableId: string;
+      text: string;
+      worldX: number;
+      worldY: number;
+      alpha: number;
+      scale: number;
+    }> = [];
+    for (const anchor of this.anchors) {
+      const runtime = this.runtimeByTable.get(anchor.tableId);
+      if (!runtime || runtime.phase === 'hidden' || !runtime.lastText) continue;
+      entries.push({
+        tableId: anchor.tableId,
+        text: runtime.lastText,
+        worldX: anchor.cx,
+        worldY: anchor.topY - 12 + runtime.motion.offsetY,
+        alpha: runtime.motion.alpha,
+        scale: runtime.motion.scale,
+      });
+    }
+    return entries;
   }
 
   public destroy(): void {

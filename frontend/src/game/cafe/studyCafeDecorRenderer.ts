@@ -65,7 +65,7 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
     g.fillStyle?.(BOTANICAL_2D_SCENE.afkLounge.cushionEmerald, 0.85);
     g.fillCircle?.((maxX + 0.5) * ts, (maxY + 0.5) * ts, 8);
 
-    scene.add
+    const loungeText = scene.add
       .text(loungeCx, loungeTop - 6, '🛋️ Chill Lounge (AFK)', {
         fontFamily: 'sans-serif',
         fontSize: '10px',
@@ -76,6 +76,7 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
       })
       .setOrigin(0.5, 1)
       .setDepth(5);
+    loungeText.setAlpha?.(0);
   }
 
   // 5. Service Counter Warm Amber glow, Y-sorted Espresso Machine & Chalkboard Menu Board
@@ -135,7 +136,7 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
     g.fillStyle?.(BOTANICAL_2D_SCENE.counter.menuLines[2], 0.85);
     g.fillRect?.(boardX + 5, boardY + 16, 18, 2);
 
-    scene.add
+    const counterText = scene.add
       .text(counterCx, counterY * ts - 6, '☕ Quầy Study Café • Bấm chọn đồ uống', {
         fontFamily: 'sans-serif',
         fontSize: '10px',
@@ -146,5 +147,6 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
       })
       .setOrigin(0.5, 1)
       .setDepth(counterDepth + 0.1);
+    counterText.setAlpha?.(0);
   }
 }

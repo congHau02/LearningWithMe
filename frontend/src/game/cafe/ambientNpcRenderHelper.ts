@@ -54,6 +54,7 @@ export function createNpcVisualParts(
     })
     .setOrigin(0.5, isCounterStaff ? 0 : 1)
     .setDepth(depth + 2);
+  label.setAlpha?.(0);
   return { shadow, sprite, apron, label };
 }
 
