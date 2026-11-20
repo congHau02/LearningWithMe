@@ -276,7 +276,7 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls & Homework Board Chrome
       );
 
       const toolbar = screen.getByTestId('homework-board-toolbar');
-      expect(toolbar.className).toContain('bg-[#16221E]/90');
+      expect(toolbar.className).toContain('bg-card/90');
       expect(toolbar.className).toContain('border-border');
 
       // Verify all 5 preserved semantic swatches
@@ -352,7 +352,8 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls & Homework Board Chrome
       render(<TableChatPanel tableId="table_01" />);
 
       const panel = screen.getByTestId('table-chat-panel');
-      expect(panel.className).toContain('bg-[#16221E]/95');
+      expect(panel.className).toContain('bg-card/95');
+      expect(panel.className).toContain('text-foreground');
       expect(panel.className).toContain('border-border');
 
       const sendBtn = screen.getByTestId('table-chat-send-btn');

@@ -208,16 +208,16 @@ describe('BNS-T3: Streamlined Botanical TopBar, Telemetry Bar & Floating Room Ch
       );
 
       const banner = screen.getByTestId('server-wakeup-banner');
-      expect(banner.className).toContain('bg-[#16221E]/95');
-      expect(banner.className).toContain('border-[#243630]');
-      expect(banner.className).toContain('text-[#E6ECE8]');
+      expect(banner.className).toContain('bg-card/95');
+      expect(banner.className).toContain('border-border');
+      expect(banner.className).toContain('text-foreground');
 
       rerender(<ServerWakeUpNotice variant="card" elapsedSeconds={20} onRetry={vi.fn()} />);
 
       const card = screen.getByTestId('server-wakeup-card');
-      expect(card.className).toContain('bg-[#16221E]');
-      expect(card.className).toContain('border-[#243630]');
-      expect(card.className).toContain('text-[#E6ECE8]');
+      expect(card.className).toContain('bg-card');
+      expect(card.className).toContain('border-border');
+      expect(card.className).toContain('text-foreground');
     });
 
     it('renders ReconnectingBanner and SessionReplacedBanner on Slate Leaf with #243630 border', () => {

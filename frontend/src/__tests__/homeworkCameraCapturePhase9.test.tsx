@@ -125,7 +125,9 @@ describe('P9-T6 Mobile Direct Camera Capture for Homework Slide Upload', () => {
 
     const cameraBtn = screen.getByTestId('homework-camera-btn');
     expect(cameraBtn).toBeEnabled();
-    expect(cameraBtn).toHaveTextContent('📷Chụp bài tập');
+    expect(cameraBtn).toHaveTextContent('Chụp bài tập');
+    expect(cameraBtn.textContent).not.toContain('📷');
+    expect(cameraBtn.querySelector('svg')).toBeInTheDocument();
     expect(cameraBtn).toHaveAttribute('aria-label', 'Chụp bài tập bằng camera sau');
     expect(cameraBtn.className).toContain('min-h-[44px]');
     expect(cameraBtn.className).toContain('min-w-[44px]');

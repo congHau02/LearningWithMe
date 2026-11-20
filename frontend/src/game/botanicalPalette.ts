@@ -102,6 +102,16 @@ export const BOTANICAL_2D_SCENE = {
     remoteTextColor: BOTANICAL_PALETTE_HEX.morningMist,
     remoteTextBg: '#16221Ecc',
   },
+  furniture: {
+    woodDark: 0x4a2e1b,
+    woodMedium: 0x6b442a,
+    woodWarm: 0x7c4d2b,
+    woodHighlight: 0x8c5a38,
+    cushionIdle: BOTANICAL_PALETTE_INT.slateLeaf,
+  },
+  shadow: {
+    floorInt: 0x050807,
+  },
 } as const;
 
 export function hexToInt(hex: string): number {

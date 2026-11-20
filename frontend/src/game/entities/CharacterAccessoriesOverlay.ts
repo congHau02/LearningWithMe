@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
-import { BOTANICAL_PALETTE_INT } from '../botanicalPalette';
+import { BOTANICAL_2D_SCENE, BOTANICAL_PALETTE_INT } from '../botanicalPalette';
 import {
+  computeFloorShadowYSortDepth,
   computeYSortDepth,
   drawEllipticalFloorShadow,
 } from '../scenes/ySortDepth';
@@ -22,22 +23,26 @@ export interface CharacterAccessorySnapshot {
   y: number;
   facingDir: FacingDirection;
   depth: number;
+  shadowDepth: number;
   hasFloorShadow: boolean;
   petOffsetX: number;
   hatTasselOffsetX: number;
 }
 
 /**
- * Draws elliptical floor shadows, direction-aware SKIN collar/hood accents, HAT,
- * and DESK_PET pixel-art companions for 32x48px characters anchored at origin(0.5, 0.75).
+ * Draws elliptical floor shadows (strictly below sprite depth), direction-aware SKIN collar/hood accents,
+ * HAT, and DESK_PET pixel-art companions for 32x48px characters anchored at origin(0.5, 0.75).
  */
 export class CharacterAccessoriesOverlay {
+  private shadowGraphics?: Phaser.GameObjects.Graphics;
   private graphics?: Phaser.GameObjects.Graphics;
   private lastSnapshot: CharacterAccessorySnapshot | null = null;
 
   constructor(options: { scene?: Phaser.Scene; depth?: number } = {}) {
     if (options.scene) {
-      this.graphics = options.scene.add.graphics().setDepth(options.depth ?? 10);
+      const baseDepth = options.depth ?? 10;
+      this.shadowGraphics = options.scene.add.graphics().setDepth(baseDepth - 0.002);
+      this.graphics = options.scene.add.graphics().setDepth(baseDepth);
     }
   }
 
@@ -54,6 +59,7 @@ export class CharacterAccessoriesOverlay {
     } = params;
 
     const depth = computeYSortDepth(y, 10, 0.001);
+    const shadowDepth = computeFloorShadowYSortDepth(y);
     const petOffsetX = facingDir === 'RIGHT' ? -14 : 14;
     const hatTasselOffsetX =
       facingDir === 'LEFT' ? -8 : facingDir === 'UP' ? -7 : 8;
@@ -63,10 +69,28 @@ export class CharacterAccessoriesOverlay {
       y,
       facingDir,
       depth,
+      shadowDepth,
       hasFloorShadow: true,
       petOffsetX,
       hatTasselOffsetX,
     };
+
+    const sg = this.shadowGraphics as Partial<Phaser.GameObjects.Graphics> | undefined;
+    if (sg) {
+      sg.clear?.();
+      sg.setAlpha?.(alpha);
+      sg.setDepth?.(shadowDepth);
+      // 1. Soft elliptical pixel-art floor shadow strictly below 32x48px sprite feet
+      drawEllipticalFloorShadow(sg, x, y);
+      if (
+        deskPetId === 'pet_sleepy_cat' ||
+        deskPetId === 'pet_wise_owl' ||
+        deskPetId === 'pet_sprout_pot'
+      ) {
+        sg.fillStyle?.(BOTANICAL_2D_SCENE.shadow.floorInt, 0.32);
+        sg.fillRoundedRect?.(x + petOffsetX - 4, y + 8, 8, 3, 1);
+      }
+    }
 
     const g = this.graphics as Partial<Phaser.GameObjects.Graphics> | undefined;
     if (!g) {
@@ -76,9 +100,6 @@ export class CharacterAccessoriesOverlay {
     g.clear?.();
     g.setAlpha?.(alpha);
     g.setDepth?.(depth);
-
-    // 1. Soft elliptical pixel-art floor shadow beneath 32x48px feet (y + 10)
-    drawEllipticalFloorShadow(g, x, y);
 
     const bodyY = y + breathingOffsetY;
     const dirShiftX = facingDir === 'LEFT' ? -2 : facingDir === 'RIGHT' ? 2 : 0;
@@ -138,17 +159,9 @@ export class CharacterAccessoriesOverlay {
       g.fillCircle?.(x + hatTasselOffsetX, bodyY - 21, 1.6);
     }
 
-    // 4. Direction-aware DESK_PET companion with mini floor shadow
+    // 4. Direction-aware DESK_PET companion (mini floor shadow painted on shadowGraphics)
     const petX = x + petOffsetX;
     const petY = y + 5 + breathingOffsetY * 0.6;
-    if (
-      deskPetId === 'pet_sleepy_cat' ||
-      deskPetId === 'pet_wise_owl' ||
-      deskPetId === 'pet_sprout_pot'
-    ) {
-      g.fillStyle?.(0x050807, 0.32);
-      g.fillRoundedRect?.(petX - 4, y + 8, 8, 3, 1);
-    }
 
     if (deskPetId === 'pet_sleepy_cat') {
       g.fillStyle?.(BOTANICAL_PALETTE_INT.warmAmber, 1);
@@ -180,6 +193,8 @@ export class CharacterAccessoriesOverlay {
   }
 
   public destroy(): void {
+    this.shadowGraphics?.destroy?.();
+    this.shadowGraphics = undefined;
     this.graphics?.destroy?.();
     this.graphics = undefined;
     this.lastSnapshot = null;

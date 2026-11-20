@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { BOTANICAL_PALETTE_INT } from '../botanicalPalette';
+import { BOTANICAL_2D_SCENE, BOTANICAL_PALETTE_INT } from '../botanicalPalette';
 
 /**
  * 32x48px 3/4 Top-Down RPG Character Proportions & Dynamic Y-Sorting Depth Seam (P10-T7).
@@ -18,6 +18,7 @@ export const ACTOR_BUBBLE_OFFSET_Y = -56;
 export const YSORT_BASE_DEPTH = 10;
 export const YSORT_SCALE = 0.01;
 export const CHAIR_YSORT_OFFSET = -0.005;
+export const FLOOR_SHADOW_YSORT_OFFSET = -0.002;
 
 export function computeYSortDepth(
   pixelY: number,
@@ -30,6 +31,10 @@ export function computeYSortDepth(
 
 export function computeChairYSortDepth(seatPixelY: number): number {
   return computeYSortDepth(seatPixelY, YSORT_BASE_DEPTH, CHAIR_YSORT_OFFSET);
+}
+
+export function computeFloorShadowYSortDepth(actorPixelY: number): number {
+  return computeYSortDepth(actorPixelY, YSORT_BASE_DEPTH, FLOOR_SHADOW_YSORT_OFFSET);
 }
 
 export function computeIdleBreathingOffset(
@@ -56,7 +61,7 @@ export function drawEllipticalFloorShadow(
   y: number,
 ): void {
   if (!g) return;
-  g.fillStyle?.(0x050807, 0.42);
+  g.fillStyle?.(BOTANICAL_2D_SCENE.shadow.floorInt, 0.42);
   g.fillRoundedRect?.(x - 10, y + 7, 20, 7, 3);
   g.fillStyle?.(BOTANICAL_PALETTE_INT.deepPineNight, 0.28);
   g.fillRoundedRect?.(x - 7, y + 8, 14, 5, 2);

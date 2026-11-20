@@ -1,5 +1,7 @@
-import type { RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { VolumeIcon } from '../icons';
+
+const SYNC_HINT_DURATION_MS = 2500;
 
 interface VideoPlayerViewportProps {
   containerRef: RefObject<HTMLDivElement>;
@@ -20,6 +22,34 @@ export function VideoPlayerViewport({
   onTogglePlayPause,
   onUnmuteFallback,
 }: VideoPlayerViewportProps) {
+  const [showSyncHint, setShowSyncHint] = useState(false);
+  const hintTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (canControl || !videoId) {
+      setShowSyncHint(false);
+    }
+    return () => {
+      if (hintTimerRef.current !== null) {
+        window.clearTimeout(hintTimerRef.current);
+        hintTimerRef.current = null;
+      }
+    };
+  }, [canControl, videoId]);
+
+  const handleLockedShieldClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowSyncHint(true);
+    if (hintTimerRef.current !== null) {
+      window.clearTimeout(hintTimerRef.current);
+    }
+    hintTimerRef.current = window.setTimeout(() => {
+      setShowSyncHint(false);
+      hintTimerRef.current = null;
+    }, SYNC_HINT_DURATION_MS);
+  };
+
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-background">
       {videoId ? (
@@ -38,13 +68,22 @@ export function VideoPlayerViewport({
               data-testid="yt-click-shield"
               role="presentation"
               title="Video đang đồng bộ theo bàn học"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
+              onClick={handleLockedShieldClick}
               className="absolute inset-0 z-10 cursor-default bg-transparent"
             />
           )}
+          {!canControl && showSyncHint ? (
+            <div
+              role="status"
+              aria-live="polite"
+              data-testid="yt-sync-hint"
+              className="pointer-events-none absolute inset-x-3 top-3 z-20 flex justify-center"
+            >
+              <span className="rounded-lg border border-border bg-card/95 px-3 py-1.5 text-xs font-medium text-foreground shadow-md">
+                Video đang đồng bộ theo bàn học — chỉ Trưởng bàn / Co-Host được điều khiển
+              </span>
+            </div>
+          ) : null}
           {autoplayMutedFallback ? (
             <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex justify-center">
               <button

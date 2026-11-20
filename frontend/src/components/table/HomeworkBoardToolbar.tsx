@@ -69,7 +69,7 @@ export function HomeworkBoardToolbar({
   return (
     <div
       data-testid="homework-board-toolbar"
-      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-[#16221E]/90 px-2.5 py-2"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card/90 px-2.5 py-2"
     >
       <div className="flex flex-wrap items-center gap-1" role="toolbar" aria-label="Công cụ vẽ bảng toán">
         {visibleTools.map((item) => {

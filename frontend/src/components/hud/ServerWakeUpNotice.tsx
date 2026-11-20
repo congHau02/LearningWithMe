@@ -30,17 +30,17 @@ export function ServerWakeUpNotice({
         role="status"
         aria-live="polite"
         data-testid="server-wakeup-banner"
-        className="relative z-30 flex flex-wrap items-center justify-between gap-2 border-b border-[#243630] bg-[#16221E]/95 px-4 py-2 text-xs text-[#E6ECE8] shadow-md backdrop-blur-md"
+        className="relative z-30 flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card/95 px-4 py-2 text-xs text-foreground shadow-md backdrop-blur-md"
       >
         <div className="flex min-w-0 items-center gap-2">
           <span
             className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-primary"
             aria-hidden="true"
           />
-          <span className="text-[#8FA399]">
+          <span className="text-muted-foreground">
             Máy chủ đang khởi động lại (Render Free có thể mất 30–60 giây). Hệ thống đang tự động
             kiểm tra...{' '}
-            <strong className="font-mono text-[#E6ECE8]">Đã chờ {elapsedSeconds}s</strong>
+            <strong className="font-mono text-foreground">Đã chờ {elapsedSeconds}s</strong>
           </span>
         </div>
         <RetryButton onRetry={onRetry} />
@@ -53,21 +53,21 @@ export function ServerWakeUpNotice({
       role="status"
       aria-live="polite"
       data-testid="server-wakeup-card"
-      className="mb-3.5 rounded-xl border border-[#243630] bg-[#16221E] p-3 text-xs text-[#E6ECE8]"
+      className="mb-3.5 rounded-xl border border-border bg-card p-3 text-xs text-foreground"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 font-semibold text-[#E6ECE8]">
+        <div className="flex items-center gap-2 font-semibold text-foreground">
           <span
             className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-primary"
             aria-hidden="true"
           />
           <span>Đang đánh thức máy chủ học tập...</span>
         </div>
-        <span className="shrink-0 rounded border border-[#243630] bg-[#0F1714] px-1.5 py-0.5 font-mono text-[11px] text-[#8FA399]">
+        <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
           Đã chờ {elapsedSeconds}s
         </span>
       </div>
-      <p className="mt-1.5 leading-relaxed text-[#8FA399]">
+      <p className="mt-1.5 leading-relaxed text-muted-foreground">
         Render Free cần khoảng 30–60 giây để khởi động lại sau khi nghỉ. Bạn có thể điền trước tên,
         chọn nhân vật và mục tiêu học tập trong lúc chờ.
       </p>

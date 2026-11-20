@@ -88,6 +88,10 @@ _Avoid_: Public Mode, Open Edit
 Tổ hợp giao diện học tập chung chỉ mở ra cho những người đang `SEATED` tại cùng một Table, bao gồm trình phát video đồng bộ, bảng bài tập tạm thời và trò chuyện bàn.
 _Avoid_: Study Modal, Table Dashboard, Classroom View
 
+**Clear View (Chế độ rõ ràng)**:
+Cách hiển thị cá nhân của Table Workspace chỉ gồm Homework Slide và trò chuyện bàn, lược bỏ video và các công cụ phụ; mặc định bật trên điện thoại.
+_Avoid_: Focus Mode, Chế độ tập trung, Zen Mode, Board View
+
 **Homework Slide (Trang bài tập)**:
 Một trang làm việc tạm thời trong Table Workspace (tối đa 5 trang mỗi Table) được khởi tạo từ ảnh đề bài tải lên hoặc mẫu giấy nháp toán dựng sẵn (lưới ô vuông, hệ trục tọa độ, bảng trơn), tự động hủy khi Table không còn người ngồi.
 _Avoid_: Whiteboard Page, Attachment, Document
@@ -124,10 +128,6 @@ _Avoid_: Global Chat, World Chat, Public Chat, Lobby Chat
 Khung thông điệp tạm thời nổi lên phía trên nhân vật trên bản đồ 2D trong thời gian ngắn (4 giây) mỗi khi người học gửi tin nhắn hoặc biểu cảm qua Room Chat.
 _Avoid_: Toast Chat, Speech Popover, Overhead Label
 
-**Focus Cycle (Chu kỳ tập trung)**:
-Một nhịp đếm ngược thời gian tập trung hoặc nghỉ giải lao ngắn được đồng bộ chung cho tất cả người học đang `SEATED` tại cùng một Table, độc lập với thời lượng Study Session của từng cá nhân.
-_Avoid_: Pomodoro, Study Session, Countdown Timer
-
 **Study Goal (Mục tiêu học tập)**:
 Mục tiêu cá nhân ngắn gọn mà người học đặt ra cho phiên học trong ngày và có thể đánh dấu hoàn thành ngay khi đang học.
 _Avoid_: Task, Todo Item, Status Message
@@ -141,7 +141,7 @@ Lớp âm thanh môi trường đa tầng và giai điệu không lời phát l�
 _Avoid_: Background Music, BGM, Audio Track
 
 **Study SFX (Âm thanh phản hồi học tập)**:
-Các tín hiệu âm thanh ngắn, êm dịu phát tại máy cá nhân khi diễn ra sự kiện học tập hoặc tương tác trong Study Café (chuyển pha Focus Cycle, hoàn thành Study Goal, ngồi ghế, nhận Drink Delivery), độc lập với Ambient Soundscape.
+Các tín hiệu âm thanh ngắn, êm dịu phát tại máy cá nhân khi diễn ra sự kiện học tập hoặc tương tác trong Study Café (hoàn thành Study Goal, ngồi ghế, nhận Drink Delivery), độc lập với Ambient Soundscape.
 _Avoid_: UI Sound, Game SFX, Notification Beep
 
 **Drink Delivery (Giao đồ uống tại quán)**:

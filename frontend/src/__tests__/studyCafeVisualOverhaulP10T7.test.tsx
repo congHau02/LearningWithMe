@@ -169,17 +169,18 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
       }
     });
 
-    it('renders cushioned wooden chairs with direction-aware backrests and Botanical seat status colors', () => {
+    it('renders cushioned wooden chairs with direction-aware backrests and hover/selection-only highlight rings', () => {
       const fillStyleSpy = vi.fn();
       const lineStyleSpy = vi.fn();
       const fillRoundedRectSpy = vi.fn();
+      const strokeRoundedRectSpy = vi.fn();
 
       const mockGraphics = {
         clear: vi.fn(),
         fillStyle: fillStyleSpy,
         lineStyle: lineStyleSpy,
         fillRoundedRect: fillRoundedRectSpy,
-        strokeRoundedRect: vi.fn(),
+        strokeRoundedRect: strokeRoundedRectSpy,
         fillRect: vi.fn(),
         fillCircle: vi.fn(),
       } as unknown as Phaser.GameObjects.Graphics;
@@ -196,16 +197,26 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
         pathQueue: [],
       });
 
-      // Empty seat cushion uses Bioluminescent Emerald (0x34d399)
+      // Idle empty seat uses neutral Slate Leaf cushion (no permanent bright emerald highlight)
       expect(fillStyleSpy).toHaveBeenCalledWith(
+        BOTANICAL_2D_SCENE.furniture.cushionIdle,
+        expect.any(Number),
+      );
+      expect(fillStyleSpy).not.toHaveBeenCalledWith(
         BOTANICAL_2D_SCENE.seats.empty,
         expect.any(Number),
       );
-      // Hovered seat cushion uses Warm Amber (0xe5a93c)
+      // Hovered seat uses Warm Amber fill and draws the only highlight ring
       expect(fillStyleSpy).toHaveBeenCalledWith(
         BOTANICAL_2D_SCENE.seats.hover,
         expect.any(Number),
       );
+      expect(lineStyleSpy).toHaveBeenCalledWith(
+        1.5,
+        BOTANICAL_2D_SCENE.seats.hoverBorder,
+        expect.any(Number),
+      );
+      expect(strokeRoundedRectSpy).toHaveBeenCalledTimes(1);
       // Wooden chair frame / backrest is drawn in addition to the cushion
       expect(fillRoundedRectSpy.mock.calls.length).toBeGreaterThanOrEqual(4);
     });
@@ -250,6 +261,9 @@ describe('P10-T7: 2D Study Café Visual Overhaul (#71)', () => {
       expect(downSnap?.hasFloorShadow).toBe(true);
       expect(downSnap?.facingDir).toBe('DOWN');
       expect(downSnap?.depth).toBeCloseTo(computeYSortDepth(224, 10, 0.001), 4);
+      expect(downSnap?.shadowDepth).toBeLessThan(computeYSortDepth(224));
+      expect(downSnap?.depth).toBeGreaterThan(computeYSortDepth(224));
+      expect(setDepthSpy).toHaveBeenCalledWith(downSnap?.shadowDepth);
       expect(setDepthSpy).toHaveBeenCalledWith(downSnap?.depth);
 
       // Facing RIGHT shifts desk pet and graduation tassel / collar profile compared to facing LEFT

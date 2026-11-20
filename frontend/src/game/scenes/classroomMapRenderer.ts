@@ -92,11 +92,11 @@ export function buildClassroomTilemap(scene: Phaser.Scene, topology: RoomTopolog
     const g = scene.add.graphics?.()?.setDepth?.(propDepth) as Partial<Phaser.GameObjects.Graphics> | undefined;
     if (g) {
       // Y-sorted 3/4 walnut tabletop bevel & front apron
-      g.fillStyle?.(0x4a2e1b, 0.96);
+      g.fillStyle?.(BOTANICAL_2D_SCENE.furniture.woodDark, 0.96);
       g.fillRoundedRect?.(leftPx + 2, topPx + 2, widthPx - 4, heightPx - 4, 5);
-      g.fillStyle?.(0x6b442a, 0.98);
+      g.fillStyle?.(BOTANICAL_2D_SCENE.furniture.woodMedium, 0.98);
       g.fillRoundedRect?.(leftPx + 3, topPx + 3, widthPx - 6, heightPx - 10, 4);
-      g.lineStyle?.(1, 0x8c5a38, 0.9);
+      g.lineStyle?.(1, BOTANICAL_2D_SCENE.furniture.woodHighlight, 0.9);
       g.strokeRoundedRect?.(leftPx + 3, topPx + 3, widthPx - 6, heightPx - 10, 4);
 
       // Glowing Warm Amber desk lamp + study notebook
@@ -177,29 +177,28 @@ export function drawDynamicOverlay(
         ? BOTANICAL_2D_SCENE.seats.occupied
         : isHovered
           ? BOTANICAL_2D_SCENE.seats.hover
-          : BOTANICAL_2D_SCENE.seats.empty;
-    const strokeColor = isSeatedHere
-      ? BOTANICAL_2D_SCENE.seats.currentBorder
-      : isOccupied
-        ? BOTANICAL_2D_SCENE.seats.occupiedBorder
-        : isHovered
-          ? BOTANICAL_2D_SCENE.seats.hoverBorder
-          : BOTANICAL_2D_SCENE.seats.emptyBorder;
+          : BOTANICAL_2D_SCENE.furniture.cushionIdle;
+    const fillAlpha = isSeatedHere || isHovered ? 0.88 : isOccupied ? 0.45 : 0.85;
 
     seatG.fillStyle?.(BOTANICAL_PALETTE_INT.deepPineNight, 0.36);
     seatG.fillRoundedRect?.(cx - 10, cy - 6, 20, 17, 5);
-    seatG.fillStyle?.(0x4a2e1b, 0.95);
+    seatG.fillStyle?.(BOTANICAL_2D_SCENE.furniture.woodDark, 0.95);
     seatG.fillRect?.(cx - 8, cy + 6, 3, 4);
     seatG.fillRect?.(cx + 5, cy + 6, 3, 4);
-    seatG.fillStyle?.(0x6b442a, 0.96);
+    seatG.fillStyle?.(BOTANICAL_2D_SCENE.furniture.woodMedium, 0.96);
     seatG.fillRoundedRect?.(cx - 9, cy - 7, 18, 15, 4);
 
-    seatG.fillStyle?.(fillColor, isSeatedHere || isHovered ? 0.88 : isOccupied ? 0.45 : 0.68);
+    seatG.fillStyle?.(fillColor, fillAlpha);
     seatG.fillRoundedRect?.(cx - 7, cy - 5, 14, 11, 3);
-    seatG.lineStyle?.(1.5, strokeColor, isOccupied ? 0.5 : 0.92);
-    seatG.strokeRoundedRect?.(cx - 8, cy - 6, 16, 13, 4);
+    if (isSeatedHere || isHovered) {
+      const ringColor = isSeatedHere
+        ? BOTANICAL_2D_SCENE.seats.currentBorder
+        : BOTANICAL_2D_SCENE.seats.hoverBorder;
+      seatG.lineStyle?.(1.5, ringColor, 0.95);
+      seatG.strokeRoundedRect?.(cx - 8, cy - 6, 16, 13, 4);
+    }
 
-    seatG.fillStyle?.(0x7c4d2b, 0.98);
+    seatG.fillStyle?.(BOTANICAL_2D_SCENE.furniture.woodWarm, 0.98);
     if (seat.facingDir === 'DOWN') seatG.fillRoundedRect?.(cx - 9, cy - 11, 18, 5, 2);
     else if (seat.facingDir === 'UP') seatG.fillRoundedRect?.(cx - 9, cy + 6, 18, 5, 2);
     else if (seat.facingDir === 'LEFT') seatG.fillRoundedRect?.(cx + 6, cy - 8, 4, 15, 2);

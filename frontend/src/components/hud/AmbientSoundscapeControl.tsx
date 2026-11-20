@@ -30,6 +30,7 @@ const AMBIENT_ICONS: Record<AmbientChannelId, React.ComponentType<StudioIconProp
 export function AmbientSoundscapeControl() {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const closePopover = useCallback(() => setIsOpen(false), []);
 
   const isMuted = useAmbientSoundscapeStore((s) => s.isMuted);
@@ -59,11 +60,12 @@ export function AmbientSoundscapeControl() {
     };
   }, [activeCount, syncAudioEngine]);
 
-  useDismissiblePopover(isOpen, containerRef, closePopover);
+  useDismissiblePopover(isOpen, containerRef, closePopover, triggerRef);
 
   return (
     <div ref={containerRef} className="relative shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         data-testid="ambient-soundscape-toggle-btn"
         aria-expanded={isOpen}
@@ -82,10 +84,7 @@ export function AmbientSoundscapeControl() {
         )}
         <span className="hidden sm:inline">Âm thanh nền</span>
         {activeCount > 0 ? (
-          <span
-            data-testid="ambient-active-count"
-            className="rounded-full bg-botanical-emerald/25 px-1.5 font-mono text-[10px] font-bold text-botanical-emerald"
-          >
+          <span data-testid="ambient-active-count" className="rounded-full bg-botanical-emerald/25 px-1.5 font-mono text-[10px] font-bold text-botanical-emerald">
             {activeCount}
           </span>
         ) : null}

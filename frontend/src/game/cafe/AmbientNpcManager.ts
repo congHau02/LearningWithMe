@@ -52,6 +52,7 @@ interface NpcRuntimeEntry {
   nextBubbleAtMs: number;
   lineCursor: number;
   chatBubble: ChatBubble;
+  shadow?: Phaser.GameObjects.Graphics;
   sprite?: Phaser.GameObjects.Sprite;
   apron?: Phaser.GameObjects.Graphics;
   label?: Phaser.GameObjects.Text;
@@ -197,6 +198,7 @@ export class AmbientNpcManager {
 
   public destroy(): void {
     for (const entry of this.entries) {
+      entry.shadow?.destroy();
       entry.sprite?.destroy();
       entry.apron?.destroy();
       entry.label?.destroy();

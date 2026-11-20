@@ -6,6 +6,7 @@ import {
   ACTOR_LABEL_OFFSET_Y,
   CHARACTER_ORIGIN_X,
   CHARACTER_ORIGIN_Y,
+  computeFloorShadowYSortDepth,
   computeIdleBreathingOffset,
   computeYSortDepth,
   drawEllipticalFloorShadow,
@@ -14,6 +15,7 @@ import type { FacingDirection } from '../topology/roomTopology';
 import type { AmbientNpcDefinition } from './studyCafeConfig';
 
 export interface NpcVisualParts {
+  shadow?: Phaser.GameObjects.Graphics;
   sprite?: Phaser.GameObjects.Sprite;
   apron?: Phaser.GameObjects.Graphics;
   label?: Phaser.GameObjects.Text;
@@ -29,6 +31,9 @@ export function createNpcVisualParts(
 ): NpcVisualParts {
   if (!scene) return {};
   const depth = computeYSortDepth(y);
+  const shadow = scene.add.graphics().setDepth(computeFloorShadowYSortDepth(y));
+  drawEllipticalFloorShadow(shadow, x, y);
+
   const sprite = scene.add.sprite(x, y, def.avatarKey, 0);
   sprite.setOrigin?.(CHARACTER_ORIGIN_X, CHARACTER_ORIGIN_Y);
   sprite.setDepth?.(depth);
@@ -49,7 +54,7 @@ export function createNpcVisualParts(
     })
     .setOrigin(0.5, isCounterStaff ? 0 : 1)
     .setDepth(depth + 2);
-  return { sprite, apron, label };
+  return { shadow, sprite, apron, label };
 }
 
 export function drawNpcApron(
@@ -63,8 +68,6 @@ export function drawNpcApron(
   const graphics = g as Partial<Phaser.GameObjects.Graphics> | undefined;
   if (!graphics) return;
   graphics.clear?.();
-
-  drawEllipticalFloorShadow(graphics, x, y);
 
   if (facingDir === 'UP') return;
   const shiftX = facingDir === 'LEFT' ? -2 : facingDir === 'RIGHT' ? 2 : 0;
@@ -92,6 +95,12 @@ export function syncNpcVisuals(
   const depth = computeYSortDepth(entry.pixelY);
   entry.depth = depth;
   const breathingOffset = computeIdleBreathingOffset(nowMs, phaseSeed, entry.isMoving);
+
+  if (entry.shadow) {
+    entry.shadow.clear?.();
+    entry.shadow.setDepth?.(computeFloorShadowYSortDepth(entry.pixelY));
+    drawEllipticalFloorShadow(entry.shadow, entry.pixelX, entry.pixelY);
+  }
 
   if (entry.sprite) {
     entry.sprite.setPosition(entry.pixelX, entry.pixelY + breathingOffset);

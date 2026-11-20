@@ -93,12 +93,22 @@ describe('P10-T2 Strict Authoritative Table Video Sync (#66)', () => {
     return rendered;
   }
 
-  it('intercepts iframe clicks for Table Members and toggles Table play/pause for Host/Co-Host', async () => {
+  it('intercepts iframe clicks for Table Members with a brief sync hint and toggles Table play/pause for Host/Co-Host', async () => {
     const { rerender } = await mountAndReady(false, true, 60);
 
     const memberShield = screen.getByTestId('yt-click-shield');
+    expect(screen.queryByTestId('yt-sync-hint')).not.toBeInTheDocument();
     fireEvent.click(memberShield);
     expect(sendVideoSync).not.toHaveBeenCalled();
+
+    const syncHint = screen.getByTestId('yt-sync-hint');
+    expect(syncHint).toHaveAttribute('role', 'status');
+    expect(syncHint).toHaveTextContent('Video đang đồng bộ theo bàn học');
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    expect(screen.queryByTestId('yt-sync-hint')).not.toBeInTheDocument();
 
     rerender(<SyncedYouTubePlayer tableId="table_01" canControl={true} />);
     const hostShield = screen.getByTestId('yt-click-shield');

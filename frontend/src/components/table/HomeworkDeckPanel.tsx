@@ -70,7 +70,7 @@ export function HomeworkDeckPanel({
       data-testid="homework-deck-panel"
       tabIndex={0}
       onPaste={handlePasteEvent}
-      className="flex flex-col gap-3 rounded-xl border border-border bg-[#16221E]/80 p-3 outline-none focus:border-primary/50"
+      className="flex flex-col gap-3 rounded-xl border border-border bg-card/80 p-3 outline-none focus:border-primary/50"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -78,7 +78,7 @@ export function HomeworkDeckPanel({
           <h3 className="text-sm font-semibold text-foreground">Bảng bài tập</h3>
           <span
             data-testid="homework-slide-counter"
-            className="rounded-md border border-border bg-[#0F1714] px-2 py-0.5 font-mono text-xs text-muted-foreground"
+            className="rounded-md border border-border bg-background px-2 py-0.5 font-mono text-xs text-muted-foreground"
           >
             {slides.length}/{MAX_HOMEWORK_SLIDES}
           </span>
@@ -97,7 +97,7 @@ export function HomeworkDeckPanel({
               onClick={() => cameraInputRef.current?.click()}
               className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isUploading ? 'Đang tải...' : <><CameraIcon className="h-4 w-4" aria-hidden="true" /><span className="sr-only">📷</span><span>Chụp bài tập</span></>}
+              {isUploading ? 'Đang tải...' : <><CameraIcon className="h-4 w-4" aria-hidden="true" /><span>Chụp bài tập</span></>}
             </button>
             <button
               type="button"
@@ -153,7 +153,7 @@ export function HomeworkDeckPanel({
           />
         </div>
       ) : (
-        <div data-testid="homework-empty-state" className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-[#0F1714]/40 px-4 text-center text-xs text-muted-foreground">
+        <div data-testid="homework-empty-state" className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-background/40 px-4 text-center text-xs text-muted-foreground">
           {canControl
             ? clearView
               ? 'Chưa có trang bài tập nào. Chụp ảnh bài tập, tải ảnh (.jpg, .png, .webp) hoặc nhấn Ctrl + V để dán.'

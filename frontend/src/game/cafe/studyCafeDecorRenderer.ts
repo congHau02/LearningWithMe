@@ -100,9 +100,9 @@ export function renderStudyCafeDecor(scene: Phaser.Scene, topology: RoomTopology
     const cWidth = (maxX - minX + 1) * ts;
 
     // 3/4 mahogany bar top + slate front paneling
-    cg.fillStyle?.(0x4a2e1b, 0.96);
+    cg.fillStyle?.(BOTANICAL_2D_SCENE.furniture.woodDark, 0.96);
     cg.fillRoundedRect?.(cLeft + 1, cTop + 2, cWidth - 2, ts - 3, 5);
-    cg.fillStyle?.(0x7c4d2b, 0.98);
+    cg.fillStyle?.(BOTANICAL_2D_SCENE.furniture.woodWarm, 0.98);
     cg.fillRoundedRect?.(cLeft + 2, cTop + 2, cWidth - 4, 13, 3);
 
     // Espresso machine at (16..17, 12) with portafilter & warm amber indicator
