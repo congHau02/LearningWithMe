@@ -6,6 +6,8 @@ import { AmbientNpcManager } from '../game/cafe/AmbientNpcManager';
 import { AMBIENT_NPC_DEFINITIONS } from '../game/cafe/studyCafeConfig';
 import { InputController } from '../game/controllers/InputController';
 import {
+  CAMERA_FOLLOW_DEADZONE,
+  CAMERA_FOLLOW_LERP,
   applyCameraViewportState,
   clampCameraZoom,
   computeDefaultCameraPreset,
@@ -41,14 +43,16 @@ describe('P8-T8 Slice 3: Mobile Camera Follow/Zoom & Compact TopBar', () => {
     expect(computeDefaultCameraPreset(1024)).toEqual({ zoom: 1, followEnabled: false });
 
     expect(clampCameraZoom(0.2)).toBe(1);
-    expect(clampCameraZoom(4.5)).toBe(2.5);
-    expect(clampCameraZoom(1.55)).toBe(1.55);
+    expect(clampCameraZoom(4.5)).toBe(3);
+    expect(clampCameraZoom(1.55)).toBe(2);
 
     const fakeCamera = {
+      roundPixels: false,
       setBounds: vi.fn(),
       setZoom: vi.fn(),
       startFollow: vi.fn(),
       stopFollow: vi.fn(),
+      setDeadzone: vi.fn(),
       centerOn: vi.fn(),
     };
     const fakeActor = { x: 100, y: 120 };
@@ -61,9 +65,19 @@ describe('P8-T8 Slice 3: Mobile Camera Follow/Zoom & Compact TopBar', () => {
       view: { zoom: 2, followEnabled: true },
     });
 
+    expect(fakeCamera.roundPixels).toBe(true);
     expect(fakeCamera.setBounds).toHaveBeenCalledWith(0, 0, 768, 512);
     expect(fakeCamera.setZoom).toHaveBeenCalledWith(2);
-    expect(fakeCamera.startFollow).toHaveBeenCalledWith(fakeActor, true, 0.14, 0.14);
+    expect(fakeCamera.startFollow).toHaveBeenCalledWith(
+      fakeActor,
+      true,
+      CAMERA_FOLLOW_LERP,
+      CAMERA_FOLLOW_LERP,
+    );
+    expect(fakeCamera.setDeadzone).toHaveBeenCalledWith(
+      CAMERA_FOLLOW_DEADZONE.width,
+      CAMERA_FOLLOW_DEADZONE.height,
+    );
 
     // Turning follow off while still zoomed (> 1x) stops follow without yanking camera to center
     applyCameraViewportState({
@@ -74,9 +88,10 @@ describe('P8-T8 Slice 3: Mobile Camera Follow/Zoom & Compact TopBar', () => {
       view: { zoom: 2, followEnabled: false },
     });
     expect(fakeCamera.stopFollow).toHaveBeenCalledTimes(1);
+    expect(fakeCamera.setDeadzone).toHaveBeenLastCalledWith();
     expect(fakeCamera.centerOn).not.toHaveBeenCalled();
 
-    // At 1.0x unfollowed desktop view, camera centers the full room
+    // At 1× unfollowed desktop view, camera centers the full room
     applyCameraViewportState({
       camera: fakeCamera,
       target: fakeActor,
@@ -95,19 +110,19 @@ describe('P8-T8 Slice 3: Mobile Camera Follow/Zoom & Compact TopBar', () => {
 
     expect(useGameStore.getState().cameraZoom).toBe(2);
     expect(useGameStore.getState().cameraFollowEnabled).toBe(true);
-    expect(screen.getByTestId('camera-zoom-readout')).toHaveTextContent('2.0x');
+    expect(screen.getByTestId('camera-zoom-readout')).toHaveTextContent('2×');
     expect(screen.getByTestId('camera-follow-toggle-btn')).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.click(screen.getByTestId('camera-zoom-in-btn'));
-    expect(useGameStore.getState().cameraZoom).toBe(2.25);
-    expect(screen.getByTestId('camera-zoom-readout')).toHaveTextContent('2.25x');
+    expect(useGameStore.getState().cameraZoom).toBe(3);
+    expect(screen.getByTestId('camera-zoom-readout')).toHaveTextContent('3×');
 
     // Manual/wheel zoom override is preserved across resize
     act(() => {
       Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 1024 });
       window.dispatchEvent(new Event('resize'));
     });
-    expect(useGameStore.getState().cameraZoom).toBe(2.25);
+    expect(useGameStore.getState().cameraZoom).toBe(3);
 
     fireEvent.click(screen.getByTestId('camera-zoom-out-btn'));
     expect(useGameStore.getState().cameraZoom).toBe(2);

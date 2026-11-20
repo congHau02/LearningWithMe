@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { BOTANICAL_2D_SCENE } from '../../game/botanicalPalette';
 import { findVirtualDrink } from '../../game/cafe/studyCafeConfig';
+import { bootClassroomPhaserGame } from '../../game/graphics/bootClassroomGame';
 import { computeDefaultCameraPreset } from '../../game/scenes/classroomCameraController';
 import { MAIN_LIBRARY_TOPOLOGY } from '../../game/topology/roomTopology';
 import { useGameStore } from '../../stores/useGameStore';
+import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
 import { ClassroomTelemetryBar } from '../hud/ClassroomTelemetryBar';
 import { CoffeeIcon } from '../icons';
 import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 import { ClassroomCameraControls } from './ClassroomCameraControls';
+import { ClassroomGraphicsControl } from './ClassroomGraphicsControl';
 
 function canBootPhaserCanvas(): boolean {
   return (
@@ -23,6 +25,7 @@ export function ClassroomCanvas() {
   const pendingDrinkOrder = useGameStore((s) => s.pendingDrinkOrder);
   const openDrinkMenu = useGameStore((s) => s.openDrinkMenu);
   const setCameraView = useGameStore((s) => s.setCameraView);
+  const setPrefersReducedMotion = useStudyCafeDisplayStore((s) => s.setPrefersReducedMotion);
   const activeDrink = findVirtualDrink(selectedDrinkId);
   const pendingDrink = !activeDrink ? findVirtualDrink(pendingDrinkOrder?.drinkId) : null;
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
@@ -40,55 +43,24 @@ export function ClassroomCanvas() {
   }, [setCameraView]);
 
   useEffect(() => {
-    let isDisposed = false;
-    let destroyPhaserGame: (() => void) | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-
-    if (canBootPhaserCanvas() && canvasMountRef.current) {
-      const hostEl = canvasMountRef.current;
-      void Promise.all([
-        import('phaser'),
-        import('../../game/scenes/ClassroomScene'),
-      ]).then(([{ default: Phaser }, { ClassroomScene }]) => {
-        if (isDisposed || !canvasMountRef.current) return;
-        const scene = new ClassroomScene(MAIN_LIBRARY_TOPOLOGY);
-        const game = new Phaser.Game({
-          type: Phaser.CANVAS,
-          parent: hostEl,
-          width: MAIN_LIBRARY_TOPOLOGY.width * MAIN_LIBRARY_TOPOLOGY.tileSize,
-          height: MAIN_LIBRARY_TOPOLOGY.height * MAIN_LIBRARY_TOPOLOGY.tileSize,
-          scale: {
-            mode: Phaser.Scale.FIT,
-            autoCenter: Phaser.Scale.NO_CENTER,
-          },
-          backgroundColor: BOTANICAL_2D_SCENE.canvasBackground,
-          pixelArt: true,
-          scene: [scene],
-          fps: { target: 60, forceSetTimeOut: false },
-          audio: { noAudio: true },
-          banner: false,
-        });
-        setIsCanvasReady(true);
-        if (typeof ResizeObserver !== 'undefined') {
-          resizeObserver = new ResizeObserver(() => {
-            requestAnimationFrame(() => {
-              if (!isDisposed) game.scale.refresh();
-            });
-          });
-          resizeObserver.observe(hostEl);
-        }
-        destroyPhaserGame = () => {
-          resizeObserver?.disconnect();
-          game.destroy(true);
-        };
-      });
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const syncReducedMotion = () => setPrefersReducedMotion(mediaQuery.matches);
+    syncReducedMotion();
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncReducedMotion);
+      return () => mediaQuery.removeEventListener('change', syncReducedMotion);
     }
+    return undefined;
+  }, [setPrefersReducedMotion]);
 
-    return () => {
-      isDisposed = true;
-      resizeObserver?.disconnect();
-      destroyPhaserGame?.();
-    };
+  useEffect(() => {
+    if (!canBootPhaserCanvas() || !canvasMountRef.current) return undefined;
+    return bootClassroomPhaserGame({
+      parent: canvasMountRef.current,
+      topology: MAIN_LIBRARY_TOPOLOGY,
+      onReady: () => setIsCanvasReady(true),
+    });
   }, []);
 
   return (
@@ -110,6 +82,7 @@ export function ClassroomCanvas() {
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ClassroomGraphicsControl />
           <button
             type="button"
             data-testid="open-drink-menu-btn"
@@ -117,9 +90,13 @@ export function ClassroomCanvas() {
             className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-primary/40 bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-md transition hover:brightness-105 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:py-1"
           >
             {activeDrink ? (
-              <span data-testid="selected-drink-badge">{activeDrink.icon} {activeDrink.name}</span>
+              <span data-testid="selected-drink-badge">
+                {activeDrink.icon} {activeDrink.name}
+              </span>
             ) : pendingDrink ? (
-              <span data-testid="delivering-drink-badge">{pendingDrink.icon} Đang giao...</span>
+              <span data-testid="delivering-drink-badge">
+                {pendingDrink.icon} Đang giao...
+              </span>
             ) : (
               <>
                 <CoffeeIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -127,7 +104,7 @@ export function ClassroomCanvas() {
               </>
             )}
           </button>
-          <p className="hidden text-xs text-muted-foreground sm:block">
+          <p className="hidden text-xs text-muted-foreground lg:block">
             Dùng <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[11px]">WASD</kbd> / Mũi tên hoặc chạm bản đồ, ghế trống &amp; nhân viên quán.
           </p>
         </div>

@@ -135,7 +135,8 @@ export const useGameStore = create<GameState>((set, get) => {
     })),
   adjustCameraZoom: (delta) =>
     set((s) => {
-      const nextZoom = clampCameraZoom(s.cameraZoom + delta);
+      const step = delta === 0 ? 0 : Math.sign(delta) * Math.max(1, Math.round(Math.abs(delta)));
+      const nextZoom = clampCameraZoom(s.cameraZoom + step);
       const autoFollow = nextZoom > 1 && s.cameraZoom <= 1 ? true : s.cameraFollowEnabled;
       return { cameraZoom: nextZoom, cameraFollowEnabled: autoFollow, cameraManualOverride: true };
     }),

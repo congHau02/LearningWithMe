@@ -30,9 +30,9 @@ export function ClassroomCameraControls() {
       </button>
       <span
         data-testid="camera-zoom-readout"
-        className="min-w-9 text-center font-mono text-[11px] font-semibold text-foreground"
+        className="min-w-8 text-center font-mono text-[11px] font-semibold text-foreground"
       >
-        {Number.isInteger(cameraZoom) ? cameraZoom.toFixed(1) : cameraZoom}x
+        {cameraZoom}×
       </span>
       <button
         type="button"
