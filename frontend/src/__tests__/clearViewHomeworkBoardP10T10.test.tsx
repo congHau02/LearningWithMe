@@ -150,24 +150,30 @@ describe('P10-T10: Clear View homework board', () => {
     expect(screen.getByTestId('board-clear-slide-btn').textContent).toContain('Xóa trang');
   });
 
-  it('falls back to PEN when Clear View turns on with a hidden tool, preserves current color/size, and keeps ERASER/LASER', () => {
+  it('clears hidden tools to null when Clear View turns on, keeps null/color/size, and preserves ERASER/LASER', () => {
     if (typeof globalThis.PointerEvent === 'undefined') {
       (globalThis as unknown as { PointerEvent: typeof MouseEvent }).PointerEvent = MouseEvent;
     }
     seedTableWithSlides(true);
     const { rerender } = render(<HomeworkDeckPanel tableId="table-1" canControl={true} clearView={false} />);
 
+    // Turning on Clear View while no tool is active keeps no tool selected
+    rerender(<HomeworkDeckPanel tableId="table-1" canControl={true} clearView={true} />);
+    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('board-tool-ERASER')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('board-tool-LASER')).toHaveAttribute('aria-pressed', 'false');
+
     // Customize color & size and pick a tool hidden in Clear View (RECT)
+    rerender(<HomeworkDeckPanel tableId="table-1" canControl={true} clearView={false} />);
     fireEvent.click(screen.getByTestId('board-color-#38bdf8'));
     fireEvent.change(screen.getByTestId('board-size-select'), { target: { value: '12' } });
     fireEvent.click(screen.getByTestId('board-tool-RECT'));
     expect(screen.getByTestId('board-tool-RECT')).toHaveAttribute('aria-pressed', 'true');
 
-    // Switch Clear View ON -> falls back to PEN
+    // Switch Clear View ON -> hidden tool clears to null instead of forcing PEN
     rerender(<HomeworkDeckPanel tableId="table-1" canControl={true} clearView={true} />);
-    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'false');
 
-    // Drawing with PEN uses the preserved color (#38bdf8) and size (12)
     const canvas = screen.getByTestId('homework-annotation-canvas') as HTMLCanvasElement;
     vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
       left: 0,
@@ -180,6 +186,14 @@ describe('P10-T10: Clear View homework board', () => {
       y: 0,
       toJSON: () => ({}),
     });
+    fireEvent.pointerDown(canvas, { clientX: 40, clientY: 40, pointerId: 1 });
+    fireEvent.pointerMove(canvas, { clientX: 120, clientY: 80, pointerId: 1 });
+    fireEvent.pointerUp(canvas, { clientX: 120, clientY: 80, pointerId: 1 });
+    expect(sendBoardDraw).not.toHaveBeenCalled();
+
+    // Selecting PEN in Clear View uses the preserved color (#38bdf8) and size (12)
+    fireEvent.click(screen.getByTestId('board-tool-PEN'));
+    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'true');
     fireEvent.pointerDown(canvas, { clientX: 40, clientY: 40, pointerId: 1 });
     fireEvent.pointerMove(canvas, { clientX: 120, clientY: 80, pointerId: 1 });
     fireEvent.pointerUp(canvas, { clientX: 120, clientY: 80, pointerId: 1 });
@@ -196,6 +210,10 @@ describe('P10-T10: Clear View homework board', () => {
         }),
       }),
     );
+
+    // Clicking PEN again in Clear View toggles it off
+    fireEvent.click(screen.getByTestId('board-tool-PEN'));
+    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'false');
 
     // If LASER is selected in full view and Clear View turns on, it stays LASER
     rerender(<HomeworkDeckPanel tableId="table-1" canControl={true} clearView={false} />);
@@ -217,7 +235,7 @@ describe('P10-T10: Clear View homework board', () => {
     expect(screen.getByTestId('homework-annotation-canvas')).toBeInTheDocument();
   });
 
-  it('preserves color/size, falls back hidden tools to PEN, and keeps LASER when toggling Clear View in TableWorkspaceShell', () => {
+  it('preserves color/size, clears hidden tools to null, and keeps LASER when toggling Clear View in TableWorkspaceShell', () => {
     if (typeof globalThis.PointerEvent === 'undefined') {
       (globalThis as unknown as { PointerEvent: typeof MouseEvent }).PointerEvent = MouseEvent;
     }
@@ -243,17 +261,19 @@ describe('P10-T10: Clear View homework board', () => {
     fireEvent.change(screen.getByTestId('board-size-select'), { target: { value: '18' } });
     fireEvent.click(screen.getByTestId('board-tool-RECT'));
 
-    // Toggle Clear View ON -> remounts HomeworkDeckPanel in Clear View pane
+    // Toggle Clear View ON -> remounts HomeworkDeckPanel in Clear View pane with hidden tool cleared
     fireEvent.click(screen.getByTestId('clear-view-toggle-btn'));
     expect(screen.getByTestId('clear-view-toggle-btn')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByTestId('math-template-picker')).not.toBeInTheDocument();
-    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-label', 'Bút');
     expect(screen.getByTestId('board-clear-slide-btn')).toHaveAttribute('aria-label', 'Xóa trang');
     expect(screen.queryByTestId('board-tool-RECT')).not.toBeInTheDocument();
     expect(screen.queryByTestId('board-size-select')).not.toBeInTheDocument();
 
-    // Drawing in Clear View preserves the color (#22c55e) and size (18) chosen before toggling
+    // Selecting PEN and drawing in Clear View preserves the color (#22c55e) and size (18) chosen before toggling
+    fireEvent.click(screen.getByTestId('board-tool-PEN'));
+    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'true');
     const canvas = screen.getByTestId('homework-annotation-canvas') as HTMLCanvasElement;
     vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
       left: 0,

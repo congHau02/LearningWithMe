@@ -34,14 +34,14 @@ export function HomeworkDeckPanel({
   const setLineWidth = useTableStore((s) => s.setBoardLineWidth);
   const selfUserId = useAuthStore((s) => s.userId);
 
-  const shouldFallbackToPen = clearView && !CLEAR_VIEW_BOARD_TOOLS.has(tool);
-  const effectiveTool: BoardTool = shouldFallbackToPen ? 'PEN' : tool;
+  const shouldClearHiddenTool = clearView && tool !== null && !CLEAR_VIEW_BOARD_TOOLS.has(tool);
+  const effectiveTool: BoardTool | null = shouldClearHiddenTool ? null : tool;
 
   useEffect(() => {
-    if (shouldFallbackToPen) {
-      setTool('PEN');
+    if (shouldClearHiddenTool) {
+      setTool(null);
     }
-  }, [shouldFallbackToPen, setTool]);
+  }, [shouldClearHiddenTool, setTool]);
 
   const activeSlide = activeSlideId ? (slides.find((s) => s.imageId === activeSlideId) ?? null) : null;
   const isDeckFull = slides.length >= MAX_HOMEWORK_SLIDES;

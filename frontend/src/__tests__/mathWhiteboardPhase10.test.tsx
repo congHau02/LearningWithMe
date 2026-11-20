@@ -277,6 +277,8 @@ describe('P10-T3: Math Whiteboard Upgrade (Templates, Geometry, LaTeX & Per-Auth
   it('enforces Botanical Night Studio active tool contrast (#E5A93C / #0F1714) and zero legacy slate/sky classes', () => {
     const { container } = render(<HomeworkDeckPanel tableId="table-1" canControl={true} />);
     const penBtn = screen.getByTestId('board-tool-PEN');
+    expect(penBtn).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(penBtn);
     expect(penBtn.className).toContain('bg-primary');
     expect(penBtn.className).toContain('text-primary-foreground');
     expect(penBtn.className).not.toContain('bg-primary/25');

@@ -14,7 +14,7 @@ interface HomeworkAnnotationCanvasProps {
   strokes: BoardStroke[];
   canControl: boolean;
   selfUserId?: string | null;
-  tool: BoardTool;
+  tool: BoardTool | null;
   color: string;
   lineWidth: number;
   onStrokeError?: (message: string | null) => void;
@@ -63,7 +63,8 @@ export function HomeworkAnnotationCanvas({
     onNewStrokeCommitted,
   });
 
-  const cursorClass = !canControl
+  const isToolActive = canControl && tool !== null;
+  const cursorClass = !isToolActive
     ? 'cursor-default'
     : tool === 'ERASER'
       ? 'cursor-cell'
@@ -106,7 +107,7 @@ export function HomeworkAnnotationCanvas({
           onPointerMove={handlePointerMove}
           onPointerUp={finishStroke}
           onPointerCancel={finishStroke}
-          className={`absolute inset-0 h-full w-full touch-none rounded ${cursorClass}`}
+          className={`absolute inset-0 h-full w-full rounded ${isToolActive ? 'touch-none ' : ''}${cursorClass}`}
         />
         <HomeworkLatexOverlay strokes={strokes} />
         <HomeworkLaserOverlay slideId={slideId} />

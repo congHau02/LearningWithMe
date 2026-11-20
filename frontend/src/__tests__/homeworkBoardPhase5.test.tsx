@@ -70,9 +70,106 @@ describe('HomeworkAnnotationCanvas & Board Toolbar (P5-T2)', () => {
     );
   });
 
+  it('starts with no tool selected, toggles active tool off on second click, and preserves pre-selected color/size', () => {
+    render(<HomeworkDeckPanel tableId="table-1" canControl={true} />);
+
+    const penBtn = screen.getByTestId('board-tool-PEN');
+    const eraserBtn = screen.getByTestId('board-tool-ERASER');
+    const laserBtn = screen.getByTestId('board-tool-LASER');
+    const canvas = screen.getByTestId('homework-annotation-canvas') as HTMLCanvasElement;
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 400,
+      height: 200,
+      right: 400,
+      bottom: 200,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    // Default state: no tool selected, default cursor, touch scrolling allowed, pointer drag does nothing
+    expect(penBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(eraserBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(laserBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(canvas.className).toContain('cursor-default');
+    expect(canvas.className).not.toContain('touch-none');
+
+    fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 40, clientY: 40 });
+    fireEvent.pointerMove(canvas, { pointerId: 1, clientX: 120, clientY: 80 });
+    fireEvent.pointerUp(canvas, { pointerId: 1, clientX: 120, clientY: 80 });
+    expect(sendBoardDraw).not.toHaveBeenCalled();
+
+    // Pre-selecting color and line width does not auto-enable PEN
+    fireEvent.click(screen.getByTestId('board-color-#38bdf8'));
+    fireEvent.change(screen.getByTestId('board-size-select'), { target: { value: '12' } });
+    expect(penBtn).toHaveAttribute('aria-pressed', 'false');
+
+    // Click PEN -> activates tool, locks touch scrolling for drawing, and uses pre-selected color/size
+    fireEvent.click(penBtn);
+    expect(penBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(canvas.className).toContain('cursor-crosshair');
+    expect(canvas.className).toContain('touch-none');
+
+    fireEvent.pointerDown(canvas, { pointerId: 2, clientX: 40, clientY: 40 });
+    fireEvent.pointerMove(canvas, { pointerId: 2, clientX: 120, clientY: 80 });
+    fireEvent.pointerUp(canvas, { pointerId: 2, clientX: 120, clientY: 80 });
+    expect(sendBoardDraw).toHaveBeenCalledTimes(1);
+    expect(sendBoardDraw).toHaveBeenLastCalledWith(
+      'table-1',
+      expect.objectContaining({
+        action: 'ADD_STROKE',
+        stroke: expect.objectContaining({ tool: 'PEN', color: '#38bdf8', lineWidth: 12 }),
+      }),
+    );
+
+    // Switching slides preserves actively chosen tool
+    act(() => {
+      useTableStore.getState().applyWorkspaceEvent(
+        {
+          type: 'HOMEWORK_SLIDE_SELECTED',
+          tableId: 'table-1',
+          actorUserId: 'host-1',
+          targetUserId: null,
+          requesterNickname: null,
+          action: null,
+          hostUserId: 'host-1',
+          coHostUserIds: [],
+          isFreeCollab: false,
+          activeSlideId: 'img-2',
+          timestampEpoch: 4000,
+        },
+        'host-1',
+      );
+    });
+    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'true');
+
+    // Clicking active tool again toggles it off -> back to view mode
+    sendBoardDraw.mockClear();
+    fireEvent.click(screen.getByTestId('board-tool-PEN'));
+    expect(screen.getByTestId('board-tool-PEN')).toHaveAttribute('aria-pressed', 'false');
+    expect(canvas.className).toContain('cursor-default');
+    expect(canvas.className).not.toContain('touch-none');
+
+    fireEvent.pointerDown(canvas, { pointerId: 3, clientX: 40, clientY: 40 });
+    fireEvent.pointerMove(canvas, { pointerId: 3, clientX: 120, clientY: 80 });
+    fireEvent.pointerUp(canvas, { pointerId: 3, clientX: 120, clientY: 80 });
+    expect(sendBoardDraw).not.toHaveBeenCalled();
+
+    // Also verifies toggling off another tool (LASER) stops emitting LASER_MOVE
+    fireEvent.click(laserBtn);
+    expect(laserBtn).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(laserBtn);
+    expect(laserBtn).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.pointerMove(canvas, { pointerId: 4, clientX: 100, clientY: 100 });
+    expect(sendBoardDraw).not.toHaveBeenCalled();
+  });
+
   it('draws PEN stroke with [0.0, 1.0] normalized coordinates, erases by strokeId, and clears slide', () => {
     render(<HomeworkDeckPanel tableId="table-1" canControl={true} />);
 
+    fireEvent.click(screen.getByTestId('board-tool-PEN'));
     const canvas = screen.getByTestId('homework-annotation-canvas') as HTMLCanvasElement;
     vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
       left: 100,

@@ -24,7 +24,7 @@ interface UseHomeworkCanvasOptions {
   strokes: BoardStroke[];
   canControl: boolean;
   selfUserId?: string | null;
-  tool: BoardTool;
+  tool: BoardTool | null;
   color: string;
   lineWidth: number;
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -53,7 +53,7 @@ export function useHomeworkCanvas({
   const draftStrokeRef = useRef<BoardStroke | null>(null);
   const [pendingText, setPendingText] = useState<PendingTextPlacement | null>(null);
   const [pendingLatex, setPendingLatex] = useState<PendingTextPlacement | null>(null);
-  const { emitLaserMove } = useLaserThrottle(tableId, slideId, `${slideId}:${tool}`);
+  const { emitLaserMove } = useLaserThrottle(tableId, slideId, `${slideId}:${tool ?? 'NONE'}`);
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -118,7 +118,7 @@ export function useHomeworkCanvas({
   };
 
   const handlePointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
-    if (!canControl) return;
+    if (!canControl || !tool) return;
     const point = getPointFromEvent(e);
     if (!point) return;
 
@@ -144,7 +144,7 @@ export function useHomeworkCanvas({
   };
 
   const handlePointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
-    if (!canControl) return;
+    if (!canControl || !tool) return;
     if (tool === 'LASER') {
       const point = getPointFromEvent(e);
       if (point) emitLaserMove(point);

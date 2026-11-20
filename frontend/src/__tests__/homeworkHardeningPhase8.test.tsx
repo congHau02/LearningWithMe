@@ -113,6 +113,7 @@ describe('P8-T4 Frontend Homework Slide Auth, Stroke Point Cap & Rate Limit UX',
   it('rejects strokes with more than 500 points on canvas commit and direct sendBoardDraw with structured error', () => {
     render(<HomeworkDeckPanel tableId="table_01" canControl={true} />);
 
+    fireEvent.click(screen.getByTestId('board-tool-PEN'));
     const canvas = screen.getByTestId('homework-annotation-canvas') as HTMLCanvasElement;
     vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
       left: 0,

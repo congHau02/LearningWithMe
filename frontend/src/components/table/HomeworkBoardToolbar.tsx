@@ -34,13 +34,13 @@ const COLOR_SWATCHES = ['#ef4444', '#38bdf8', '#22c55e', '#facc15', '#f8fafc'];
 const SIZE_OPTIONS = [3, 6, 12, 18];
 
 interface HomeworkBoardToolbarProps {
-  tool: BoardTool;
+  tool: BoardTool | null;
   color: string;
   lineWidth: number;
   clearView?: boolean;
   canUndo?: boolean;
   canRedo?: boolean;
-  onToolChange: (tool: BoardTool) => void;
+  onToolChange: (tool: BoardTool | null) => void;
   onColorChange: (color: string) => void;
   onLineWidthChange: (size: number) => void;
   onUndo?: () => void;
@@ -83,7 +83,7 @@ export function HomeworkBoardToolbar({
               aria-label={clearView ? item.label : undefined}
               title={clearView ? item.label : undefined}
               aria-pressed={active}
-              onClick={() => onToolChange(item.id)}
+              onClick={() => onToolChange(active ? null : item.id)}
               className={`inline-flex items-center justify-center rounded-md text-xs transition-botanical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 clearView
                   ? 'min-h-[44px] min-w-[44px]'

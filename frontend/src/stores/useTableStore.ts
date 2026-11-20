@@ -25,7 +25,7 @@ export interface TableWorkspaceState {
   laserPointers: Record<string, LaserPointerState>;
   isWorkspaceMinimized: boolean;
   unreadChatCount: number;
-  boardTool: BoardTool;
+  boardTool: BoardTool | null;
   boardColor: string;
   boardLineWidth: number;
   setTableState: (payload: { tableId: string; hostUserId: string | null; coHostUserIds?: string[]; isFreeCollab?: boolean; sosBanner?: string | null; sitStartTimeEpoch?: number | null; videoState?: Partial<VideoSyncState>; }) => void;
@@ -42,7 +42,7 @@ export interface TableWorkspaceState {
   updateMemberStudyGoal: (userId: string, studyGoal: string, studyGoalCompleted: boolean) => void;
   swapParticipantIdentity: (oldUserId: string, newUserId: string) => void;
   setWorkspaceMinimized: (minimized: boolean) => void;
-  setBoardTool: (tool: BoardTool) => void;
+  setBoardTool: (tool: BoardTool | null) => void;
   setBoardColor: (color: string) => void;
   setBoardLineWidth: (lineWidth: number) => void;
   leaveTable: () => void;
@@ -59,7 +59,7 @@ const INITIAL_TABLE_STATE = {
   laserPointers: {} as Record<string, LaserPointerState>,
   isWorkspaceMinimized: false,
   unreadChatCount: 0,
-  boardTool: 'PEN' as BoardTool,
+  boardTool: null as BoardTool | null,
   boardColor: '#ef4444',
   boardLineWidth: 3,
 };
