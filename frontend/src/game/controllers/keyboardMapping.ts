@@ -89,7 +89,11 @@ export class KeyboardHoldTracker {
     stepIntervalMs: number,
     overrideDirection?: FacingDirection | null,
   ): { active: boolean; steps: FacingDirection[] } {
-    const activeDir = overrideDirection ?? this.heldDirections.at(-1) ?? null;
+    const lastHeld =
+      this.heldDirections.length > 0
+        ? this.heldDirections[this.heldDirections.length - 1]
+        : null;
+    const activeDir = overrideDirection ?? lastHeld;
     if (!activeDir) return { active: false, steps: [] };
     this.holdAccumulatorMs += deltaMs;
     const steps: FacingDirection[] = [];

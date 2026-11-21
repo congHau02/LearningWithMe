@@ -92,7 +92,7 @@ export function App() {
   const handleLeaveSeat = () => requestLeaveSeat();
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
+    <div className="flex h-app-screen flex-col overflow-hidden bg-background text-foreground">
       <div
         ref={backgroundShellRef}
         aria-hidden={isAnyModalOpen || undefined}

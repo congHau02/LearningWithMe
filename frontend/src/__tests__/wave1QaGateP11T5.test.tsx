@@ -18,15 +18,20 @@ describe('P11-T5: Wave 1 QA Gate Integration Fixes (#81)', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses container-query 3:2 stage sizing and w-max projected badges for exact mobile alignment and edge-safe zoom labels', () => {
+  it('uses Safari 15-safe pixel-fitted 3:2 stage sizing and w-max projected badges for exact mobile alignment and edge-safe zoom labels', () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(360);
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(520);
     useAuthStore.setState({ userId: 'u-qa', nickname: 'Hậu QA' });
     render(<ClassroomCanvas />);
 
     const stage = screen.getByTestId('study-cafe-fitted-stage');
     expect(stage.className).toContain('aspect-[3/2]');
-    expect(stage.className).toContain('w-[min(100cqw,calc(100cqh*1.5))]');
     expect(stage.className).not.toContain('flex-1');
-    expect(stage.parentElement?.className).toContain('[container-type:size]');
+    expect(stage.className).not.toContain('cqw');
+    expect(stage.className).not.toContain('cqh');
+    expect(stage.parentElement?.className).not.toContain('[container-type:size]');
+    expect(stage.style.width).toBe('360px');
+    expect(stage.style.height).toBe('240px');
 
     const tablePlaque = screen.getByTestId('map-label-table-table_01');
     expect(tablePlaque.className).toContain('w-max');

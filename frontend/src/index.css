@@ -93,7 +93,35 @@
   }
 }
 
+/* Unlayered root viewport height fallback so Safari <= 15.3 (no @layer / 100dvh) still resolves 100vh.
+   shortcut: secondary modal max-h-[...dvh] classes assume Safari 15.4+ (iPhone 7 final iOS 15.8.3 supports dvh); add vh fallbacks if iOS <= 15.3 modals need clamping. */
+.h-app-screen {
+  height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  .h-app-screen {
+    height: 100dvh;
+  }
+}
+
 @layer utilities {
+  /* Frame-0 Zero-CLS baseline + progressive enhancement: modern browsers size 3:2 on first paint via @supports;
+     Safari <= 15.6 ignores @supports and uses useFittedStageSize inline pixel width/height instead of collapsing to 0x0. */
+  .study-cafe-stage {
+    width: 100%;
+  }
+
+  @supports (container-type: size) and (width: 1cqw) {
+    .study-cafe-viewport {
+      container-type: size;
+    }
+
+    .study-cafe-stage {
+      width: min(100cqw, calc(100cqh * 1.5));
+    }
+  }
+
   .ease-botanical {
     transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
   }

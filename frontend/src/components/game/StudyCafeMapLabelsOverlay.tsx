@@ -8,7 +8,9 @@ import {
   type CameraProjectionState,
   type StudyCafeProjectedLabelItem,
 } from '../../game/labels/studyCafeLabelProjection';
+import { buildProjectedLabelStyle } from '../../game/labels/projectedLabelStyle';
 import { MAIN_LIBRARY_TOPOLOGY } from '../../game/topology/roomTopology';
+import type { FittedStageSize } from '../../hooks/useFittedStageSize';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
@@ -53,7 +55,11 @@ const KIND_BADGE_CLASSES: Record<StudyCafeProjectedLabelItem['kind'], string> = 
  * Chat Bubbles, and SOS Banners. Never intercepts pointer clicks (pointer-events-none)
  * and automatically hides when Table Workspace covers the viewport.
  */
-export function StudyCafeMapLabelsOverlay() {
+export function StudyCafeMapLabelsOverlay({
+  stageSize = null,
+}: {
+  stageSize?: FittedStageSize | null;
+}) {
   const selfNickname = useAuthStore((s) => s.nickname);
   const selfUserId = useAuthStore((s) => s.userId);
   const studyGoal = useAuthStore((s) => s.studyGoal);
@@ -145,7 +151,7 @@ export function StudyCafeMapLabelsOverlay() {
       className={
         isWorkspaceCovered
           ? 'hidden'
-          : 'pointer-events-none absolute inset-0 z-[5] select-none overflow-hidden [container-type:size]'
+          : 'pointer-events-none absolute inset-0 z-[5] select-none overflow-hidden'
       }
     >
       {allLabels.map((item) => {
@@ -156,23 +162,22 @@ export function StudyCafeMapLabelsOverlay() {
             ? Math.min(98, Math.max(2, projected.leftPercent))
             : projected.leftPercent;
         const mobileEdgeAnchorClass = resolveMobileEdgeAnchorClass(item, clampedLeftPercent);
-        const anchorY = ORIGIN_Y_PERCENT[item.originY];
-        const positionTransform = `translate3d(${clampedLeftPercent}cqw, ${projected.topPercent}cqh, 0) translate(var(--label-anchor-x, -50%), ${anchorY})`;
-        const fullTransform =
-          item.scale !== 1 ? `${positionTransform} scale(${item.scale.toFixed(3)})` : positionTransform;
+        const labelStyle = buildProjectedLabelStyle({
+          leftPercent: clampedLeftPercent,
+          topPercent: projected.topPercent,
+          anchorY: ORIGIN_Y_PERCENT[item.originY],
+          scale: item.scale,
+          alpha: item.alpha,
+          stageSize,
+        });
 
         return (
           <div
             key={item.id}
             data-testid={item.testId}
             data-label-kind={item.kind}
-            style={{
-              left: 0,
-              top: 0,
-              transform: fullTransform,
-              opacity: item.alpha,
-            }}
-            className={`pointer-events-none absolute w-max whitespace-pre-line max-sm:max-w-[92cqw] ${mobileEdgeAnchorClass} ${KIND_BADGE_CLASSES[item.kind]}`}
+            style={labelStyle}
+            className={`pointer-events-none absolute w-max whitespace-pre-line max-sm:max-w-[92%] ${mobileEdgeAnchorClass} ${KIND_BADGE_CLASSES[item.kind]}`}
           >
             {item.mobileText ? (
               <>

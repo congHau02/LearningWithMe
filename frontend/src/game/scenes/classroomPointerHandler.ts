@@ -55,7 +55,8 @@ export function handleClassroomPointerDown(options: {
 
   const result = inputController.handleTileClick(tileX, tileY);
   if (result.moved) {
-    const dest = result.path.at(-1) ?? { tileX, tileY };
+    const dest =
+      result.path.length > 0 ? result.path[result.path.length - 1] : { tileX, tileY };
     onWalkableTileClick?.(dest);
   }
   return result.moved;

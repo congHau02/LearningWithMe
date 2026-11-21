@@ -3,6 +3,7 @@ import { findVirtualDrink } from '../../game/cafe/studyCafeConfig';
 import { bootClassroomPhaserGame } from '../../game/graphics/bootClassroomGame';
 import { computeDefaultCameraPreset } from '../../game/scenes/classroomCameraController';
 import { MAIN_LIBRARY_TOPOLOGY } from '../../game/topology/roomTopology';
+import { useFittedStageSize } from '../../hooks/useFittedStageSize';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
@@ -32,7 +33,9 @@ export function ClassroomCanvas() {
   const setPrefersReducedMotion = useStudyCafeDisplayStore((s) => s.setPrefersReducedMotion);
   const activeDrink = findVirtualDrink(selectedDrinkId);
   const pendingDrink = !activeDrink ? findVirtualDrink(pendingDrinkOrder?.drinkId) : null;
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
+  const stageSize = useFittedStageSize(viewportRef, MAIN_LIBRARY_TOPOLOGY.width / MAIN_LIBRARY_TOPOLOGY.height);
   const [isCanvasReady, setIsCanvasReady] = useState(false);
 
   useEffect(() => {
@@ -80,10 +83,14 @@ export function ClassroomCanvas() {
       outerClassName="flex min-h-0 w-full flex-1 flex-col"
       innerClassName="flex min-h-0 flex-1 flex-col items-center justify-between gap-2 p-1.5 sm:p-2 text-center"
     >
-      <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-border/80 bg-[#0F1714] [container-type:size]">
+      <div
+        ref={viewportRef}
+        className="study-cafe-viewport relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-border/80 bg-[#0F1714]"
+      >
         <div
           data-testid="study-cafe-fitted-stage"
-          className="relative flex aspect-[3/2] w-[min(100cqw,calc(100cqh*1.5))] max-h-full max-w-full shrink-0 items-center justify-center overflow-hidden bg-[#0F1714]"
+          style={stageSize ? { width: `${stageSize.width}px`, height: `${stageSize.height}px` } : undefined}
+          className="study-cafe-stage relative flex aspect-[3/2] max-h-full max-w-full shrink-0 items-center justify-center overflow-hidden bg-[#0F1714]"
         >
           <div
             ref={canvasMountRef}
@@ -97,7 +104,7 @@ export function ClassroomCanvas() {
             ) : null}
           </div>
 
-          <StudyCafeMapLabelsOverlay />
+          <StudyCafeMapLabelsOverlay stageSize={stageSize} />
         </div>
 
         {/* Top-Left Floating HUD Cluster: Room Identity & Warm Amber Drink Menu CTA (WCAG AAA #E5A93C / #0F1714) */}

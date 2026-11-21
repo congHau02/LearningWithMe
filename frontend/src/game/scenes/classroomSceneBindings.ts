@@ -69,9 +69,12 @@ export function subscribeSceneChatBubbles(
   selfChatBubble?: ChatBubble,
   remotePlayersRenderer?: RemotePlayersRenderer,
 ): () => void {
-  let lastChatId = useGameStore.getState().recentMessages.at(-1)?.id;
+  const initialMessages = useGameStore.getState().recentMessages;
+  let lastChatId =
+    initialMessages.length > 0 ? initialMessages[initialMessages.length - 1].id : undefined;
   return useGameStore.subscribe((state) => {
-    const latest = state.recentMessages.at(-1);
+    const messages = state.recentMessages;
+    const latest = messages.length > 0 ? messages[messages.length - 1] : undefined;
     if (latest && latest.id !== lastChatId) {
       lastChatId = latest.id;
       const selfId = useAuthStore.getState().userId;

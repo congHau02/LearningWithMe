@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import {
+  detectConstrainedGraphicsDevice,
   detectPrefersReducedMotion,
   isValidAmbienceMood,
   isValidGraphicsQuality,
@@ -59,6 +60,7 @@ function deriveDisplayState(
     requestedQuality: prefs.qualityPreference,
     rendererKind,
     prefersReducedMotion,
+    preferLightweightDefault: detectConstrainedGraphicsDevice(),
   });
   return {
     ...prefs,

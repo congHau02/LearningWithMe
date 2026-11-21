@@ -59,6 +59,7 @@ export function createClassroomGameConfig<TScene>(options: {
     pixelArt: true,
     roundPixels: true,
     antialias: false,
+    disablePreFX: true,
     render: {
       pixelArt: true,
       roundPixels: true,
@@ -89,7 +90,6 @@ export function wireClassroomPhaserLifecycle(options: {
     }
   };
   syncRendererKind();
-  game.events.once(events.READY, syncRendererKind);
 
   const gpuSleepController = attachWorkspaceGpuSleep({
     sleepLoop: () => game.loop.sleep(),
@@ -126,12 +126,28 @@ export function wireClassroomPhaserLifecycle(options: {
     },
   });
 
+  const onGameReady = () => {
+    if (disposed) return;
+    syncRendererKind();
+    if (!gpuSleepController.isSleeping()) {
+      game.scale.refresh();
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => {
+          if (!disposed && !gpuSleepController.isSleeping()) {
+            game.scale.refresh();
+          }
+        });
+      }
+    }
+  };
+  game.events.once(events.READY, onGameReady);
+
   return {
     gpuSleepController,
     dispose: () => {
       if (disposed) return;
       disposed = true;
-      game.events.off(events.READY, syncRendererKind);
+      game.events.off(events.READY, onGameReady);
       gpuSleepController.dispose();
     },
   };

@@ -31,6 +31,7 @@ export interface GraphicsPolicyInput {
   requestedQuality: GraphicsQuality | null;
   rendererKind: RendererKind;
   prefersReducedMotion: boolean;
+  preferLightweightDefault?: boolean;
 }
 
 export interface ResolvedGraphicsPolicy {
@@ -67,6 +68,31 @@ export function detectPrefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+export function detectConstrainedGraphicsDevice(override?: {
+  userAgent?: string;
+  deviceMemory?: number;
+  maxTouchPoints?: number;
+}): boolean {
+  const nav =
+    typeof navigator !== 'undefined'
+      ? (navigator as Navigator & { deviceMemory?: number })
+      : undefined;
+  const userAgent = override?.userAgent ?? nav?.userAgent ?? '';
+  const deviceMemory = override?.deviceMemory ?? nav?.deviceMemory;
+  const maxTouchPoints = override?.maxTouchPoints ?? nav?.maxTouchPoints ?? 0;
+
+  // shortcut: UA/RAM heuristic covers iOS <= 15 (iPhone 7 maxes at iOS 15.8), touch Safari <= 15 Desktop Mode, and <= 2GB RAM; upgrade to WebGL GPU/context-loss probing if newer low-VRAM devices need auto-capping.
+  if (typeof deviceMemory === 'number' && deviceMemory > 0 && deviceMemory <= 2) {
+    return true;
+  }
+  const iosMatch = /(?:iPhone|iPad|iPod)[^)]*OS\s+(\d+)_/i.exec(userAgent);
+  if (iosMatch && Number(iosMatch[1]) <= 15) {
+    return true;
+  }
+  const safariMatch = /Version\/(\d+)(?:\.\d+)*\s+.*Safari\//i.exec(userAgent);
+  return Boolean(safariMatch && Number(safariMatch[1]) <= 15 && maxTouchPoints > 1);
+}
+
 export function suggestAmbienceMoodForTime(date: Date = new Date()): AmbienceMood {
   const hour = date.getHours();
   if (hour >= 6 && hour < 19) return 'warm_sunset';
@@ -75,14 +101,19 @@ export function suggestAmbienceMoodForTime(date: Date = new Date()): AmbienceMoo
 }
 
 export function resolveGraphicsPolicy(input: GraphicsPolicyInput): ResolvedGraphicsPolicy {
-  const { requestedQuality, rendererKind, prefersReducedMotion } = input;
+  const {
+    requestedQuality,
+    rendererKind,
+    prefersReducedMotion,
+    preferLightweightDefault = false,
+  } = input;
   const isWebGl = rendererKind === 'webgl';
 
   let effectiveQuality: GraphicsQuality;
   if (prefersReducedMotion) {
     effectiveQuality = 'low';
   } else if (requestedQuality === null) {
-    effectiveQuality = isWebGl ? 'high' : 'low';
+    effectiveQuality = isWebGl && !preferLightweightDefault ? 'high' : 'low';
   } else if (rendererKind === 'canvas' && requestedQuality === 'high') {
     effectiveQuality = 'medium';
   } else {

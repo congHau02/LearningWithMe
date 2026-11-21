@@ -35,19 +35,22 @@ describe('P11-T9: Wave 2 Final QA Gate — Zero-CLS Labels, Mobile Polish, Audit
     vi.restoreAllMocks();
   });
 
-  it('positions DOM map labels via GPU-composited translate3d(cqw, cqh, 0) inside a size container with edge-safe zone anchoring and compact mobile sizing', () => {
+  it('positions DOM map labels via GPU-composited pixel translate3d(px, px, 0) without container-query CSS, with edge-safe zone anchoring and compact mobile sizing', () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(360);
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(520);
     useAuthStore.setState({ userId: 'u-qa2', nickname: 'Hậu QA Wave 2' });
     render(<ClassroomCanvas />);
 
     const overlay = screen.getByTestId('study-cafe-dom-labels-overlay');
-    expect(overlay.className).toContain('[container-type:size]');
+    expect(overlay.className).not.toContain('[container-type:size]');
 
     const selfLabel = screen.getByTestId('map-label-self-player');
     expect(selfLabel.style.left).toBe('0px');
     expect(selfLabel.style.top).toBe('0px');
     expect(selfLabel.style.transform).toContain('translate3d(');
-    expect(selfLabel.style.transform).toContain('cqw');
-    expect(selfLabel.style.transform).toContain('cqh');
+    expect(selfLabel.style.transform).toContain('px,');
+    expect(selfLabel.style.transform).not.toContain('cqw');
+    expect(selfLabel.style.transform).not.toContain('cqh');
 
     // Compact mobile typography prevents Barista Minh & Thu ngân Linh collisions at 375px
     const baristaLabel = screen.getByTestId('map-label-npc-npc_barista');
