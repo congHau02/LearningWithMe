@@ -225,3 +225,26 @@ test('GitHub Actions workflows never reference secrets.* inside if: conditionals
   assert.match(backupWorkflow, /openssl enc -aes-256-cbc -pbkdf2/);
   assert.match(backupWorkflow, /rm -f "\$ARCHIVE"/);
 });
+
+test('backend/Dockerfile uses Google Maven Central mirror, warms compile POMs, and excludes test sources from image cache', () => {
+  const dockerfilePath = path.join(rootDir, 'backend/Dockerfile');
+  const dockerfile = fs.readFileSync(dockerfilePath, 'utf8');
+
+  assert.match(
+    dockerfile,
+    /https:\/\/maven-central\.storage-download\.googleapis\.com\/maven2\//,
+    'backend/Dockerfile must configure Google Maven Central mirror to avoid Maven Central 429 on Render shared builders',
+  );
+  assert.match(dockerfile, /<mirrorOf>external:\*<\/mirrorOf>/);
+  assert.match(
+    dockerfile,
+    /RUN mvn dependency:go-offline test-compile -Dmaven\.test\.skip=true -Djacoco\.skip=true -B/,
+    'backend/Dockerfile must resolve all BOM-managed POM descriptors in the cached dependency layer',
+  );
+  assert.match(
+    dockerfile,
+    /COPY backend\/src\/main \.\/src\/main/,
+    'backend/Dockerfile must copy only backend/src/main so test-only changes do not bust Render Docker layer cache',
+  );
+  assert.doesNotMatch(dockerfile, /COPY backend\/src \.\/src\b/);
+});
