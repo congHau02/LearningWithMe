@@ -234,7 +234,15 @@ class ProdProfileIntegrationTest {
         assertThat(((HikariDataSource) dataSource).getMaximumPoolSize()).isEqualTo(5);
         assertThat(redisProperties.getUsername()).isEmpty();
         assertThat(redisProperties.getSsl().isEnabled()).isFalse();
-        assertThat(environment.getProperty("server.port", Integer.class)).isEqualTo(8080);
+
+        StandardEnvironment defaultEnv = new StandardEnvironment();
+        defaultEnv.setActiveProfiles("prod");
+        ConfigDataEnvironmentPostProcessor.applyTo(
+                defaultEnv,
+                new DefaultResourceLoader(),
+                new DefaultBootstrapContext()
+        );
+        assertThat(defaultEnv.getProperty("server.port", Integer.class)).isEqualTo(8080);
 
         StandardEnvironment overrideEnv = new StandardEnvironment();
         overrideEnv.setActiveProfiles("prod");
