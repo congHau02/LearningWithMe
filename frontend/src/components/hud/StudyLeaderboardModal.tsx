@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
   fetchStudyLeaderboard,
   formatStudyDuration,
@@ -24,6 +25,7 @@ export function StudyLeaderboardModal({
   const [data, setData] = useState<StudyLeaderboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const dialogContainerRef = useRef<HTMLDivElement>(null);
 
   const loadLeaderboard = useCallback(async () => {
     setIsLoading(true);
@@ -48,12 +50,13 @@ export function StudyLeaderboardModal({
   }, [loadLeaderboard]);
 
   useEscapeToClose(onClose);
+  useFocusTrap(dialogContainerRef);
 
   const entries = data?.entries ?? [];
   const myEntry = data?.myEntry ?? null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+    <div ref={dialogContainerRef} className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
       <DoubleBezelCard
         role="dialog"
         aria-modal="true"
@@ -106,7 +109,7 @@ export function StudyLeaderboardModal({
               {errorMessage}
             </div>
           ) : entries.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-[#0F1714]/40 px-4 py-8 text-center text-xs text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-border bg-background/40 px-4 py-8 text-center text-xs text-muted-foreground">
               Chưa có thành viên chính thức nào trên bảng xếp hạng. Hãy nâng cấp tài khoản để ghi danh đầu tiên!
             </div>
           ) : (

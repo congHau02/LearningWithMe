@@ -95,7 +95,7 @@ export function HomeworkAnnotationCanvas({
         ) : (
           <div
             data-testid="homework-image-loading"
-            className="flex h-48 w-72 items-center justify-center rounded bg-[#16221E]/60 text-xs text-muted-foreground"
+            className="flex h-48 w-72 items-center justify-center rounded bg-card/60 text-xs text-muted-foreground"
           >
             Đang tải trang bài tập...
           </div>
@@ -135,7 +135,7 @@ export function HomeworkAnnotationCanvas({
               }
             }}
             onBlur={commitPendingText}
-            className="absolute z-10 min-w-32 -translate-y-1/2 rounded border border-primary bg-[#16221E]/95 px-2 py-0.5 text-xs text-foreground shadow-lg outline-none"
+            className="absolute z-10 min-w-32 -translate-y-1/2 rounded border border-primary bg-card/95 px-2 py-0.5 text-xs text-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         ) : null}
         {pendingLatex && canControl ? (

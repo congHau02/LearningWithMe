@@ -52,9 +52,9 @@ describe('P11-T9: Wave 2 Final QA Gate — Zero-CLS Labels, Mobile Polish, Audit
     expect(selfLabel.style.transform).not.toContain('cqw');
     expect(selfLabel.style.transform).not.toContain('cqh');
 
-    // Compact mobile typography prevents Barista Minh & Thu ngân Linh collisions at 375px
+    // Compact mobile typography keeps labels legible (>=10px) without Collisions at 375px
     const baristaLabel = screen.getByTestId('map-label-npc-npc_barista');
-    expect(baristaLabel.className).toContain('max-sm:text-[8px]');
+    expect(baristaLabel.className).toContain('max-sm:text-[10px]');
 
     // Right-edge Service Counter zone sign stays centered on desktop and shifts fully inward on mobile (<640px)
     const serviceCounterSign = screen.getByTestId('map-label-zone-service-counter');

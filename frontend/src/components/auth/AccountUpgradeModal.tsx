@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { UpgradeAccountResponse } from '../../services/authApi';
 import { XIcon } from '../icons';
 import { DoubleBezelCard } from '../ui/DoubleBezelCard';
@@ -17,20 +19,13 @@ export function AccountUpgradeModal({
   onUpgraded,
 }: AccountUpgradeModalProps) {
   const [activeTab, setActiveTab] = useState<UpgradeTab>('LOCAL');
+  const dialogContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  useEscapeToClose(onClose);
+  useFocusTrap(dialogContainerRef);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+    <div ref={dialogContainerRef} className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
       <DoubleBezelCard
         role="dialog"
         aria-modal="true"
@@ -67,7 +62,7 @@ export function AccountUpgradeModal({
         <div
           role="tablist"
           aria-label="Phương thức nâng cấp tài khoản"
-          className="mt-5 grid grid-cols-2 gap-2 rounded-xl border border-border bg-[#0F1714]/60 p-1"
+          className="mt-5 grid grid-cols-2 gap-2 rounded-xl border border-border bg-background/60 p-1"
         >
           <button
             type="button"

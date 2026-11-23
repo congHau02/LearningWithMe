@@ -89,6 +89,16 @@ test('backup-nightly workflow and backup/restore scripts exist and meet Phase 7 
   assert.match(k6Content, /stomp_broadcast_latency_ms/);
   assert.match(k6Content, /p\(95\)</);
 
+  const createContent = fs.readFileSync(createScript, 'utf8');
+  assert.match(createContent, /\bSCAN\b/);
+  assert.doesNotMatch(createContent, /KEYS['",\s]+\*/);
+  assert.match(createContent, /if raw then/);
+
+  const restoreContent = fs.readFileSync(restoreScript, 'utf8');
+  assert.match(restoreContent, /redis-cli.*-x\s+EVAL/);
+  assert.match(restoreContent, /BACKUP_ENCRYPTION_PASSPHRASE/);
+  assert.match(restoreContent, /openssl enc -d -aes-256-cbc -pbkdf2/);
+
   const bashBin = resolveBashExecutable();
   execFileSync(bashBin, ['-n', backupEnvScript]);
   execFileSync(bashBin, ['-n', createScript]);
@@ -211,4 +221,7 @@ test('GitHub Actions workflows never reference secrets.* inside if: conditionals
   assert.match(backupWorkflow, /::warning::/);
   assert.match(backupWorkflow, /steps\.create-backup\.outputs\.archive\s*!=\s*''/);
   assert.match(backupWorkflow, /BACKUP_S3_BUCKET/);
+  assert.match(backupWorkflow, /BACKUP_ENCRYPTION_PASSPHRASE/);
+  assert.match(backupWorkflow, /openssl enc -aes-256-cbc -pbkdf2/);
+  assert.match(backupWorkflow, /rm -f "\$ARCHIVE"/);
 });

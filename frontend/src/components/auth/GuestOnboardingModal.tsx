@@ -119,6 +119,11 @@ export function GuestOnboardingModal({
           </div>
         </div>
 
+        <div
+          role="tabpanel"
+          id={activeTab === 'GUEST' ? 'entry-panel-guest' : 'entry-panel-login'}
+          aria-labelledby={activeTab === 'GUEST' ? 'entry-tab-guest' : 'entry-tab-login'}
+        >
         {activeTab === 'GUEST' ? (
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-3.5 space-y-3.5">
             <AvatarPickerField
@@ -182,6 +187,7 @@ export function GuestOnboardingModal({
         ) : (
           <RegisteredLoginPanel isBackendWaiting={isBackendWaiting} />
         )}
+        </div>
       </DoubleBezelCard>
     </div>
   );

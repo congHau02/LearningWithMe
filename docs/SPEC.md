@@ -1,4 +1,4 @@
-# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (Phases 1 – 10)
+# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (Phases 1 – 11)
 
 ## Problem Statement
 
@@ -6,7 +6,7 @@ Người học trực tuyến (học sinh, sinh viên, người tự học) thư
 
 ## Solution
 
-Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **10 Phase (Vertical Slices)** và hệ ngôn ngữ thiết kế **Botanical Night Studio (`#57` / `ADR-0010`)**:
+Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **11 Phase (Vertical Slices)** và hệ ngôn ngữ thiết kế **Botanical Night Studio (`#57` / `ADR-0010` & `ADR-0013`)**:
 
 - **Phase 1 — Foundation, Docker Infra & Hybrid Auth**: Thiết lập nền tảng cơ sở dữ liệu bền vững (MySQL 8.0) và bộ nhớ trạng thái thời gian thực (Redis 7.x), cho phép người học bước ngay vào **Room** mặc định với tư cách **Guest** không cần đăng ký, và hỗ trợ **Account Upgrade** không gián đoạn lên **Registered User** để bảo toàn toàn bộ thời gian học.
 - **Phase 2 — 2D Classroom Engine & Character State Machine**: Xây dựng bản đồ **Room** 2D tương tác với tìm đường tự động $A^*$, máy trạng thái nhân vật 3 trạng thái bất biến (`FREE_ROAM` $\leftrightarrow$ `WALKING_TO_SEAT` $\leftrightarrow$ `SEATED`), quy tắc ưu tiên bàn phím tức thời và khóa di chuyển khi đang ngồi học.
@@ -19,6 +19,7 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 - **Phase 9 — UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening**: Kéo thả/hoán đổi bố cục Video & Bảng bài tập trong **Table Workspace** không làm reload YouTube iframe, chỉ báo Mic không giật (`CLS = 0`) kèm nút trạng thái cố định ở Header bàn, tinh gọn thanh `TopBar` về 1 hàng gọn gàng, thông báo đợi **Render** Cold Start kèm tự động ping lại `/api/v1/health`, nút chụp ảnh bài tập trực tiếp bằng camera điện thoại, nhân viên `Phục vụ An` tìm đường $A^*$ mang đồ uống tới chỗ người học (`Drink Delivery`), và sửa lỗi CI/CD + `backup-nightly.yml` + test phân mảnh **Room Shard**.
 - **UI Refactor (`#57` / `ADR-0010`) — Botanical Night Studio ("Rừng Đêm & Tập trung Sâu")**: Chuẩn hóa toàn bộ giao diện React HUD, các hộp thoại Modal, **Table Workspace** và ánh sáng đêm **Study Café** trên Phaser 3 qua một **Semantic Token Seam** dùng chung (`#0F1714` Deep Pine Night, `#16221E` Slate Leaf, `#243630` Luminous Border, `#E6ECE8` Morning Mist, `#8FA399` Muted Sage, `#E5A93C` Warm Amber với chữ `#0F1714` tương phản `8.74:1`, `#34D399` Bioluminescent Emerald), kiến trúc Double-Bezel + Static Glassmorphism, bộ `StudioIcons` SVG nét `1.5px` và cấm tuyệt đối lớp màu `slate-*`/`sky-*` thô trong UI chrome.
 - **Phase 10 — Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (ADR-0011 & ADR-0012, Bám sát Botanical Night Studio `#57`)**: Thanh toán toàn bộ nợ kỹ thuật Single-Node (Lua script nguyên tử cho toàn bộ Rate Limiters, hoàn tác nét vẽ theo người vẽ `Per-Author Undo/Redo`, chuẩn hóa MIME ảnh bài tập), khóa đồng bộ video YouTube tuyệt đối cho cả bàn qua `Iframe Click Shield` + `onStateChange` Guard + Heartbeat `3 giây` + thanh tua trực quan, bổ sung bộ công cụ Giải Toán chuyên sâu (Trang nháp Toán dựng sẵn, công cụ hình học & $\LaTeX$ **Stroke**, $\LaTeX$ trong **Table Chat** / **Room Chat**, **Math Scratchpad** đồng bộ và **Function Grapher** vẽ đồ thị $f(x)$ + máy tính giải tích/đại số), đại tu đồ họa 2D **Study Café** (nhân vật `32x48px` có bóng đổ, nội thất pixel-art có `Y-Sorting`, hiệu ứng mưa ngoài cửa sổ đồng bộ `BOTANICAL_2D_SCENE`), và nâng cấp **Ambient Soundscape** 5 kênh đa tầng (kèm giai điệu Lofi Piano) + **Study SFX**.
+- **Phase 11 — WebGL 2D Study Café Overhaul, Paper-Doll Pipeline & Accessibility/Performance Hardening (ADR-0013)**: Mở khóa WebGL (`Phaser.AUTO` với Canvas fallback, quản lý GPU sleep theo **Table Workspace** và hủy loop an toàn), **Ambience Mood** 3 chế độ dịu mắt với đèn bàn `Warm Amber` theo bàn `SEATED`, hệ thống hạt & Game Feel mượt (`1× / 2× / 3×` zoom), nhãn chiếu DOM hi-DPI tách khỏi `src/game/`, asset pixel-art atlas CC0-1.0 **Paper-Doll** đồng bộ chân dung React (`TopBar`, Onboarding, Tủ đồ), chuẩn hóa toàn bộ React UI sang semantic tokens (`@theme`) và gia cố truy cập bàn phím (`FocusTrap`, `useLayoutEffect` đồng bộ `inert`, `Escape`, vùng chạm di động $\ge 44\times 44\text{px}$).
 
 ## User Stories
 
@@ -216,6 +217,11 @@ type CharacterState = 'FREE_ROAM' | 'WALKING_TO_SEAT' | 'SEATED';
   - *Video*: The YouTube player is unmounted while in **Clear View**; on exit it remounts and resyncs to $T_{\text{current}}$ via the existing drift logic (muted-autoplay fallback applies).
   - *Layout & Controls*: Mobile stacks board (~60% height) above chat (~40%); desktop places board (2/3) beside chat (1/3). On mobile the header reads `[Mic] [Clear View toggle] [⋯]` with "Thu gọn" moved into the `⋯` collab menu; desktop keeps "Thu gọn" and adds the toggle beside it.
 
+### 11. Phase 11 — WebGL 2D Study Café Graphics, Paper-Doll Portraits & QA Hardening (`ADR-0013`)
+- **WebGL PostFX & GPU Lifecycle**: Boots Phaser 3.90 with `Phaser.AUTO` (WebGL with automatic Canvas fallback), respects `prefers-reduced-motion` and explicit **Graphics Quality** tiers (`low`, `medium`, `high`), sleeps render loop cleanly while expanded **Table Workspace** covers the canvas, and wakes sleeping loops before `destroy(true)` so Canvas/WebGL contexts never leak across session end.
+- **Hi-DPI DOM Projected Labels (`Canvas ↔ DOM Boundary`)**: Pure coordinate projection lives in `frontend/src/game/labels/studyCafeLabelProjection.ts` while React styling (`buildProjectedLabelStyle`) lives under `frontend/src/components/game/projectedLabelStyle.ts`, preserving strict `src/game/` isolation and guaranteeing sharp Vietnamese typography ($\ge 10\text{px}$ on mobile) without clipping.
+- **Paper-Doll Sprites & Semantic Token Cohesion**: Combines `CC0-1.0` `32×48px` pixel-art atlases (`SKIN`, `HAT`, `DESK_PET`, two-layer Y-sorted furniture) with shared portrait framing in React (`TopBar`, Onboarding, Character Customizer) and 100% `@theme` token adoption (`bg-background`, `bg-card`, `bg-primary` with WCAG AAA `#0F1714` ink).
+
 ## Testing Decisions
 
 ### Philosophy: External Behavior at the Highest Seams
@@ -252,7 +258,7 @@ Tests verify observable behavior across two primary seams without coupling to in
 
 ## Further Notes
 
-- Related Domain Documentation: `GLOSSARY.md` and `docs/adr/0001` through `docs/adr/0012`.
+- Related Domain Documentation: `GLOSSARY.md` and `docs/adr/0001` through `docs/adr/0013`.
 - Delivery Order:
   - **Phase 1**: Foundation, Docker Infra & Hybrid Auth
   - **Phase 2**: 2D Classroom Engine & Character State Machine (Local)
@@ -264,3 +270,4 @@ Tests verify observable behavior across two primary seams without coupling to in
   - **Phase 8**: Realtime Hardening, Study Café & Focus Motivation (depends on Phases 1–6)
   - **Phase 9**: UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening (depends on Phases 7–8)
   - **Phase 10**: Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (depends on Phases 8–9)
+  - **Phase 11**: WebGL 2D Study Café Overhaul, Paper-Doll Pipeline & Accessibility/Performance Hardening (depends on Phases 10 & `#57`)

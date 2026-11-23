@@ -58,7 +58,7 @@ export function GoogleUpgradePanel({ onSuccess }: GoogleUpgradePanelProps) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-[#0F1714]/70 p-3.5 text-xs leading-relaxed text-muted-foreground">
+      <div className="rounded-xl border border-border bg-background/70 p-3.5 text-xs leading-relaxed text-muted-foreground">
         Đăng nhập bằng tài khoản Google qua cửa sổ bật lên an toàn. Trình duyệt giữ nguyên kết nối phòng học và chỗ ngồi hiện tại.
       </div>
 

@@ -49,7 +49,7 @@ export function LeaderboardEntryRow({
   isSelf: boolean;
 }) {
   const rank = entry.rank ?? 0;
-  const podiumStyle = PODIUM_BADGES[rank]?.rowStyle ?? 'border-border bg-[#0F1714]/60';
+  const podiumStyle = PODIUM_BADGES[rank]?.rowStyle ?? 'border-border bg-background/60';
   const selfRing = isSelf ? 'ring-1 ring-primary/60' : '';
 
   return (

@@ -1,6 +1,6 @@
 server:
-  # Reverse proxy (Render / Caddy) terminates TLS and forwards X-Forwarded-For
-  forward-headers-strategy: framework
+  # Reverse proxy (Render / Caddy) terminates TLS and appends to X-Forwarded-For; Tomcat RemoteIpValve walks right-to-left across internalProxies so spoofed leftmost IPs cannot bypass AuthRateLimitInterceptor
+  forward-headers-strategy: native
   error:
     include-stacktrace: never
     include-message: never

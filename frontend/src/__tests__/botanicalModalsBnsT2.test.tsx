@@ -35,9 +35,9 @@ describe('BNS-T2: Botanical Night Onboarding, Account Upgrade & Study Café Moda
       expect(dialog).toHaveAttribute('data-slot', 'double-bezel-outer');
       expect(dialog.querySelector('[data-slot="double-bezel-inner"]')).toBeInTheDocument();
 
-      // Backdrop has #0F1714 Deep Pine Night tone
+      // Backdrop uses Deep Pine Night semantic token (bg-background/80)
       const backdrop = container.firstElementChild as HTMLElement;
-      expect(backdrop.className).toContain('bg-[#0F1714]/80');
+      expect(backdrop.className).toContain('bg-background/80');
 
       // Primary submit button uses Warm Amber (bg-primary) with Deep Pine ink (text-primary-foreground)
       const submitBtn = screen.getByRole('button', { name: /Vào phòng học ngay/i });
@@ -59,7 +59,7 @@ describe('BNS-T2: Botanical Night Onboarding, Account Upgrade & Study Café Moda
       expect(dialog.querySelector('[data-slot="double-bezel-inner"]')).toBeInTheDocument();
 
       const backdrop = container.firstElementChild as HTMLElement;
-      expect(backdrop.className).toContain('bg-[#0F1714]/80');
+      expect(backdrop.className).toContain('bg-background/80');
 
       const submitBtn = screen.getByRole('button', { name: /Hoàn tất nâng cấp/i });
       expect(submitBtn.className).toContain('bg-primary');
@@ -308,9 +308,9 @@ describe('BNS-T2: Botanical Night Onboarding, Account Upgrade & Study Café Moda
       expect(dialog).toHaveAttribute('data-slot', 'double-bezel-outer');
       expect(dialog.querySelector('[data-slot="double-bezel-inner"]')).toBeInTheDocument();
 
-      // Backdrop has #0F1714 glass backdrop, NOT slate-950
+      // Backdrop uses semantic Deep Pine glass backdrop (bg-background/80), NOT slate-950
       expect(container.innerHTML).not.toMatch(/slate-950/);
-      expect(container.firstElementChild?.className).toContain('bg-[#0F1714]/80');
+      expect(container.firstElementChild?.className).toContain('bg-background/80');
 
       // Buttons have >= 44x44px touch target (min-h-11)
       const cancelBtn = screen.getByTestId('cancel-leave-seat-btn');

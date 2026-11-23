@@ -24,7 +24,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends mysql-client redis-tools
 
-      - name: Create compressed MySQL + Redis backup archive
+      - name: Create encrypted MySQL + Redis backup archive
         id: create-backup
         env:
           SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
@@ -35,15 +35,24 @@ jobs:
           SPRING_DATA_REDIS_USERNAME: ${{ secrets.SPRING_DATA_REDIS_USERNAME }}
           SPRING_DATA_REDIS_PASSWORD: ${{ secrets.SPRING_DATA_REDIS_PASSWORD }}
           SPRING_DATA_REDIS_SSL_ENABLED: ${{ secrets.SPRING_DATA_REDIS_SSL_ENABLED }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
         run: |
           if [ -z "${SPRING_DATASOURCE_URL}" ] || [ -z "${SPRING_DATA_REDIS_HOST}" ]; then
             echo "::warning::MySQL or Redis backup secrets are not configured (SPRING_DATASOURCE_URL / SPRING_DATA_REDIS_HOST); skipping nightly backup."
             echo "archive=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if [ -z "${BACKUP_ENCRYPTION_PASSPHRASE}" ]; then
+            echo "::warning::BACKUP_ENCRYPTION_PASSPHRASE secret is not configured; skipping backup artifact upload so plaintext user PII/credentials are never exposed."
+            echo "archive=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           ARCHIVE="backups/backup-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
+          ENCRYPTED_ARCHIVE="${ARCHIVE}.enc"
           bash scripts/create-backup.sh "$ARCHIVE"
-          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+          openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:BACKUP_ENCRYPTION_PASSPHRASE -in "$ARCHIVE" -out "$ENCRYPTED_ARCHIVE"
+          rm -f "$ARCHIVE"
+          echo "archive=$ENCRYPTED_ARCHIVE" >> "$GITHUB_OUTPUT"
 
       - name: Upload backup archive to GitHub Actions Artifacts (7-day retention)
         if: ${{ steps.create-backup.outputs.archive != '' }}

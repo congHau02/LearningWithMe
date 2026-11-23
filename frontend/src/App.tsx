@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useLayoutEffect, useRef, useState } from 'react';
 import { ClassroomCanvas } from './components/game/ClassroomCanvas';
 import { AppModals } from './components/hud/AppModals';
 import { ReconnectingBanner } from './components/hud/ReconnectingBanner';
@@ -14,9 +14,7 @@ import { useGameStore } from './stores/useGameStore';
 import { useTableStore } from './stores/useTableStore';
 
 const TableWorkspaceShell = lazy(() =>
-  import('./components/table/TableWorkspaceShell').then((m) => ({
-    default: m.TableWorkspaceShell,
-  })),
+  import('./components/table/TableWorkspaceShell').then((m) => ({ default: m.TableWorkspaceShell })),
 );
 
 export function App() {
@@ -58,23 +56,30 @@ export function App() {
   const isExpandedWorkspace = isSeated && !isWorkspaceMinimized;
   const isTableHost = isSeated && Boolean(tableHostUserId && selfUserId && tableHostUserId === selfUserId);
 
-  const {
-    backendStatus,
-    showColdStartNotice,
-    coldStartElapsedSeconds,
-    retryHealthCheck,
-  } = useAppBootstrap();
+  const { backendStatus, showColdStartNotice, coldStartElapsedSeconds, retryHealthCheck } = useAppBootstrap();
   useRoomSync(backendStatus);
   useTableWorkspaceSync();
 
-  const hasOpenModal = isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen || isCustomizerOpen || isDrinkMenuOpen;
-  const isAnyModalOpen = !token || hasOpenModal || (isSeated && isLeaveConfirmOpen);
+  const hasOpenModal =
+    isStudySessionsOpen || isUpgradeModalOpen || isLeaderboardOpen || isCustomizerOpen || isDrinkMenuOpen || (isSeated && isLeaveConfirmOpen);
+  const isAnyModalOpen = !token || hasOpenModal;
   const backgroundShellRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const shell = backgroundShellRef.current as (HTMLDivElement & { inert?: boolean }) | null;
-    if (shell) {
-      shell.inert = isAnyModalOpen;
+    if (!shell) return;
+    if (isAnyModalOpen) {
+      const active = document.activeElement as HTMLElement | null;
+      if (active && shell.contains(active)) restoreFocusRef.current = active;
+      shell.inert = true;
+      return;
+    }
+    shell.inert = false;
+    const target = restoreFocusRef.current;
+    restoreFocusRef.current = null;
+    if (target?.isConnected && (!document.activeElement || document.activeElement === document.body || document.activeElement === document.documentElement)) {
+      target.focus();
     }
   }, [isAnyModalOpen]);
   const { handleUpdateStudyGoal, handleAccountUpgraded } = useAppHudEffects({
@@ -123,19 +128,6 @@ export function App() {
         onOpenCustomizer={token ? () => setIsCustomizerOpen(true) : undefined}
       />
 
-      {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
-      {connectionStatus === 'RECONNECTING' ? <ReconnectingBanner /> : null}
-      {connectionStatus === 'ERROR' && lastError?.code === 'WS_CONFIG_MISSING' ? (
-        <div role="alert" data-testid="connection-error-banner" className="border-b border-destructive/40 bg-destructive/15 px-4 py-1.5 text-center text-xs font-medium text-rose-300">{lastError.message}</div>
-      ) : null}
-      {token && showColdStartNotice && backendStatus !== 'UP' && connectionStatus !== 'REPLACED' ? (
-        <ServerWakeUpNotice
-          variant="banner"
-          elapsedSeconds={coldStartElapsedSeconds}
-          onRetry={retryHealthCheck}
-        />
-      ) : null}
-
       {toastMessage ? (
         <aside
           role="status"
@@ -148,6 +140,16 @@ export function App() {
       ) : null}
 
       <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex flex-col [&>*]:pointer-events-auto">
+          {connectionStatus === 'REPLACED' ? <SessionReplacedBanner /> : null}
+          {connectionStatus === 'RECONNECTING' ? <ReconnectingBanner /> : null}
+          {connectionStatus === 'ERROR' && lastError?.code === 'WS_CONFIG_MISSING' ? (
+            <div role="alert" data-testid="connection-error-banner" className="border-b border-destructive/40 bg-destructive/15 px-4 py-1.5 text-center text-xs font-medium text-rose-300">{lastError.message}</div>
+          ) : null}
+          {token && showColdStartNotice && backendStatus !== 'UP' && connectionStatus !== 'REPLACED' ? (
+            <ServerWakeUpNotice variant="banner" elapsedSeconds={coldStartElapsedSeconds} onRetry={retryHealthCheck} />
+          ) : null}
+        </div>
         <main className="relative flex min-h-0 flex-1 flex-col items-stretch justify-stretch overflow-hidden p-1.5 sm:p-2">
           <div
             className={`flex min-h-0 w-full flex-1 flex-col items-stretch justify-stretch${

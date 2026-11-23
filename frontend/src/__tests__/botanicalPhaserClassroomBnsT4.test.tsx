@@ -52,10 +52,10 @@ describe('BNS-T4: Phaser 2D Study Café Night Lighting, Overlays & Classroom Vie
       expect(inner.className).toContain('bg-card');
       expect(inner.className).toContain('border-border');
 
-      // Phaser canvas host has background #0F1714 (Deep Pine Night)
+      // Phaser canvas host uses Deep Pine Night semantic background token
       const canvasHost = screen.getByTestId('phaser-canvas-host');
       expect(canvasHost).toBeInTheDocument();
-      expect(canvasHost.className).toContain('bg-[#0F1714]');
+      expect(canvasHost.className).toContain('bg-background');
     });
 
     it('renders Warm Amber (#E5A93C) drink menu trigger with dark ink (#0F1714) and CoffeeIcon', () => {
@@ -103,10 +103,10 @@ describe('BNS-T4: Phaser 2D Study Café Night Lighting, Overlays & Classroom Vie
       fireEvent.click(zoomOutBtn);
       expect(useGameStore.getState().cameraZoom).toBe(initialZoom);
 
-      // Verify follow toggle and emerald styling (#34D399)
+      // Verify follow toggle and Botanical emerald styling (#34D399)
       expect(followBtn).toHaveAttribute('aria-pressed', 'true');
-      expect(followBtn.className).toContain('text-emerald-300');
-      expect(followBtn.className).toContain('bg-emerald-500/20');
+      expect(followBtn.className).toContain('text-botanical-emerald');
+      expect(followBtn.className).toContain('bg-botanical-emerald/20');
 
       fireEvent.click(followBtn);
       expect(useGameStore.getState().cameraFollowEnabled).toBe(false);

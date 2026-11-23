@@ -39,12 +39,22 @@ export const roleOf = (uid: string, hostId: string | null, coHosts: string[]) =>
 export function reduceRoomSeatEvent(s: TableStoreData, event: RoomEvent): Partial<TableStoreData> {
   if (event.type === 'PLAYER_UPDATED' && event.player && s.tableId) {
     const p = event.player;
-    if (!s.members.some((m) => m.userId === p.userId)) return s;
-    return {
-      members: s.members.map((m) =>
-        m.userId === p.userId
+    const prevId = event.previousUserId && event.previousUserId !== p.userId ? event.previousUserId : null;
+    const touchesTable =
+      s.members.some((m) => m.userId === p.userId || (prevId !== null && m.userId === prevId)) ||
+      (prevId !== null && (s.hostUserId === prevId || s.coHostUserIds.includes(prevId)));
+    if (!touchesTable) return s;
+
+    const nextHost = prevId && s.hostUserId === prevId ? p.userId : s.hostUserId;
+    const remappedCoHosts = s.coHostUserIds.map((id) => (prevId && id === prevId ? p.userId : id));
+    const nextCoHosts = Array.from(new Set(remappedCoHosts)).filter((id) => id !== nextHost);
+    const seenIds = new Set<string>();
+    const nextMembers = s.members
+      .map((m) =>
+        m.userId === p.userId || (prevId !== null && m.userId === prevId)
           ? {
               ...m,
+              userId: p.userId,
               nickname: p.nickname,
               avatarId: p.avatarId,
               hatId: p.hatId ?? m.hatId,
@@ -55,8 +65,15 @@ export function reduceRoomSeatEvent(s: TableStoreData, event: RoomEvent): Partia
                 p.studyGoalCompleted !== undefined ? p.studyGoalCompleted : m.studyGoalCompleted,
             }
           : m,
-      ),
-    };
+      )
+      .filter((m) => {
+        if (seenIds.has(m.userId)) return false;
+        seenIds.add(m.userId);
+        return true;
+      })
+      .map((m) => ({ ...m, tableRole: roleOf(m.userId, nextHost, nextCoHosts) }));
+
+    return { hostUserId: nextHost, coHostUserIds: nextCoHosts, members: nextMembers };
   }
   if (!s.tableId || event.tableId !== s.tableId) return s;
   const nextHost = event.hostUserId !== undefined ? event.hostUserId : s.hostUserId;

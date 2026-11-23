@@ -84,7 +84,7 @@ export function HomeworkLatexPopover({
             onConfirm();
           }
         }}
-        className="w-full rounded-lg border border-border bg-background px-2.5 py-2 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+        className="w-full rounded-lg border border-border bg-background px-2.5 py-2 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
 
       <div

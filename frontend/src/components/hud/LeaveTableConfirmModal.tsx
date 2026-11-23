@@ -1,3 +1,6 @@
+import { useRef } from 'react';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 
 interface LeaveTableConfirmModalProps {
@@ -13,19 +16,23 @@ export function LeaveTableConfirmModal({
   onConfirmLeave,
   onCancel,
 }: LeaveTableConfirmModalProps) {
+  const dialogContainerRef = useRef<HTMLDivElement>(null);
+  useEscapeToClose(onCancel);
+  useFocusTrap(dialogContainerRef);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+    <div ref={dialogContainerRef} className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
       <DoubleBezelCard
         role="dialog"
         aria-modal="true"
-        aria-label="Xác nhận rời bàn học"
+        aria-labelledby="leave-table-confirm-title"
         data-testid="leave-seat-confirm-dialog"
         className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto"
         innerClassName="p-5 sm:p-6"
       >
-        <h3 className="text-base font-semibold text-foreground">
+        <h2 id="leave-table-confirm-title" className="text-base font-semibold text-foreground">
           Xác nhận đứng dậy rời bàn?
-        </h3>
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Bạn đang ngồi tại{' '}
           <span className="font-mono font-semibold text-primary">

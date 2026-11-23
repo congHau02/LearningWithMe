@@ -55,7 +55,7 @@ export function ExistingLocalMergeForm({ onSuccess }: ExistingLocalMergeFormProp
           placeholder="banhoc@example.com"
           aria-invalid={Boolean(errors.email)}
           {...register('email')}
-          className="min-h-11 w-full rounded-xl border border-border bg-[#0F1714]/80 px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 w-full rounded-xl border border-border bg-background/80 px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         {errors.email ? (
           <p role="alert" className="text-xs font-medium text-rose-400">

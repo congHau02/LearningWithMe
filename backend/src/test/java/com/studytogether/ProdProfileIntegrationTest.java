@@ -30,6 +30,7 @@ import org.springframework.boot.logging.LoggingSystem;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -37,7 +38,11 @@ import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -51,7 +56,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("prod")
 @ExtendWith(OutputCaptureExtension.class)
@@ -94,6 +99,9 @@ class ProdProfileIntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
@@ -120,6 +128,7 @@ class ProdProfileIntegrationTest {
 
     @Test
     void forwardedHeaderResolvesClientIpUnderProdProfile() throws Exception {
+        assertThat(environment.getProperty("server.forward-headers-strategy")).isEqualTo("native");
         String payload = """
                 {
                   "nickname": "ProdLearner",
@@ -129,40 +138,32 @@ class ProdProfileIntegrationTest {
                 """;
 
         for (int i = 0; i < 10; i++) {
-            mockMvc.perform(post("/api/v1/auth/guest")
-                            .header("X-Forwarded-For", "203.0.113.5")
-                            .with(req -> {
-                                req.setRemoteAddr("10.0.0.1");
-                                return req;
-                            })
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(payload))
-                    .andExpect(status().isOk());
+            ResponseEntity<String> res = postGuestWithForwardedFor(payload, "203.0.113.5");
+            assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
 
-        // Same forwarded client IP via another proxy hop is rate-limited
-        mockMvc.perform(post("/api/v1/auth/guest")
-                        .header("X-Forwarded-For", "203.0.113.5")
-                        .with(req -> {
-                            req.setRemoteAddr("10.0.0.2");
-                            return req;
-                        })
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload))
-                .andExpect(status().isTooManyRequests())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.status").value(429));
+        // Spoofed leftmost IP cannot bypass rate limit because RemoteIpValve walks right-to-left
+        ResponseEntity<String> spoofedRes = postGuestWithForwardedFor(payload, "1.2.3.4, 203.0.113.5");
+        assertThat(spoofedRes.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(spoofedRes.getHeaders().getContentType()).isNotNull();
+        assertThat(spoofedRes.getHeaders().getContentType().isCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .isTrue();
+        assertThat(objectMapper.readTree(spoofedRes.getBody()).get("status").asInt()).isEqualTo(429);
 
-        // Different forwarded client IP behind same proxy is unaffected
-        mockMvc.perform(post("/api/v1/auth/guest")
-                        .header("X-Forwarded-For", "203.0.113.6")
-                        .with(req -> {
-                            req.setRemoteAddr("10.0.0.1");
-                            return req;
-                        })
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload))
-                .andExpect(status().isOk());
+        // Spoofed leftmost IP with trusted internal proxy hop still resolves to real client IP 203.0.113.5
+        ResponseEntity<String> proxyHopRes = postGuestWithForwardedFor(payload, "9.8.7.6, 203.0.113.5, 10.0.0.2");
+        assertThat(proxyHopRes.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+
+        // Different real client IP behind same spoofed leftmost header is unaffected
+        ResponseEntity<String> otherClientRes = postGuestWithForwardedFor(payload, "1.2.3.4, 203.0.113.6");
+        assertThat(otherClientRes.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    private ResponseEntity<String> postGuestWithForwardedFor(String payload, String forwardedFor) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Forwarded-For", forwardedFor);
+        return restTemplate.postForEntity("/api/v1/auth/guest", new HttpEntity<>(payload, headers), String.class);
     }
 
     @Test

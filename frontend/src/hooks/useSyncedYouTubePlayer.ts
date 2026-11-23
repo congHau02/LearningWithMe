@@ -14,6 +14,7 @@ export function useSyncedYouTubePlayer(videoState: VideoSyncState, volume: numbe
   const loadedVideoIdRef = useRef<string | null>(null);
   const hasStartedPlayingRef = useRef(false);
   const autoplayTimerRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
   const latestVideoStateRef = useRef(videoState);
   const volumeRef = useRef(volume);
   const isMutedRef = useRef(isMuted);
@@ -106,29 +107,30 @@ export function useSyncedYouTubePlayer(videoState: VideoSyncState, volume: numbe
     [clearAutoplayWatchdog, refreshMetrics, scheduleAutoplayWatchdog],
   );
 
+  const hasVideo = Boolean(videoState.videoId);
+
   useEffect(() => {
-    if (!videoState.videoId || !containerRef.current || playerRef.current) return;
-    let cancelled = false;
-    const initialVideoId = videoState.videoId;
+    const initialVideoId = latestVideoStateRef.current.videoId;
+    if (!hasVideo || !initialVideoId || !containerRef.current || playerRef.current) return;
     void loadYouTubeIframeApi().then((YT) => {
-      if (cancelled || !containerRef.current || playerRef.current) return;
-      loadedVideoIdRef.current = initialVideoId;
+      if (!isMountedRef.current || !latestVideoStateRef.current.videoId || !containerRef.current || playerRef.current) return;
+      loadedVideoIdRef.current = latestVideoStateRef.current.videoId;
       hasStartedPlayingRef.current = false;
       playerRef.current = new YT.Player(containerRef.current, {
         width: '100%',
         height: '100%',
-        videoId: initialVideoId,
+        videoId: latestVideoStateRef.current.videoId,
         playerVars: { controls: 0, disablekb: 1, modestbranding: 1, rel: 0, playsinline: 1 },
         events: {
           onReady: ({ target }) => {
-            if (cancelled) return;
+            if (!isMountedRef.current) return;
             playerReadyRef.current = true;
             target.setVolume(volumeRef.current);
             if (isMutedRef.current) target.mute();
             syncPlayerToState(target, latestVideoStateRef.current);
           },
           onStateChange: ({ data, target }) => {
-            if (cancelled || !playerReadyRef.current || !latestVideoStateRef.current.videoId) return;
+            if (!isMountedRef.current || !playerReadyRef.current || !latestVideoStateRef.current.videoId) return;
             const state = latestVideoStateRef.current;
             if (data === YT_PLAYER_STATE.PLAYING) {
               hasStartedPlayingRef.current = true;
@@ -149,10 +151,7 @@ export function useSyncedYouTubePlayer(videoState: VideoSyncState, volume: numbe
         },
       });
     });
-    return () => {
-      cancelled = true;
-    };
-  }, [videoState.videoId, clearAutoplayWatchdog, refreshMetrics, syncPlayerToState]);
+  }, [hasVideo, clearAutoplayWatchdog, refreshMetrics, syncPlayerToState]);
 
   useEffect(() => {
     if (playerRef.current && playerReadyRef.current && videoState.videoId) {
@@ -200,12 +199,16 @@ export function useSyncedYouTubePlayer(videoState: VideoSyncState, volume: numbe
     };
   }, [syncPlayerToState]);
 
-  useEffect(() => () => {
-    clearAutoplayWatchdog();
-    playerReadyRef.current = false;
-    loadedVideoIdRef.current = null;
-    playerRef.current?.destroy();
-    playerRef.current = null;
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      clearAutoplayWatchdog();
+      playerReadyRef.current = false;
+      loadedVideoIdRef.current = null;
+      playerRef.current?.destroy();
+      playerRef.current = null;
+    };
   }, [clearAutoplayWatchdog]);
 
   const getCurrentPlaybackSeconds = useCallback(

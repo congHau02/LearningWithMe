@@ -37,7 +37,7 @@ interface StudySessionRowProps {
 /** Single completed study session list item displayed inside {@link StudySessionsModal}. */
 export function StudySessionRow({ session }: StudySessionRowProps) {
   return (
-    <li className="flex items-center justify-between gap-3 rounded-xl border border-border bg-[#0F1714]/60 px-3.5 py-2.5 transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]">
+    <li className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/60 px-3.5 py-2.5 transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="truncate text-sm font-medium text-foreground">
           {session.studyGoal || 'Phiên học tập trung'}

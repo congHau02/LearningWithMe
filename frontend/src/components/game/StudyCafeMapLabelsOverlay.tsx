@@ -8,9 +8,9 @@ import {
   type CameraProjectionState,
   type StudyCafeProjectedLabelItem,
 } from '../../game/labels/studyCafeLabelProjection';
-import { buildProjectedLabelStyle } from '../../game/labels/projectedLabelStyle';
 import { MAIN_LIBRARY_TOPOLOGY } from '../../game/topology/roomTopology';
 import type { FittedStageSize } from '../../hooks/useFittedStageSize';
+import { buildProjectedLabelStyle } from './projectedLabelStyle';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useStudyCafeDisplayStore } from '../../stores/useStudyCafeDisplayStore';
@@ -34,19 +34,19 @@ function resolveMobileEdgeAnchorClass(item: StudyCafeProjectedLabelItem, leftPer
 
 const KIND_BADGE_CLASSES: Record<StudyCafeProjectedLabelItem['kind'], string> = {
   'table-plaque':
-    'rounded border border-border/90 bg-card/95 px-1.5 py-0.5 font-sans text-[10px] font-bold tracking-tight text-foreground shadow-sm max-sm:px-1 max-sm:py-0 max-sm:text-[8px] max-sm:leading-tight',
+    'rounded border border-border/90 bg-card/95 px-1.5 py-0.5 font-sans text-[10px] font-bold tracking-tight text-foreground shadow-sm max-sm:px-1 max-sm:py-0 max-sm:text-[10px] max-sm:leading-tight',
   'zone-sign':
-    'rounded-md border border-border/90 bg-card/95 px-2 py-0.5 font-sans text-[10px] font-semibold text-foreground shadow-sm max-sm:px-1.5 max-sm:py-0 max-sm:text-[8px] max-sm:leading-tight',
+    'rounded-md border border-border/90 bg-card/95 px-2 py-0.5 font-sans text-[10px] font-semibold text-foreground shadow-sm max-sm:px-1.5 max-sm:py-0 max-sm:text-[10px] max-sm:leading-tight',
   'self-player':
-    'rounded-md border border-primary/45 bg-card/95 px-2 py-0.5 text-center font-sans text-[11px] font-semibold leading-tight text-foreground shadow-md max-sm:px-1 max-sm:py-0 max-sm:text-[9px]',
+    'rounded-md border border-primary/45 bg-card/95 px-2 py-0.5 text-center font-sans text-[11px] font-semibold leading-tight text-foreground shadow-md max-sm:px-1 max-sm:py-0 max-sm:text-[10px] max-sm:leading-tight',
   'remote-player':
-    'rounded-md border border-border/90 bg-card/95 px-2 py-0.5 text-center font-sans text-[11px] font-medium leading-tight text-foreground shadow-md max-sm:px-1 max-sm:py-0 max-sm:text-[9px]',
+    'rounded-md border border-border/90 bg-card/95 px-2 py-0.5 text-center font-sans text-[11px] font-medium leading-tight text-foreground shadow-md max-sm:px-1 max-sm:py-0 max-sm:text-[10px] max-sm:leading-tight',
   'ambient-npc':
-    'rounded-md border border-border/85 bg-card/92 px-1.5 py-0.5 text-center font-sans text-[10px] font-semibold text-foreground shadow-sm max-sm:px-1 max-sm:py-0 max-sm:text-[8px] max-sm:leading-tight',
+    'rounded-md border border-border/85 bg-card/92 px-1.5 py-0.5 text-center font-sans text-[10px] font-semibold text-foreground shadow-sm max-sm:px-1 max-sm:py-0 max-sm:text-[10px] max-sm:leading-tight',
   'chat-bubble':
-    'max-w-[168px] rounded-lg border border-border bg-card/95 px-2.5 py-1 text-center font-sans text-[11px] font-medium leading-snug text-foreground shadow-lg max-sm:max-w-[132px] max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[9px]',
+    'max-w-[168px] rounded-lg border border-border bg-card/95 px-2.5 py-1 text-center font-sans text-[11px] font-medium leading-snug text-foreground shadow-lg max-sm:max-w-[132px] max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px] max-sm:leading-tight',
   'sos-banner':
-    'rounded-lg border border-primary/80 bg-card/95 px-2.5 py-1 text-center font-sans text-[11px] font-bold text-foreground shadow-lg ring-1 ring-primary/40 max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[9px]',
+    'rounded-lg border border-primary/80 bg-card/95 px-2.5 py-1 text-center font-sans text-[11px] font-bold text-foreground shadow-lg ring-1 ring-primary/40 max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px] max-sm:leading-tight',
 };
 
 /**

@@ -128,6 +128,10 @@ export function useRoomSync(backendStatus: BackendConnectionStatus = 'UP'): void
               sitStartTimeEpoch: selfPlayer.sitStartTimeEpoch ?? Date.now(),
             });
           } else {
+            const selfHoldsSeat = Boolean(selfUserId && Object.values(snapshot.seats).includes(selfUserId));
+            if (!selfHoldsSeat && useGameStore.getState().characterState === 'SEATED') {
+              useGameStore.getState().leaveSeat();
+            }
             useTableStore.getState().leaveTable();
             const auth = useAuthStore.getState();
             if (

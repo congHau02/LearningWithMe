@@ -70,7 +70,7 @@ export function HomeworkDeckPanel({
       data-testid="homework-deck-panel"
       tabIndex={0}
       onPaste={handlePasteEvent}
-      className="flex flex-col gap-3 rounded-xl border border-border bg-card/80 p-3 outline-none focus:border-primary/50"
+      className="flex flex-col gap-3 rounded-xl border border-border bg-card/80 p-3 focus:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">

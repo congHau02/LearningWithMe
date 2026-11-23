@@ -330,8 +330,8 @@ LearningWithMe/
 │   ├── restore-backup.sh               # Khôi phục bản sao lưu MySQL + Redis từ file .tar.gz
 │   └── k6-room-load.js                 # Kịch bản kiểm thử tải k6 (10Hz STOMP move + Room Chat)
 ├── docs/
-│   ├── SPEC.md                         # Đặc tả kỹ thuật tổng thể Phases 1 – 10 & UI Botanical Night Studio (#57)
-│   └── adr/                            # Architecture Decision Records (ADR-0001 .. ADR-0012)
+│   ├── SPEC.md                         # Đặc tả kỹ thuật tổng thể Phases 1 – 11 & UI Botanical Night Studio (#57)
+│   └── adr/                            # Architecture Decision Records (ADR-0001 .. ADR-0013)
 ├── shared/
 │   └── maps/
 │       └── main-library.json           # Bản đồ Tiled JSON dùng chung cho Phaser 3 & Backend
@@ -350,19 +350,26 @@ LearningWithMe/
 │   └── Dockerfile
 └── frontend/                           # React 18 + Vite 6 + TypeScript + TailwindCSS v4
     ├── src/
-    │   ├── game/                       # Logic Phaser 3 tách biệt hoàn toàn khỏi DOM + botanicalPalette.ts (ADR-0010)
+    │   ├── game/                       # Logic Phaser 3 tách biệt hoàn toàn khỏi DOM + botanicalPalette.ts (ADR-0010, ADR-0013)
+    │   │   ├── atlas/                  # Paper-doll frame descriptors & SVG/Canvas portrait sync
+    │   │   ├── cafe/                   # AmbientNpcManager & Study Café VFX
     │   │   ├── controllers/            # InputController, keyboardMapping
     │   │   ├── entities/               # PlayerSprite, RemotePlayersRenderer, ChatBubble, TableSosOverlay, Accessories
+    │   │   ├── fx/                     # StudyCafeJuiceCoordinator (tween, dust, hover glow)
+    │   │   ├── graphics/               # bootClassroomGame, graphicsQualityPolicy, workspaceGpuSleep
+    │   │   ├── labels/                 # Pure world->overlay projection math
+    │   │   ├── lighting/               # AmbienceMood lighting & PointLight pool
     │   │   ├── managers/               # SeatInteractionManager
     │   │   ├── pathfinding/            # GridPathfinder (EasyStar.js A*)
-    │   │   ├── scenes/                 # ClassroomScene, classroomMapRenderer
-    │   │   └── topology/               # roomTopology, tiledMapParser
+    │   │   ├── scenes/                 # ClassroomScene, classroomMapRenderer, cameraController
+    │   │   ├── topology/               # roomTopology, tiledMapParser
+    │   │   └── vfx/                    # Particle VFX & quality profiles
     │   ├── components/
     │   │   ├── auth/                   # GuestOnboardingModal, AccountUpgradeModal, RegisteredLoginPanel
-    │   │   ├── game/                   # ClassroomCanvas
+    │   │   ├── game/                   # ClassroomCanvas, StudyCafeMapLabelsOverlay, projectedLabelStyle
     │   │   ├── hud/                    # TopBar, RoomChatBox, StudyLeaderboardModal, StudySessionsModal, CharacterCustomizerModal
-    │   │   ├── table/                  # TableWorkspaceShell, SyncedYouTubePlayer, HomeworkAnnotationCanvas, VoiceChatBar...
-    │   │   └── ui/                     # StudioIcons (1.5px-stroke SVG kit — Ticket #57)
+    │   │   ├── icons/                  # StudioIcons (1.5px-stroke SVG kit — Ticket #57)
+    │   │   └── table/                  # TableWorkspaceShell, SyncedYouTubePlayer, HomeworkAnnotationCanvas, VoiceChatBar...
     │   ├── stores/                     # Zustand (useAuthStore, useGameStore, useTableStore, useVoiceStore)
     │   ├── hooks/                      # useAppBootstrap, useRoomSync, useTableWorkspaceSync, useStudyTimer, useTableVoiceChat...
     │   ├── services/                   # REST API clients, STOMP clients, WebRTC Mesh Manager, Audio Analyzer
@@ -387,7 +394,7 @@ docker compose up --build
 - **Backend API & Health Check:** `http://localhost:8080/api/v1/health`
 
 **Profile `prod` & Kiểm tra Redis AOF Persistence:**
-- Khi chạy thực tế (`SPRING_PROFILES_ACTIVE=prod`), Backend yêu cầu đủ biến môi trường bí mật trong `.env` (không fallback về giá trị dev), tin cậy `X-Forwarded-For` từ reverse proxy (`server.forward-headers-strategy: framework`), chỉ mở `/actuator/health`, ẩn stack trace khỏi `ProblemDetail`, xuất log dạng JSON (`logstash`), và giới hạn `10 requests/phút` theo IP cho `/api/v1/auth/{guest,login,upgrade}`.
+- Khi chạy thực tế (`SPRING_PROFILES_ACTIVE=prod`), Backend yêu cầu đủ biến môi trường bí mật trong `.env` (không fallback về giá trị dev), xử lý `X-Forwarded-For` qua Tomcat `RemoteIpValve` (`server.forward-headers-strategy: native` duyệt từ phải sang trái để chống giả mạo IP đầu chuỗi), chỉ mở `/actuator/health`, ẩn stack trace khỏi `ProblemDetail`, xuất log dạng JSON (`logstash`), và giới hạn `10 requests/phút` theo IP cho `/api/v1/auth/{guest,login,upgrade}`.
 - Service `redis` trong `docker-compose.yml` chạy với `--appendonly yes --appendfsync everysec` gắn volume `redis_data:/data`. Kiểm chứng thủ công: ghi phiên học tạm của Guest (`RPUSH guest:<id>:sessions ...`), chạy `docker compose restart redis` và xác nhận `LRANGE guest:<id>:sessions 0 -1` giữ nguyên dữ liệu sau khi container khởi động lại.
 
 ### 7.2. Chạy môi trường Phát triển & Kiểm thử (Local Dev & Tests)
@@ -433,14 +440,14 @@ Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](d
 ### 7.4. Sao lưu Đêm, Diễn tập Khôi phục (Restore Drill) & Kiểm thử Tải `k6`
 
 **1. Sao lưu tự động & thủ công (`MySQL + Redis`):**
-- Workflow [.github/workflows/backup-nightly.yml](.github/workflows/backup-nightly.yml) chạy tự động lúc `02:00` sáng (giờ Việt Nam, `19:00 UTC`) hàng đêm hoặc kích hoạt thủ công qua **`workflow_dispatch`**, gọi [scripts/create-backup.sh](scripts/create-backup.sh) để xuất `mysql.sql` (`mysqldump`) cùng toàn bộ khóa và TTL trên Redis (`redis-dump.tsv`), nén thành `.tar.gz` và lưu trữ trên GitHub Actions Artifacts với `retention-days: 7` (kèm tùy chọn đẩy lên S3/Cloudflare R2 nếu cấu hình `BACKUP_S3_BUCKET`).
+- Workflow [.github/workflows/backup-nightly.yml](.github/workflows/backup-nightly.yml) chạy tự động lúc `02:00` sáng (giờ Việt Nam, `19:00 UTC`) hàng đêm hoặc kích hoạt thủ công qua **`workflow_dispatch`**, gọi [scripts/create-backup.sh](scripts/create-backup.sh) để xuất `mysql.sql` (`mysqldump`) cùng toàn bộ khóa và TTL trên Redis qua `SCAN` không chặn (`redis-dump.tsv`), nén `.tar.gz` và **mã hóa AES-256-CBC (`PBKDF2`)** bằng `BACKUP_ENCRYPTION_PASSPHRASE` thành `.tar.gz.enc` trước khi tải lên GitHub Actions Artifacts (`retention-days: 7`) hoặc S3/Cloudflare R2 nếu cấu hình `BACKUP_S3_BUCKET`.
 - **Quy trình khôi phục (`Restore Procedure`):**
   ```bash
   # Tạo bản sao lưu thủ công
   ./scripts/create-backup.sh backups/manual-backup.tar.gz
 
-  # Khôi phục vào MySQL & Redis đích (--flush-redis để làm sạch Redis trước khi nạp)
-  ./scripts/restore-backup.sh backups/manual-backup.tar.gz --flush-redis
+  # Khôi phục vào MySQL & Redis đích (hỗ trợ cả .tar.gz và .tar.gz.enc qua BACKUP_ENCRYPTION_PASSPHRASE)
+  BACKUP_ENCRYPTION_PASSPHRASE="..." ./scripts/restore-backup.sh backups/manual-backup.tar.gz.enc --flush-redis
   ```
 
 **2. Kiểm thử tải thời gian thực với `k6` (`10Hz STOMP Movement + Room Chat`):**
@@ -457,7 +464,7 @@ Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](d
 
 ---
 
-## 8. TRẠNG THÁI TRIỂN KHAI (PHASES 1 – 9 & UI REFACTOR #57 COMPLETED, PHASE 10 SPECIFIED)
+## 8. TRẠNG THÁI TRIỂN KHAI (PHASES 1 – 11 & UI REFACTOR #57 COMPLETED)
 
 - [x] **Phase 1 — Foundation, Docker Infra & Hybrid Auth:** Docker Compose, Flyway migrations, Guest onboarding không rác DB, nâng cấp tài khoản không gián đoạn và hoán đổi định danh nguyên tử trên Redis.
 - [x] **Phase 2 — 2D Classroom Engine & Character State Machine:** Bản đồ Tiled JSON dùng chung, tìm đường $A^*$ (`EasyStar.js`), máy trạng thái `FREE_ROAM` $\leftrightarrow$ `WALKING_TO_SEAT` $\leftrightarrow$ `SEATED`, ưu tiên bàn phím tức thời và khóa di chuyển khi ngồi.
@@ -469,4 +476,5 @@ Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](d
 - [x] **Phase 8 — Realtime Hardening, Study Café & Focus Motivation:** Khóa trạng thái bàn & bầu Trưởng bàn nguyên tử, cô lập kênh STOMP theo `(roomId, tableId)` và tín hiệu Voice riêng tư (`ADR-0008`), xác thực tải ảnh bài tập & rate limit, nâng cấp **Study Café** với **Ambient NPCs** (`ADR-0009`), **Focus Cycle** đồng bộ (đã gỡ bỏ ở Phase 10), check-off **Study Goal**, **Study Streak**, **Ambient Soundscape**, thu gọn **Table Workspace** và tối ưu camera/HUD di động.
 - [x] **Phase 9 — UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening:** Kéo thả/hoán đổi bố cục Video & Bảng bài tập trong **Table Workspace**, chỉ báo Mic không giật (Zero-CLS) kèm điều khiển cố định ở Header bàn, tinh gọn `TopBar` một hàng, thông báo đợi **Render** Cold Start kèm tự động ping lại, nút chụp ảnh bài tập trực tiếp bằng camera điện thoại, nhân viên `Phục vụ An` tìm đường $A^*$ mang đồ uống tới chỗ người học (`Drink Delivery`), và sửa lỗi workflow CI/CD + `backup-nightly.yml` + test phân mảnh phòng.
 - [x] **UI Refactor (`#57` / `ADR-0010`) — Botanical Night Studio ("Rừng Đêm & Tập trung Sâu"):** Thiết lập Semantic Token Seam dùng chung giữa React HUD (`@theme` trong `index.css`) và Phaser 3 (`botanicalPalette.ts`), bảng màu `#0F1714` Deep Pine Night / `#16221E` Slate Leaf / `#243630` Luminous Border / `#E6ECE8` Morning Mist / `#8FA399` Muted Sage / `#E5A93C` Warm Amber (mực tối `#0F1714` đạt `8.74:1`) / `#34D399` Bioluminescent Emerald, kiến trúc Double-Bezel + Static Glassmorphism, bộ `StudioIcons` SVG `1.5px` và xóa sạch toàn bộ lớp màu `slate-*`/`sky-*` thô trên UI chrome.
-- [ ] **Phase 10 (`#64`..`#71`) — Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (Bám sát Botanical Night Studio `#57` & `ADR-0010`):** Thanh toán nợ kỹ thuật Single-Node (Lua Rate Limiters nguyên tử, `Per-Author Undo/Redo`, chuẩn hóa MIME ảnh bài tập), khóa đồng bộ video YouTube toàn bàn (`Iframe Click Shield`, `onStateChange` Guard, Heartbeat `3s`, thanh tua thời gian & Muted Autoplay fallback — `ADR-0011`), bộ công cụ Giải Toán (Trang nháp Toán dựng sẵn, hình học phẳng & $\LaTeX$ `Stroke`, $\LaTeX$ trong Chat, `Math Scratchpad` đồng bộ, `Function Grapher` vẽ đồ thị $f(x)$ & máy tính khoa học — `ADR-0012`), đại tu đồ họa 2D **Study Café** (nhân vật `32x48px` có bóng đổ, nội thất pixel-art có `Y-Sorting`, hiệu ứng mưa ngoài cửa sổ đồng bộ `BOTANICAL_2D_SCENE`) và nâng cấp **Ambient Soundscape** 5 kênh đa tầng (kèm Lofi Piano) + **Study SFX**.
+- [x] **Phase 10 (`#64`..`#71`) — Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (Bám sát Botanical Night Studio `#57` & `ADR-0010`):** Thanh toán nợ kỹ thuật Single-Node (Lua Rate Limiters nguyên tử, `Per-Author Undo/Redo`, chuẩn hóa MIME ảnh bài tập), khóa đồng bộ video YouTube toàn bàn (`Iframe Click Shield`, `onStateChange` Guard, Heartbeat `3s`, thanh tua thời gian & Muted Autoplay fallback — `ADR-0011`), bộ công cụ Giải Toán (Trang nháp Toán dựng sẵn, hình học phẳng & $\LaTeX$ `Stroke`, $\LaTeX$ trong Chat, `Math Scratchpad` đồng bộ, `Function Grapher` vẽ đồ thị $f(x)$ & máy tính khoa học — `ADR-0012`), đại tu đồ họa 2D **Study Café** (nhân vật `32x48px` có bóng đổ, nội thất pixel-art có `Y-Sorting`, hiệu ứng mưa ngoài cửa sổ đồng bộ `BOTANICAL_2D_SCENE`) và nâng cấp **Ambient Soundscape** 5 kênh đa tầng (kèm Lofi Piano) + **Study SFX**.
+- [x] **Phase 11 (`#75`..`#85` / `ADR-0013`) — WebGL 2D Study Café Overhaul, Paper-Doll Pipeline & Accessibility/Performance Hardening:** Mở khóa WebGL (`Phaser.AUTO` với Canvas fallback + GPU sleep khi mở Workspace + dọn dẹp vòng lặp an toàn khi đăng xuất/chuyển tài khoản), 3 chế độ **Ambience Mood** và đèn bàn `Warm Amber`, Particle VFX & Game Feel, nhãn chiếu DOM hi-DPI sắc nét (cô lập khỏi `src/game/`), tileset & Paper-doll pixel-art atlas CC0-1.0 (`32×48px`) đồng bộ chân dung React (`TopBar`, Onboarding, Tủ đồ), chuẩn hóa toàn bộ React UI sang `@theme` tokens (`bg-background`/`bg-card`/`bg-primary`), focus trap + `inert` đồng bộ cho mọi Modal và tối ưu LCP/CLS di động (`375px` & `320px`).

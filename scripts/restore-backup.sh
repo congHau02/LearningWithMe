@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Restores a compressed MySQL + Redis backup archive (.tar.gz) created by scripts/create-backup.sh.
+# Restores a MySQL + Redis backup archive (.tar.gz or encrypted .tar.gz.enc) created by scripts/create-backup.sh.
 #
 # Usage:
-#   ./scripts/restore-backup.sh <backup-archive.tar.gz> [--flush-redis]
+#   ./scripts/restore-backup.sh <backup-archive.tar.gz[.enc]> [--flush-redis]
 
 set -euo pipefail
 
@@ -33,7 +33,19 @@ cleanup() {
 }
 trap cleanup EXIT
 
-tar -xzf "$ARCHIVE_PATH" -C "$STAGE_DIR"
+TAR_INPUT="$ARCHIVE_PATH"
+if [[ "$ARCHIVE_PATH" == *.enc ]]; then
+  if [[ -z "${BACKUP_ENCRYPTION_PASSPHRASE:-}" ]]; then
+    echo "Error: BACKUP_ENCRYPTION_PASSPHRASE is required to decrypt '$ARCHIVE_PATH'" >&2
+    exit 1
+  fi
+  TAR_INPUT="${STAGE_DIR}/decrypted-backup.tar.gz"
+  echo "▸ Decrypting backup archive '$ARCHIVE_PATH'..."
+  openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
+    -in "$ARCHIVE_PATH" -out "$TAR_INPUT"
+fi
+
+tar -xzf "$TAR_INPUT" -C "$STAGE_DIR"
 
 if [[ ! -f "${STAGE_DIR}/mysql.sql" ]] || [[ ! -f "${STAGE_DIR}/redis-dump.tsv" ]]; then
   echo "Error: Archive '$ARCHIVE_PATH' is missing mysql.sql or redis-dump.tsv" >&2
@@ -56,7 +68,7 @@ if [[ "$FLUSH_REDIS" == "--flush-redis" ]]; then
 fi
 
 LUA_RESTORE_SCRIPT="
-local raw = string.gsub(ARGV[2], '..', function(cc) return string.char(tonumber(cc, 16)) end)
+local raw = string.gsub(ARGV[2], '%x%x', function(cc) return string.char(tonumber(cc, 16)) end)
 return redis.call('RESTORE', KEYS[1], tonumber(ARGV[1]), raw, 'REPLACE')
 "
 
@@ -65,7 +77,8 @@ RESTORED_KEYS=0
 while IFS=$'\t' read -r KEY PTTL HEX_DUMP || [[ -n "${KEY:-}" ]]; do
   [[ -z "$KEY" || -z "${HEX_DUMP:-}" ]] && continue
   HEX_DUMP="${HEX_DUMP%$'\r'}"
-  redis-cli "${REDIS_ARGS[@]}" EVAL "$LUA_RESTORE_SCRIPT" 1 "$KEY" "$PTTL" "$HEX_DUMP" >/dev/null
+  # Pass HEX_DUMP over stdin (-x) so large Redis values never hit OS argv length limits (E2BIG)
+  printf '%s' "$HEX_DUMP" | redis-cli "${REDIS_ARGS[@]}" -x EVAL "$LUA_RESTORE_SCRIPT" 1 "$KEY" "$PTTL" >/dev/null
   RESTORED_KEYS=$((RESTORED_KEYS + 1))
 done < "${STAGE_DIR}/redis-dump.tsv"
 

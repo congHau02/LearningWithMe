@@ -16,7 +16,7 @@ export function ClassroomCameraControls() {
     <div
       data-testid="camera-controls"
       aria-label="Điều khiển góc nhìn bản đồ"
-      className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-lg border border-border/80 bg-card/95 p-1 text-xs shadow-lg backdrop-blur-none"
+      className="absolute bottom-2 left-2 z-10 flex items-center gap-2 rounded-lg border border-border/80 bg-card/95 p-1 text-xs shadow-lg backdrop-blur-none sm:gap-1"
     >
       <button
         type="button"
@@ -53,7 +53,7 @@ export function ClassroomCameraControls() {
         onClick={() => toggleCameraFollow()}
         className={`ml-0.5 flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg border px-2.5 font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 sm:px-2 ${
           cameraFollowEnabled
-            ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300'
+            ? 'border-botanical-emerald/50 bg-botanical-emerald/20 text-botanical-emerald'
             : 'border-border/80 bg-secondary text-muted-foreground hover:text-foreground'
         }`}
       >

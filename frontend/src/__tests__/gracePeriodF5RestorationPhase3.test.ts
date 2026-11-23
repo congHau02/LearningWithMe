@@ -137,4 +137,43 @@ describe('P3-T4 Grace Period Watchdog, F5 Seat Restoration & Grace-Aware Success
 
     renderer.destroy();
   });
+
+  it('resets local SEATED state back to FREE_ROAM when reconnecting after the 30s grace period has expired', () => {
+    useGameStore.getState().confirmSeat('table_01', 'T1_S1', { x: 11, y: 3 }, 'UP');
+    expect(useGameStore.getState().characterState).toBe('SEATED');
+
+    useGameStore.getState().applyRoomSnapshot(
+      {
+        roomId: 'main-library',
+        capacityLimit: 50,
+        eventSeq: 99,
+        players: [
+          {
+            userId: 'self-host-1',
+            nickname: 'HeroHost',
+            avatarId: 'avatar_01',
+            role: 'GUEST',
+            state: 'FREE_ROAM',
+            x: 12,
+            y: 12,
+            facingDir: 'DOWN',
+            tableId: null,
+            seatId: null,
+            connected: true,
+            isMoving: false,
+          },
+        ],
+        seats: {},
+        tables: [],
+        recentMessages: [],
+      },
+      'self-host-1',
+    );
+
+    const next = useGameStore.getState();
+    expect(next.characterState).toBe('FREE_ROAM');
+    expect(next.currentTableId).toBeNull();
+    expect(next.currentSeatId).toBeNull();
+    expect(next.position).toEqual({ x: 12, y: 12 });
+  });
 });

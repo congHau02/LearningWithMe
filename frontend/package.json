@@ -14,7 +14,6 @@
   "dependencies": {
     "@stomp/stompjs": "^7.5.0",
     "@tailwindcss/vite": "^4.0.6",
-    "@tanstack/react-query": "^5.66.0",
     "easystarjs": "^0.4.4",
     "katex": "^0.19.1",
     "phaser": "^3.90.0",

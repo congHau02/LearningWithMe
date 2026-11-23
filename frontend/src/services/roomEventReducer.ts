@@ -113,6 +113,8 @@ export function reduceSnapshotState(
   fallbackCharacterState: 'FREE_ROAM' | 'WALKING_TO_SEAT' | 'SEATED',
 ) {
   const seated = resolveSelfSeatedRestoration(snapshot.players, selfUserId);
+  const selfPlayer = selfUserId ? snapshot.players.find((p) => p.userId === selfUserId) : undefined;
+  const selfHoldsSeat = Boolean(selfUserId && Object.values(snapshot.seats).includes(selfUserId));
   return {
     roomId: snapshot.roomId,
     roomCapacityLimit: snapshot.capacityLimit,
@@ -131,6 +133,21 @@ export function reduceSnapshotState(
           pathQueue: [],
           isMoving: false,
         }
-      : { characterState: fallbackCharacterState }),
+      : fallbackCharacterState === 'SEATED' && !selfHoldsSeat && selfPlayer !== undefined
+        ? {
+            characterState: 'FREE_ROAM' as const,
+            currentTableId: null,
+            currentSeatId: null,
+            targetTableId: null,
+            targetSeatId: null,
+            isPendingSeatConfirmation: false,
+            isPendingSeatLeave: false,
+            isLeaveConfirmOpen: false,
+            pathQueue: [],
+            isMoving: false,
+            position: { x: selfPlayer.x, y: selfPlayer.y },
+            facingDir: selfPlayer.facingDir,
+          }
+        : { characterState: fallbackCharacterState }),
   };
 }

@@ -53,7 +53,7 @@ export function OnboardingTextField({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         {...registration}
-        className="min-h-11 w-full rounded-xl border border-border bg-[#0F1714]/80 px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="min-h-11 w-full rounded-xl border border-border bg-background/80 px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
       {error ? (
         <p id={errorId} role="alert" className="text-xs font-medium text-rose-400">

@@ -83,7 +83,7 @@ export function TableWorkspaceHeader({
 
   return (
     <header
-      className={`relative z-20 flex shrink-0 items-center justify-between border-b border-border bg-[#16221E]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${
+      className={`relative z-20 flex shrink-0 items-center justify-between border-b border-border bg-card/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${
         isMobile ? 'flex-nowrap gap-2 px-2.5 py-2' : 'flex-wrap gap-2.5 px-4 py-3'
       }`}
     >

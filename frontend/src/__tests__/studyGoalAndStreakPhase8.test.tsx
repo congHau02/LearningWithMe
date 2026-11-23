@@ -180,9 +180,10 @@ describe('P8-T7 Live Study Goal check-off & consecutive Study Streak tracking', 
     });
     expect(useGameStore.getState().characterState).toBe('SEATED');
 
-    // Table member list also reflects completed badge
+    // Table member list also reflects completed SVG CheckIcon badge
     expect(await screen.findByTestId(`member-goal-${userId}`, {}, { timeout: 4000 })).toHaveTextContent('Giải xong đề Toán');
-    expect(await screen.findByTestId(`member-goal-completed-${userId}`, {}, { timeout: 4000 })).toHaveTextContent('✅');
+    const selfCompletedBadge = await screen.findByTestId(`member-goal-completed-${userId}`, {}, { timeout: 4000 });
+    expect(selfCompletedBadge.querySelector('svg')).toBeInTheDocument();
   });
 
   it('syncs PLAYER_UPDATED goal check-off into TableMembersPanel and overhead Room labels', () => {
@@ -258,7 +259,9 @@ describe('P8-T7 Live Study Goal check-off & consecutive Study Streak tracking', 
         onAction={vi.fn()}
       />,
     );
-    expect(screen.getByTestId('member-goal-completed-peer-1')).toHaveTextContent('✅');
+    const peerCompletedBadge = screen.getByTestId('member-goal-completed-peer-1');
+    expect(peerCompletedBadge).toBeInTheDocument();
+    expect(peerCompletedBadge.querySelector('svg')).toBeInTheDocument();
 
     expect(
       formatSelfCharacterLabel({
@@ -388,7 +391,7 @@ describe('P8-T7 Live Study Goal check-off & consecutive Study Streak tracking', 
     fireEvent.click(screen.getByTestId('study-minutes-badge'));
     const statsDialog = await screen.findByRole('dialog', { name: 'Lịch sử Phiên học' });
     await waitFor(() => {
-      expect(within(statsDialog).getByTestId('study-sessions-streak')).toHaveTextContent('🔥 5 ngày');
+      expect(within(statsDialog).getByTestId('study-sessions-streak')).toHaveTextContent('5 ngày');
     });
     fireEvent.click(within(statsDialog).getByRole('button', { name: 'Đóng' }));
 

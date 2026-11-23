@@ -105,7 +105,7 @@ export function FunctionGrapherCard({ tableId, canControl, onSwitchToBoard }: Fu
       <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
         {slots.map((slot) => (
           <div key={slot.id} className="flex flex-col gap-1">
-            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-2 py-1 focus-within:border-primary">
+            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-2 py-1 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: slot.color }} aria-hidden="true" />
               <label htmlFor={`graph-fn-${slot.id}`} className="shrink-0 font-mono text-xs font-semibold" style={{ color: slot.color }}>
                 {slot.label}=

@@ -51,29 +51,59 @@ MYSQLDUMP_ARGS+=("${MYSQL_SSL_ARGS[@]}")
 echo "▸ Exporting MySQL database '${MYSQL_DATABASE}' from ${MYSQL_HOST}:${MYSQL_PORT}..."
 MYSQL_PWD="$MYSQL_PASSWORD" mysqldump "${MYSQLDUMP_ARGS[@]}" "$MYSQL_DATABASE" > "${STAGE_DIR}/mysql.sql"
 
-# 2. Export Redis keys + TTLs via binary-safe hex DUMP (works on Redis Cloud Free & Docker Redis)
+# 2. Export Redis keys + TTLs via batched SCAN + safe binary-safe hex DUMP (non-blocking on live Redis)
 build_redis_cli_args
 
 LUA_EXPORT_SCRIPT="
-local keys = redis.call('KEYS', '*')
-table.sort(keys)
 local lines = {}
-for _, k in ipairs(keys) do
-  local pttl = redis.call('PTTL', k)
-  if pttl < 0 then pttl = 0 end
+for _, k in ipairs(KEYS) do
   local raw = redis.call('DUMP', k)
-  local hex = {}
-  for i = 1, #raw do
-    hex[i] = string.format('%02x', string.byte(raw, i))
+  if raw then
+    local pttl = redis.call('PTTL', k)
+    if pttl < 0 then pttl = 0 end
+    local hex = {}
+    for i = 1, #raw do
+      hex[i] = string.format('%02x', string.byte(raw, i))
+    end
+    table.insert(lines, k .. '\t' .. tostring(pttl) .. '\t' .. table.concat(hex))
   end
-  table.insert(lines, k .. '\t' .. tostring(pttl) .. '\t' .. table.concat(hex))
 end
 return table.concat(lines, '\n')
 "
 
 echo "▸ Exporting Redis snapshot from ${REDIS_HOST}:${REDIS_PORT}..."
-redis-cli "${REDIS_ARGS[@]}" --raw EVAL "$LUA_EXPORT_SCRIPT" 0 > "${STAGE_DIR}/redis-dump.tsv"
-sed -i '/^$/d' "${STAGE_DIR}/redis-dump.tsv" 2>/dev/null || true
+: > "${STAGE_DIR}/redis-keys-raw.txt"
+CURSOR="0"
+while :; do
+  SCAN_OUT="$(redis-cli "${REDIS_ARGS[@]}" --raw SCAN "$CURSOR" COUNT 200)"
+  CURSOR="$(printf '%s\n' "$SCAN_OUT" | head -n 1 | tr -d '\r')"
+  printf '%s\n' "$SCAN_OUT" | tail -n +2 | sed '/^$/d' >> "${STAGE_DIR}/redis-keys-raw.txt"
+  [[ -z "$CURSOR" || "$CURSOR" == "0" ]] && break
+done
+sort -u "${STAGE_DIR}/redis-keys-raw.txt" > "${STAGE_DIR}/redis-keys.txt"
+rm -f "${STAGE_DIR}/redis-keys-raw.txt"
+
+: > "${STAGE_DIR}/redis-dump.tsv"
+BATCH=()
+flush_redis_batch() {
+  [[ ${#BATCH[@]} -eq 0 ]] && return 0
+  redis-cli "${REDIS_ARGS[@]}" --raw EVAL "$LUA_EXPORT_SCRIPT" "${#BATCH[@]}" "${BATCH[@]}" >> "${STAGE_DIR}/redis-dump.tsv"
+  printf '\n' >> "${STAGE_DIR}/redis-dump.tsv"
+  BATCH=()
+}
+while IFS= read -r KEY; do
+  KEY="${KEY%$'\r'}"
+  [[ -z "$KEY" ]] && continue
+  BATCH+=("$KEY")
+  if [[ ${#BATCH[@]} -ge 100 ]]; then
+    flush_redis_batch
+  fi
+done < "${STAGE_DIR}/redis-keys.txt"
+flush_redis_batch
+rm -f "${STAGE_DIR}/redis-keys.txt"
+
+awk 'length($0) > 0' "${STAGE_DIR}/redis-dump.tsv" > "${STAGE_DIR}/redis-dump.clean.tsv"
+mv "${STAGE_DIR}/redis-dump.clean.tsv" "${STAGE_DIR}/redis-dump.tsv"
 
 # Best-effort RDB snapshot when server allows SYNC (e.g. local/VPS Redis)
 redis-cli "${REDIS_ARGS[@]}" --rdb "${STAGE_DIR}/redis.rdb" >/dev/null 2>&1 || rm -f "${STAGE_DIR}/redis.rdb"

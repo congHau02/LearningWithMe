@@ -224,16 +224,16 @@ describe('BNS-T3: Streamlined Botanical TopBar, Telemetry Bar & Floating Room Ch
       const { rerender } = render(<ReconnectingBanner />);
 
       const reconnectBanner = screen.getByTestId('reconnecting-banner');
-      expect(reconnectBanner.className).toContain('bg-[#16221E]/95');
-      expect(reconnectBanner.className).toContain('border-[#243630]');
-      expect(reconnectBanner.className).toContain('text-[#E6ECE8]');
+      expect(reconnectBanner.className).toContain('bg-card/95');
+      expect(reconnectBanner.className).toContain('border-border');
+      expect(reconnectBanner.className).toContain('text-foreground');
 
       rerender(<SessionReplacedBanner />);
 
       const sessionBanner = screen.getByRole('status');
-      expect(sessionBanner.className).toContain('bg-[#16221E]/95');
-      expect(sessionBanner.className).toContain('border-[#243630]');
-      expect(sessionBanner.className).toContain('text-[#E6ECE8]');
+      expect(sessionBanner.className).toContain('bg-card/95');
+      expect(sessionBanner.className).toContain('border-border');
+      expect(sessionBanner.className).toContain('text-foreground');
     });
 
     it('renders ClassroomTelemetryBar on Slate Leaf surfaces with #243630 borders, Morning Mist readouts, and Muted Sage labels', () => {
@@ -275,9 +275,9 @@ describe('BNS-T3: Streamlined Botanical TopBar, Telemetry Bar & Floating Room Ch
 
       const button = screen.getByRole('button', { name: /Phòng học/i });
       expect(button).toBeInTheDocument();
-      expect(button.className).toContain('bg-[#16221E]/95');
-      expect(button.className).toContain('border-[#243630]');
-      expect(button.className).toContain('text-[#E6ECE8]');
+      expect(button.className).toContain('bg-card/95');
+      expect(button.className).toContain('border-border');
+      expect(button.className).toContain('text-foreground');
       expect(button.className).toContain('min-h-11');
       expect(button.querySelector('svg')).toBeInTheDocument();
     });
@@ -311,8 +311,8 @@ describe('BNS-T3: Streamlined Botanical TopBar, Telemetry Bar & Floating Room Ch
       // Drawer shell has backdrop-blur-md
       const drawerShell = container.querySelector('.rounded-2xl');
       expect(drawerShell).toBeInTheDocument();
-      expect(drawerShell?.className).toContain('bg-[#16221E]/95');
-      expect(drawerShell?.className).toContain('border-[#243630]');
+      expect(drawerShell?.className).toContain('bg-card/95');
+      expect(drawerShell?.className).toContain('border-border');
       expect(drawerShell?.className).toContain('backdrop-blur-md');
 
       // Scrollable message list container MUST NOT have backdrop-blur

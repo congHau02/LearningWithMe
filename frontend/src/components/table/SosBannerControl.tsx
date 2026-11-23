@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { sendTableSosToggle } from '../../services/tableStompClient';
+import { AlertCircleIcon } from '../icons';
 import {
   MAX_SOS_TOPIC_LENGTH,
   sosBannerResolver,
@@ -46,8 +47,9 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
         className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/60 bg-amber-500/15 px-3.5 py-2 text-xs shadow-[0_0_20px_rgba(245,158,11,0.22)]"
       >
         <div className="flex items-center gap-2 text-amber-100">
-          <span className="inline-flex items-center rounded-md bg-amber-500/30 px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-amber-200 animate-pulse">
-            🆘 SOS
+          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/30 px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-amber-200 animate-pulse">
+            <AlertCircleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>SOS</span>
           </span>
           <span className="font-semibold">{sosBanner}</span>
         </div>
@@ -76,9 +78,10 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
           type="button"
           data-testid="sos-open-form-btn"
           onClick={() => setIsComposing(true)}
-          className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
         >
-          🆘 Bật SOS cầu cứu
+          <AlertCircleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>Bật SOS cầu cứu</span>
         </button>
       </div>
     );
@@ -98,7 +101,7 @@ export function SosBannerControl({ tableId, sosBanner, canControl }: SosBannerCo
         maxLength={MAX_SOS_TOPIC_LENGTH}
         placeholder="VD: Cần giúp Tích phân từng phần"
         aria-label="Chủ đề cần hỗ trợ SOS"
-        className="min-w-[220px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+        className="min-w-[220px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
       <button
         type="submit"

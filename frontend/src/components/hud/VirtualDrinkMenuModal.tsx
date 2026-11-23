@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { VIRTUAL_DRINKS } from '../../game/cafe/studyCafeConfig';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useGameStore } from '../../stores/useGameStore';
 import { XIcon } from '../icons';
 import { DoubleBezelCard } from '../ui/DoubleBezelCard';
@@ -12,16 +14,19 @@ export function VirtualDrinkMenuModal() {
   const activeCafeNpcName = useGameStore((s) => s.activeCafeNpcName);
   const closeDrinkMenu = useGameStore((s) => s.closeDrinkMenu);
   const selectVirtualDrink = useGameStore((s) => s.selectVirtualDrink);
+  const dialogContainerRef = useRef<HTMLDivElement>(null);
 
   useEscapeToClose(() => {
     if (isOpen) closeDrinkMenu();
   });
+  useFocusTrap(dialogContainerRef, isOpen);
 
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4"
+      ref={dialogContainerRef}
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4"
       onClick={closeDrinkMenu}
     >
       <DoubleBezelCard
@@ -71,7 +76,7 @@ export function VirtualDrinkMenuModal() {
                     : 'border-border bg-secondary/40 hover:border-primary/50 hover:bg-secondary/80'
                 }`}
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-[#0F1714]/90 text-2xl shadow-inner">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/90 text-2xl shadow-inner">
                   {drink.icon}
                 </span>
                 <div className="min-w-0">

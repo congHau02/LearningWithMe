@@ -151,7 +151,7 @@ export function HomeworkBoardToolbar({
               data-testid="board-size-select"
               value={lineWidth}
               onChange={(e) => onLineWidthChange(Number(e.target.value))}
-              className="min-h-[44px] sm:min-h-[34px] rounded border border-border bg-background px-2 py-1 font-mono text-xs text-foreground focus:border-primary focus:outline-none"
+              className="min-h-[44px] sm:min-h-[34px] rounded border border-border bg-background px-2 py-1 font-mono text-xs text-foreground focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {SIZE_OPTIONS.map((sz) => (
                 <option key={sz} value={sz}>

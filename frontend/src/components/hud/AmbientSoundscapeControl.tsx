@@ -45,9 +45,7 @@ export function AmbientSoundscapeControl() {
 
   const activeCount = AMBIENT_CHANNEL_DEFS.filter((def) => channels[def.id]?.enabled).length;
 
-  useEffect(() => {
-    hydrateFromStorage();
-  }, [hydrateFromStorage]);
+  useEffect(() => { hydrateFromStorage(); }, [hydrateFromStorage]);
 
   useEffect(() => {
     if (activeCount === 0) return;
@@ -95,8 +93,9 @@ export function AmbientSoundscapeControl() {
           role="dialog"
           aria-label="Bảng điều chỉnh âm thanh nền cá nhân"
           data-testid="ambient-soundscape-popover"
-          className="botanical-glass fixed right-3 top-14 z-50 max-h-[calc(100vh-4.5rem)] w-80 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl bg-card/90 p-3.5 text-xs text-card-foreground"
+          className="botanical-glass fixed right-3 top-14 z-50 flex max-h-[calc(100dvh-4.5rem)] w-80 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-xl bg-card/90 p-3.5 text-xs text-card-foreground"
         >
+          <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
           <div className="mb-3 flex items-center justify-between gap-2 border-b border-border pb-2.5">
             <div>
               <h3 className="text-xs font-semibold text-foreground">Âm thanh nền cá nhân</h3>
@@ -130,10 +129,7 @@ export function AmbientSoundscapeControl() {
                 <div key={def.id} className="flex flex-col gap-0.5 rounded-lg border border-border bg-card/85 px-2.5 py-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-2 font-medium text-foreground">
-                      <ChannelIcon
-                        className={`h-4 w-4 shrink-0 ${isAmber ? 'text-botanical-amber' : 'text-botanical-emerald'}`}
-                        aria-hidden="true"
-                      />
+                      <ChannelIcon className={`h-4 w-4 shrink-0 ${isAmber ? 'text-botanical-amber' : 'text-botanical-emerald'}`} aria-hidden="true" />
                       <span>{def.label}</span>
                     </span>
                     <button
@@ -191,6 +187,7 @@ export function AmbientSoundscapeControl() {
             >
               {sfxEnabled ? 'Bật' : 'Tắt'}
             </button>
+          </div>
           </div>
         </div>
       ) : null}

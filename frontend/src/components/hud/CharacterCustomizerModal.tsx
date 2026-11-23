@@ -128,13 +128,15 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
           </button>
         </div>
 
-        <div role="tablist" className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-border bg-[#0F1714]/60 p-1">
+        <div role="tablist" aria-label="Danh mục trang bị nhân vật" className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-border bg-background/60 p-1">
           {TABS.map((tab) => (
             <button
               key={tab.type}
               type="button"
               role="tab"
+              id={`customizer-tab-${tab.type}`}
               aria-selected={activeTab === tab.type}
+              aria-controls={`customizer-panel-${tab.type}`}
               data-testid={`customizer-tab-${tab.type}`}
               onClick={() => setActiveTab(tab.type)}
               className={`min-h-11 rounded-lg px-2 py-2 text-xs font-semibold transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] sm:min-h-9 ${
@@ -153,6 +155,9 @@ export function CharacterCustomizerModal({ onClose }: CharacterCustomizerModalPr
         ) : null}
 
         <div
+          role="tabpanel"
+          id={`customizer-panel-${activeTab}`}
+          aria-labelledby={`customizer-tab-${activeTab}`}
           data-testid="customizer-items-grid"
           className="mt-4 grid h-[min(45dvh,280px)] content-start grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:h-[264px] sm:grid-cols-2"
         >

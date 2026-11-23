@@ -63,6 +63,9 @@ export function useHomeworkCanvas({
     renderBoardStrokes(ctx, strokes, canvas.width, canvas.height, draftStrokeRef.current);
   }, [canvasRef, strokes]);
 
+  const redrawRef = useRef(redraw);
+  redrawRef.current = redraw;
+
   const syncCanvasSize = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -73,8 +76,8 @@ export function useHomeworkCanvas({
       canvas.width = nextW;
       canvas.height = nextH;
     }
-    redraw();
-  }, [canvasRef, redraw]);
+    redrawRef.current();
+  }, [canvasRef]);
 
   useEffect(() => {
     redraw();

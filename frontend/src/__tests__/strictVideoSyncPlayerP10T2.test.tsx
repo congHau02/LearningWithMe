@@ -205,4 +205,36 @@ describe('P10-T2 Strict Authoritative Table Video Sync (#66)', () => {
     expect(mockPlayer.setVolume).toHaveBeenCalledWith(70);
     expect(screen.queryByTestId('yt-autoplay-unmute-banner')).not.toBeInTheDocument();
   });
+
+  it('keeps onStateChange authoritative sync working after switching from Video A to Video B', async () => {
+    localTime = 10;
+    await mountAndReady(true, true, 10);
+    act(() => {
+      triggerStateChange?.(YT_PLAYER_STATE.PLAYING);
+    });
+
+    // Switch to Video B while staying mounted
+    act(() => {
+      useTableStore.getState().setTableState({
+        tableId: 'table_01',
+        hostUserId: 'u-host',
+        videoState: {
+          videoId: '5qap5aO4i9A',
+          isPlaying: true,
+          currentTime: 25,
+          lastUpdatedEpoch: Date.now(),
+        },
+      });
+    });
+    expect(mockPlayer.loadVideoById).toHaveBeenCalledWith('5qap5aO4i9A', expect.any(Number));
+
+    vi.mocked(mockPlayer.seekTo).mockClear();
+    vi.mocked(mockPlayer.playVideo).mockClear();
+    localTime = 20;
+    act(() => {
+      triggerStateChange?.(YT_PLAYER_STATE.PAUSED);
+    });
+    expect(mockPlayer.seekTo).toHaveBeenCalledWith(expect.any(Number), true);
+    expect(mockPlayer.playVideo).toHaveBeenCalled();
+  });
 });

@@ -19,6 +19,7 @@ export interface PhaserConfigModuleSubset {
 export interface PhaserGameLifecycleAdapter {
   renderer?: { type?: number } | null;
   loop: {
+    running?: boolean;
     sleep: () => void;
     wake: (seamless?: boolean) => void;
   };
@@ -30,6 +31,17 @@ export interface PhaserGameLifecycleAdapter {
     once: (event: string, fn: () => void) => unknown;
     off: (event: string, fn: () => void) => unknown;
   };
+}
+
+export function destroyPhaserGameSafely(game: {
+  loop: { running?: boolean; wake: (seamless?: boolean) => void };
+  destroy: (removeCanvas: boolean) => void;
+}): void {
+  game.destroy(true);
+  // Phaser defers runDestroy() to the next step; wake a sleeping loop so canvas/WebGL tear down immediately.
+  if (game.loop.running === false) {
+    game.loop.wake(false);
+  }
 }
 
 export interface PhaserCoreEventsSubset {
@@ -198,9 +210,7 @@ export function bootClassroomPhaserGame(options: {
     }
 
     destroyGame = () => {
-      resizeObserver?.disconnect();
-      disposeLifecycle?.();
-      game.destroy(true);
+      destroyPhaserGameSafely(game);
     };
   });
 

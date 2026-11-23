@@ -21,7 +21,7 @@ export function LocalUpgradeForm({ onSuccess }: LocalUpgradeFormProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between rounded-xl border border-border bg-[#0F1714]/60 px-3.5 py-2.5 text-xs">
+      <div className="flex items-center justify-between rounded-xl border border-border bg-background/60 px-3.5 py-2.5 text-xs">
         <span className="text-muted-foreground">
           {isExistingAccount
             ? 'Gộp phiên hiện tại vào tài khoản đã có'
@@ -90,7 +90,7 @@ function NewLocalUpgradeForm({ onSuccess }: LocalUpgradeFormProps) {
           aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? 'upgrade-email-error' : undefined}
           {...register('email')}
-          className="min-h-11 w-full rounded-xl border border-border bg-[#0F1714]/80 px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 w-full rounded-xl border border-border bg-background/80 px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         {errors.email ? (
           <p id="upgrade-email-error" role="alert" className="text-xs font-medium text-rose-400">

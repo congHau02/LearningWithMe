@@ -25,6 +25,7 @@ function canBootPhaserCanvas(): boolean {
 
 export function ClassroomCanvas() {
   const token = useAuthStore((s) => s.token);
+  const hasSession = Boolean(token);
   const roomId = useGameStore((s) => s.roomId);
   const selectedDrinkId = useGameStore((s) => s.selectedDrinkId);
   const pendingDrinkOrder = useGameStore((s) => s.pendingDrinkOrder);
@@ -63,7 +64,7 @@ export function ClassroomCanvas() {
 
   useEffect(() => {
     // Defer 1.48 MB Phaser WebGL boot while GuestOnboardingModal covers the viewport so initial LCP stays fast.
-    if (!token || !canBootPhaserCanvas() || !canvasMountRef.current) {
+    if (!hasSession || !canBootPhaserCanvas() || !canvasMountRef.current) {
       setIsCanvasReady(false);
       return undefined;
     }
@@ -72,7 +73,7 @@ export function ClassroomCanvas() {
       topology: MAIN_LIBRARY_TOPOLOGY,
       onReady: () => setIsCanvasReady(true),
     });
-  }, [token]);
+  }, [hasSession]);
 
   return (
     <DoubleBezelCard
@@ -85,17 +86,17 @@ export function ClassroomCanvas() {
     >
       <div
         ref={viewportRef}
-        className="study-cafe-viewport relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-border/80 bg-[#0F1714]"
+        className="study-cafe-viewport relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-border/80 bg-background"
       >
         <div
           data-testid="study-cafe-fitted-stage"
           style={stageSize ? { width: `${stageSize.width}px`, height: `${stageSize.height}px` } : undefined}
-          className="study-cafe-stage relative flex aspect-[3/2] max-h-full max-w-full shrink-0 items-center justify-center overflow-hidden bg-[#0F1714]"
+          className="study-cafe-stage relative flex aspect-[3/2] max-h-full max-w-full shrink-0 items-center justify-center overflow-hidden bg-background"
         >
           <div
             ref={canvasMountRef}
             data-testid="phaser-canvas-host"
-            className="relative flex h-full w-full touch-manipulation items-center justify-center overflow-hidden bg-[#0F1714] [&_canvas]:!m-0 [&_canvas]:!max-h-full [&_canvas]:!max-w-full"
+            className="relative flex h-full w-full touch-manipulation items-center justify-center overflow-hidden bg-background [&_canvas]:!m-0 [&_canvas]:!max-h-full [&_canvas]:!max-w-full"
           >
             {!isCanvasReady ? (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
@@ -107,57 +108,58 @@ export function ClassroomCanvas() {
           <StudyCafeMapLabelsOverlay stageSize={stageSize} />
         </div>
 
-        {/* Top-Left Floating HUD Cluster: Room Identity & Warm Amber Drink Menu CTA (WCAG AAA #E5A93C / #0F1714) */}
-        <div
-          data-testid="floating-hud-top-left"
-          aria-label="Cụm điều khiển quầy đồ uống và phòng học"
-          className="pointer-events-none absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1.5"
-        >
-          <div className="pointer-events-auto hidden items-center gap-1.5 rounded-xl border border-border/80 bg-card/95 px-2.5 py-1 text-left shadow-md backdrop-blur-none md:inline-flex">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-              Study Café
-            </span>
-            <span aria-hidden="true" className="text-border">•</span>
-            <h2 className="font-mono text-xs font-bold tracking-tight text-foreground">
-              {roomId}
-            </h2>
-          </div>
-
-          <button
-            type="button"
-            data-testid="open-drink-menu-btn"
-            aria-label="Mở menu quầy đồ uống Study Café"
-            onClick={() => openDrinkMenu('Quầy Study Café', 'npc_barista')}
-            className="pointer-events-auto inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-lg transition hover:brightness-105 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 sm:py-1"
+        {/* Unified Top Floating HUD Bar: prevents overlap between room/drink CTA and ambience/graphics clusters at 768px & mobile */}
+        <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-wrap items-start justify-between gap-1.5">
+          <div
+            data-testid="floating-hud-top-left"
+            aria-label="Cụm điều khiển quầy đồ uống và phòng học"
+            className="flex flex-wrap items-center gap-1.5"
           >
-            {activeDrink ? (
-              <span data-testid="selected-drink-badge">
-                {activeDrink.icon} {activeDrink.name}
+            <div className="pointer-events-auto hidden items-center gap-1.5 rounded-xl border border-border/80 bg-card/95 px-2.5 py-1 text-left shadow-md backdrop-blur-none md:inline-flex">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                Study Café
               </span>
-            ) : pendingDrink ? (
-              <span data-testid="delivering-drink-badge">
-                {pendingDrink.icon} Đang giao...
-              </span>
-            ) : (
-              <>
-                <CoffeeIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span>Quầy đồ uống</span>
-              </>
-            )}
-          </button>
-        </div>
+              <span aria-hidden="true" className="text-border">•</span>
+              <h2 className="font-mono text-xs font-bold tracking-tight text-foreground">
+                {roomId}
+              </h2>
+            </div>
 
-        {/* Top-Right Floating HUD Cluster: Ambience Mood & Graphics Quality */}
-        <div
-          data-testid="floating-hud-top-right"
-          aria-label="Cụm điều khiển bầu không khí và chất lượng đồ họa"
-          className="pointer-events-none absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1.5"
-        >
-          <div className="pointer-events-auto">
-            <ClassroomAmbienceControl />
+            <button
+              type="button"
+              data-testid="open-drink-menu-btn"
+              aria-label="Mở menu quầy đồ uống Study Café"
+              onClick={() => openDrinkMenu('Quầy Study Café', 'npc_barista')}
+              className="pointer-events-auto inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-lg transition hover:brightness-105 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:min-w-0 sm:py-1"
+            >
+              {activeDrink ? (
+                <span data-testid="selected-drink-badge">
+                  {activeDrink.icon} {activeDrink.name}
+                </span>
+              ) : pendingDrink ? (
+                <span data-testid="delivering-drink-badge">
+                  {pendingDrink.icon} Đang giao...
+                </span>
+              ) : (
+                <>
+                  <CoffeeIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span>Quầy đồ uống</span>
+                </>
+              )}
+            </button>
           </div>
-          <div className="pointer-events-auto">
-            <ClassroomGraphicsControl />
+
+          <div
+            data-testid="floating-hud-top-right"
+            aria-label="Cụm điều khiển bầu không khí và chất lượng đồ họa"
+            className="ml-auto flex flex-wrap items-center justify-end gap-1.5"
+          >
+            <div className="pointer-events-auto">
+              <ClassroomAmbienceControl />
+            </div>
+            <div className="pointer-events-auto">
+              <ClassroomGraphicsControl />
+            </div>
           </div>
         </div>
 

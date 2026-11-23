@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
   fetchPersonalStudyStats,
   type PersonalStudyStatsResponse,
@@ -20,6 +21,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
   const [stats, setStats] = useState<PersonalStudyStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const dialogContainerRef = useRef<HTMLDivElement>(null);
 
   const loadStats = useCallback(async () => {
     setIsLoading(true);
@@ -45,6 +47,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
   }, [loadStats]);
 
   useEscapeToClose(onClose);
+  useFocusTrap(dialogContainerRef);
 
   const totalMinutes = stats?.totalStudyMinutes ?? storeTotalMinutes;
   const totalSessions = stats?.totalSessions ?? 0;
@@ -52,7 +55,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
   const sessions = stats?.recentSessions ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0F1714]/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
+    <div ref={dialogContainerRef} className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-md sm:items-center sm:p-4">
       <DoubleBezelCard
         role="dialog"
         aria-modal="true"
@@ -129,7 +132,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
               data-testid="study-sessions-streak"
               className="mt-1 font-mono text-xl font-bold text-primary"
             >
-              🔥 {studyStreakDays} ngày
+              {studyStreakDays} ngày
             </p>
           </div>
         </div>
@@ -144,7 +147,7 @@ export function StudySessionsModal({ authProvider, onClose }: StudySessionsModal
               {errorMessage}
             </div>
           ) : sessions.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-[#0F1714]/40 px-4 py-8 text-center text-xs text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-border bg-background/40 px-4 py-8 text-center text-xs text-muted-foreground">
               Chưa có phiên học nào đạt từ 1 phút trở lên. Hãy ngồi vào bàn học và tập trung nhé!
             </div>
           ) : (

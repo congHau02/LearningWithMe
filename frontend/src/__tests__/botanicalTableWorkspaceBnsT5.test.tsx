@@ -52,7 +52,7 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls & Homework Board Chrome
       const header = screen.getByRole('banner');
       expect(header).toBeInTheDocument();
       expect(header.className).toContain('border-border');
-      expect(header.className).toContain('bg-[#16221E]/95');
+      expect(header.className).toContain('bg-card/95');
 
       const timer = screen.getByTestId('study-timer-display');
       expect(timer).toHaveTextContent('02:05');
@@ -83,7 +83,7 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls & Homework Board Chrome
       render(<TableWorkspaceShell />);
       const shell = screen.getByTestId('table-workspace-shell');
       expect(shell).toBeInTheDocument();
-      expect(shell.className).toContain('bg-[#0F1714]/98');
+      expect(shell.className).toContain('bg-background/98');
       expect(shell.className).toContain('border-border');
     });
   });
@@ -194,7 +194,7 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls & Homework Board Chrome
       );
 
       const bar = screen.getByTestId('minimized-table-workspace-bar');
-      expect(bar.className).toContain('bg-[#0F1714]/95');
+      expect(bar.className).toContain('bg-background/95');
       expect(bar.className).toContain('border-border');
 
       const timer = screen.getByTestId('minimized-study-timer');
@@ -246,13 +246,13 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls & Homework Board Chrome
 
       const hostRole = screen.getByTestId('member-role-u-host');
       expect(hostRole).toHaveTextContent('Trưởng bàn');
-      expect(hostRole.className).toContain('bg-[#E5A93C]');
-      expect(hostRole.className).toContain('text-[#0F1714]');
+      expect(hostRole.className).toContain('bg-primary');
+      expect(hostRole.className).toContain('text-primary-foreground');
 
       const coHostRole = screen.getByTestId('member-role-u-cohost');
       expect(coHostRole).toHaveTextContent('Co-Host');
-      expect(coHostRole.className).toContain('bg-[#E5A93C]');
-      expect(coHostRole.className).toContain('text-[#0F1714]');
+      expect(coHostRole.className).toContain('bg-primary');
+      expect(coHostRole.className).toContain('text-primary-foreground');
 
       const memberRole = screen.getByTestId('member-role-u-member');
       expect(memberRole).toHaveTextContent('Thành viên');
@@ -320,7 +320,7 @@ describe('BNS-T5: Seated Table Workspace, Voice Controls & Homework Board Chrome
 
       const activeTab = screen.getByTestId('homework-slide-tab-slide-1');
       expect(activeTab).toBeInTheDocument();
-      expect(activeTab.className).toContain('bg-primary/25');
+      expect(activeTab.className).toContain('bg-primary');
       expect(activeTab.className).toContain('text-primary-foreground');
     });
   });

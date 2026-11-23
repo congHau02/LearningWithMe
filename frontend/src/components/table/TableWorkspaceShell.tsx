@@ -89,7 +89,7 @@ export function TableWorkspaceShell() {
         className={
           isWorkspaceMinimized
             ? 'hidden'
-            : 'absolute inset-1.5 z-30 flex flex-col overflow-hidden rounded-2xl border border-border bg-[#0F1714]/98 shadow-2xl ring-1 ring-border/60 sm:inset-3 md:inset-x-6 md:inset-y-3'
+            : 'absolute inset-1.5 z-30 flex flex-col overflow-hidden rounded-2xl border border-border bg-background/98 shadow-2xl ring-1 ring-border/60 sm:inset-3 md:inset-x-6 md:inset-y-3'
         }
       >
         <TableWorkspaceHeader

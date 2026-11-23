@@ -1,13 +1,13 @@
 import type { PermissionAction, TableMemberDto } from '../../services/tableApi';
 import type { VoicePeerState } from '../../stores/useVoiceStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
-import { CrownIcon, ZapIcon } from '../icons';
+import { CheckIcon, CrownIcon, ZapIcon } from '../icons';
 import { SpeakingEqualizer } from './SpeakingEqualizer';
 import { VOICE_CONNECTION_BADGES } from './voiceControlMeta';
 
 const ROLE_BADGES = {
-  TABLE_HOST: { label: 'Trưởng bàn', cls: 'border border-[#E5A93C] bg-[#E5A93C] text-[#0F1714] font-bold shadow-sm' },
-  CO_HOST: { label: 'Co-Host', cls: 'border border-[#E5A93C] bg-[#E5A93C] text-[#0F1714] font-bold shadow-sm' },
+  TABLE_HOST: { label: 'Trưởng bàn', cls: 'border border-primary bg-primary text-primary-foreground font-bold shadow-sm' },
+  CO_HOST: { label: 'Co-Host', cls: 'border border-primary bg-primary text-primary-foreground font-bold shadow-sm' },
   MEMBER: { label: 'Thành viên', cls: 'border border-border bg-card text-muted-foreground' },
 } as const;
 
@@ -87,7 +87,10 @@ export function TableMemberRow({
               }`}
             >
               {member.studyGoalCompleted ? (
-                <span data-testid={`member-goal-completed-${member.userId}`}>✅</span>
+                <span data-testid={`member-goal-completed-${member.userId}`} className="inline-flex items-center">
+                  <CheckIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="sr-only">Đã hoàn thành</span>
+                </span>
               ) : null}
               <span className="truncate">{member.studyGoal.trim()}</span>
             </p>

@@ -9,9 +9,19 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
+function isElementVisibleAndInteractive(el: HTMLElement): boolean {
+  if (el.hasAttribute('disabled') || el.getAttribute('aria-hidden') === 'true') return false;
+  if (el.closest('[inert], [hidden], [aria-hidden="true"]')) return false;
+  if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+  }
+  return true;
+}
+
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true',
+    isElementVisibleAndInteractive,
   );
 }
 
@@ -37,7 +47,10 @@ export function useFocusTrap(
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return;
       const focusables = getFocusableElements(container);
-      if (focusables.length === 0) return;
+      if (focusables.length === 0) {
+        event.preventDefault();
+        return;
+      }
 
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
@@ -58,7 +71,13 @@ export function useFocusTrap(
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      if (previouslyFocused && previouslyFocused.isConnected) {
+      if (
+        previouslyFocused &&
+        previouslyFocused !== document.body &&
+        previouslyFocused !== document.documentElement &&
+        previouslyFocused.isConnected &&
+        !previouslyFocused.closest('[inert]')
+      ) {
         previouslyFocused.focus();
       }
     };

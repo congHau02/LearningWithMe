@@ -138,7 +138,7 @@ describe('P11-T4: Immersive Full-Height Study Café Viewport & Crisp Hi-DPI Viet
       const viewport = screen.getByTestId('classroom-viewport');
       expect(viewport.className).toContain('flex-1');
       const canvasHost = screen.getByTestId('phaser-canvas-host');
-      expect(canvasHost.className).toContain('bg-[#0F1714]');
+      expect(canvasHost.className).toContain('bg-background');
       // No old fixed 430px height cap
       expect(canvasHost.className).not.toContain('430px');
 

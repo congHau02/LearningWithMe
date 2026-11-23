@@ -8,6 +8,7 @@ vi.mock('phaser', () => ({
 }));
 
 import { ClassroomCanvas } from '../components/game/ClassroomCanvas';
+import { buildProjectedLabelStyle } from '../components/game/projectedLabelStyle';
 import { KeyboardHoldTracker } from '../game/controllers/keyboardMapping';
 import type { InputController } from '../game/controllers/InputController';
 import {
@@ -18,7 +19,6 @@ import {
   detectConstrainedGraphicsDevice,
   resolveGraphicsPolicy,
 } from '../game/graphics/graphicsQualityPolicy';
-import { buildProjectedLabelStyle } from '../game/labels/projectedLabelStyle';
 import { handleClassroomPointerDown } from '../game/scenes/classroomPointerHandler';
 import { subscribeSceneChatBubbles } from '../game/scenes/classroomSceneBindings';
 import { MAIN_LIBRARY_TOPOLOGY } from '../game/topology/roomTopology';
