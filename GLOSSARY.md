@@ -55,7 +55,7 @@ Người học tham gia ngay vào Room bằng định danh tạm thời mà chư
 _Avoid_: Anonymous User, Visitor, Trial User
 
 **Registered User (Thành viên chính thức)**:
-Người học đã xác thực qua tài khoản định danh lâu dài (Email hoặc OAuth2) để lưu trữ vĩnh viễn lịch sử học tập và vật phẩm mở khóa.
+Người học đã xác thực qua tài khoản định danh lâu dài để lưu trữ vĩnh viễn lịch sử học tập và vật phẩm mở khóa.
 _Avoid_: Member, Logged-in User, Account
 
 **Account Upgrade (Nâng cấp tài khoản)**:
@@ -149,7 +149,7 @@ Chế độ ánh sáng và sắc độ hiển thị cá nhân của Study Café 
 _Avoid_: Day/Night Cycle, Lighting Preset, Weather Toggle, Theme Mode
 
 **Graphics Quality (Mức chất lượng đồ họa)**:
-Cấp độ dựng hình cá nhân của bản đồ Study Café (`Thấp`, `Trung bình`, `Cao`) quyết định mật độ ánh sáng động, hạt môi trường và hiệu ứng chuyển động bổ trợ (tôn trọng `prefers-reduced-motion`) nhằm giữ mượt trên mọi thiết bị.
+Cấp độ hiển thị cá nhân của bản đồ Study Café (`Thấp`, `Trung bình`, `Cao`) quyết định mật độ ánh sáng động, hạt môi trường và hiệu ứng chuyển động bổ trợ nhằm giữ trải nghiệm mượt trên mọi thiết bị.
 _Avoid_: Performance Mode, Visual Tier, FPS Setting
 
 **Drink Delivery (Giao đồ uống tại quán)**:

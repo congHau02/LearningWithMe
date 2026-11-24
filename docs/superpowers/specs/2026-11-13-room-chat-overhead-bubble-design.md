@@ -1,5 +1,7 @@
 # Design Document: Room Chat, Redis 30-Message Buffer, Rate Limit & 4-Second Overhead Chat Bubble
 
+> **Cập nhật Phase 10 ([ADR-0012](../../adr/0012-ephemeral-math-workspace-and-multilayer-procedural-audio.md))**: Khung `RoomChatBox` ở tầng React HUD đã được mở rộng để hỗ trợ hiển thị công thức toán $\LaTeX$ (`$...$`, `$$...$$` qua KaTeX, vẫn chống XSS an toàn), trong khi `Chat Bubble` nổi 4 giây trên đầu nhân vật trong Phaser 3 giữ nguyên hiển thị plain text.
+
 ## Intent & The Why
 In an online co-studying environment, learners need immediate feedback and lightweight ways to communicate, greet each other, and express reactions without leaving their seats or opening heavy video calls. This ticket (#18 / P3-T5) provides a room-wide chat mechanism within the same Room Shard, backed by Redis for quick context catch-up (last 30 messages in Room Snapshot), protected against spam via a sliding-window rate limit (5 msgs / 5s), and rendered visually on the 2D map as a 4-second overhead chat bubble directly above character sprites.
 

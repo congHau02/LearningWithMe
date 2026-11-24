@@ -2,7 +2,7 @@
 
 - **Tên dự án:** Cùng Nhau Học Bài (Study Together 2D Web Game)
 - **Slogan:** *"Cùng nhau học bài - Không còn cô đơn trên hành trình chinh phục tri thức"*
-- **Phiên bản tài liệu:** 2.3.0 (Đồng bộ thực tế triển khai Phase 1 – Phase 9, Giao diện Botanical Night Studio `#57` & Đặc tả Phase 10)
+- **Phiên bản tài liệu:** 2.4.0 (Đồng bộ thực tế triển khai Phase 1 – Phase 11 & Giao diện Botanical Night Studio `#57`)
 - **Kiến trúc cốt lõi:** Hybrid 2D Canvas (Phaser 3) + Reactive HUD (ReactJS 18 + TailwindCSS v4 — Chủ đề **Botanical Night Studio**) + Stateful Realtime Backend (Spring Boot 3.4, STOMP WebSocket, Redis 7, MySQL 8.0)
 - **Tài liệu liên kết:** [GLOSSARY.md](GLOSSARY.md) | [docs/SPEC.md](docs/SPEC.md) | [docs/adr/](docs/adr/) | [AGENTS.md](AGENTS.md)
 
@@ -245,14 +245,17 @@ CREATE TABLE character_items (
 | `rooms:shards` | `SET` | Danh sách mã các `Room Shard` đang hoạt động (VD: `main-library`, `main-library-2`). |
 | `room:{roomId}:players` | `HASH` | Map `userId` $\rightarrow$ JSON `RoomPlayerState` (vị trí, hướng nhìn, trạng thái ngồi, mục tiêu học, trang phục đang mặc). |
 | `room:{roomId}:seats` | `HASH` | Map `seatId` $\rightarrow$ `userId`. Khóa nguyên tử qua Lua script `atomic_seat_sit.lua`. |
+| `room:{roomId}:reservations` | `HASH` | Map `userId` $\rightarrow$ `expiresAtEpochMs` để giữ chỗ ngắn hạn khi phân mảnh phòng (`reserve_shard_slot.lua` & `atomic_stomp_join.lua`). |
 | `room:{roomId}:disconnects` | `HASH` | Map `userId` $\rightarrow$ `disconnectedAtEpoch` phục vụ cơ chế giữ ghế 30 giây (`Grace Period`). |
 | `room:{roomId}:seq` | `STRING` | Bộ đếm thứ tự sự kiện (`eventSeq`) tăng dần của từng phòng. |
-| `room:{roomId}:chat` | `LIST` | Lưu bộ đệm các tin nhắn `Room Chat` gần nhất của phòng. |
-| `table:{roomId}:{tableId}:state` | `STRING (JSON)` | Lưu `RedisTableState` phân vùng theo cả phòng và bàn ([ADR-0006](docs/adr/0006-room-scoped-table-redis-keys.md)): `hostUserId`, `coHostUserIds`, `isFreeCollab`, `sosBanner`, `videoState`, `homeworkSlides`, `activeSlideId`. Tự động `DEL` khi bàn về $0$ người ngồi. |
+| `room:{roomId}:chat` | `LIST` | Lưu bộ đệm các tin nhắn `Room Chat` gần nhất của phòng (tối đa 30 tin nhắn). |
+| `table:{roomId}:{tableId}:state` | `STRING (JSON)` | Lưu `RedisTableState` phân vùng theo cả phòng và bàn ([ADR-0006](docs/adr/0006-room-scoped-table-redis-keys.md)): `hostUserId`, `coHostUserIds`, `isFreeCollab`, `sosBanner`, `videoState`, `homeworkSlides`, `activeSlideId`, `scratchpad`. Tự động `DEL` khi bàn về $0$ người ngồi. |
+| `table:{roomId}:{tableId}:lock` | `STRING` | Khóa phân tán ngắn hạn (TTL `5s`, giải phóng qua `release_table_lock.lua`) bảo vệ các giao dịch cập nhật trạng thái bàn. |
 | `table:{roomId}:{tableId}:chat` | `LIST` | Bộ đệm tin nhắn trò chuyện nội bộ của bàn; tự động `DEL` khi bàn về $0$ người ngồi. |
-| `ephemeral:img:{imageId}` | `STRING (JSON)` | Lưu metadata đường dẫn file ảnh bài tập tạm kèm TTL `21600s` ($6\text{ giờ}$). |
+| `ephemeral:img:{imageId}` | `STRING (JSON)` | Lưu metadata đường dẫn và MIME thực tế của file ảnh bài tập tạm kèm TTL `21600s` ($6\text{ giờ}$). |
 | `guest:{guestId}:sessions` | `LIST` | Lưu danh sách các `Study Session` ($\ge 1$ phút) của Guest kèm TTL $7\text{ ngày}$, tự động chuyển vào MySQL khi nâng cấp tài khoản. |
 | `guest:{guestId}:customization` | `STRING (JSON)` | Lưu cấu hình trang phục (`SKIN`, `HAT`, `DESK_PET`) của Guest kèm TTL $7\text{ ngày}$. |
+| `ratelimit:*` | `ZSET` | Cửa sổ trượt giới hạn tần suất (Auth IP, Room/Table Chat, Table/Board mutations) thực thi nguyên tử qua `sliding_window_rate_limit.lua`. |
 
 ---
 
@@ -267,21 +270,24 @@ CREATE TABLE character_items (
   - `/app/room/{roomId}/seat.sit`: Yêu cầu chiếm ghế nguyên tử (`{ tableId, seatId }`).
   - `/app/room/{roomId}/seat.leave`: Chủ động đứng dậy rời khỏi bàn học.
   - `/app/room/{roomId}/chat`: Gửi tin nhắn trò chuyện phòng (hiển thị kèm `Chat Bubble` 4 giây trên đầu nhân vật).
+  - `/app/room/{roomId}/goal.update`: Cập nhật hoặc đánh dấu hoàn thành mục tiêu học tập (`Study Goal`) trực tiếp trong phiên.
 - **Client lắng nghe (Subscribe):**
-  - `/topic/room/{roomId}/events`: Nhận mọi sự kiện cấp phòng (vào/rời phòng, di chuyển, ngồi/đứng dậy, đổi Trưởng bàn, bật/tắt SOS, tin nhắn phòng, hoán đổi định danh khi nâng cấp tài khoản).
+  - `/topic/room/{roomId}/events`: Nhận mọi sự kiện cấp phòng (vào/rời phòng, di chuyển, ngồi/đứng dậy, đổi Trưởng bàn, bật/tắt SOS, tin nhắn phòng, cập nhật `Study Goal`, hoán đổi định danh khi nâng cấp tài khoản).
 
-#### Luồng Riêng Từng Bàn (`Table Scope` — Chỉ cho phép khi `state === SEATED` tại bàn đó):
+#### Luồng Riêng Từng Bàn (`Table Scope` — Chỉ cho phép khi `state === SEATED` tại đúng `(roomId, tableId)` đó theo [ADR-0008](docs/adr/0008-room-scoped-table-stomp-and-private-voice-signaling.md)):
 - **Client gửi lên:**
   - `/app/table/{tableId}/permission.request`: Thành viên xin quyền điều khiển từ Trưởng bàn.
   - `/app/table/{tableId}/permission.respond`: Trưởng bàn xử lý phân quyền (`GRANT_CO_HOST`, `DENY_CO_HOST`, `REVOKE_CO_HOST`, `TRANSFER_HOST`, `SET_FREE_COLLAB`).
   - `/app/table/{tableId}/video.sync`: Đồng bộ trạng thái YouTube (`PLAY`, `PAUSE`, `SEEK`, `CHANGE_VIDEO`).
   - `/app/table/{tableId}/sos.toggle`: Bật hoặc tắt biển báo cầu cứu bài tập (`SOS Banner`).
-  - `/app/table/{tableId}/chat`: Gửi tin nhắn trò chuyện nội bộ trong bàn.
+  - `/app/table/{tableId}/chat`: Gửi tin nhắn trò chuyện nội bộ trong bàn (hỗ trợ công thức toán $\LaTeX$).
   - `/app/table/{tableId}/board.slide`: Chuyển trang bài tập đang mở (`SELECT_SLIDE`) hoặc xóa trang bài tập (`DELETE_SLIDE`).
-  - `/app/table/{tableId}/board.draw`: Vẽ nét mới (`ADD_STROKE`), tẩy nét vẽ (`ERASE_STROKE`), xóa sạch bảng (`CLEAR_SLIDE`) hoặc phát tín hiệu con trỏ (`LASER`).
+  - `/app/table/{tableId}/board.draw`: Vẽ nét mới (`ADD_STROKE`), tẩy nét vẽ (`ERASE_STROKE`), hoàn tác nét vẽ của chính người gửi (`UNDO_STROKE`), xóa sạch bảng (`CLEAR_SLIDE`) hoặc phát tín hiệu con trỏ (`LASER`).
+  - `/app/table/{tableId}/scratchpad.update`: Đồng bộ nội dung Sổ nháp bước giải (`Math Scratchpad`) theo thời gian thực.
   - `/app/table/{tableId}/voice.signal`: Trao đổi tín hiệu WebRTC P2P (`JOIN`, `LEAVE`, `OFFER`, `ANSWER`, `ICE_CANDIDATE`, `MUTE_STATE`).
 - **Client lắng nghe (Subscribe):**
-  - `/topic/table/{tableId}/workspace`: Nhận toàn bộ sự kiện đồng bộ của bàn học.
+  - `/topic/room/{roomId}/table/{tableId}/workspace`: Nhận toàn bộ sự kiện đồng bộ của bàn học trong phân mảnh phòng tương ứng (tự động thu hồi phía máy chủ khi rời ghế).
+  - `/user/queue/voice`: Nhận riêng tư các gói tin bắt tay WebRTC P2P một-đối-một (`SDP_OFFER`, `SDP_ANSWER`, `ICE_CANDIDATE`).
   - `/user/queue/errors`: Nhận thông báo lỗi nghiệp vụ/phân quyền có cấu trúc riêng cho từng người dùng.
 
 ### 5.2. Danh sách REST API Chính
@@ -345,7 +351,7 @@ LearningWithMe/
 │   │       └── stats/                  # StudySession, GuestSessionStaging, Leaderboard, CharacterCustomization
 │   ├── src/main/resources/
 │   │   ├── db/migration/               # Flyway SQL migrations (V1..V3)
-│   │   └── redis/                      # Lua scripts (atomic_seat_sit.lua, swap_identity.lua)
+│   │   └── redis/                      # Lua scripts (atomic_seat_sit, atomic_stomp_join, release_table_lock, reserve_shard_slot, sliding_window_rate_limit, swap_identity)
 │   ├── src/test/java/                  # Unit Tests & Testcontainers Integration Tests
 │   └── Dockerfile
 └── frontend/                           # React 18 + Vite 6 + TypeScript + TailwindCSS v4
@@ -374,7 +380,7 @@ LearningWithMe/
     │   ├── hooks/                      # useAppBootstrap, useRoomSync, useTableWorkspaceSync, useStudyTimer, useTableVoiceChat...
     │   ├── services/                   # REST API clients, STOMP clients, WebRTC Mesh Manager, Audio Analyzer
     │   ├── utils/                      # homeworkCanvasMath, homeworkImageCompression, youtubeSync
-    │   └── __tests__/                  # Bộ kiểm thử Vitest & React Testing Library (Phases 1 - 6)
+    │   └── __tests__/                  # Bộ kiểm thử Vitest & React Testing Library (Phases 1 - 11)
     └── Dockerfile
 ```
 

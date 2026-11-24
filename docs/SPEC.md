@@ -114,10 +114,16 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 70. As a **`SEATED`** learner (especially on a phone), I want a personal **Clear View** of the **Table Workspace** that shows only the **Homework Slide** board and Table Chat — on by default on mobile, toggleable from the header and remembered on my device — so that I can follow the lesson and solve exercises without video, member lists, or extra tools crowding the screen.
 71. As a **`SEATED`** learner, I want the synchronized **Focus Cycle** timer removed from the **Table Workspace** and backend, so that the workspace frees up screen space and drops a feature that added little value.
 
+### Phase 11: WebGL 2D Study Café Overhaul, Paper-Doll Pipeline & Accessibility/Performance Hardening
+72. As a learner in the **Study Café**, I want Phaser 3.90 to render with WebGL (`Phaser.AUTO` and automatic Canvas fallback), selectable **Graphics Quality** tiers (`Thấp`, `Trung bình`, `Cao` respecting `prefers-reduced-motion`), and automatic GPU render-loop sleep while the expanded **Table Workspace** covers the map, so that visual effects stay smooth without draining battery or leaking WebGL contexts.
+73. As a learner in the **Study Café**, I want 3 eye-friendly **Ambience Mood** presets (*Hoàng hôn ấm*, *Đêm tập trung*, *Đêm mưa*) with dynamic `Warm Amber` desk lamps lighting up occupied **Tables**, integer pixel-perfect zoom (`1× / 2× / 3×`), subtle Game Feel cues, and crisp hi-DPI DOM-projected Vietnamese map labels isolated from `src/game/`, so that the space feels atmospheric and legible at every zoom level.
+74. As a learner customizing my character, I want `CC0-1.0` `32×48px` **Paper-Doll** pixel-art atlases for `SKIN`, `HAT`, `DESK_PET`, and two-layer Y-sorted furniture synchronized with my React portrait across `TopBar`, Onboarding, and the Character Customizer, so that my character looks consistent between the 2D map and HUD modals.
+75. As a keyboard or mobile learner, I want 100% `@theme` semantic token adoption (`bg-background`, `bg-card`, `bg-primary` with WCAG AAA `#0F1714` ink), synchronous `FocusTrap` + `inert` background locking on all modals, and zero horizontal overflow at `375px` and `320px` viewports, so that the entire interface is accessible and responsive.
+
 ## Implementation Decisions
 
 ### 1. Phased Vertical-Slice Delivery Architecture
-- The system is divided into 10 sequential/parallelizable vertical slices (**Phase 1** through **Phase 10**), where each phase delivers an end-to-end testable increment across Backend and Frontend while respecting strict module size limits (React components $\le 200$ lines, Phaser modules $\le 250$ lines, Zustand stores $\le 150$ lines, Spring Controllers/Handlers $\le 150$ lines, Spring Services $\le 250$ lines, DTOs/Entities $\le 120$ lines).
+- The system is divided into 11 sequential/parallelizable vertical slices (**Phase 1** through **Phase 11**), where each phase delivers an end-to-end testable increment across Backend and Frontend while respecting strict module size limits (React components $\le 200$ lines, Phaser modules $\le 250$ lines, Zustand stores $\le 150$ lines, TS services/hooks/utils $\le 250$ lines, Spring Controllers/Handlers $\le 150$ lines, Spring Services $\le 250$ lines, DTOs/Entities $\le 120$ lines).
 
 ### 2. Hybrid Auth & Zero-Interruption Account Upgrade (ADR-0001 & ADR-0004)
 - **Guest Onboarding**: `POST /api/v1/auth/guest` issues a signed 7-day JWT (`guestToken`) with a generated UUID `guestId` without inserting a row into the MySQL `users` table.
@@ -125,14 +131,14 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 - **Guest Session Staging**: Completed **Study Sessions** ($\ge 1\text{ minute}$) for a **Guest** are appended to Redis under `guest:{guestId}:sessions` with a 7-day TTL.
 - **Zero-Interruption Upgrade**: `POST /api/v1/auth/upgrade` accepts either `LOCAL` credentials (email + password) or a Google Identity Services popup `idToken` alongside the current `guestToken`.
   - When creating a new **Registered User**, the database record reuses `guestId` as `users.id`, flushes all staged sessions from `guest:{guestId}:sessions` into MySQL `study_sessions`, increments `users.total_study_minutes`, and issues a registered JWT.
-  - When merging into an already-existing **Registered User**, the backend flushes the staged sessions into `study_sessions` under the existing `registeredUserId` and executes an atomic Redis Lua script to swap `guestId` $\rightarrow$ `registeredUserId` across `room:{roomId}:players`, `room:{roomId}:seats`, and `table:{tableId}:state` so the learner remains **`SEATED`** without dropping their WebSocket session or **Table Host** status.
+  - When merging into an already-existing **Registered User**, the backend flushes the staged sessions into `study_sessions` under the existing `registeredUserId` and executes an atomic Redis Lua script to swap `guestId` $\rightarrow$ `registeredUserId` across `room:{roomId}:players`, `room:{roomId}:seats`, and `table:{roomId}:{tableId}:state` so the learner remains **`SEATED`** without dropping their WebSocket session or **Table Host** status.
 
 ### 3. Shared Static Room Topology & Single Default Room (ADR-0003)
 - Learners bypass any multi-room lobby and enter the default **Room** (`main-library`, auto-sharding to `main-library-2`, etc. if capacity exceeds 50 concurrent learners).
 - Both the Phaser 3 Tilemap engine and the Spring Boot `RoomTopologyRegistry` read the exact same static Tiled-compatible JSON map definition (`32x32px` grid) containing collision layers and seat metadata (`tableId`, `seatId`, tile coordinates, seat capacity per table, and facing direction).
 
 ### 4. Character State Machine, Input Priority & Zustand Bridge
-- **Canvas ↔ DOM Isolation**: Phaser 3 manages the 60 FPS canvas loop, tilemap rendering, $A^*$ pathfinding (`EasyStar.js`), and character sprites. React manages all HUD modals and the **Table Workspace**. Communication between Phaser and React occurs exclusively through Zustand stores (`useGameStore`, `useTableStore`, `useAuthStore`) using atomic selectors.
+- **Canvas ↔ DOM Isolation**: Phaser 3 manages the 60 FPS canvas loop, tilemap rendering, $A^*$ pathfinding (`EasyStar.js`), and character sprites. React manages all HUD modals and the **Table Workspace**. Communication between Phaser and React occurs exclusively through Zustand stores (`useGameStore`, `useTableStore`, `useAuthStore`, `useVoiceStore`) using atomic selectors.
 - **State Machine Shape**:
 ```ts
 type CharacterState = 'FREE_ROAM' | 'WALKING_TO_SEAT' | 'SEATED';
@@ -147,22 +153,22 @@ type CharacterState = 'FREE_ROAM' | 'WALKING_TO_SEAT' | 'SEATED';
   - `room:{roomId}:players` (`HASH`): Maps `userId` $\rightarrow$ player state JSON (`nickname`, `avatarId`, `x`, `y`, `dir`, `state`, `tableId`, `seatId`, `studyGoal`, `sitStartTime`).
   - `room:{roomId}:seats` (`HASH`): Maps `seatId` $\rightarrow$ `userId`.
   - `room:{roomId}:disconnects` (`HASH`): Maps `userId` $\rightarrow$ `disconnectedAtEpoch`.
-- **Atomic Seat Claim**: Executed via a Redis Lua script / `HSETNX` on `room:{roomId}:seats`. If the **Table** previously had $0$ seated learners, `table:{tableId}:state` is initialized with `hostUserId = userId`.
+- **Atomic Seat Claim**: Executed via a Redis Lua script / `HSETNX` on `room:{roomId}:seats`. If the **Table** previously had $0$ seated learners, `table:{roomId}:{tableId}:state` is initialized with `hostUserId = userId`.
 - **10Hz Throttling**: Movement packets (`/app/room/{roomId}/move`) are throttled to at most 10 packets/sec (`100ms`) on the client and rate-limited on the server; clients interpolate remote coordinates at 60 FPS.
 - **30-Second Grace Period & Deterministic Auto-Host Succession**:
   - On `SessionDisconnectEvent` for a **`SEATED`** learner, `SeatDisconnectWatchdog` records the disconnect timestamp in Redis and schedules a 30-second verification task via Spring's `TaskScheduler`.
   - Reconnecting within 30 seconds cancels the scheduled cleanup and restores the learner's **`SEATED`** state and **Table** role.
   - If still disconnected after 30 seconds (or when a learner voluntarily sends `/app/room/{roomId}/seat.leave`), the backend releases the **Seat** in Redis, records the **Study Session** if duration $\ge 1\text{ minute}$, and evaluates remaining seated learners at that **Table**:
     - If $> 0$ learners remain and the departing learner was `hostUserId`, **Auto-Host Succession** promotes the **Co-Host** with the earliest `sitStartTime`, or if no **Co-Host** exists, the **Table Member** with the earliest `sitStartTime`, removing the new host from `coHostUserIds` while preserving `videoState`, `homeworkSlides`, `isFreeCollab`, and `sosBanner`.
-    - If $0$ learners remain at the **Table**, `table:{tableId}:state` is deleted and `EphemeralStorageService.purgeTableHomework(tableId)` immediately deletes all associated `.webp` files and Redis keys.
+    - If $0$ learners remain at the **Table**, `table:{roomId}:{tableId}:state` is deleted and `EphemeralStorageService.purgeTableHomework(tableId)` immediately deletes all associated `.webp` files and Redis keys.
 
-### 6. Table Workspace, Synced YouTube & Native Normalized Whiteboard (ADR-0002)
+### 6. Table Workspace, Synced YouTube & Native Normalized Whiteboard (ADR-0002 & ADR-0006)
 - **Server-Authoritative Permissions**: Every workspace mutation (`video.sync`, slide upload/delete, stroke draw/clear, `sos.toggle`) is verified on the server to ensure the sender is `hostUserId`, listed in `coHostUserIds`, or `isFreeCollab == true`. Unauthorized mutations are rejected with a structured error message to `/user/queue/errors`.
 - **YouTube Drift Tolerance**: Server stores `{ videoId, isPlaying, currentTime, lastUpdatedEpoch }`. Clients compute $T_{\text{current}} = T_{\text{saved}} + (\text{Epoch}_{\text{now}} - \text{Epoch}_{\text{updated}}) / 1000$ and only invoke `player.seekTo(T_current)` when $|T_{\text{player}} - T_{\text{current}}| \ge 2.0\text{s}$.
 - **Ephemeral Homework Board**:
   - Client compresses selected/pasted images (`Ctrl + V`) to `.webp` (`maxDimension = 1920`, `quality = 0.85`) before uploading to `POST /api/v1/tables/{tableId}/homework-image`.
   - Backend validates file size ($\le 5\text{MB}$), slide count ($\le 5$ slides per **Table**), and actual magic bytes (`JPEG`, `PNG`, `WEBP`), normalizes storage as `.webp` inside the ephemeral volume, and sets a 6-hour Redis TTL key `ephemeral:img:{imageId}`.
-  - Annotations are rendered via a native HTML5 `<canvas>` 2D hook using normalized coordinates `[0.0, 1.0]`. Completed **Strokes** (`PEN`, `HIGHLIGHTER`, `TEXT`) and `ERASER` actions (by `strokeId`) persist in `table:{tableId}:state`, whereas **Laser Pointer** coordinates are broadcast ephemerally at 10Hz without Redis persistence.
+  - Annotations are rendered via a native HTML5 `<canvas>` 2D hook using normalized coordinates `[0.0, 1.0]`. Completed **Strokes** (`PEN`, `HIGHLIGHTER`, `TEXT`, geometric shapes, `LATEX`) and `ERASER`/`UNDO_STROKE` actions (by `strokeId` / `authorUserId`) persist in `table:{roomId}:{tableId}:state`, whereas **Laser Pointer** coordinates are broadcast ephemerally at 10Hz without Redis persistence.
 
 ### 7. Study Sessions, Gamification & WebRTC P2P Mesh Voice Chat (ADR-0005)
 - **Study Session Recording**: Triggered on seat release (voluntary leave or Grace Period expiry). Sessions with `durationMinutes >= 1` are persisted to MySQL `study_sessions` (for **Registered Users**) or staged in Redis `guest:{guestId}:sessions` (for **Guests**).

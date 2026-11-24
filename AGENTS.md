@@ -41,10 +41,11 @@ Thiết kế theo triết lý **Deep Modules** (`codebase-design`): giao diện 
 - **Giới hạn số dòng tối đa trên mỗi file (Hard Limits)**:
   - **React Component (`.tsx`)**: Tối đa **200 dòng** (mục tiêu lý tưởng: **80–150 dòng**). Tách custom hook (`use*.ts`), sub-components hoặc helper khi vượt ngưỡng.
   - **Phaser 3 Scene / Entity (`src/game/**/*.ts`)**: Tối đa **250 dòng**. `ClassroomScene.ts` chỉ làm nhiệm vụ điều phối (orchestration); tách riêng `GridPathfinder.ts`, `PlayerSprite.ts`, `SeatInteractionManager.ts`, `InputController.ts`.
-  - **Zustand Store (`src/stores/*.ts`)**: Tối đa **150 dòng** mỗi store (`useGameStore`, `useTableStore`, `useAuthStore`).
+  - **Zustand Store (`src/stores/*.ts`)**: Tối đa **150 dòng** mỗi store (`useGameStore`, `useTableStore`, `useAuthStore`, `useVoiceStore`).
+  - **TypeScript Service / Hook / Util (`src/{services,hooks,utils}/**/*.ts`)**: Tối đa **250 dòng**.
   - **Spring Boot Class (`.java`)**:
     - `Controller` / `WebSocketHandler`: Tối đa **150 dòng** (chỉ định tuyến, validate input và gọi Service).
-    - `Service`: Tối đa **250 dòng** (tách theo từng miền nghiệp vụ trong `modules/{auth,room,table,storage,stats}`).
+    - `Service`: Tối đa **250 dòng** (tách theo từng miền nghiệp vụ trong `modules/{auth,room,table,stats}`).
     - `DTO` / `Record` / `Entity`: Dùng Java `record` cho DTO bất biến; mỗi class tối đa **120 dòng**.
 - **Quy tắc chia tách**: Khi một file tiệm cận ngưỡng giới hạn, tách ngay theo ranh giới trách nhiệm (Seam) trước khi thêm tính năng mới.
 
@@ -70,14 +71,15 @@ Thiết kế theo triết lý **Deep Modules** (`codebase-design`): giao diện 
 ### 2.3. Stateful Realtime Backend (Spring Boot + STOMP WebSocket + Redis + MySQL)
 
 - **Phân tách Lưu trữ Nóng / Lạnh (Hot vs. Cold State)**:
-  - **Redis 7.x (Hot Realtime State)**: Lưu tọa độ người chơi (`room:{roomId}:players`), khóa ghế (`room:{roomId}:seats`), trạng thái bàn học (`table:{tableId}:state`) và metadata ảnh tạm (`ephemeral:img:{imageId}`).
+  - **Redis 7.x (Hot Realtime State)**: Lưu tọa độ người chơi (`room:{roomId}:players`), khóa ghế (`room:{roomId}:seats`), trạng thái bàn học phân vùng theo phòng (`table:{roomId}:{tableId}:state`, `table:{roomId}:{tableId}:chat`) và metadata ảnh tạm (`ephemeral:img:{imageId}`).
   - **MySQL 8.0 (Cold Persistent State)**: Chỉ ghi xuống MySQL khi khởi tạo/nâng cấp tài khoản (`users`), mở khóa vật phẩm (`character_items`), và **chỉ ghi `study_sessions` một lần khi người dùng kết thúc phiên ngồi học (đứng dậy rời bàn)**.
 - **Khóa ghế nguyên tử & Grace Period 30 giây**:
   - Chiếm ghế bắt buộc dùng lệnh nguyên tử Redis `HSETNX room:{roomId}:seats {seatId} {userId}` (hoặc Lua script tương đương) để chống race condition khi 2 người bấm cùng ghế.
   - Khi người dùng đang ngồi (`SEATED` / `TABLE_HOST`) bị mất kết nối WebSocket (rớt mạng hoặc F5), giữ nguyên ghế và quyền Trưởng bàn trong Redis với TTL **`30 giây`**. Chỉ khi quá 30 giây không kết nối lại mới giải phóng ghế và kích hoạt bầu Trưởng bàn kế nhiệm (**Auto-Host Succession**).
-- **Phân tách Kênh WebSocket (Room Scope vs. Table Scope)**:
-  - `/topic/room/{roomId}/events`: Chỉ truyền sự kiện cấp phòng (vị trí, ngồi/đứng dậy, trưởng bàn mới, bật/tắt cờ SOS).
-  - `/topic/table/{tableId}/workspace`: Chỉ client đang có `state === SEATED` tại đúng `tableId` đó mới được subscribe để nhận sự kiện Video Sync, nét vẽ Whiteboard, xin/duyệt quyền `CO_HOST` và Table Chat.
+- **Phân tách Kênh WebSocket (Room Scope vs. Table Scope — `ADR-0008`)**:
+  - `/topic/room/{roomId}/events`: Chỉ truyền sự kiện cấp phòng (vị trí, ngồi/đứng dậy, trưởng bàn mới, bật/tắt cờ SOS, tin nhắn phòng).
+  - `/topic/room/{roomId}/table/{tableId}/workspace`: Chỉ client đang có `state === SEATED` tại đúng `(roomId, tableId)` đó mới được subscribe để nhận sự kiện Video Sync, nét vẽ Whiteboard, Sổ nháp Toán (`Math Scratchpad`), xin/duyệt quyền `CO_HOST`, trạng thái mic và Table Chat.
+  - `/user/queue/voice`: Hàng đợi riêng tư để chuyển tiếp tín hiệu bắt tay WebRTC P2P một-đối-một (`SDP_OFFER`, `SDP_ANSWER`, `ICE_CANDIDATE`).
 - **Giới hạn tần suất gói tin (Network Throttling 10Hz)**:
   - Gói tin di chuyển (`/app/room/{roomId}/move`) và con trỏ Laser (`/app/table/{tableId}/board.draw`) phải được throttle ở mức tối đa **10 gói tin/giây (`100ms`)** từ Client và kiểm tra rate-limit trên Server. Client sử dụng nội suy tuyến tính (`Lerp`) để giữ chuyển động mượt ở `60 FPS`.
 
