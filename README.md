@@ -2,7 +2,7 @@
 
 - **Tên dự án:** Cùng Nhau Học Bài (Study Together 2D Web Game)
 - **Slogan:** *"Cùng nhau học bài - Không còn cô đơn trên hành trình chinh phục tri thức"*
-- **Phiên bản tài liệu:** 2.4.0 (Đồng bộ thực tế triển khai Phase 1 – Phase 11 & Giao diện Botanical Night Studio `#57`)
+- **Phiên bản tài liệu:** 2.5.0 (Đồng bộ thực tế triển khai Phase 1 – Phase 12 & Giao diện Botanical Night Studio `#57`)
 - **Kiến trúc cốt lõi:** Hybrid 2D Canvas (Phaser 3) + Reactive HUD (ReactJS 18 + TailwindCSS v4 — Chủ đề **Botanical Night Studio**) + Stateful Realtime Backend (Spring Boot 3.4, STOMP WebSocket, Redis 7, MySQL 8.0)
 - **Tài liệu liên kết:** [GLOSSARY.md](GLOSSARY.md) | [docs/SPEC.md](docs/SPEC.md) | [docs/adr/](docs/adr/) | [AGENTS.md](AGENTS.md)
 
@@ -157,8 +157,9 @@ Hệ thống ưu tiên trải nghiệm vào phòng học ngay lập tức (**Zer
 3. **Thời gian Giữ ghế 30 giây (`Grace Period`) & Kế nhiệm Trưởng bàn (`Auto-Host Succession`):**
    - Khi người học đang `SEATED` bị mất kết nối WebSocket hoặc tải lại trang (`F5`), `SeatDisconnectWatchdog` bảo lưu ghế ngồi và quyền hạn tại bàn trong đúng **30 giây**. Nếu kết nối lại trong 30 giây, người học được khôi phục thẳng vào ghế và bàn học cũ.
    - Khi `TABLE_HOST` chủ động đứng dậy hoặc hết 30 giây không kết nối lại, hệ thống tự động bầu `TABLE_HOST` kế nhiệm theo thứ tự ưu tiên: **`CO_HOST` ngồi lâu nhất (`sitStartTime` sớm nhất) $\rightarrow$ `MEMBER` ngồi lâu nhất**.
-4. **Luồng Xin quyền & Chế độ Hợp tác Tự do (`Free Collaboration`):**
-   - `MEMBER` có thể gửi yêu cầu xin quyền điều khiển (`permission.request`). `TABLE_HOST` nhận thông báo nổi (`HostPermissionToast`) để **Chấp nhận (`GRANT_CO_HOST`)**, **Từ chối (`DENY_CO_HOST`)**, **Thu hồi quyền (`REVOKE_CO_HOST`)**, **Nhường quyền Trưởng bàn (`TRANSFER_HOST`)**, hoặc bật gạt **Hợp tác tự do (`SET_FREE_COLLAB`)** cho phép cả bàn cùng chỉnh sửa.
+4. **Luồng Xin quyền, Hợp tác Tự do (`Free Collaboration`) & Khóa Bàn Học / Link Mời Bàn ([ADR-0014](docs/adr/0014-secondary-math-strokes-table-lock-and-client-study-pack.md)):**
+   - `MEMBER` có thể gửi yêu cầu xin quyền điều khiển (`permission.request`). `TABLE_HOST` nhận thông báo nổi (`HostPermissionToast`) để **Chấp nhận (`GRANT_CO_HOST`)**, **Từ chối (`DENY_CO_HOST`)**, **Thu hồi quyền (`REVOKE_CO_HOST`)**, **Nhường quyền Trưởng bàn (`TRANSFER_HOST`)**, bật gạt **Hợp tác tự do (`SET_FREE_COLLAB`)** hoặc bật/tắt **Khóa bàn riêng tư (`TOGGLE_TABLE_LOCK`)**.
+   - **Khóa bàn nguyên tử (`Table Lock`) & Liên kết mời vào bàn (`Table Invite Link`):** Khi bật `isTableLocked`, hệ thống sinh `inviteCode` tạm thời lưu trong `RedisTableState` (ẩn hoàn toàn khỏi `RoomSnapshotResponse` và `/topic/room/{roomId}/events` để chống rò rỉ; chỉ người đang `SEATED` đọc được để sao chép link `?room={roomId}&table={tableId}&code={inviteCode}`). Người được mời qua link sẽ ưu tiên vào đúng `Room Shard` qua `POST /api/v1/rooms/join` và tự động dẫn tới ghế trống bằng $A^*$ kèm `inviteCode` trong `seat.sit`; người đi tự do ngoài phòng không thể ngồi vào bàn đang khóa. Khóa bàn được bảo toàn qua **Grace Period** 30 giây và tự hủy khi bàn trống.
 
 ---
 
@@ -171,21 +172,23 @@ Hệ thống ưu tiên trải nghiệm vào phòng học ngay lập tức (**Zer
   Chỉ gọi `player.seekTo(T_current)` khi độ lệch $\ge 2.0\text{ giây}$. Lắng nghe `onStateChange` kết hợp vòng lặp Heartbeat mỗi `3 giây` để tự động kéo mọi thành viên về đúng trạng thái `isPlaying` và mốc thời gian của bàn; nếu trình duyệt chặn Autoplay có tiếng khi mới vào bàn, tự động chuyển sang `Muted Autoplay` kèm nút nổi 1 chạm bật tiếng (màu Warm Amber `#E5A93C` mực `#0F1714`).
 - **Lớp chắn Tương tác (`Iframe Click Shield`) & Thanh Tua Thời gian Trực quan:** Phủ lớp chắn DOM trên mặt `<iframe>` YouTube để ngăn `MEMBER` vô tình bấm dừng video cục bộ (chỉ giữ điều khiển âm lượng/tắt tiếng riêng), trong khi click của `TABLE_HOST` / `CO_HOST` hoặc thao tác kéo thanh tua thời gian (`mm:ss / mm:ss`) phát lệnh `video.sync` ngay lập tức cho cả bàn. Bộ đếm thời gian phiên học (`useStudyTimer`) tính theo `Date.now()` để không bị trình duyệt làm chậm khi ẩn tab.
 
-#### B. Bảng chiếu Bài tập Tạm thời & Bộ Công cụ Giải Toán (`Ephemeral Homework Board & Math Suite` - [ADR-0002](docs/adr/0002-native-canvas-normalized-homework-board.md), [ADR-0012](docs/adr/0012-ephemeral-math-workspace-and-multilayer-procedural-audio.md))
-- **Tải ảnh, Dán nhanh (`Ctrl + V`) & Trang nháp Toán dựng sẵn (`Instant Math Slide Templates`):** Tự động nén ảnh hoặc dựng mặt phẳng nháp toán `1280x720` (**Lưới ô vuông**, **Hệ trục tọa độ $Oxy$**, **Bảng trơn**) sang định dạng `.webp` ở phía Client trước khi gửi lên `POST /api/v1/tables/{tableId}/homework-image`. Backend kiểm tra kích thước ($\le 5\text{MB}$), giới hạn tối đa **5 trang (`Homework Slide`) mỗi bàn**, và kiểm tra **magic bytes** thực tế (`JPEG`, `PNG`, `WEBP`).
-- **Chú thích Hình học, Công thức $\LaTeX$ & Hoàn tác theo Người vẽ (`Per-Author Undo/Redo`):** Hỗ trợ tọa độ chuẩn hóa `[0.0, 1.0]` cho **Bút viết (`PEN`)**, **Bút dạ quang (`HIGHLIGHTER`)**, **Đoạn thẳng (`LINE`)**, **Mũi tên vector (`ARROW`)**, **Hình chữ nhật (`RECT`)**, **Đường tròn (`CIRCLE`)**, **Chèn chữ (`TEXT`)**, **Công thức toán (`LATEX` qua KaTeX kèm bảng ký hiệu nhanh)**, **Tẩy từng nét (`ERASER`)**, **Hoàn tác / Làm lại theo `authorUserId` (`UNDO_STROKE` / `Ctrl+Z` / `Ctrl+Y`)**, **Xóa toàn trang (`CLEAR`)** và **Con trỏ giảng bài (`LASER` throttle 10Hz, không lưu vào Redis)**.
-- **Sổ nháp Bước giải (`Math Scratchpad`) & Bộ Vẽ Đồ thị / Máy tính Khoa học (`Function Grapher`):**
-  - *`Math Scratchpad`:* Khung soạn thảo và xem trước trực tiếp các bước biến đổi đại số/giải tích bằng Markdown + $\LaTeX$ (`$...$`, `$$...$$`) đồng bộ thời gian thực cho cả bàn.
-  - *`Function Grapher`:* Vẽ tối đa 3 hàm số $y = f(x), g(x), h(x)$ trên hệ trục $Oxy$ chuẩn **Botanical Night Studio** (`#0F1714` nền, `#243630` lưới, đường cong `#E5A93C` / `#34D399` / `#E6ECE8`), tự động chấm nghiệm, cực trị, giao điểm, giải phương trình/hệ phương trình, tính đạo hàm $f'(x_0)$ và tích phân xác định $\int_a^b f(x)dx$, kèm nút **Xuất sang Trang bài tập (`Homework Slide`)** để cả bàn vẽ hình/chú thích đè lên đồ thị.
-- **Tự động Dọn rác (`Auto-Cleanup`):** Toàn bộ file ảnh `.webp` và dữ liệu bảng vẽ trên Redis bị xóa ngay lập tức khi người cuối cùng rời bàn ($0$ người ngồi) hoặc khi chạm TTL tối đa **6 giờ** (`EphemeralCleanupScheduler`).
+#### B. Bảng chiếu Bài tập Tạm thời & Bộ Công cụ Giải Toán (`Ephemeral Homework Board & Math Suite` - [ADR-0002](docs/adr/0002-native-canvas-normalized-homework-board.md), [ADR-0012](docs/adr/0012-ephemeral-math-workspace-and-multilayer-procedural-audio.md), [ADR-0014](docs/adr/0014-secondary-math-strokes-table-lock-and-client-study-pack.md))
+- **Tải ảnh, Cắt/Xoay trước khi đăng, Dán nhanh (`Ctrl + V`) & Trang nháp Toán dựng sẵn:** Hỗ trợ xoay $90^\circ$ và cắt khung ảnh đề bài (`HomeworkCropRotateModal`) trước khi nén sang `.webp` để gửi lên `POST /api/v1/tables/{tableId}/homework-image`, cùng các mẫu mặt phẳng nháp `1280x720` (**Lưới ô vuông**, **Hệ trục tọa độ $Oxy$**, **Trục số `NUMBER_LINE`**, **Bảng trơn**). Backend kiểm tra kích thước ($\le 5\text{MB}$), giới hạn tối đa **5 trang (`Homework Slide`) mỗi bàn**, và kiểm tra **magic bytes** thực tế (`JPEG`, `PNG`, `WEBP`).
+- **Chú thích Hình học Phẳng THCS, Công thức $\LaTeX$, Zoom/Pan Cục bộ & Hoàn tác theo Người vẽ (`Per-Author Undo/Redo`):** Hỗ trợ tọa độ chuẩn hóa `[0.0, 1.0]` với **Phóng to / Kéo khung nhìn cá nhân (`1×..3×` Zoom & Pan)** chuyển đổi ngược tọa độ chính xác cho **Bút viết (`PEN`)**, **Bút dạ quang (`HIGHLIGHTER`)**, **Đoạn thẳng (`LINE`)**, **Nét đứt đường phụ (`DASHED_LINE`)**, **Mũi tên vector (`ARROW`)**, **Hình chữ nhật (`RECT`)**, **Đường tròn tâm–bán kính có chấm tâm (`CIRCLE_CENTER`)**, **Đường tròn khung (`CIRCLE`)**, **Tam giác (`TRIANGLE`)**, **Ký hiệu góc/đoạn bằng nhau (`GEO_MARK`)**, **Nhãn đỉnh tự tăng $A, B, C\dots$ (`VERTEX_LABEL`)**, **Chèn chữ (`TEXT`)**, **Công thức toán (`LATEX` qua KaTeX)**, bắt điểm đầu mút & khóa góc $15^\circ / 45^\circ / 90^\circ$, **Tẩy từng nét (`ERASER`)**, **Hoàn tác / Làm lại theo `authorUserId`**, **Xóa toàn trang xác nhận 2 bước (`CLEAR`)** và **Con trỏ giảng bài (`LASER` throttle 10Hz, không lưu vào Redis)**.
+- **Chế độ Cấp học (`Curriculum Mode`: `THCS` mặc định Lớp 6–9 & `THPT / Đại học`), Sổ nháp Bước giải (`Math Scratchpad`) & Bộ Vẽ Đồ thị / Máy tính Chính xác:**
+  - *`Curriculum Mode` (`THCS` $\leftrightarrow$ `THPT`):* Tự động điều chỉnh thanh ký hiệu nhanh ($\triangle, \widehat{ABC}, \perp, \parallel, \sim, \cong, ^\circ, \begin{cases}\dots\end{cases}, \vdots$), preset đồ thị bậc nhất/bậc hai ($y = ax + b$, $y = ax^2$) và bộ giải Toán THCS & Số học (rút gọn phân số $\frac{a}{b}$, rút gọn căn thức $a\sqrt{b}$, phân tích thừa số nguyên tố, `ƯCLN` / `BCNN`, giải hệ bậc nhất $2\times 2$ nghiệm phân số chính xác), đồng thời vẫn mở rộng sang đạo hàm, tích phân $\int_a^b f(x)dx$ và hệ $3\times 3$ ở chế độ `THPT / Đại học`.
+  - *`Math Scratchpad` & `Function Grapher`:* Soạn thảo các bước biến đổi đại số Markdown + $\LaTeX$ đồng bộ thời gian thực cho cả bàn; vẽ tối đa 3 hàm số $y = f(x), g(x), h(x)$ trên hệ trục $Oxy$ chuẩn **Botanical Night Studio**, tự động chấm nghiệm, cực trị, giao điểm và **Xuất sang Trang bài tập (`Homework Slide`)**.
+- **Xuất Vở bài giảng Thuần Client-Side (`Study Pack` PNG / PDF Nhiều trang) & Tự động Dọn rác (`Auto-Cleanup`):** Mọi thành viên đang `SEATED` có thể tải trang hiện tại ra `.png` hoặc xuất toàn bộ các **Homework Slide** (kèm mọi **Stroke** & công thức $\LaTeX$) và các bước **Math Scratchpad** thành `.pdf` ngay trên trình duyệt (`0 KB` máy chủ); hộp thoại rời bàn nhắc lưu **Study Pack** khi bàn còn bài học. Toàn bộ file ảnh `.webp` và dữ liệu bảng vẽ trên Redis vẫn bị xóa ngay lập tức khi người cuối cùng rời bàn ($0$ người ngồi) hoặc sau **6 giờ**.
 
 #### C. Giao tiếp 2 Tầng (Hỗ trợ $\LaTeX$), Tín hiệu SOS, Âm thanh Đa tầng & Đàm thoại WebRTC ([ADR-0005](docs/adr/0005-webrtc-p2p-mesh-over-stomp.md), [ADR-0012](docs/adr/0012-ephemeral-math-workspace-and-multilayer-procedural-audio.md))
 - **Trò chuyện 2 tầng hỗ trợ công thức $\LaTeX$ (`$...$`, `$$...$$`) & Bong bóng Chat:**
   - *Room Chat (`/app/room/{roomId}/chat`):* Trò chuyện toàn phòng kèm **`Chat Bubble`** hiển thị phía trên đầu nhân vật trên bản đồ 2D trong 4 giây.
   - *Table Chat (`/app/table/{tableId}/chat`):* Kênh thảo luận riêng tư của những người đang ngồi cùng bàn (hiển thị trực tiếp công thức toán KaTeX), tự động xóa khi bàn trống.
-- **Biển báo Cầu cứu Bài tập (`SOS Banner`):** Trưởng bàn hoặc người đồng điều khiển có thể bật/tắt cờ SOS kèm chủ đề môn học để hiển thị biểu tượng SOS phát sáng ngay trên bàn học ngoài bản đồ 2D.
+- **Phản hồi nhanh tại bàn (`Quick Check`) & Biển báo Cầu cứu (`SOS Banner`):**
+  - *`Quick Check` (`/app/table/{tableId}/quick-check`):* Tín hiệu một chạm (`UNDERSTOOD` Đã hiểu, `SLOW_DOWN` Chậm lại, `RAISE_HAND` Giơ tay, `CLEAR`, hoặc `RESET_ALL` cho Trưởng bàn) hiển thị tức thời không làm nhảy bố cục (`CLS = 0`) trên thanh bàn học, header và danh sách thành viên.
+  - *`SOS Banner`:* Trưởng bàn hoặc người đồng điều khiển có thể bật/tắt cờ SOS kèm chủ đề môn học để hiển thị biểu tượng SOS phát sáng ngay trên bàn học ngoài bản đồ 2D.
 - **Âm thanh Nền Đa tầng (`Ambient Soundscape` 5 kênh) & Âm thanh Phản hồi (`Study SFX`):** Bộ tổng hợp Web Audio `0-KB` đa tầng gồm **Tiếng mưa** (mưa rơi + hạt mưa lộp độp + sấm xa + hiệu ứng mưa ngoài cửa sổ 2D), **Quán nước** (âm nền + tiếng tách sứ), **Lò sưởi** (lửa ấm + củi nổ lách tách), **Tiếng ồn trắng/hồng êm dịu**, và **Giai điệu Lofi Electric Piano $65\text{ BPM}$**, kết hợp kênh **`Study SFX`** bật/tắt độc lập cho hoàn thành `Study Goal`, ngồi ghế và nhận `Drink Delivery`.
-- **Chế độ rõ ràng (`Clear View`):** Chế độ hiển thị cá nhân của **Table Workspace** chỉ gồm Bảng giải bài (chụp/tải ảnh, chuyển trang, thanh công cụ dạng icon Bút · Tẩy · Laser · Xóa trang) và Table Chat; ẩn video YouTube, chức năng SOS cầu cứu, thanh ký hiệu gợi ý toán học ở phần chat, danh sách thành viên và công cụ phụ. Mặc định bật trên điện thoại, bật/tắt từ header và ghi nhớ trên thiết bị.
+- **Chế độ rõ ràng (`Clear View`):** Chế độ hiển thị cá nhân của **Table Workspace** chỉ gồm Bảng giải bài (chụp/tải ảnh kèm cắt xoay, chuyển trang, Zoom/Pan cục bộ, thanh công cụ Bút · Hoàn tác · 3 màu mực · Tẩy · Laser · Xóa trang xác nhận 2 bước), **Quick Check** và Table Chat (có nút mở gọn thanh ký hiệu toán); ẩn video YouTube, chức năng SOS cầu cứu, danh sách thành viên và công cụ phụ. Mặc định bật trên điện thoại, bật/tắt từ header và ghi nhớ trên thiết bị.
 - **Ghi nhận Giờ học, Bảng xếp hạng & Mở khóa Vật phẩm:**
   - Mọi phiên ngồi học (`Study Session`) có thời lượng **$\ge 1\text{ phút}$** đều được tự động ghi nhận khi rời ghế (phiên $< 1\text{ phút}$ được bỏ qua để chống spam).
   - Người học theo dõi lịch sử học tập cá nhân, **Bảng xếp hạng cộng đồng (`Study Leaderboard`)**, và mở khóa/trang bị các vật phẩm **`SKIN` (Trang phục)**, **`HAT` (Mũ/Tai nghe)**, **`DESK_PET` (Thú cưng để bàn)** theo tổng số phút học tích lũy.
@@ -249,7 +252,7 @@ CREATE TABLE character_items (
 | `room:{roomId}:disconnects` | `HASH` | Map `userId` $\rightarrow$ `disconnectedAtEpoch` phục vụ cơ chế giữ ghế 30 giây (`Grace Period`). |
 | `room:{roomId}:seq` | `STRING` | Bộ đếm thứ tự sự kiện (`eventSeq`) tăng dần của từng phòng. |
 | `room:{roomId}:chat` | `LIST` | Lưu bộ đệm các tin nhắn `Room Chat` gần nhất của phòng (tối đa 30 tin nhắn). |
-| `table:{roomId}:{tableId}:state` | `STRING (JSON)` | Lưu `RedisTableState` phân vùng theo cả phòng và bàn ([ADR-0006](docs/adr/0006-room-scoped-table-redis-keys.md)): `hostUserId`, `coHostUserIds`, `isFreeCollab`, `sosBanner`, `videoState`, `homeworkSlides`, `activeSlideId`, `scratchpad`. Tự động `DEL` khi bàn về $0$ người ngồi. |
+| `table:{roomId}:{tableId}:state` | `STRING (JSON)` | Lưu `RedisTableState` phân vùng theo cả phòng và bàn ([ADR-0006](docs/adr/0006-room-scoped-table-redis-keys.md), [ADR-0014](docs/adr/0014-secondary-math-strokes-table-lock-and-client-study-pack.md)): `hostUserId`, `coHostUserIds`, `isFreeCollab`, `isTableLocked`, `inviteCode`, `quickCheckSignals`, `sosBanner`, `videoState`, `homeworkSlides`, `activeSlideId`, `scratchpadState`. Tự động `DEL` khi bàn về $0$ người ngồi. |
 | `table:{roomId}:{tableId}:lock` | `STRING` | Khóa phân tán ngắn hạn (TTL `5s`, giải phóng qua `release_table_lock.lua`) bảo vệ các giao dịch cập nhật trạng thái bàn. |
 | `table:{roomId}:{tableId}:chat` | `LIST` | Bộ đệm tin nhắn trò chuyện nội bộ của bàn; tự động `DEL` khi bàn về $0$ người ngồi. |
 | `ephemeral:img:{imageId}` | `STRING (JSON)` | Lưu metadata đường dẫn và MIME thực tế của file ảnh bài tập tạm kèm TTL `21600s` ($6\text{ giờ}$). |
@@ -267,7 +270,7 @@ CREATE TABLE character_items (
 - **Client gửi lên:**
   - `/app/room/{roomId}/join`: Đăng ký phiên STOMP vào phòng sau khi gọi REST join/snapshot.
   - `/app/room/{roomId}/move`: Gửi cập nhật vị trí và hướng di chuyển (throttle tối đa $10\text{ gói/giây}$).
-  - `/app/room/{roomId}/seat.sit`: Yêu cầu chiếm ghế nguyên tử (`{ tableId, seatId }`).
+  - `/app/room/{roomId}/seat.sit`: Yêu cầu chiếm ghế nguyên tử (`{ tableId, seatId, inviteCode? }`, kiểm tra `isTableLocked` & `inviteCode` qua `atomic_seat_sit.lua`).
   - `/app/room/{roomId}/seat.leave`: Chủ động đứng dậy rời khỏi bàn học.
   - `/app/room/{roomId}/chat`: Gửi tin nhắn trò chuyện phòng (hiển thị kèm `Chat Bubble` 4 giây trên đầu nhân vật).
   - `/app/room/{roomId}/goal.update`: Cập nhật hoặc đánh dấu hoàn thành mục tiêu học tập (`Study Goal`) trực tiếp trong phiên.
@@ -277,14 +280,15 @@ CREATE TABLE character_items (
 #### Luồng Riêng Từng Bàn (`Table Scope` — Chỉ cho phép khi `state === SEATED` tại đúng `(roomId, tableId)` đó theo [ADR-0008](docs/adr/0008-room-scoped-table-stomp-and-private-voice-signaling.md)):
 - **Client gửi lên:**
   - `/app/table/{tableId}/permission.request`: Thành viên xin quyền điều khiển từ Trưởng bàn.
-  - `/app/table/{tableId}/permission.respond`: Trưởng bàn xử lý phân quyền (`GRANT_CO_HOST`, `DENY_CO_HOST`, `REVOKE_CO_HOST`, `TRANSFER_HOST`, `SET_FREE_COLLAB`).
-  - `/app/table/{tableId}/video.sync`: Đồng bộ trạng thái YouTube (`PLAY`, `PAUSE`, `SEEK`, `CHANGE_VIDEO`).
+  - `/app/table/{tableId}/permission.respond`: Trưởng bàn xử lý phân quyền (`GRANT`, `DENY`, `REVOKE`, `TRANSFER_HOST`, `TOGGLE_FREE_COLLAB`, `TOGGLE_TABLE_LOCK`).
+  - `/app/table/{tableId}/video.sync`: Đồng bộ trạng thái YouTube (`PLAY`, `PAUSE`, `SEEK`, `CHANGE_URL`).
   - `/app/table/{tableId}/sos.toggle`: Bật hoặc tắt biển báo cầu cứu bài tập (`SOS Banner`).
   - `/app/table/{tableId}/chat`: Gửi tin nhắn trò chuyện nội bộ trong bàn (hỗ trợ công thức toán $\LaTeX$).
-  - `/app/table/{tableId}/board.slide`: Chuyển trang bài tập đang mở (`SELECT_SLIDE`) hoặc xóa trang bài tập (`DELETE_SLIDE`).
-  - `/app/table/{tableId}/board.draw`: Vẽ nét mới (`ADD_STROKE`), tẩy nét vẽ (`ERASE_STROKE`), hoàn tác nét vẽ của chính người gửi (`UNDO_STROKE`), xóa sạch bảng (`CLEAR_SLIDE`) hoặc phát tín hiệu con trỏ (`LASER`).
+  - `/app/table/{tableId}/board.slide`: Chuyển trang bài tập đang mở (`SELECT`) hoặc xóa trang bài tập (`DELETE`).
+  - `/app/table/{tableId}/board.draw`: Vẽ nét mới (`ADD_STROKE` gồm `PEN`, `HIGHLIGHTER`, `TEXT`, `LATEX`, `LINE`, `ARROW`, `RECT`, `CIRCLE`, `DASHED_LINE`, `CIRCLE_CENTER`, `TRIANGLE`, `GEO_MARK`), tẩy nét vẽ (`ERASE_STROKE`), hoàn tác nét vẽ của chính người gửi (`UNDO_STROKE`), xóa sạch bảng (`CLEAR_SLIDE`) hoặc phát tín hiệu con trỏ (`LASER_MOVE`).
   - `/app/table/{tableId}/scratchpad.update`: Đồng bộ nội dung Sổ nháp bước giải (`Math Scratchpad`) theo thời gian thực.
-  - `/app/table/{tableId}/voice.signal`: Trao đổi tín hiệu WebRTC P2P (`JOIN`, `LEAVE`, `OFFER`, `ANSWER`, `ICE_CANDIDATE`, `MUTE_STATE`).
+  - `/app/table/{tableId}/quick-check`: Gửi/đặt lại tín hiệu phản hồi nhanh tại bàn (`UNDERSTOOD`, `SLOW_DOWN`, `RAISE_HAND`, `CLEAR`, `RESET_ALL`).
+  - `/app/table/{tableId}/voice.signal`: Trao đổi tín hiệu WebRTC P2P (`VOICE_JOIN`, `VOICE_LEAVE`, `SDP_OFFER`, `SDP_ANSWER`, `ICE_CANDIDATE`, `MUTE_STATUS`).
 - **Client lắng nghe (Subscribe):**
   - `/topic/room/{roomId}/table/{tableId}/workspace`: Nhận toàn bộ sự kiện đồng bộ của bàn học trong phân mảnh phòng tương ứng (tự động thu hồi phía máy chủ khi rời ghế).
   - `/user/queue/voice`: Nhận riêng tư các gói tin bắt tay WebRTC P2P một-đối-một (`SDP_OFFER`, `SDP_ANSWER`, `ICE_CANDIDATE`).
@@ -297,7 +301,7 @@ CREATE TABLE character_items (
   - `POST /api/v1/auth/upgrade`: Nâng cấp phiên Guest hiện tại lên `Registered User`, gộp giờ học và hoán đổi định danh trực tiếp trên Redis.
   - `GET /api/v1/auth/me`: Lấy thông tin định danh và thống kê phiên hiện tại từ Bearer JWT.
 - **Phòng & Bàn học (`Room & Table`):**
-  - `POST /api/v1/rooms/join`: Chọn phân mảnh phòng khả dụng (`main-library`, `main-library-2`, ...) và đăng ký hiện diện.
+  - `POST /api/v1/rooms/join`: Chọn phân mảnh phòng khả dụng (`main-library`, `main-library-2`, ...; hỗ trợ body tùy chọn `{ preferredRoomId, preferredTableId }` cho **Table Invite Link**) và đăng ký hiện diện.
   - `GET /api/v1/rooms/{roomId}/state`: Lấy toàn bộ `Room Snapshot` (danh sách người chơi, ghế đã có chủ, tóm tắt các bàn, tin nhắn phòng gần nhất).
   - `GET /api/v1/rooms/{roomId}/tables/{tableId}/state`: Lấy `TableWorkspaceSnapshot` khi vừa ngồi vào bàn.
 - **Bảng bài tập tạm thời (`Ephemeral Homework`):**
@@ -336,8 +340,8 @@ LearningWithMe/
 │   ├── restore-backup.sh               # Khôi phục bản sao lưu MySQL + Redis từ file .tar.gz
 │   └── k6-room-load.js                 # Kịch bản kiểm thử tải k6 (10Hz STOMP move + Room Chat)
 ├── docs/
-│   ├── SPEC.md                         # Đặc tả kỹ thuật tổng thể Phases 1 – 11 & UI Botanical Night Studio (#57)
-│   └── adr/                            # Architecture Decision Records (ADR-0001 .. ADR-0013)
+│   ├── SPEC.md                         # Đặc tả kỹ thuật tổng thể Phases 1 – 12 & UI Botanical Night Studio (#57)
+│   └── adr/                            # Architecture Decision Records (ADR-0001 .. ADR-0014)
 ├── shared/
 │   └── maps/
 │       └── main-library.json           # Bản đồ Tiled JSON dùng chung cho Phaser 3 & Backend
@@ -470,7 +474,7 @@ Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](d
 
 ---
 
-## 8. TRẠNG THÁI TRIỂN KHAI (PHASES 1 – 11 & UI REFACTOR #57 COMPLETED)
+## 8. TRẠNG THÁI TRIỂN KHAI (PHASES 1 – 12 & UI REFACTOR #57 COMPLETED)
 
 - [x] **Phase 1 — Foundation, Docker Infra & Hybrid Auth:** Docker Compose, Flyway migrations, Guest onboarding không rác DB, nâng cấp tài khoản không gián đoạn và hoán đổi định danh nguyên tử trên Redis.
 - [x] **Phase 2 — 2D Classroom Engine & Character State Machine:** Bản đồ Tiled JSON dùng chung, tìm đường $A^*$ (`EasyStar.js`), máy trạng thái `FREE_ROAM` $\leftrightarrow$ `WALKING_TO_SEAT` $\leftrightarrow$ `SEATED`, ưu tiên bàn phím tức thời và khóa di chuyển khi ngồi.
@@ -484,3 +488,4 @@ Kiến trúc triển khai 0 đồng không cần thẻ tín dụng ([ADR-0007](d
 - [x] **UI Refactor (`#57` / `ADR-0010`) — Botanical Night Studio ("Rừng Đêm & Tập trung Sâu"):** Thiết lập Semantic Token Seam dùng chung giữa React HUD (`@theme` trong `index.css`) và Phaser 3 (`botanicalPalette.ts`), bảng màu `#0F1714` Deep Pine Night / `#16221E` Slate Leaf / `#243630` Luminous Border / `#E6ECE8` Morning Mist / `#8FA399` Muted Sage / `#E5A93C` Warm Amber (mực tối `#0F1714` đạt `8.74:1`) / `#34D399` Bioluminescent Emerald, kiến trúc Double-Bezel + Static Glassmorphism, bộ `StudioIcons` SVG `1.5px` và xóa sạch toàn bộ lớp màu `slate-*`/`sky-*` thô trên UI chrome.
 - [x] **Phase 10 (`#64`..`#71`) — Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (Bám sát Botanical Night Studio `#57` & `ADR-0010`):** Thanh toán nợ kỹ thuật Single-Node (Lua Rate Limiters nguyên tử, `Per-Author Undo/Redo`, chuẩn hóa MIME ảnh bài tập), khóa đồng bộ video YouTube toàn bàn (`Iframe Click Shield`, `onStateChange` Guard, Heartbeat `3s`, thanh tua thời gian & Muted Autoplay fallback — `ADR-0011`), bộ công cụ Giải Toán (Trang nháp Toán dựng sẵn, hình học phẳng & $\LaTeX$ `Stroke`, $\LaTeX$ trong Chat, `Math Scratchpad` đồng bộ, `Function Grapher` vẽ đồ thị $f(x)$ & máy tính khoa học — `ADR-0012`), đại tu đồ họa 2D **Study Café** (nhân vật `32x48px` có bóng đổ, nội thất pixel-art có `Y-Sorting`, hiệu ứng mưa ngoài cửa sổ đồng bộ `BOTANICAL_2D_SCENE`) và nâng cấp **Ambient Soundscape** 5 kênh đa tầng (kèm Lofi Piano) + **Study SFX**.
 - [x] **Phase 11 (`#75`..`#85` / `ADR-0013`) — WebGL 2D Study Café Overhaul, Paper-Doll Pipeline & Accessibility/Performance Hardening:** Mở khóa WebGL (`Phaser.AUTO` với Canvas fallback + GPU sleep khi mở Workspace + dọn dẹp vòng lặp an toàn khi đăng xuất/chuyển tài khoản), 3 chế độ **Ambience Mood** và đèn bàn `Warm Amber`, Particle VFX & Game Feel, nhãn chiếu DOM hi-DPI sắc nét (cô lập khỏi `src/game/`), tileset & Paper-doll pixel-art atlas CC0-1.0 (`32×48px`) đồng bộ chân dung React (`TopBar`, Onboarding, Tủ đồ), chuẩn hóa toàn bộ React UI sang `@theme` tokens (`bg-background`/`bg-card`/`bg-primary`), focus trap + `inert` đồng bộ cho mọi Modal và tối ưu LCP/CLS di động (`375px` & `320px`).
+- [x] **Phase 12 (`#86`..`#94` / `ADR-0014`) — Secondary Math Suite (Toán THCS), Euclidean Geometry Board, Mobile Ergonomics, Tutoring Coordination & Study Pack Export:** Tái cấu trúc module theo giới hạn dòng `AGENTS.md`, bổ sung **Curriculum Mode** mặc định `Toán THCS` (cùng `THPT / Đại học`), mẫu **Trục số (`NUMBER_LINE`)**, bộ giải số học/phân số/căn thức chính xác (`mathExact*`, `mathNumberTheory`), nét vẽ hình học phẳng THCS (`DASHED_LINE`, `CIRCLE_CENTER`, `TRIANGLE`, `GEO_MARK`, `VERTEX_LABEL` + bắt điểm & khóa góc), cắt xoay ảnh trước khi tải lên + Zoom/Pan cục bộ + gia cố **Clear View** (`Undo`, 3 màu mực, xác nhận xóa 2 bước), **Table Invite Link** + khóa bàn nguyên tử **Table Lock** trên Redis, tín hiệu **Quick Check** 1 chạm tại bàn (`CLS = 0`), và xuất **Study Pack** (PNG / PDF nhiều trang) thuần Client-Side kèm hộp thoại nhắc lưu trước khi rời ghế.

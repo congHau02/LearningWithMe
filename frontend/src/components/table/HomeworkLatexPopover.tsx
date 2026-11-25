@@ -5,6 +5,7 @@ import type { NormalizedPoint } from '../../utils/homeworkCanvasMath';
 
 interface HomeworkLatexPopoverProps {
   point: NormalizedPoint;
+  projectedTopPercent?: number;
   value: string;
   color: string;
   onChange: (nextValue: string) => void;
@@ -14,6 +15,7 @@ interface HomeworkLatexPopoverProps {
 
 export function HomeworkLatexPopover({
   point,
+  projectedTopPercent,
   value,
   color,
   onChange,
@@ -42,7 +44,8 @@ export function HomeworkLatexPopover({
     });
   };
 
-  const clampedTop = Math.min(36, Math.max(4, point.y * 100));
+  const rawTop = projectedTopPercent ?? point.y * 100;
+  const clampedTop = Math.min(36, Math.max(4, rawTop));
 
   return (
     <div

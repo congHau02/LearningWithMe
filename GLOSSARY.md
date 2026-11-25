@@ -82,7 +82,15 @@ _Avoid_: Host Failover, Admin Transfer
 Chế độ của một Table do Table Host bật, cho phép mọi người học ngồi trong bàn đó mặc định có quyền tương đương Co-Host.
 _Avoid_: Public Mode, Open Edit
 
+**Table Lock (`isTableLocked` / Khóa bàn học)**:
+Chế độ riêng tư của một Table do Table Host bật nhằm ngăn người học đang ở trạng thái Free Roam tự ý ngồi vào bàn khi không đi qua Table Invite Link hợp lệ của bàn đó.
+_Avoid_: Private Room, Password Table, VIP Table, Seat Reservation
+
 ## Công cụ Học tập & Tương tác (Study Tools & Social)
+
+**Table Invite Link (Liên kết mời vào bàn)**:
+Liên kết chia sẻ trực tiếp đưa người được mời vào đúng Room Shard và tự động dẫn tới một Seat trống của Table mục tiêu, kể cả khi bàn đang bật Table Lock.
+_Avoid_: Room Invite, Share URL, Deep Link, Join Code
 
 **Table Workspace (Không gian bàn học)**:
 Tổ hợp giao diện học tập chung chỉ mở ra cho những người đang `SEATED` tại cùng một Table, bao gồm trình phát video đồng bộ, bảng bài tập tạm thời và trò chuyện bàn.
@@ -92,12 +100,16 @@ _Avoid_: Study Modal, Table Dashboard, Classroom View
 Cách hiển thị cá nhân của Table Workspace chỉ gồm Homework Slide và trò chuyện bàn, lược bỏ video và các công cụ phụ; mặc định bật trên điện thoại.
 _Avoid_: Focus Mode, Chế độ tập trung, Zen Mode, Board View
 
+**Curriculum Mode (Chế độ cấp học Toán)**:
+Chế độ hiển thị cá nhân điều chỉnh bộ ký hiệu toán học, mẫu giấy nháp và công cụ tính toán trong Table Workspace theo đúng chương trình học (ưu tiên Toán THCS cấp 2 hoặc mở rộng sang Toán THPT/Đại học).
+_Avoid_: Grade Filter, Difficulty Mode, Student Tier, Math Level
+
 **Homework Slide (Trang bài tập)**:
-Một trang làm việc tạm thời trong Table Workspace (tối đa 5 trang mỗi Table) được khởi tạo từ ảnh đề bài tải lên hoặc mẫu giấy nháp toán dựng sẵn (lưới ô vuông, hệ trục tọa độ, bảng trơn), tự động hủy khi Table không còn người ngồi.
+Một trang làm việc tạm thời trong Table Workspace (tối đa 5 trang mỗi Table) được khởi tạo từ ảnh đề bài tải lên hoặc mẫu giấy nháp toán dựng sẵn (lưới ô vuông, hệ trục tọa độ, trục số, bảng trơn), tự động hủy khi Table không còn người ngồi.
 _Avoid_: Whiteboard Page, Attachment, Document
 
 **Stroke (Nét vẽ chú thích)**:
-Một đơn vị hình họa (bút viết tay, dạ quang, hình học phẳng, trục tọa độ, nhãn chữ hoặc công thức toán) được vẽ đè lên một Homework Slide và tồn tại suốt vòng đời của trang bài tập đó.
+Một đơn vị hình họa (bút viết tay, dạ quang, hình học phẳng, ký hiệu góc và đoạn bằng nhau, nhãn đỉnh/chữ hoặc công thức toán) được vẽ đè lên một Homework Slide và tồn tại suốt vòng đời của trang bài tập đó.
 _Avoid_: Drawing, Path, Mark
 
 **Math Scratchpad (Sổ nháp bước giải)**:
@@ -115,6 +127,14 @@ _Avoid_: Cursor, Highlighter
 **SOS Banner (Tín hiệu cầu cứu bài tập)**:
 Biển báo trạng thái gắn trên một Table kèm chủ đề môn học nhằm thông báo cho những người đang ở trạng thái Free Roam trong Room biết bàn này cần người vào giảng giúp.
 _Avoid_: Help Ticket, Alert, Question Flag
+
+**Quick Check (Phản hồi nhanh tại bàn)**:
+Tín hiệu trạng thái học tập ngắn gọn một chạm của người đang `SEATED` (đã hiểu bài, cần giảng chậm lại, hoặc giơ tay xin nói) hiển thị tức thời cho cả Table mà không làm trôi luồng thảo luận.
+_Avoid_: Poll, Quiz, Raise Hand Queue, Chat Reaction
+
+**Study Pack (Vở bài giảng xuất file)**:
+Bản tổng hợp tài liệu buổi học được kết xuất trực tiếp về thiết bị của người học (gộp các Homework Slide kèm toàn bộ Stroke và các bước giải trong Math Scratchpad) trước khi dữ liệu tạm của Table tự hủy khi bàn trống.
+_Avoid_: Cloud Notebook, Saved Session, Lesson Archive, Board Backup
 
 **Study Session (Phiên ngồi học)**:
 Một khoảng thời gian liên tục được ghi nhận từ lúc người học chuyển sang trạng thái `SEATED` tại một Table cho đến khi họ rời ghế (đạt ngưỡng thời lượng tối thiểu).

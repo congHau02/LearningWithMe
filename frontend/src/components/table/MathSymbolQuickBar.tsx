@@ -25,13 +25,13 @@ export function MathSymbolQuickBar({
       data-testid={`${testIdPrefix}-bar`}
       className={
         compact
-          ? 'flex shrink-0 items-center gap-1 overflow-x-auto border-t border-border bg-background px-2 py-1'
+          ? 'flex min-h-[54px] shrink-0 items-center gap-1 overflow-x-auto border-t border-border bg-background px-2 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:min-h-[40px]'
           : 'flex shrink-0 flex-wrap items-center gap-1 rounded-lg border border-border bg-background p-1.5'
       }
     >
       {snippets.map((sym) => (
         <button
-          key={sym.id}
+          key={`${snippets.length}-${sym.id}`}
           type="button"
           disabled={disabled}
           data-testid={`${testIdPrefix}-${sym.id}`}

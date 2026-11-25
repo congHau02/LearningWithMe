@@ -95,7 +95,20 @@ export function buildTriangleVertices(
   const aspect = safeAspect(options.aspectRatio);
   if (options.snap) {
     if (options.preserveEndpoint) {
-      return [start, { x: start.x, y: end.y }, end];
+      if (Math.abs(end.x - start.x) >= 0.005 && Math.abs(end.y - start.y) >= 0.005) {
+        return [start, { x: start.x, y: end.y }, end];
+      }
+      const dxPx = (end.x - start.x) * aspect;
+      const dyPx = end.y - start.y;
+      const len = Math.hypot(dxPx, dyPx);
+      if (len >= 1e-6) {
+        const h = Math.max(0.05, len * 0.6);
+        const apex: NormalizedPoint = {
+          x: clamp01((start.x + end.x) / 2 + ((-dyPx / len) * h) / aspect),
+          y: clamp01((start.y + end.y) / 2 + (dxPx / len) * h),
+        };
+        return [start, apex, end];
+      }
     }
     const dxPx = (end.x - start.x) * aspect;
     const dyPx = end.y - start.y;

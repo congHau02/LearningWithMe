@@ -47,7 +47,7 @@ export function QuickCheckHeaderPill({ signals }: { signals: Record<string, Quic
     <span
       data-testid="header-quick-check-summary"
       aria-label={`Phản hồi nhanh tại bàn: ${counts.UNDERSTOOD} đã hiểu, ${counts.SLOW_DOWN} chậm lại, ${counts.RAISE_HAND} giơ tay`}
-      className={`inline-flex min-h-[36px] min-w-[9.5rem] shrink-0 items-center justify-between gap-2 rounded-xl border px-2.5 py-1 font-mono text-xs font-semibold tabular-nums ${
+      className={`inline-flex min-h-[36px] min-w-[7.75rem] shrink-0 items-center justify-between gap-2 rounded-xl border px-2.5 py-1 font-mono text-xs font-semibold tabular-nums ${
         counts.total > 0
           ? 'border-primary/40 bg-primary/10 text-foreground'
           : 'border-border/75 bg-card/60 text-muted-foreground'

@@ -176,6 +176,14 @@ export function HomeworkAnnotationCanvas({
           {pendingLatex && canControl ? (
             <HomeworkLatexPopover
               point={pendingLatex.point}
+              projectedTopPercent={parseFloat(
+                projectNormalizedPointToStagePercent(
+                  pendingLatex.point,
+                  viewportControls.viewport,
+                  viewportControls.stageSize.width,
+                  viewportControls.stageSize.height,
+                ).top,
+              )}
               value={pendingLatex.value}
               color={color}
               onChange={(val) => setPendingLatex((prev) => (prev ? { ...prev, value: val } : null))}

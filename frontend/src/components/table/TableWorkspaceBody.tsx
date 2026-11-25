@@ -54,7 +54,7 @@ export function TableWorkspaceBody({
         <div
           role="status"
           data-testid="table-permission-toast"
-          className="rounded-lg border border-primary/40 bg-primary/15 px-3 py-2 text-xs font-medium text-primary"
+          className="pointer-events-none absolute left-1/2 top-14 z-40 -translate-x-1/2 rounded-xl border border-primary/50 bg-card/95 px-3.5 py-2 text-xs font-medium text-primary shadow-xl"
         >
           {permissionToast}
         </div>

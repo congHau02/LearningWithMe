@@ -16,7 +16,7 @@ export interface TableCollabMenuProps {
 }
 
 const DESKTOP_ACTION_BTN =
-  'transition-botanical inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  'transition-botanical inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-semibold active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 /**
  * Compact permission & overflow menu for {@link TableWorkspaceHeader}.

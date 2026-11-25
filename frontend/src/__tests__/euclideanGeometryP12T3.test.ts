@@ -305,4 +305,28 @@ describe('P12-T3: Euclidean Geometry Strokes, Snapping, Vertex Labels & Renderin
     expect(findHitStrokeId(strokes, { x: 0.9, y: 0.3 }, 0.025)).toBe('cc-1');
     expect(findHitStrokeId(strokes, { x: 0.8, y: 0.3 }, 0.025)).toBe('cc-1');
   });
+
+  it('produces non-degenerate triangle vertices when endpoint snap aligns horizontally or vertically', () => {
+    const horiz = buildTriangleVertices(
+      { x: 0.2, y: 0.5 },
+      { x: 0.6, y: 0.5 },
+      { snap: true, aspectRatio: 16 / 9, preserveEndpoint: true },
+    );
+    const areaH = Math.abs(
+      (horiz[1].x - horiz[0].x) * (horiz[2].y - horiz[0].y) -
+      (horiz[2].x - horiz[0].x) * (horiz[1].y - horiz[0].y),
+    );
+    expect(areaH).toBeGreaterThan(0.005);
+
+    const vert = buildTriangleVertices(
+      { x: 0.5, y: 0.2 },
+      { x: 0.5, y: 0.7 },
+      { snap: true, aspectRatio: 16 / 9, preserveEndpoint: true },
+    );
+    const areaV = Math.abs(
+      (vert[1].x - vert[0].x) * (vert[2].y - vert[0].y) -
+      (vert[2].x - vert[0].x) * (vert[1].y - vert[0].y),
+    );
+    expect(areaV).toBeGreaterThan(0.005);
+  });
 });

@@ -1,4 +1,4 @@
-# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (Phases 1 – 11)
+# Đặc Tả Kỹ Thuật Tổng Thể (Master Spec) — Cùng Nhau Học Bài (Phases 1 – 12)
 
 ## Problem Statement
 
@@ -6,7 +6,7 @@ Người học trực tuyến (học sinh, sinh viên, người tự học) thư
 
 ## Solution
 
-Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **11 Phase (Vertical Slices)** và hệ ngôn ngữ thiết kế **Botanical Night Studio (`#57` / `ADR-0010` & `ADR-0013`)**:
+Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một không gian học tập trực tuyến 2D góc nhìn **3/4 Top-Down Orthogonal** ngay trên trình duyệt (Desktop và Mobile), được triển khai theo **12 Phase (Vertical Slices)** và hệ ngôn ngữ thiết kế **Botanical Night Studio (`#57` / `ADR-0010` & `ADR-0013`)**:
 
 - **Phase 1 — Foundation, Docker Infra & Hybrid Auth**: Thiết lập nền tảng cơ sở dữ liệu bền vững (MySQL 8.0) và bộ nhớ trạng thái thời gian thực (Redis 7.x), cho phép người học bước ngay vào **Room** mặc định với tư cách **Guest** không cần đăng ký, và hỗ trợ **Account Upgrade** không gián đoạn lên **Registered User** để bảo toàn toàn bộ thời gian học.
 - **Phase 2 — 2D Classroom Engine & Character State Machine**: Xây dựng bản đồ **Room** 2D tương tác với tìm đường tự động $A^*$, máy trạng thái nhân vật 3 trạng thái bất biến (`FREE_ROAM` $\leftrightarrow$ `WALKING_TO_SEAT` $\leftrightarrow$ `SEATED`), quy tắc ưu tiên bàn phím tức thời và khóa di chuyển khi đang ngồi học.
@@ -20,6 +20,7 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 - **UI Refactor (`#57` / `ADR-0010`) — Botanical Night Studio ("Rừng Đêm & Tập trung Sâu")**: Chuẩn hóa toàn bộ giao diện React HUD, các hộp thoại Modal, **Table Workspace** và ánh sáng đêm **Study Café** trên Phaser 3 qua một **Semantic Token Seam** dùng chung (`#0F1714` Deep Pine Night, `#16221E` Slate Leaf, `#243630` Luminous Border, `#E6ECE8` Morning Mist, `#8FA399` Muted Sage, `#E5A93C` Warm Amber với chữ `#0F1714` tương phản `8.74:1`, `#34D399` Bioluminescent Emerald), kiến trúc Double-Bezel + Static Glassmorphism, bộ `StudioIcons` SVG nét `1.5px` và cấm tuyệt đối lớp màu `slate-*`/`sky-*` thô trong UI chrome.
 - **Phase 10 — Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (ADR-0011 & ADR-0012, Bám sát Botanical Night Studio `#57`)**: Thanh toán toàn bộ nợ kỹ thuật Single-Node (Lua script nguyên tử cho toàn bộ Rate Limiters, hoàn tác nét vẽ theo người vẽ `Per-Author Undo/Redo`, chuẩn hóa MIME ảnh bài tập), khóa đồng bộ video YouTube tuyệt đối cho cả bàn qua `Iframe Click Shield` + `onStateChange` Guard + Heartbeat `3 giây` + thanh tua trực quan, bổ sung bộ công cụ Giải Toán chuyên sâu (Trang nháp Toán dựng sẵn, công cụ hình học & $\LaTeX$ **Stroke**, $\LaTeX$ trong **Table Chat** / **Room Chat**, **Math Scratchpad** đồng bộ và **Function Grapher** vẽ đồ thị $f(x)$ + máy tính giải tích/đại số), đại tu đồ họa 2D **Study Café** (nhân vật `32x48px` có bóng đổ, nội thất pixel-art có `Y-Sorting`, hiệu ứng mưa ngoài cửa sổ đồng bộ `BOTANICAL_2D_SCENE`), và nâng cấp **Ambient Soundscape** 5 kênh đa tầng (kèm giai điệu Lofi Piano) + **Study SFX**.
 - **Phase 11 — WebGL 2D Study Café Overhaul, Paper-Doll Pipeline & Accessibility/Performance Hardening (ADR-0013)**: Mở khóa WebGL (`Phaser.AUTO` với Canvas fallback, quản lý GPU sleep theo **Table Workspace** và hủy loop an toàn), **Ambience Mood** 3 chế độ dịu mắt với đèn bàn `Warm Amber` theo bàn `SEATED`, hệ thống hạt & Game Feel mượt (`1× / 2× / 3×` zoom), nhãn chiếu DOM hi-DPI tách khỏi `src/game/`, asset pixel-art atlas CC0-1.0 **Paper-Doll** đồng bộ chân dung React (`TopBar`, Onboarding, Tủ đồ), chuẩn hóa toàn bộ React UI sang semantic tokens (`@theme`) và gia cố truy cập bàn phím (`FocusTrap`, `useLayoutEffect` đồng bộ `inert`, `Escape`, vùng chạm di động $\ge 44\times 44\text{px}$).
+- **Phase 12 — Secondary Math Suite (Toán THCS), Euclidean Geometry Board, Mobile Ergonomics, Tutoring Coordination & Study Pack Export (ADR-0014)**: Bổ sung **Curriculum Mode** mặc định `Toán THCS` (kèm mở rộng `THPT / Đại học`), mẫu **Trục số (`NUMBER_LINE`)**, bộ giải số học/phân số/căn thức chính xác (`ƯCLN`/`BCNN`, thừa số nguyên tố, rút gọn phân số & $a\sqrt{b}$), bộ công cụ hình học phẳng THCS (`DASHED_LINE`, `CIRCLE_CENTER`, `TRIANGLE`, `GEO_MARK`, `VERTEX_LABEL` $A, B, C\dots$ kèm bắt điểm & khóa góc $15^\circ$), cắt/xoay ảnh bài tập trước khi tải lên + Zoom/Pan cục bộ trên **Homework Slide**, gia cố **Clear View** (`Undo`, 3 màu mực, thanh ký hiệu thu gọn & xác nhận xóa 2 bước), **Table Invite Link** + khóa bàn nguyên tử **Table Lock** trên Redis, tín hiệu **Quick Check** 1 chạm (`CLS = 0`), và xuất **Study Pack** (PNG / PDF nhiều trang) thuần Client-Side kèm hộp thoại nhắc lưu trước khi rời bàn.
 
 ## User Stories
 
@@ -120,10 +121,17 @@ Xây dựng **Cùng Nhau Học Bài (Study Together 2D Web Game)** — một kh�
 74. As a learner customizing my character, I want `CC0-1.0` `32×48px` **Paper-Doll** pixel-art atlases for `SKIN`, `HAT`, `DESK_PET`, and two-layer Y-sorted furniture synchronized with my React portrait across `TopBar`, Onboarding, and the Character Customizer, so that my character looks consistent between the 2D map and HUD modals.
 75. As a keyboard or mobile learner, I want 100% `@theme` semantic token adoption (`bg-background`, `bg-card`, `bg-primary` with WCAG AAA `#0F1714` ink), synchronous `FocusTrap` + `inert` background locking on all modals, and zero horizontal overflow at `375px` and `320px` viewports, so that the entire interface is accessible and responsive.
 
+### Phase 12: Secondary Math Suite (Toán THCS), Mobile Ergonomics, Tutoring Coordination & Study Pack Export
+76. As a middle-school (Grades 6–9 / Toán THCS) learner or tutor, I want **Curriculum Mode** to default to `THCS` (with a toggle to `THPT / Đại học`), provide a **Number Line** slide template, secondary geometry/algebra quick symbols ($\triangle, \widehat{ABC}, \perp, \parallel, \sim, \cong, ^\circ, \begin{cases}\dots\end{cases}, \vdots$), and exact rational/radical/number-theory answers (`a/b`, $a\sqrt{b}$, prime factorization, `ƯCLN`/`BCNN`), so that math tools match Vietnamese secondary lessons.
+77. As a tutor or student drawing Euclidean proofs on a **Homework Slide**, I want center-radius circles (`CIRCLE_CENTER` with center dot), triangles (`TRIANGLE`), dashed auxiliary lines (`DASHED_LINE`), 1-tap congruence/right-angle marks (`GEO_MARK`), auto-incrementing vertex labels (`VERTEX_LABEL`), and endpoint/angle snapping, so that geometry diagrams stay clean and accurate on desktop and mobile.
+78. As a mobile learner sharing paper homework, I want to rotate and crop my photo before uploading, zoom/pan locally (`1×..3×`) while annotating accurately in `[0.0, 1.0]` coordinates, and rely on a hardened **Clear View** with `Undo`, 3 ink colors, compact math symbols, and 2-step `CLEAR_SLIDE` confirmation, so that mobile board work is ergonomic and safe from accidental wipes.
+79. As a tutor running a private session, I want to toggle **Table Lock** (`TOGGLE_TABLE_LOCK`), copy a **Table Invite Link** (`?room={roomId}&table={tableId}&code={inviteCode}`), and have invited students route into the target **Room Shard** and auto-walk to an open **Seat** while uninvited passersby are blocked atomically on Redis, plus 1-tap **Quick Check** signals (`UNDERSTOOD`, `SLOW_DOWN`, `RAISE_HAND`), so that small-group tutoring stays organized without chat noise.
+80. As a **`SEATED`** learner finishing a session before ephemeral cleanup wipes the **Table**, I want to export the active slide as PNG or the full deck + **Math Scratchpad** derivations as a multi-page PDF directly in the browser (`Study Pack`), and receive a save reminder in the leave-seat confirmation modal, so that I keep take-home notes with zero server storage.
+
 ## Implementation Decisions
 
 ### 1. Phased Vertical-Slice Delivery Architecture
-- The system is divided into 11 sequential/parallelizable vertical slices (**Phase 1** through **Phase 11**), where each phase delivers an end-to-end testable increment across Backend and Frontend while respecting strict module size limits (React components $\le 200$ lines, Phaser modules $\le 250$ lines, Zustand stores $\le 150$ lines, TS services/hooks/utils $\le 250$ lines, Spring Controllers/Handlers $\le 150$ lines, Spring Services $\le 250$ lines, DTOs/Entities $\le 120$ lines).
+- The system is divided into 12 sequential/parallelizable vertical slices (**Phase 1** through **Phase 12**), where each phase delivers an end-to-end testable increment across Backend and Frontend while respecting strict module size limits (React components $\le 200$ lines, Phaser modules $\le 250$ lines, Zustand stores $\le 150$ lines, TS services/hooks/utils $\le 250$ lines, Spring Controllers/Handlers $\le 150$ lines, Spring Services $\le 250$ lines, DTOs/Entities $\le 120$ lines).
 
 ### 2. Hybrid Auth & Zero-Interruption Account Upgrade (ADR-0001 & ADR-0004)
 - **Guest Onboarding**: `POST /api/v1/auth/guest` issues a signed 7-day JWT (`guestToken`) with a generated UUID `guestId` without inserting a row into the MySQL `users` table.
@@ -228,6 +236,15 @@ type CharacterState = 'FREE_ROAM' | 'WALKING_TO_SEAT' | 'SEATED';
 - **Hi-DPI DOM Projected Labels (`Canvas ↔ DOM Boundary`)**: Pure coordinate projection lives in `frontend/src/game/labels/studyCafeLabelProjection.ts` while React styling (`buildProjectedLabelStyle`) lives under `frontend/src/components/game/projectedLabelStyle.ts`, preserving strict `src/game/` isolation and guaranteeing sharp Vietnamese typography ($\ge 10\text{px}$ on mobile) without clipping.
 - **Paper-Doll Sprites & Semantic Token Cohesion**: Combines `CC0-1.0` `32×48px` pixel-art atlases (`SKIN`, `HAT`, `DESK_PET`, two-layer Y-sorted furniture) with shared portrait framing in React (`TopBar`, Onboarding, Character Customizer) and 100% `@theme` token adoption (`bg-background`, `bg-card`, `bg-primary` with WCAG AAA `#0F1714` ink).
 
+### 12. Phase 12 — Secondary Math Suite (Toán THCS), Mobile Ergonomics, Tutoring Coordination & Study Pack Export (`ADR-0014`)
+- **Modularity & File-Limit Hygiene**: Keeps every React component $\le 200$ lines, TS service/hook/util $\le 250$ lines, Zustand store $\le 150$ lines, Java Controller $\le 150$ lines, Java Service $\le 250$ lines, and DTO $\le 120$ lines via dedicated sub-components and pure math/rendering helpers (`scripts/check-file-limits.mjs`).
+- **Secondary Math (`THCS`) Suite & Exact Solver**: Defaults `useCurriculumModeStore` to `'THCS'` (persisted locally), adds the `NUMBER_LINE` `.webp` template, tailors quick symbol bars and `FunctionGrapherCard` presets ($y = ax + b$, $y = ax^2$), and provides pure exact-rational/radical (`mathExact.ts`, `mathExactEval.ts`, `mathExactAlgebra.ts`) and number-theory (`mathNumberTheory.ts`) computation alongside `THPT / Đại học` calculus panels.
+- **Euclidean Geometry Strokes & Mobile Board Ergonomics**: Extends `BoardStrokeTool` (Backend + Frontend) with `DASHED_LINE`, `CIRCLE_CENTER`, `TRIANGLE`, and `GEO_MARK` plus `VERTEX_LABEL` text strokes ($A, B, C\dots$) and client-side endpoint/angle snapping (`homeworkGeometryMath.ts`); adds pre-upload `HomeworkCropRotateModal` (`90°` rotate + crop), local `1×..3×` `useHomeworkViewport` zoom/pan with inverse `[0.0, 1.0]` coordinate mapping, and hardened **Clear View** (`Undo`, 3 ink swatches, collapsible chat math bar, and 2-step `CLEAR_SLIDE` confirmation).
+- **Tutoring Table Coordination (`Table Invite Link`, `Table Lock`, `Quick Check`)**:
+  - `POST /api/v1/rooms/join` accepts optional `{ preferredRoomId, preferredTableId }` to prioritize the invited **Room Shard** when capacity allows; `RedisTableState` stores `isTableLocked`, `inviteCode` (never leaked on room-wide snapshot/events; exposed only to `SEATED` members via table state/workspace events), and `quickCheckSignals`.
+  - `atomic_seat_sit.lua` atomically enforces `isTableLocked` and validates `inviteCode` on `/app/room/{roomId}/seat.sit`; `TableQuickCheckService` handles rate-limited `/app/table/{tableId}/quick-check` (`UNDERSTOOD`, `SLOW_DOWN`, `RAISE_HAND`, `CLEAR`, `RESET_ALL`) with zero-CLS `QuickCheckBar` and `QuickCheckHeaderPill`.
+- **Client-Side Study Pack Export & Leave-Seat Safeguard**: `studyPackExporter.ts`, `studyPackScratchpadCanvas.ts`, and `studyPackPdfBuilder.ts` composite slides, geometry/$\LaTeX$ strokes, and **Math Scratchpad** steps into downloadable PNG or multi-page PDF entirely in the browser; `LeaveTableConfirmModal` surfaces a save reminder and final-learner deletion warning when workspace content exists.
+
 ## Testing Decisions
 
 ### Philosophy: External Behavior at the Highest Seams
@@ -264,7 +281,7 @@ Tests verify observable behavior across two primary seams without coupling to in
 
 ## Further Notes
 
-- Related Domain Documentation: `GLOSSARY.md` and `docs/adr/0001` through `docs/adr/0013`.
+- Related Domain Documentation: `GLOSSARY.md` and `docs/adr/0001` through `docs/adr/0014`.
 - Delivery Order:
   - **Phase 1**: Foundation, Docker Infra & Hybrid Auth
   - **Phase 2**: 2D Classroom Engine & Character State Machine (Local)
@@ -277,3 +294,4 @@ Tests verify observable behavior across two primary seams without coupling to in
   - **Phase 9**: UX Polish, Mobile Ergonomics, Study Café Delivery & CI/CD Hardening (depends on Phases 7–8)
   - **Phase 10**: Technical Debt Paydown, Strict Video Sync, Math Study Suite, 2D Study Café Overhaul & Multi-Layer Audio (depends on Phases 8–9)
   - **Phase 11**: WebGL 2D Study Café Overhaul, Paper-Doll Pipeline & Accessibility/Performance Hardening (depends on Phases 10 & `#57`)
+  - **Phase 12**: Secondary Math Suite (Toán THCS), Euclidean Geometry Board, Mobile Ergonomics, Tutoring Coordination & Study Pack Export (depends on Phases 10–11)
