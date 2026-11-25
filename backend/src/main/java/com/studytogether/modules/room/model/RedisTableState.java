@@ -18,76 +18,74 @@ public record RedisTableState(
         TableVideoState videoState,
         List<HomeworkSlide> homeworkSlides,
         String activeSlideId,
-        TableScratchpadState scratchpadState
+        TableScratchpadState scratchpadState,
+        @JsonProperty("isTableLocked") @JsonAlias("tableLocked") boolean isTableLocked,
+        String inviteCode
 ) {
     public RedisTableState {
         coHostUserIds = coHostUserIds == null ? List.of() : List.copyOf(coHostUserIds);
         videoState = videoState == null ? TableVideoState.empty() : videoState;
         homeworkSlides = homeworkSlides == null ? List.of() : List.copyOf(homeworkSlides);
         scratchpadState = scratchpadState == null ? TableScratchpadState.empty() : scratchpadState;
+        inviteCode = (inviteCode == null || inviteCode.isBlank()) ? null : inviteCode.trim();
     }
 
-    public RedisTableState(
-            String hostUserId,
-            List<String> coHostUserIds,
-            boolean isFreeCollab,
-            String sosBanner,
-            TableVideoState videoState,
-            List<HomeworkSlide> homeworkSlides,
-            String activeSlideId
-    ) {
+    public RedisTableState(String hostUserId, List<String> coHostUserIds, boolean isFreeCollab, String sosBanner,
+            TableVideoState videoState, List<HomeworkSlide> homeworkSlides, String activeSlideId,
+            TableScratchpadState scratchpadState) {
         this(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState, homeworkSlides, activeSlideId,
-                TableScratchpadState.empty());
+                scratchpadState, false, null);
     }
 
-    public RedisTableState(
-            String hostUserId,
-            List<String> coHostUserIds,
-            boolean isFreeCollab,
-            String sosBanner,
-            TableVideoState videoState
-    ) {
+    public RedisTableState(String hostUserId, List<String> coHostUserIds, boolean isFreeCollab, String sosBanner,
+            TableVideoState videoState, List<HomeworkSlide> homeworkSlides, String activeSlideId) {
+        this(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState, homeworkSlides, activeSlideId,
+                TableScratchpadState.empty(), false, null);
+    }
+
+    public RedisTableState(String hostUserId, List<String> coHostUserIds, boolean isFreeCollab, String sosBanner,
+            TableVideoState videoState) {
         this(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState, List.of(), null,
-                TableScratchpadState.empty());
+                TableScratchpadState.empty(), false, null);
     }
 
-    public RedisTableState(
-            String hostUserId,
-            List<String> coHostUserIds,
-            boolean isFreeCollab,
-            String sosBanner
-    ) {
+    public RedisTableState(String hostUserId, List<String> coHostUserIds, boolean isFreeCollab, String sosBanner) {
         this(hostUserId, coHostUserIds, isFreeCollab, sosBanner, TableVideoState.empty(), List.of(), null,
-                TableScratchpadState.empty());
+                TableScratchpadState.empty(), false, null);
     }
 
     public RedisTableState withHomeworkSlides(List<HomeworkSlide> nextSlides, String nextActiveSlideId) {
         return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState,
-                nextSlides, nextActiveSlideId, scratchpadState);
+                nextSlides, nextActiveSlideId, scratchpadState, isTableLocked, inviteCode);
     }
 
     public RedisTableState withSosBanner(String nextSosBanner) {
         return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, nextSosBanner, videoState,
-                homeworkSlides, activeSlideId, scratchpadState);
+                homeworkSlides, activeSlideId, scratchpadState, isTableLocked, inviteCode);
     }
 
     public RedisTableState withVideoState(TableVideoState nextVideoState) {
         return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, sosBanner, nextVideoState,
-                homeworkSlides, activeSlideId, scratchpadState);
+                homeworkSlides, activeSlideId, scratchpadState, isTableLocked, inviteCode);
     }
 
     public RedisTableState withScratchpadState(TableScratchpadState nextScratchpadState) {
         return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState,
-                homeworkSlides, activeSlideId, nextScratchpadState);
+                homeworkSlides, activeSlideId, nextScratchpadState, isTableLocked, inviteCode);
     }
 
     public RedisTableState withPermissions(String nextHostUserId, List<String> nextCoHostUserIds, boolean nextFreeCollab) {
         return new RedisTableState(nextHostUserId, nextCoHostUserIds, nextFreeCollab, sosBanner, videoState,
-                homeworkSlides, activeSlideId, scratchpadState);
+                homeworkSlides, activeSlideId, scratchpadState, isTableLocked, inviteCode);
+    }
+
+    public RedisTableState withTableLock(boolean nextLocked, String nextInviteCode) {
+        return new RedisTableState(hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState,
+                homeworkSlides, activeSlideId, scratchpadState, nextLocked, nextLocked ? nextInviteCode : null);
     }
 
     public static RedisTableState empty() {
         return new RedisTableState(null, List.of(), false, null, TableVideoState.empty(), List.of(), null,
-                TableScratchpadState.empty());
+                TableScratchpadState.empty(), false, null);
     }
 }

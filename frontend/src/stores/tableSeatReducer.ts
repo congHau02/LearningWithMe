@@ -18,6 +18,8 @@ export interface TableStoreData {
   hostUserId: string | null;
   coHostUserIds: string[];
   isFreeCollab: boolean;
+  isTableLocked: boolean;
+  inviteCode: string | null;
   sosBanner: string | null;
   sitStartTimeEpoch: number | null;
   members: TableMemberDto[];
@@ -76,6 +78,10 @@ export function reduceRoomSeatEvent(s: TableStoreData, event: RoomEvent): Partia
     return { hostUserId: nextHost, coHostUserIds: nextCoHosts, members: nextMembers };
   }
   if (!s.tableId || event.tableId !== s.tableId) return s;
+  if (event.type === 'TABLE_LOCK_UPDATED') {
+    const nextLocked = Boolean(event.isTableLocked);
+    return { isTableLocked: nextLocked, inviteCode: nextLocked ? s.inviteCode : null };
+  }
   const nextHost = event.hostUserId !== undefined ? event.hostUserId : s.hostUserId;
   let nextCoHosts = s.coHostUserIds.filter((id) => id !== nextHost);
   let nextMembers = s.members;

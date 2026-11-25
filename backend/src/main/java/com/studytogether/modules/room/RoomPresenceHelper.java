@@ -95,6 +95,24 @@ final class RoomPresenceHelper {
         broadcastRoomEvent(stateStore, messagingTemplate, roomId, "PLAYER_UPDATED", event.newUserId(), previousUserId, updated.toDto(), now);
     }
 
+    static void removePlayerFromOldShard(
+            RoomStateStore stateStore,
+            SeatDisconnectWatchdog watchdog,
+            SimpMessagingTemplate messagingTemplate,
+            String oldShard,
+            String userId,
+            long now
+    ) {
+        Optional<RoomPlayerState> oldPlayerOpt = stateStore.getPlayer(oldShard, userId);
+        watchdog.cancelGraceCheck(oldShard, userId);
+        stateStore.deletePlayer(oldShard, userId);
+        stateStore.removeDisconnect(oldShard, userId);
+        oldPlayerOpt.ifPresent(oldPlayer -> broadcastRoomEvent(
+                stateStore, messagingTemplate, oldShard, "PLAYER_LEFT",
+                userId, null, oldPlayer.withDisconnectedGrace(now).toDto(), now
+        ));
+    }
+
     static RoomEvent broadcastRoomEvent(
             RoomStateStore stateStore,
             SimpMessagingTemplate messagingTemplate,
@@ -125,7 +143,8 @@ final class RoomPresenceHelper {
         int occupiedSeats = (int) table.seats().stream().filter(seat -> seats.containsKey(seat.seatId())).count();
         return new RoomTableSummary(
                 table.tableId(), table.label(), table.capacity(), tableState.hostUserId(),
-                tableState.coHostUserIds(), tableState.isFreeCollab(), tableState.sosBanner(), occupiedSeats
+                tableState.coHostUserIds(), tableState.isFreeCollab(), tableState.sosBanner(),
+                occupiedSeats, tableState.isTableLocked()
         );
     }
 }

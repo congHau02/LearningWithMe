@@ -26,6 +26,7 @@ import com.studytogether.modules.table.model.TableWorkspaceSnapshot;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 class TableWorkspaceServiceTest {
@@ -152,5 +153,43 @@ class TableWorkspaceServiceTest {
             assertThat(member.studyGoal()).isEqualTo("Ôn Spring Security");
             assertThat(member.studyGoalCompleted()).isTrue();
         });
+    }
+
+    @Test
+    void toggleTableLockGeneratesInviteCodeForHostAndRejectsNonHost() {
+        assertThatThrownBy(() -> service.respondPermission(
+                member,
+                "table_01",
+                new PermissionRespondRequest(PermissionAction.TOGGLE_TABLE_LOCK, null, null, true)
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Only Table Host");
+
+        TableWorkspaceEvent lockEvent = service.respondPermission(
+                host,
+                "table_01",
+                new PermissionRespondRequest(PermissionAction.TOGGLE_TABLE_LOCK, null, null, true)
+        );
+        assertThat(lockEvent.isTableLocked()).isTrue();
+        assertThat(lockEvent.inviteCode()).isNotBlank();
+
+        TableWorkspaceSnapshot snapshot = service.getWorkspaceSnapshot(member, "main-library", "table_01");
+        assertThat(snapshot.isTableLocked()).isTrue();
+        assertThat(snapshot.inviteCode()).isEqualTo(lockEvent.inviteCode());
+
+        ArgumentCaptor<RoomEvent> roomEventCaptor = ArgumentCaptor.forClass(RoomEvent.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/room/main-library/events"), roomEventCaptor.capture());
+        RoomEvent roomEvent = roomEventCaptor.getValue();
+        assertThat(roomEvent.type()).isEqualTo("TABLE_LOCK_UPDATED");
+        assertThat(roomEvent.tableId()).isEqualTo("table_01");
+        assertThat(roomEvent.isTableLocked()).isTrue();
+
+        TableWorkspaceEvent unlockEvent = service.respondPermission(
+                host,
+                "table_01",
+                new PermissionRespondRequest(PermissionAction.TOGGLE_TABLE_LOCK, null, null, false)
+        );
+        assertThat(unlockEvent.isTableLocked()).isFalse();
+        assertThat(unlockEvent.inviteCode()).isNull();
     }
 }

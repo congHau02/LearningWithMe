@@ -219,23 +219,27 @@ export function buildDynamicStudyCafeMapLabels(options: {
     }
   }
 
+  for (const table of topology.tables) {
+    const summary = options.roomTables.find((t) => t.tableId === table.tableId);
+    if (summary?.isTableLocked && table.obstacleTiles.length > 0) {
+      const b = computeTileBounds(table.obstacleTiles);
+      items.push({
+        id: `lock-${table.tableId}`, testId: `map-label-lock-${table.tableId}`, kind: 'table-lock',
+        text: '🔒 Đã khóa', worldX: b.minX * ts + 64, worldY: b.minY * ts + 1,
+        originY: 'center', alpha: 1, scale: 1,
+      });
+    }
+  }
+
   const sosEntries = live?.sosBanners ?? topology.tables.flatMap((table) => {
     const topic = options.roomTables.find((t) => t.tableId === table.tableId)?.sosBanner?.trim();
     if (!topic || table.obstacleTiles.length === 0) return [];
     const b = computeTileBounds(table.obstacleTiles);
-    return [{
-      tableId: table.tableId, text: formatSosBannerLabel(topic),
-      worldX: ((b.minX + b.maxX + 1) / 2) * ts, worldY: b.minY * ts - 12,
-      alpha: 1, scale: 1,
-    }];
+    return [{ tableId: table.tableId, text: formatSosBannerLabel(topic), worldX: ((b.minX + b.maxX + 1) / 2) * ts, worldY: b.minY * ts - 12, alpha: 1, scale: 1 }];
   });
 
   for (const sos of sosEntries) {
-    items.push({
-      id: `sos-${sos.tableId}`, testId: `map-label-sos-${sos.tableId}`, kind: 'sos-banner',
-      text: sos.text, worldX: sos.worldX, worldY: sos.worldY,
-      originY: 'bottom', alpha: sos.alpha, scale: sos.scale,
-    });
+    items.push({ id: `sos-${sos.tableId}`, testId: `map-label-sos-${sos.tableId}`, kind: 'sos-banner', text: sos.text, worldX: sos.worldX, worldY: sos.worldY, originY: 'bottom', alpha: sos.alpha, scale: sos.scale });
   }
 
   return items;

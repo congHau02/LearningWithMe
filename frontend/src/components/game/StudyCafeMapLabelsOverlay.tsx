@@ -35,6 +35,8 @@ function resolveMobileEdgeAnchorClass(item: StudyCafeProjectedLabelItem, leftPer
 const KIND_BADGE_CLASSES: Record<StudyCafeProjectedLabelItem['kind'], string> = {
   'table-plaque':
     'rounded border border-border/90 bg-card/95 px-1.5 py-0.5 font-sans text-[10px] font-bold tracking-tight text-foreground shadow-sm max-sm:px-1 max-sm:py-0 max-sm:text-[10px] max-sm:leading-tight',
+  'table-lock':
+    'rounded border border-amber-500/55 bg-amber-950/90 px-1.5 py-0.5 font-sans text-[10px] font-semibold tracking-tight text-amber-200 shadow-sm max-sm:px-1 max-sm:py-0 max-sm:text-[10px] max-sm:leading-tight',
   'zone-sign':
     'rounded-md border border-border/90 bg-card/95 px-2 py-0.5 font-sans text-[10px] font-semibold text-foreground shadow-sm max-sm:px-1.5 max-sm:py-0 max-sm:text-[10px] max-sm:leading-tight',
   'self-player':

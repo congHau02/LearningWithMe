@@ -18,6 +18,7 @@ import com.studytogether.modules.auth.AuthRole;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomChatMessage;
 import com.studytogether.modules.room.model.RoomEvent;
+import com.studytogether.modules.room.model.RoomJoinRequest;
 import com.studytogether.modules.room.model.RoomJoinResponse;
 import com.studytogether.modules.room.model.StudyGoalUpdateRequest;
 import com.studytogether.modules.table.model.EphemeralImageMetadata;
@@ -89,10 +90,27 @@ public class RoomPresenceServiceTest {
     }
 
     @Test
+    void joinShardWithPreferredRoomReservesTargetShardOrReturnsFallbackFlagWhenFull() {
+        AuthPrincipal invited = guest("u-invited", "Invited");
+        RoomJoinResponse direct = service.joinShard(invited, new RoomJoinRequest("main-library-2", "table_01"));
+        assertThat(direct).isEqualTo(new RoomJoinResponse("main-library-2", 3, 1, false));
+
+        stateStore.savePlayer("main-library-2", playerState("s-1", "S1", "FREE_ROAM", 12, 13, null, null, "ws-s1", true));
+        stateStore.savePlayer("main-library-2", playerState("s-2", "S2", "FREE_ROAM", 12, 13, null, null, "ws-s2", true));
+        stateStore.savePlayer("main-library-2", playerState("s-3", "S3", "FREE_ROAM", 12, 13, null, null, "ws-s3", true));
+
+        AuthPrincipal overflow = guest("u-overflow", "Overflow");
+        RoomJoinResponse fallback = service.joinShard(overflow, new RoomJoinRequest("main-library-2", "table_01"));
+        assertThat(fallback.roomId()).isEqualTo("main-library");
+        assertThat(fallback.preferredRoomFull()).isTrue();
+    }
+
+    @Test
     void getRoomSnapshotAssemblesPlayersSeatsTablesAndRecentMessages() {
         stateStore.savePlayer("main-library", playerState("u-1", "Alice", "SEATED", 3, 4, "table_01", "T1_S1", "ws-1", true));
         stateStore.putSeat("main-library", "T1_S1", "u-1");
-        stateStore.putTableState("main-library", "table_01", new RedisTableState("u-1", List.of("u-2"), true, "Calculus"));
+        stateStore.putTableState("main-library", "table_01",
+                new RedisTableState("u-1", List.of("u-2"), true, "Calculus").withTableLock(true, "SECRET99"));
         stateStore.addMessage("main-library", new RoomChatMessage("m-1", "u-1", "Alice", "avatar_01", "hello", 1_700_000_000_000L));
         stateStore.incrementEventSeq("main-library");
 
@@ -109,6 +127,7 @@ public class RoomPresenceServiceTest {
             assertThat(table.hostUserId()).isEqualTo("u-1");
             assertThat(table.coHostUserIds()).containsExactly("u-2");
             assertThat(table.isFreeCollab()).isTrue();
+            assertThat(table.isTableLocked()).isTrue();
             assertThat(table.sosBanner()).isEqualTo("Calculus");
             assertThat(table.occupiedSeats()).isEqualTo(1);
         });
@@ -436,22 +455,35 @@ public class RoomPresenceServiceTest {
         }
 
         @Override
-        public synchronized SeatLockOutcome lockSeat(String roomId, String tableId, String seatId, String userId) {
+        public synchronized SeatLockOutcome lockSeat(
+                String roomId, String tableId, String seatId, String userId, String inviteCode) {
             Map<String, String> seats = seatsByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
             if (seats.containsValue(userId)) {
                 return new SeatLockOutcome(SeatLockResult.ALREADY_SEATED, null);
             }
+            Map<String, RedisTableState> tables = tablesByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+            RedisTableState tableState = tables.get(tableId);
+            boolean hostSeated = tableState != null
+                    && tableState.hostUserId() != null
+                    && !tableState.hostUserId().isBlank()
+                    && seats.containsValue(tableState.hostUserId());
+            if (hostSeated && tableState.isTableLocked()) {
+                String expected = tableState.inviteCode();
+                String supplied = inviteCode != null ? inviteCode.trim() : "";
+                if (expected == null || expected.isBlank() || !expected.equals(supplied)) {
+                    return new SeatLockOutcome(SeatLockResult.TABLE_LOCKED, null);
+                }
+            }
             if (seats.putIfAbsent(seatId, userId) != null) {
                 return new SeatLockOutcome(SeatLockResult.SEAT_OCCUPIED, null);
             }
-            Map<String, RedisTableState> tables = tablesByRoom.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
-            RedisTableState tableState = tables.get(tableId);
             String hostUserId;
-            if (tableState == null || tableState.hostUserId() == null || tableState.hostUserId().isBlank()) {
+            if (tableState == null || !hostSeated) {
                 hostUserId = userId;
                 RedisTableState updated = tableState == null
                         ? new RedisTableState(hostUserId, List.of(), false, null)
-                        : tableState.withPermissions(hostUserId, tableState.coHostUserIds(), tableState.isFreeCollab());
+                        : tableState.withPermissions(hostUserId, tableState.coHostUserIds(), tableState.isFreeCollab())
+                                .withTableLock(false, null);
                 tables.put(tableId, updated);
             } else {
                 hostUserId = tableState.hostUserId();

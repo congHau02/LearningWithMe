@@ -12,7 +12,7 @@ public final class TableWorkspaceEvents {
     }
 
     public static TableWorkspaceEvent permissionUpdated(String tableId, PermissionAction action, String actorUserId, String targetUserId, RedisTableState state, long now) {
-        return builder("PERMISSION_UPDATED", tableId, actorUserId, state, now).targetUserId(targetUserId).action(action).withHomeworkSlides(state).build();
+        return builder("PERMISSION_UPDATED", tableId, actorUserId, state, now).targetUserId(targetUserId).action(action).withHomeworkSlides(state).inviteCode(state.inviteCode()).build();
     }
 
     public static TableWorkspaceEvent videoSynced(String tableId, String actorUserId, TableVideoState videoState, RedisTableState state, long now) {
@@ -57,7 +57,7 @@ public final class TableWorkspaceEvents {
         private final String type, tableId, actorUserId;
         private final RedisTableState state;
         private final long timestampEpoch;
-        private String targetUserId, requesterNickname, sosBanner, slideId, erasedStrokeId;
+        private String targetUserId, requesterNickname, sosBanner, slideId, erasedStrokeId, inviteCode;
         private PermissionAction action;
         private TableVideoState videoState;
         private TableChatMessage chatMessage;
@@ -86,12 +86,14 @@ public final class TableWorkspaceEvents {
         private Builder laserPointer(LaserPointerPayload v) { this.laserPointer = v; return this; }
         private Builder voiceSignal(VoiceSignalPayload v) { this.voiceSignal = v; return this; }
         private Builder scratchpadState(TableScratchpadState v) { this.scratchpadState = v; return this; }
+        private Builder inviteCode(String v) { this.inviteCode = v; return this; }
 
         private TableWorkspaceEvent build() {
             return new TableWorkspaceEvent(type, null, tableId, actorUserId, targetUserId, requesterNickname,
                     action, state.hostUserId(), state.coHostUserIds(), state.isFreeCollab(), videoState, sosBanner,
                     chatMessage, homeworkSlides, state.activeSlideId(), slideId, drawAction, stroke, erasedStrokeId,
-                    laserPointer, voiceSignal, scratchpadState, timestampEpoch);
+                    laserPointer, voiceSignal, scratchpadState, timestampEpoch,
+                    state.isTableLocked(), inviteCode);
         }
     }
 }

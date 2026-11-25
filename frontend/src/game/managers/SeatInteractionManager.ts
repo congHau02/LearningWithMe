@@ -74,6 +74,12 @@ export class SeatInteractionManager {
       return { handled: false, seat: null, path: [] };
     }
 
+    const tableSummary = store.roomTables.find((t) => t.tableId === seat.tableId);
+    if (tableSummary?.isTableLocked && (!store.targetInviteCode || store.targetTableId !== seat.tableId)) {
+      store.setToastMessage('Bàn học đang khóa riêng tư cho nhóm học');
+      return { handled: false, seat: null, path: [] };
+    }
+
     const start: TileCoordinate = {
       tileX: store.position.x,
       tileY: store.position.y,

@@ -3,6 +3,7 @@ package com.studytogether.modules.room;
 import com.studytogether.modules.auth.AccountIdentityUpgradedEvent;
 import com.studytogether.modules.auth.AuthPrincipal;
 import com.studytogether.modules.room.model.RoomEvent;
+import com.studytogether.modules.room.model.RoomJoinRequest;
 import com.studytogether.modules.room.model.RoomJoinResponse;
 import com.studytogether.modules.room.model.RoomPlayerDto;
 import com.studytogether.modules.room.model.RoomPlayerState;
@@ -62,18 +63,52 @@ public class RoomPresenceService {
     }
 
     public RoomJoinResponse joinShard(AuthPrincipal principal) {
+        return joinShard(principal, null);
+    }
+
+    public RoomJoinResponse joinShard(AuthPrincipal principal, RoomJoinRequest request) {
         int capacity = roomConfig.getShardCapacity();
         long now = System.currentTimeMillis();
         long expiresAt = now + SHARD_RESERVATION_TTL_MS;
 
+        String rawPreferred = request != null && request.preferredRoomId() != null
+                ? request.preferredRoomId().trim()
+                : null;
+        String preferredRoomId = (rawPreferred != null && topologyService.isValidRoomId(rawPreferred))
+                ? rawPreferred
+                : null;
+        boolean preferredRoomFull = false;
+
         Optional<String> existingShard = stateStore.findUserShard(principal.userId());
+        if (preferredRoomId != null) {
+            boolean seatedElsewhere = existingShard.isPresent()
+                    && !existingShard.get().equals(preferredRoomId)
+                    && stateStore.getSeats(existingShard.get()).containsValue(principal.userId());
+            if (!seatedElsewhere) {
+                ShardReservationOutcome preferredOutcome = stateStore.reserveShardSlot(
+                        preferredRoomId, principal.userId(), capacity, now, expiresAt
+                );
+                if (preferredOutcome.reserved()) {
+                    if (existingShard.isPresent() && !existingShard.get().equals(preferredRoomId)) {
+                        RoomPresenceHelper.removePlayerFromOldShard(
+                                stateStore, watchdog, messagingTemplate, existingShard.get(), principal.userId(), now
+                        );
+                    }
+                    return new RoomJoinResponse(
+                            preferredRoomId, capacity, preferredOutcome.activeLearnerCount(), false
+                    );
+                }
+                preferredRoomFull = true;
+            }
+        }
+
         if (existingShard.isPresent()) {
             String shardId = existingShard.get();
             ShardReservationOutcome outcome = stateStore.reserveShardSlot(
                     shardId, principal.userId(), capacity, now, expiresAt
             );
             if (outcome.reserved()) {
-                return new RoomJoinResponse(shardId, capacity, outcome.activeLearnerCount());
+                return new RoomJoinResponse(shardId, capacity, outcome.activeLearnerCount(), preferredRoomFull);
             }
         }
 
@@ -84,7 +119,7 @@ public class RoomPresenceService {
                     candidateShard, principal.userId(), capacity, now, expiresAt
             );
             if (outcome.reserved()) {
-                return new RoomJoinResponse(candidateShard, capacity, outcome.activeLearnerCount());
+                return new RoomJoinResponse(candidateShard, capacity, outcome.activeLearnerCount(), preferredRoomFull);
             }
             index++;
         }

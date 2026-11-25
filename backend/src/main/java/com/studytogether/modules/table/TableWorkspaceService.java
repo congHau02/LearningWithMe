@@ -69,7 +69,9 @@ public class TableWorkspaceService {
                 stateStore.getRecentTableMessages(roomId, tableId, 50),
                 tableState.homeworkSlides(),
                 tableState.activeSlideId(),
-                tableState.scratchpadState()
+                tableState.scratchpadState(),
+                tableState.isTableLocked(),
+                tableState.inviteCode()
         );
     }
 
@@ -110,6 +112,10 @@ public class TableWorkspaceService {
         if (action == PermissionAction.TRANSFER_HOST) {
             long seq = stateStore.incrementEventSeq(roomId);
             RoomEvent roomEvent = RoomEvent.tableHostChanged(seq, roomId, tableId, updated.hostUserId(), now);
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", roomEvent);
+        } else if (action == PermissionAction.TOGGLE_TABLE_LOCK) {
+            long seq = stateStore.incrementEventSeq(roomId);
+            RoomEvent roomEvent = RoomEvent.tableLockUpdated(seq, roomId, tableId, principal.userId(), updated.isTableLocked(), now);
             messagingTemplate.convertAndSend("/topic/room/" + roomId + "/events", roomEvent);
         }
         return event;

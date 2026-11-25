@@ -44,7 +44,8 @@ export type PermissionAction =
   | 'DENY'
   | 'REVOKE'
   | 'TRANSFER_HOST'
-  | 'TOGGLE_FREE_COLLAB';
+  | 'TOGGLE_FREE_COLLAB'
+  | 'TOGGLE_TABLE_LOCK';
 
 export type VideoSyncAction = 'CHANGE_URL' | 'PLAY' | 'PAUSE' | 'SEEK';
 
@@ -84,6 +85,8 @@ export interface TableWorkspaceSnapshot {
   hostUserId: string | null;
   coHostUserIds: string[];
   isFreeCollab: boolean;
+  isTableLocked?: boolean;
+  inviteCode?: string | null;
   sosBanner: string | null;
   videoState: VideoSyncState;
   members: TableMemberDto[];
@@ -124,6 +127,8 @@ export interface TableWorkspaceEvent {
   hostUserId: string | null;
   coHostUserIds: string[];
   isFreeCollab: boolean;
+  isTableLocked?: boolean;
+  inviteCode?: string | null;
   videoState?: VideoSyncState | null;
   sosBanner?: string | null;
   chatMessage?: TableChatMessage | null;

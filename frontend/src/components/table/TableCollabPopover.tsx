@@ -1,12 +1,15 @@
 import { useCallback, useRef, useState } from 'react';
 import { useDismissiblePopover } from '../../hooks/useDismissiblePopover';
-import { DoorIcon, MinimizeIcon, MoreHorizontalIcon } from '../icons';
+import { CopyIcon, DoorIcon, LockIcon, MinimizeIcon, MoreHorizontalIcon } from '../icons';
 
 export interface TableCollabPopoverProps {
   isFreeCollab: boolean;
+  isTableLocked?: boolean;
   isHost: boolean;
   canControl: boolean;
   onToggleFreeCollab: () => void;
+  onToggleTableLock?: () => void;
+  onCopyInviteLink?: () => void;
   onRequestControl: () => void;
   onMinimize: () => void;
   onRequestLeaveSeat: () => void;
@@ -18,9 +21,12 @@ const MENU_ACTION_BASE =
 /** Mobile ⋯ Botanical Double-Bezel overflow menu for Table Workspace collaboration & exit actions. */
 export function TableCollabPopover({
   isFreeCollab,
+  isTableLocked = false,
   isHost,
   canControl,
   onToggleFreeCollab,
+  onToggleTableLock,
+  onCopyInviteLink,
   onRequestControl,
   onMinimize,
   onRequestLeaveSeat,
@@ -36,7 +42,7 @@ export function TableCollabPopover({
     setIsOpen(false);
     fn();
   };
-  const hasActiveStatusDot = isFreeCollab || (canControl && !isHost);
+  const hasActiveStatusDot = isFreeCollab || isTableLocked || (canControl && !isHost);
 
   return (
     <div ref={containerRef} className="relative shrink-0">
@@ -109,6 +115,47 @@ export function TableCollabPopover({
                   Đang có quyền điều khiển
                 </p>
               )}
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-border/80 pt-2">
+              {onCopyInviteLink ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid="copy-table-invite-btn"
+                  onClick={runAndClose(onCopyInviteLink)}
+                  className={`${MENU_ACTION_BASE} border-primary/40 bg-primary/15 text-primary hover:bg-primary/25`}
+                >
+                  <CopyIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>Sao chép link mời bàn</span>
+                </button>
+              ) : null}
+
+              {isHost && onToggleTableLock ? (
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  data-testid="toggle-table-lock-btn"
+                  aria-checked={isTableLocked}
+                  onClick={runAndClose(onToggleTableLock)}
+                  className={`${MENU_ACTION_BASE} ${
+                    isTableLocked
+                      ? 'border-amber-500/50 bg-amber-950/70 text-amber-200 hover:bg-amber-900/70'
+                      : 'border-border bg-secondary/90 text-foreground hover:bg-secondary'
+                  }`}
+                >
+                  <LockIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>{isTableLocked ? 'Mở khóa bàn học' : 'Khóa bàn riêng tư'}</span>
+                </button>
+              ) : isTableLocked ? (
+                <span
+                  data-testid="table-locked-popover-note"
+                  className="flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-amber-500/45 bg-amber-950/60 px-3 py-1.5 font-semibold text-amber-200"
+                >
+                  <LockIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span>Bàn đang khóa riêng tư</span>
+                </span>
+              ) : null}
             </div>
 
             <div role="separator" className="h-px w-full bg-border/80" />

@@ -11,9 +11,17 @@ public record RoomTableSummary(
         List<String> coHostUserIds,
         @JsonProperty("isFreeCollab") boolean isFreeCollab,
         String sosBanner,
-        int occupiedSeats
+        int occupiedSeats,
+        @JsonProperty("isTableLocked") boolean isTableLocked
 ) {
     public RoomTableSummary {
         coHostUserIds = coHostUserIds == null ? List.of() : List.copyOf(coHostUserIds);
+    }
+
+    public RoomTableSummary(
+            String tableId, String label, int capacity, String hostUserId,
+            List<String> coHostUserIds, boolean isFreeCollab, String sosBanner, int occupiedSeats
+    ) {
+        this(tableId, label, capacity, hostUserId, coHostUserIds, isFreeCollab, sosBanner, occupiedSeats, false);
     }
 }

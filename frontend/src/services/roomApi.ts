@@ -1,10 +1,16 @@
 import { API_BASE_URL, apiRequest, normalizeBaseUrl } from './apiClient';
 import type { FacingDirection } from '../game/topology/roomTopology';
 
+export interface RoomJoinRequest {
+  preferredRoomId?: string | null;
+  preferredTableId?: string | null;
+}
+
 export interface RoomJoinResponse {
   roomId: string;
   capacityLimit: number;
   activeLearnerCount: number;
+  preferredRoomFull?: boolean;
 }
 
 export interface RoomPlayerDto {
@@ -41,6 +47,7 @@ export interface RoomTableSummary {
   hostUserId: string | null;
   coHostUserIds: string[];
   isFreeCollab: boolean;
+  isTableLocked?: boolean;
   sosBanner: string | null;
   occupiedSeats: number;
 }
@@ -73,6 +80,7 @@ export type RoomEventType =
   | 'SEAT_LOCKED'
   | 'SEAT_RELEASED'
   | 'TABLE_HOST_CHANGED'
+  | 'TABLE_LOCK_UPDATED'
   | 'SOS_UPDATED'
   | 'ROOM_CHAT';
 
@@ -89,6 +97,7 @@ export interface RoomEvent {
   hostUserId?: string | null;
   message?: RoomChatMessage | null;
   sosBanner?: string | null;
+  isTableLocked?: boolean | null;
 }
 
 export interface StompErrorPayload {
@@ -120,9 +129,11 @@ export function resolveWebSocketUrl(): string {
   return `${wsBase}/ws`;
 }
 
-export async function joinRoomShard(): Promise<RoomJoinResponse> {
+export async function joinRoomShard(request?: RoomJoinRequest): Promise<RoomJoinResponse> {
+  const hasPreferred = Boolean(request?.preferredRoomId?.trim());
   return apiRequest<RoomJoinResponse>('/api/v1/rooms/join', {
     method: 'POST',
+    ...(hasPreferred ? { body: JSON.stringify(request) } : {}),
   });
 }
 

@@ -18,10 +18,14 @@ export function resolveClassroomHoverState(options: {
   const hoveredNpcId = ambientNpcManager?.getHoveredNpcId(worldX, worldY) ?? null;
   const isHoveringCounter = isServiceCounterTile(tileX, tileY);
   const seat = inputController.getSeatManager().getSeatAtTile(tileX, tileY);
-  const isOccupied = seat?.seatId ? Boolean(useGameStore.getState().occupiedSeats[seat.seatId]) : false;
+  const gameState = useGameStore.getState();
+  const isOccupied = seat?.seatId ? Boolean(gameState.occupiedSeats[seat.seatId]) : false;
+  const isLocked = seat?.tableId
+    ? Boolean(gameState.roomTables.find((t) => t.tableId === seat.tableId)?.isTableLocked)
+    : false;
 
   return {
-    hoveredSeatId: seat && !isOccupied ? seat.seatId : null,
+    hoveredSeatId: seat && !isOccupied && !isLocked ? seat.seatId : null,
     hoveredNpcId,
     isHoveringCafeInteractive: Boolean(hoveredNpcId) || isHoveringCounter,
   };

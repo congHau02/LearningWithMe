@@ -1,6 +1,6 @@
 import { formatStudyDuration } from '../../hooks/useStudyTimer';
 import { useViewportIsMobile } from '../../hooks/useViewportIsMobile';
-import { BoardIcon, DoorIcon, MinimizeIcon, TimerIcon } from '../icons';
+import { BoardIcon, CopyIcon, DoorIcon, LockIcon, MinimizeIcon, TimerIcon } from '../icons';
 import { TableCollabMenu } from './TableCollabMenu';
 import { VoiceMicToggleButton } from './VoiceMicToggleButton';
 
@@ -8,11 +8,14 @@ interface TableWorkspaceHeaderProps {
   activeTableId: string;
   elapsedSeconds: number;
   isFreeCollab: boolean;
+  isTableLocked?: boolean;
   isHost: boolean;
   canControl: boolean;
   isClearView?: boolean;
   onToggleClearView?: () => void;
   onToggleFreeCollab: () => void;
+  onToggleTableLock?: () => void;
+  onCopyInviteLink?: () => void;
   onRequestControl: () => void;
   onToggleMute: () => void;
   onMinimize: () => void;
@@ -29,11 +32,14 @@ export function TableWorkspaceHeader({
   activeTableId,
   elapsedSeconds,
   isFreeCollab,
+  isTableLocked = false,
   isHost,
   canControl,
   isClearView = false,
   onToggleClearView,
   onToggleFreeCollab,
+  onToggleTableLock,
+  onCopyInviteLink,
   onRequestControl,
   onToggleMute,
   onMinimize,
@@ -72,9 +78,12 @@ export function TableWorkspaceHeader({
     <TableCollabMenu
       isMobile={isMobile}
       isFreeCollab={isFreeCollab}
+      isTableLocked={isTableLocked}
       isHost={isHost}
       canControl={canControl}
       onToggleFreeCollab={onToggleFreeCollab}
+      onToggleTableLock={onToggleTableLock}
+      onCopyInviteLink={onCopyInviteLink}
       onRequestControl={onRequestControl}
       onMinimize={onMinimize}
       onRequestLeaveSeat={onRequestLeaveSeat}
@@ -98,6 +107,20 @@ export function TableWorkspaceHeader({
           {activeTableId}
         </h2>
 
+        {isTableLocked ? (
+          <span
+            data-testid="table-locked-badge"
+            aria-label="Bàn học đang khóa riêng tư"
+            title="Bàn học đang khóa riêng tư"
+            className={`inline-flex shrink-0 items-center gap-1 rounded-xl border border-amber-500/45 bg-amber-950/60 py-1 text-xs font-semibold text-amber-200 ${
+              isMobile ? 'px-2' : 'px-2.5'
+            }`}
+          >
+            <LockIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className={isMobile ? 'sr-only' : undefined}>Đã khóa</span>
+          </span>
+        ) : null}
+
         <span
           data-testid="study-timer-display"
           className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/15 py-1 font-mono font-semibold tabular-nums text-emerald-300 ${
@@ -112,6 +135,19 @@ export function TableWorkspaceHeader({
       </div>
 
       <div className={`flex shrink-0 items-center gap-2 text-xs ${isMobile ? '' : 'flex-wrap'}`}>
+        {!isMobile && onCopyInviteLink ? (
+          <button
+            type="button"
+            data-testid="copy-table-invite-btn"
+            onClick={onCopyInviteLink}
+            aria-label="Sao chép link mời vào bàn"
+            title="Sao chép link mời vào bàn"
+            className="transition-botanical inline-flex min-h-[36px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/90 px-3 py-1.5 font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-secondary active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <CopyIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Mời vào bàn</span>
+          </button>
+        ) : null}
         {isMobile ? micControl : collabMenu}
         {clearViewToggle}
 

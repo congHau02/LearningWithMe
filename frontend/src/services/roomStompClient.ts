@@ -5,6 +5,7 @@ import {
   resolveWebSocketUrl,
   type RoomConnectionStatus,
   type RoomEvent,
+  type RoomJoinRequest,
   type RoomJoinResponse,
   type RoomSnapshotResponse,
   type StompErrorPayload,
@@ -33,7 +34,9 @@ export {
 
 export interface RoomStompSessionOptions {
   wsUrl?: string;
-  joinShard?: () => Promise<RoomJoinResponse>;
+  joinShard?: (request?: RoomJoinRequest) => Promise<RoomJoinResponse>;
+  getJoinRequest?: () => RoomJoinRequest | undefined;
+  onJoinResult?: (response: RoomJoinResponse) => void;
   fetchSnapshot?: (roomId: string) => Promise<RoomSnapshotResponse>;
   transportFactory?: (config: StompTransportConfig) => StompTransport;
   random?: () => number;
@@ -48,7 +51,7 @@ export interface RoomStompSessionOptions {
  */
 export class RoomStompSession extends RoomStompChannels {
   private readonly wsUrl: string;
-  private readonly joinShardFn: () => Promise<RoomJoinResponse>;
+  private readonly joinShardFn: (request?: RoomJoinRequest) => Promise<RoomJoinResponse>;
   private readonly transportFactory: (config: StompTransportConfig) => StompTransport;
   private readonly options: RoomStompSessionOptions;
   private readonly reconnectTimer: ReconnectBackoffTimer;
@@ -111,7 +114,7 @@ export class RoomStompSession extends RoomStompChannels {
 
     let shard: RoomJoinResponse | undefined;
     try {
-      shard = await this.joinShardFn();
+      shard = await this.joinShardFn(this.options.getJoinRequest?.());
     } catch (err) {
       if (this.generation !== myGen || this.stopped) return;
       this.options.onStatusChange?.(err instanceof ApiError && err.status === 404 ? 'IDLE' : 'ERROR');
@@ -119,6 +122,7 @@ export class RoomStompSession extends RoomStompChannels {
     }
 
     if (this.generation !== myGen || this.stopped || !shard?.roomId) return;
+    this.options.onJoinResult?.(shard);
 
     await this.openTransport(token, shard.roomId, myGen);
   }

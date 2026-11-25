@@ -15,7 +15,9 @@ public record TableWorkspaceSnapshot(
         List<TableChatMessage> recentMessages,
         List<HomeworkSlide> homeworkSlides,
         String activeSlideId,
-        TableScratchpadState scratchpadState
+        TableScratchpadState scratchpadState,
+        @JsonProperty("isTableLocked") boolean isTableLocked,
+        String inviteCode
 ) {
     public TableWorkspaceSnapshot {
         coHostUserIds = coHostUserIds == null ? List.of() : List.copyOf(coHostUserIds);
@@ -24,5 +26,15 @@ public record TableWorkspaceSnapshot(
         recentMessages = recentMessages == null ? List.of() : List.copyOf(recentMessages);
         homeworkSlides = homeworkSlides == null ? List.of() : List.copyOf(homeworkSlides);
         scratchpadState = scratchpadState == null ? TableScratchpadState.empty() : scratchpadState;
+    }
+
+    public TableWorkspaceSnapshot(
+            String roomId, String tableId, String hostUserId, List<String> coHostUserIds,
+            boolean isFreeCollab, String sosBanner, TableVideoState videoState,
+            List<TableMemberDto> members, List<TableChatMessage> recentMessages,
+            List<HomeworkSlide> homeworkSlides, String activeSlideId, TableScratchpadState scratchpadState
+    ) {
+        this(roomId, tableId, hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState,
+                members, recentMessages, homeworkSlides, activeSlideId, scratchpadState, false, null);
     }
 }

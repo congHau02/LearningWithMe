@@ -149,11 +149,15 @@ public class RedisRoomStateStore implements RoomStateStore {
     }
 
     @Override
-    public SeatLockOutcome lockSeat(String roomId, String tableId, String seatId, String userId) {
+    public SeatLockOutcome lockSeat(String roomId, String tableId, String seatId, String userId, String inviteCode) {
         String initialTableJson = codec.serialize(new RedisTableState(userId, List.of(), false, null));
+        String normalizedInvite = inviteCode != null ? inviteCode.trim() : "";
         String result = tableStore.withTableLock(roomId, tableId, () -> redisTemplate.execute(
-                seatSitScript, List.of(seatsKey(roomId), tableStateKey(roomId, tableId)), seatId, userId, initialTableJson));
+                seatSitScript,
+                List.of(seatsKey(roomId), tableStateKey(roomId, tableId)),
+                seatId, userId, initialTableJson, normalizedInvite));
         if ("-1".equals(result)) return new SeatLockOutcome(SeatLockResult.ALREADY_SEATED, null);
+        if ("-2".equals(result)) return new SeatLockOutcome(SeatLockResult.TABLE_LOCKED, null);
         if (result != null && result.startsWith("1:")) {
             return new SeatLockOutcome(SeatLockResult.SUCCESS, result.substring(2));
         }

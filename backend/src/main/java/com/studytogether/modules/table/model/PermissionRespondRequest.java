@@ -8,5 +8,10 @@ import jakarta.validation.constraints.NotNull;
 public record PermissionRespondRequest(
         @NotNull PermissionAction action,
         String targetUserId,
-        @JsonProperty("isFreeCollab") Boolean isFreeCollab
-) {}
+        @JsonProperty("isFreeCollab") Boolean isFreeCollab,
+        @JsonProperty("isTableLocked") Boolean isTableLocked
+) {
+    public PermissionRespondRequest(PermissionAction action, String targetUserId, Boolean isFreeCollab) {
+        this(action, targetUserId, isFreeCollab, null);
+    }
+}

@@ -47,7 +47,11 @@ public class RoomSeatService {
             throw RoomExceptions.alreadySeated(roomId, player.seatId());
         }
 
-        SeatLockOutcome lockOutcome = stateStore.lockSeat(roomId, seat.tableId(), seat.seatId(), principal.userId());
+        SeatLockOutcome lockOutcome = stateStore.lockSeat(
+                roomId, seat.tableId(), seat.seatId(), principal.userId(), request.inviteCode());
+        if (lockOutcome.result() == SeatLockResult.TABLE_LOCKED) {
+            throw RoomExceptions.tableLocked(roomId, seat.tableId());
+        }
         if (lockOutcome.result() == SeatLockResult.SEAT_OCCUPIED) {
             throw RoomExceptions.seatOccupied(roomId, seat.seatId());
         }

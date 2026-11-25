@@ -28,6 +28,8 @@ public final class RoomExceptions {
             URI.create("https://studytogether.com/problems/chat-rate-limit-exceeded");
     public static final URI INVALID_STUDY_GOAL_TYPE =
             URI.create("https://studytogether.com/problems/invalid-study-goal");
+    public static final URI TABLE_LOCKED_TYPE =
+            URI.create("https://studytogether.com/problems/table-locked");
 
     private RoomExceptions() {}
 
@@ -134,6 +136,15 @@ public final class RoomExceptions {
         );
     }
 
+    public static BusinessException tableLocked(String roomId, String tableId) {
+        return new BusinessException(
+                HttpStatus.FORBIDDEN,
+                "Table Locked",
+                "Bàn học '%s' tại phòng '%s' đang khóa riêng tư cho nhóm học".formatted(tableId, roomId),
+                TABLE_LOCKED_TYPE
+        );
+    }
+
     public static String resolveStompErrorCode(BusinessException ex) {
         if (SEAT_OCCUPIED_TYPE.equals(ex.getType())) return "SEAT_OCCUPIED";
         if (ALREADY_SEATED_TYPE.equals(ex.getType())) return "ALREADY_SEATED";
@@ -143,6 +154,7 @@ public final class RoomExceptions {
         if (INVALID_CHAT_MESSAGE_TYPE.equals(ex.getType())) return "INVALID_CHAT_MESSAGE";
         if (CHAT_RATE_LIMIT_EXCEEDED_TYPE.equals(ex.getType())) return "RATE_LIMIT_EXCEEDED";
         if (INVALID_STUDY_GOAL_TYPE.equals(ex.getType())) return "INVALID_STUDY_GOAL";
+        if (TABLE_LOCKED_TYPE.equals(ex.getType())) return "TABLE_LOCKED";
         return switch (ex.getStatus()) {
             case NOT_FOUND -> "ROOM_NOT_FOUND";
             case CONFLICT -> "ROOM_FULL";

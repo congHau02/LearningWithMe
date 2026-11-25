@@ -7,11 +7,16 @@ import com.studytogether.modules.table.model.PermissionAction;
 import com.studytogether.modules.table.model.PermissionRespondRequest;
 import com.studytogether.modules.table.model.TableMemberDto;
 import com.studytogether.modules.table.model.TableRole;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 final class TablePermissionCoordinator {
+
+    private static final SecureRandom INVITE_RANDOM = new SecureRandom();
+    private static final String INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final int INVITE_CODE_LENGTH = 8;
 
     private TablePermissionCoordinator() {}
 
@@ -34,6 +39,7 @@ final class TablePermissionCoordinator {
             case REVOKE -> handleRevoke(current, targetUserId);
             case TRANSFER_HOST -> handleTransferHost(stateStore, roomId, tableId, current, targetUserId);
             case TOGGLE_FREE_COLLAB -> handleToggleFreeCollab(current, request.isFreeCollab());
+            case TOGGLE_TABLE_LOCK -> handleToggleTableLock(current, request.isTableLocked());
         };
     }
 
@@ -110,6 +116,22 @@ final class TablePermissionCoordinator {
     private static RedisTableState handleToggleFreeCollab(RedisTableState current, Boolean explicitValue) {
         boolean nextValue = explicitValue != null ? explicitValue : !current.isFreeCollab();
         return current.withPermissions(current.hostUserId(), current.coHostUserIds(), nextValue);
+    }
+
+    private static RedisTableState handleToggleTableLock(RedisTableState current, Boolean explicitValue) {
+        boolean nextLocked = explicitValue != null ? explicitValue : !current.isTableLocked();
+        if (!nextLocked) {
+            return current.withTableLock(false, null);
+        }
+        return current.withTableLock(true, generateInviteCode());
+    }
+
+    private static String generateInviteCode() {
+        StringBuilder code = new StringBuilder(INVITE_CODE_LENGTH);
+        for (int i = 0; i < INVITE_CODE_LENGTH; i++) {
+            code.append(INVITE_ALPHABET.charAt(INVITE_RANDOM.nextInt(INVITE_ALPHABET.length())));
+        }
+        return code.toString();
     }
 
     private static void requireTargetUserId(String targetUserId) {

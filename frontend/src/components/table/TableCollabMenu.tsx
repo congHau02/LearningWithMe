@@ -1,15 +1,22 @@
+import { LockIcon } from '../icons';
 import { TableCollabPopover } from './TableCollabPopover';
 
 export interface TableCollabMenuProps {
   isMobile: boolean;
   isFreeCollab: boolean;
+  isTableLocked?: boolean;
   isHost: boolean;
   canControl: boolean;
   onToggleFreeCollab: () => void;
+  onToggleTableLock?: () => void;
+  onCopyInviteLink?: () => void;
   onRequestControl: () => void;
   onMinimize: () => void;
   onRequestLeaveSeat: () => void;
 }
+
+const DESKTOP_ACTION_BTN =
+  'transition-botanical inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 /**
  * Compact permission & overflow menu for {@link TableWorkspaceHeader}.
@@ -18,9 +25,12 @@ export interface TableCollabMenuProps {
 export function TableCollabMenu({
   isMobile,
   isFreeCollab,
+  isTableLocked = false,
   isHost,
   canControl,
   onToggleFreeCollab,
+  onToggleTableLock,
+  onCopyInviteLink,
   onRequestControl,
   onMinimize,
   onRequestLeaveSeat,
@@ -29,9 +39,12 @@ export function TableCollabMenu({
     return (
       <TableCollabPopover
         isFreeCollab={isFreeCollab}
+        isTableLocked={isTableLocked}
         isHost={isHost}
         canControl={canControl}
         onToggleFreeCollab={onToggleFreeCollab}
+        onToggleTableLock={onToggleTableLock}
+        onCopyInviteLink={onCopyInviteLink}
         onRequestControl={onRequestControl}
         onMinimize={onMinimize}
         onRequestLeaveSeat={onRequestLeaveSeat}
@@ -41,21 +54,40 @@ export function TableCollabMenu({
 
   if (isHost) {
     return (
-      <button
-        type="button"
-        data-testid="toggle-free-collab-btn"
-        aria-pressed={isFreeCollab}
-        onClick={onToggleFreeCollab}
-        title={isFreeCollab ? 'Đang bật hợp tác tự do — bấm để tắt' : 'Đang tắt hợp tác tự do — bấm để bật'}
-        className={`transition-botanical inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-          isFreeCollab
-            ? 'border-primary/50 bg-primary/20 text-primary hover:bg-primary/30'
-            : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
-        }`}
-      >
-        <span className={`h-1.5 w-1.5 rounded-full ${isFreeCollab ? 'bg-primary' : 'bg-muted-foreground/50'}`} aria-hidden="true" />
-        <span>{isFreeCollab ? 'Hợp tác tự do: BẬT' : 'Hợp tác tự do: TẮT'}</span>
-      </button>
+      <>
+        {onToggleTableLock ? (
+          <button
+            type="button"
+            data-testid="toggle-table-lock-btn"
+            aria-pressed={isTableLocked}
+            onClick={onToggleTableLock}
+            title={isTableLocked ? 'Bàn đang khóa riêng tư — bấm để mở khóa' : 'Khóa bàn học riêng tư (chỉ vào qua link mời)'}
+            className={`${DESKTOP_ACTION_BTN} ${
+              isTableLocked
+                ? 'border-amber-500/50 bg-amber-950/70 text-amber-200 hover:bg-amber-900/70'
+                : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
+            }`}
+          >
+            <LockIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>{isTableLocked ? 'Khóa bàn: BẬT' : 'Khóa bàn: TẮT'}</span>
+          </button>
+        ) : null}
+        <button
+          type="button"
+          data-testid="toggle-free-collab-btn"
+          aria-pressed={isFreeCollab}
+          onClick={onToggleFreeCollab}
+          title={isFreeCollab ? 'Đang bật hợp tác tự do — bấm để tắt' : 'Đang tắt hợp tác tự do — bấm để bật'}
+          className={`${DESKTOP_ACTION_BTN} ${
+            isFreeCollab
+              ? 'border-primary/50 bg-primary/20 text-primary hover:bg-primary/30'
+              : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
+          }`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${isFreeCollab ? 'bg-primary' : 'bg-muted-foreground/50'}`} aria-hidden="true" />
+          <span>{isFreeCollab ? 'Hợp tác tự do: BẬT' : 'Hợp tác tự do: TẮT'}</span>
+        </button>
+      </>
     );
   }
 

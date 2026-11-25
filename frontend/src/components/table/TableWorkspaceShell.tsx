@@ -7,6 +7,7 @@ import type { PermissionAction } from '../../services/tableApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useTableStore } from '../../stores/useTableStore';
+import { buildTableInviteUrl } from '../../utils/tableInviteLink';
 import { MinimizedTableWorkspaceBar } from './MinimizedTableWorkspaceBar';
 import { TableWorkspaceBody } from './TableWorkspaceBody';
 import { TableWorkspaceHeader } from './TableWorkspaceHeader';
@@ -15,6 +16,7 @@ export function TableWorkspaceShell() {
   const { isClearView, toggleClearView } = useClearView();
   const characterState = useGameStore((s) => s.characterState);
   const currentTableId = useGameStore((s) => s.currentTableId);
+  const roomId = useGameStore((s) => s.roomId);
   const requestLeaveSeat = useGameStore((s) => s.requestLeaveSeat);
 
   const selfUserId = useAuthStore((s) => s.userId);
@@ -23,6 +25,8 @@ export function TableWorkspaceShell() {
   const hostUserId = useTableStore((s) => s.hostUserId);
   const coHostUserIds = useTableStore((s) => s.coHostUserIds);
   const isFreeCollab = useTableStore((s) => s.isFreeCollab);
+  const isTableLocked = useTableStore((s) => s.isTableLocked);
+  const inviteCode = useTableStore((s) => s.inviteCode);
   const sosBanner = useTableStore((s) => s.sosBanner);
   const sitStartTimeEpoch = useTableStore((s) => s.sitStartTimeEpoch);
   const members = useTableStore((s) => s.members);
@@ -56,12 +60,36 @@ export function TableWorkspaceShell() {
   const isCoHost = Boolean(selfUserId && coHostUserIds.includes(selfUserId));
   const canControl = isHost || isCoHost || isFreeCollab;
 
-  const handlePermissionAction = (action: PermissionAction, targetUserId?: string, nextFreeCollab?: boolean) => {
+  const handlePermissionAction = (
+    action: PermissionAction,
+    targetUserId?: string,
+    nextFreeCollab?: boolean,
+    nextTableLocked?: boolean,
+  ) => {
     sendTablePermissionRespond(activeTableId, {
       action,
       targetUserId,
       isFreeCollab: nextFreeCollab,
+      ...(nextTableLocked !== undefined ? { isTableLocked: nextTableLocked } : {}),
     });
+  };
+
+  const handleCopyInviteLink = async () => {
+    const inviteUrl = buildTableInviteUrl({
+      roomId,
+      tableId: activeTableId,
+      inviteCode: isTableLocked ? inviteCode : null,
+    });
+    try {
+      await navigator.clipboard?.writeText(inviteUrl);
+      setPermissionToast(
+        isTableLocked
+          ? 'Đã sao chép link mời bàn (kèm mã khóa riêng tư)'
+          : 'Đã sao chép link mời vào bàn học',
+      );
+    } catch {
+      setPermissionToast(`Link mời bàn: ${inviteUrl}`);
+    }
   };
 
   const handleToastRespond = (requesterUserId: string, action: 'GRANT' | 'DENY') => {
@@ -91,11 +119,14 @@ export function TableWorkspaceShell() {
           activeTableId={activeTableId}
           elapsedSeconds={elapsedSeconds}
           isFreeCollab={isFreeCollab}
+          isTableLocked={isTableLocked}
           isHost={isHost}
           canControl={canControl}
           isClearView={isClearView}
           onToggleClearView={toggleClearView}
           onToggleFreeCollab={() => handlePermissionAction('TOGGLE_FREE_COLLAB', undefined, !isFreeCollab)}
+          onToggleTableLock={() => handlePermissionAction('TOGGLE_TABLE_LOCK', undefined, undefined, !isTableLocked)}
+          onCopyInviteLink={() => void handleCopyInviteLink()}
           onRequestControl={handleRequestControl}
           onToggleMute={() => void toggleMute()}
           onMinimize={() => setWorkspaceMinimized(true)}

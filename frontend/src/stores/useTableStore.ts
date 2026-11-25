@@ -13,6 +13,8 @@ export interface TableWorkspaceState {
   hostUserId: string | null;
   coHostUserIds: string[];
   isFreeCollab: boolean;
+  isTableLocked: boolean;
+  inviteCode: string | null;
   sosBanner: string | null;
   sitStartTimeEpoch: number | null;
   members: TableMemberDto[];
@@ -32,7 +34,7 @@ export interface TableWorkspaceState {
   boardGeoMarkType: GeoMarkSubtype;
   boardSnapEnabled: boolean;
   boardVertexLetter: string | null;
-  setTableState: (payload: { tableId: string; hostUserId: string | null; coHostUserIds?: string[]; isFreeCollab?: boolean; sosBanner?: string | null; sitStartTimeEpoch?: number | null; videoState?: Partial<VideoSyncState>; }) => void;
+  setTableState: (payload: { tableId: string; hostUserId: string | null; coHostUserIds?: string[]; isFreeCollab?: boolean; isTableLocked?: boolean; inviteCode?: string | null; sosBanner?: string | null; sitStartTimeEpoch?: number | null; videoState?: Partial<VideoSyncState>; }) => void;
   applyWorkspaceSnapshot: (snapshot: TableWorkspaceSnapshot, selfUserId: string | null) => void;
   applyWorkspaceEvent: (event: TableWorkspaceEvent, selfUserId: string | null) => void;
   syncFromRoomSeatEvent: (event: RoomEvent) => void;
@@ -59,26 +61,23 @@ const DEFAULT_VIDEO_STATE: VideoSyncState = { videoId: null, isPlaying: false, c
 const EMPTY_SCRATCHPAD_STATE: TableScratchpadState = { content: '', updatedByUserId: null, updatedByNickname: null, updatedAtEpoch: 0 };
 const INITIAL_TABLE_STATE = {
   tableId: null as string | null, hostUserId: null as string | null, coHostUserIds: [] as string[],
-  isFreeCollab: false, sosBanner: null as string | null, sitStartTimeEpoch: null as number | null,
+  isFreeCollab: false, isTableLocked: false, inviteCode: null as string | null,
+  sosBanner: null as string | null, sitStartTimeEpoch: null as number | null,
   members: [] as TableMemberDto[], pendingPermissionRequests: [] as PermissionRequestNotification[],
   permissionToast: null as string | null, videoState: DEFAULT_VIDEO_STATE, recentMessages: [] as TableChatMessage[],
   homeworkSlides: [] as HomeworkSlide[], activeSlideId: null as string | null, scratchpadState: EMPTY_SCRATCHPAD_STATE,
-  laserPointers: {} as Record<string, LaserPointerState>,
-  isWorkspaceMinimized: false,
-  unreadChatCount: 0,
-  boardTool: null as BoardTool | null,
-  boardColor: '#ef4444',
-  boardLineWidth: 3,
-  boardGeoMarkType: 'RIGHT_ANGLE' as GeoMarkSubtype,
-  boardSnapEnabled: false,
-  boardVertexLetter: null as string | null,
+  laserPointers: {} as Record<string, LaserPointerState>, isWorkspaceMinimized: false, unreadChatCount: 0,
+  boardTool: null as BoardTool | null, boardColor: '#ef4444', boardLineWidth: 3,
+  boardGeoMarkType: 'RIGHT_ANGLE' as GeoMarkSubtype, boardSnapEnabled: false, boardVertexLetter: null as string | null,
 };
 
 export const useTableStore = create<TableWorkspaceState>((set) => ({
   ...INITIAL_TABLE_STATE,
-  setTableState: ({ tableId, hostUserId, coHostUserIds = [], isFreeCollab = false, sosBanner = null, sitStartTimeEpoch, videoState }) =>
+  setTableState: ({ tableId, hostUserId, coHostUserIds = [], isFreeCollab = false, isTableLocked, inviteCode, sosBanner = null, sitStartTimeEpoch, videoState }) =>
     set((s) => ({
       tableId, hostUserId, coHostUserIds, isFreeCollab, sosBanner,
+      isTableLocked: isTableLocked !== undefined ? isTableLocked : s.isTableLocked,
+      inviteCode: inviteCode !== undefined ? inviteCode : s.inviteCode,
       sitStartTimeEpoch: sitStartTimeEpoch !== undefined ? sitStartTimeEpoch : s.sitStartTimeEpoch,
       videoState: { ...s.videoState, ...videoState },
     })),
@@ -87,12 +86,12 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
       const self = selfUserId ? snapshot.members.find((m) => m.userId === selfUserId) : undefined;
       return {
         tableId: snapshot.tableId, hostUserId: snapshot.hostUserId, coHostUserIds: snapshot.coHostUserIds,
-        isFreeCollab: snapshot.isFreeCollab, sosBanner: snapshot.sosBanner, members: snapshot.members,
+        isFreeCollab: snapshot.isFreeCollab, isTableLocked: Boolean(snapshot.isTableLocked),
+        inviteCode: snapshot.inviteCode ?? null, sosBanner: snapshot.sosBanner, members: snapshot.members,
         sitStartTimeEpoch: self?.sitStartTimeEpoch || s.sitStartTimeEpoch || Date.now(),
         videoState: { ...s.videoState, ...snapshot.videoState },
         recentMessages: (snapshot.recentMessages ?? []).slice(-50),
-        homeworkSlides: snapshot.homeworkSlides ?? [],
-        activeSlideId: snapshot.activeSlideId ?? null,
+        homeworkSlides: snapshot.homeworkSlides ?? [], activeSlideId: snapshot.activeSlideId ?? null,
         scratchpadState: snapshot.scratchpadState ?? EMPTY_SCRATCHPAD_STATE,
       };
     }),

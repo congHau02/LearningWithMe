@@ -3,6 +3,8 @@ import type { BackendConnectionStatus } from '../components/hud/TopBar';
 import { ApiError, fetchBackendHealth } from '../services/apiClient';
 import { fetchCurrentSession, resolveAuthProvider } from '../services/authApi';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useGameStore } from '../stores/useGameStore';
+import { readPendingTableInvite } from '../utils/tableInviteLink';
 
 export const COLD_START_GRACE_MS = 2000;
 export const HEALTH_POLL_INTERVAL_MS = 3500;
@@ -181,6 +183,10 @@ export function useAppBootstrap(): AppBootstrapState {
   useEffect(() => {
     isMountedRef.current = true;
     startedAtRef.current = Date.now();
+    const initialInvite = readPendingTableInvite();
+    if (initialInvite) {
+      useGameStore.getState().setPendingTableInvite(initialInvite);
+    }
 
     hydrateAndRestoreSession(
       () => isMountedRef.current,

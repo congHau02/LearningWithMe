@@ -1,5 +1,7 @@
 package com.studytogether.modules.room.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public record RoomEvent(
         long seq,
         String type,
@@ -12,13 +14,14 @@ public record RoomEvent(
         String seatId,
         String hostUserId,
         RoomChatMessage message,
-        String sosBanner
+        String sosBanner,
+        @JsonProperty("isTableLocked") Boolean isTableLocked
 ) {
     public RoomEvent(
             long seq, String type, String roomId, String userId,
             String previousUserId, RoomPlayerDto player, long timestampEpoch
     ) {
-        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, null, null, null, null, null);
+        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, null, null, null, null, null, null);
     }
 
     public RoomEvent(
@@ -26,7 +29,7 @@ public record RoomEvent(
             String previousUserId, RoomPlayerDto player, long timestampEpoch,
             String tableId, String seatId, String hostUserId
     ) {
-        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, tableId, seatId, hostUserId, null, null);
+        this(seq, type, roomId, userId, previousUserId, player, timestampEpoch, tableId, seatId, hostUserId, null, null, null);
     }
 
     public static RoomEvent chat(
@@ -34,7 +37,7 @@ public record RoomEvent(
     ) {
         return new RoomEvent(
                 seq, "ROOM_CHAT", roomId, userId, null, null, timestampEpoch,
-                null, null, null, message, null
+                null, null, null, message, null, null
         );
     }
 
@@ -43,7 +46,7 @@ public record RoomEvent(
     ) {
         return new RoomEvent(
                 seq, "TABLE_HOST_CHANGED", roomId, hostUserId, null, null, timestampEpoch,
-                tableId, null, hostUserId, null, null
+                tableId, null, hostUserId, null, null, null
         );
     }
 
@@ -52,7 +55,16 @@ public record RoomEvent(
     ) {
         return new RoomEvent(
                 seq, "SOS_UPDATED", roomId, actorUserId, null, null, timestampEpoch,
-                tableId, null, null, null, sosBanner
+                tableId, null, null, null, sosBanner, null
+        );
+    }
+
+    public static RoomEvent tableLockUpdated(
+            long seq, String roomId, String tableId, String actorUserId, boolean isTableLocked, long timestampEpoch
+    ) {
+        return new RoomEvent(
+                seq, "TABLE_LOCK_UPDATED", roomId, actorUserId, null, null, timestampEpoch,
+                tableId, null, null, null, null, isTableLocked
         );
     }
 }

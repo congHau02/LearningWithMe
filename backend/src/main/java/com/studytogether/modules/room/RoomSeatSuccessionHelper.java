@@ -75,7 +75,7 @@ final class RoomSeatSuccessionHelper {
             RedisTableState lastState = emptiedStateRef.get();
             if (lastState != null && (lastState.hostUserId() != null || !lastState.homeworkSlides().isEmpty()
                     || lastState.sosBanner() != null || lastState.videoState().videoId() != null
-                    || !lastState.scratchpadState().content().isBlank())) {
+                    || !lastState.scratchpadState().content().isBlank() || lastState.isTableLocked())) {
                 eventPublisher.publishEvent(new TableEmptiedEvent(roomId, tableId, lastState));
                 if (lastState.sosBanner() != null) {
                     long sosSeq = stateStore.incrementEventSeq(roomId);

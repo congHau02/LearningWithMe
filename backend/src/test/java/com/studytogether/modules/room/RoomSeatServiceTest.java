@@ -176,6 +176,43 @@ class RoomSeatServiceTest {
     }
 
     @Test
+    void lockedTableRejectsUninvitedSitAllowsValidInviteCodePreservesOnSuccessionAndWipesWhenEmpty() {
+        String roomId = "main-library";
+        AuthPrincipal host = guest("u-host", "Host");
+        stateStore.savePlayer(roomId, playerState("u-host", "Host", "SEATED", 3, 4, "table_01", "T1_S1", 1000L));
+        stateStore.putSeat(roomId, "T1_S1", "u-host");
+        stateStore.saveTableState(roomId, "table_01",
+                new RedisTableState("u-host", List.of(), false, null).withTableLock(true, "INVITE88"));
+
+        AuthPrincipal stranger = guest("u-stranger", "Stranger");
+        stateStore.savePlayer(roomId, playerState("u-stranger", "Stranger", "FREE_ROAM", 12, 13, null, null, 0L));
+
+        assertThatThrownBy(() -> seatService.handleSit(stranger, roomId, new SeatSitRequest("table_01", "T1_S2", null), "ws-s"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getType()).isEqualTo(RoomExceptions.TABLE_LOCKED_TYPE));
+
+        assertThatThrownBy(() -> seatService.handleSit(stranger, roomId, new SeatSitRequest("table_01", "T1_S2", "WRONG"), "ws-s"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getType()).isEqualTo(RoomExceptions.TABLE_LOCKED_TYPE));
+
+        AuthPrincipal invited = guest("u-invited", "Invited");
+        stateStore.savePlayer(roomId, playerState("u-invited", "Invited", "FREE_ROAM", 12, 13, null, null, 0L));
+        RoomEvent sitEvent = seatService.handleSit(invited, roomId, new SeatSitRequest("table_01", "T1_S2", "INVITE88"), "ws-i");
+        assertThat(sitEvent.type()).isEqualTo("SEAT_LOCKED");
+
+        // Host leaves -> Auto-Host Succession preserves lock + inviteCode
+        seatService.handleLeave(host, roomId, "ws-h");
+        RedisTableState afterSuccession = stateStore.getTableState(roomId, "table_01").orElseThrow();
+        assertThat(afterSuccession.hostUserId()).isEqualTo("u-invited");
+        assertThat(afterSuccession.isTableLocked()).isTrue();
+        assertThat(afterSuccession.inviteCode()).isEqualTo("INVITE88");
+
+        // Last learner leaves -> table state including lock and inviteCode is wiped
+        seatService.handleLeave(invited, roomId, "ws-i");
+        assertThat(stateStore.getTableState(roomId, "table_01")).isEmpty();
+    }
+
+    @Test
     void leaveSeatAutoHostSuccessionPrefersOnlineMemberOverDisconnectedCoHostInGrace() {
         String roomId = "main-library";
         AuthPrincipal host = guest("u-host", "Host");

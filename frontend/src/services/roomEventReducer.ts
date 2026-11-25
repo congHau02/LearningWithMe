@@ -85,6 +85,7 @@ export function applyRoomEvent(params: {
         if (!event.hostUserId) {
           table.sosBanner = null;
           table.occupiedSeats = 0;
+          table.isTableLocked = false;
         }
       }
     }
@@ -92,6 +93,12 @@ export function applyRoomEvent(params: {
     if (event.tableId) {
       const table = nextTables.find((t) => t.tableId === event.tableId);
       if (table) table.hostUserId = event.hostUserId ?? null;
+    }
+    return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };
+  } else if (event.type === 'TABLE_LOCK_UPDATED') {
+    if (event.tableId) {
+      const table = nextTables.find((t) => t.tableId === event.tableId);
+      if (table) table.isTableLocked = Boolean(event.isTableLocked);
     }
     return { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq };
   } else if (event.type === 'SOS_UPDATED') {

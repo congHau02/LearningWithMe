@@ -51,7 +51,11 @@ public interface RoomStateStore {
 
     Map<String, String> getSeats(String roomId);
 
-    SeatLockOutcome lockSeat(String roomId, String tableId, String seatId, String userId);
+    default SeatLockOutcome lockSeat(String roomId, String tableId, String seatId, String userId) {
+        return lockSeat(roomId, tableId, seatId, userId, null);
+    }
+
+    SeatLockOutcome lockSeat(String roomId, String tableId, String seatId, String userId, String inviteCode);
 
     boolean releaseSeat(String roomId, String seatId);
 

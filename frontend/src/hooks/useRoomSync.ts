@@ -7,10 +7,10 @@ import {
   type RoomStompSession,
 } from '../services/roomStompClient';
 import { useAuthStore } from '../stores/useAuthStore';
-import { refreshPersonalStudyStats } from '../services/statsApi';
 import { useGameStore } from '../stores/useGameStore';
 import { useTableStore } from '../stores/useTableStore';
 import { teardownActiveVoice } from '../stores/useVoiceStore';
+import { buildRoomSessionCallbacks } from './roomSyncHandlers';
 
 export function useRoomSync(backendStatus: BackendConnectionStatus = 'UP'): void {
   const token = useAuthStore((s) => s.token);
@@ -49,7 +49,7 @@ export function useRoomSync(backendStatus: BackendConnectionStatus = 'UP'): void
       if (state.isPendingSeatConfirmation && state.targetTableId && state.targetSeatId) {
         if (lastSentSeatRef.current !== state.targetSeatId) {
           lastSentSeatRef.current = state.targetSeatId;
-          sessionRef.current?.sendSit(state.roomId, state.targetTableId, state.targetSeatId);
+          sessionRef.current?.sendSit(state.roomId, state.targetTableId, state.targetSeatId, state.targetInviteCode);
         }
       } else {
         lastSentSeatRef.current = null;
@@ -104,111 +104,7 @@ export function useRoomSync(backendStatus: BackendConnectionStatus = 'UP'): void
     if (!sessionRef.current) {
       let session: RoomStompSession;
       try {
-        session = createRoomStompSession({
-        onStatusChange: (status, err) =>
-          useGameStore.getState().setConnectionStatus(status, err),
-        onSnapshot: (snapshot) => {
-          const selfUserId = useAuthStore.getState().userId;
-          useGameStore.getState().applyRoomSnapshot(snapshot, selfUserId);
-          const selfPlayer = snapshot.players.find((p) => p.userId === selfUserId);
-          if (selfPlayer && selfPlayer.state === 'SEATED' && selfPlayer.tableId) {
-            if (typeof selfPlayer.studyGoal === 'string') {
-              useAuthStore.getState().setStudyGoalState({
-                studyGoal: selfPlayer.studyGoal,
-                studyGoalCompleted: Boolean(selfPlayer.studyGoalCompleted),
-              });
-            }
-            const table = snapshot.tables.find((t) => t.tableId === selfPlayer.tableId);
-            useTableStore.getState().setTableState({
-              tableId: selfPlayer.tableId,
-              hostUserId: table?.hostUserId ?? null,
-              coHostUserIds: table?.coHostUserIds ?? [],
-              isFreeCollab: table?.isFreeCollab ?? false,
-              sosBanner: table?.sosBanner ?? null,
-              sitStartTimeEpoch: selfPlayer.sitStartTimeEpoch ?? Date.now(),
-            });
-          } else {
-            const selfHoldsSeat = Boolean(selfUserId && Object.values(snapshot.seats).includes(selfUserId));
-            if (!selfHoldsSeat && useGameStore.getState().characterState === 'SEATED') {
-              useGameStore.getState().leaveSeat();
-            }
-            useTableStore.getState().leaveTable();
-            const auth = useAuthStore.getState();
-            if (
-              selfPlayer &&
-              selfPlayer.studyGoal !== undefined &&
-              (auth.studyGoal !== (selfPlayer.studyGoal ?? '') ||
-                auth.studyGoalCompleted !== Boolean(selfPlayer.studyGoalCompleted))
-            ) {
-              session.sendStudyGoalUpdate(snapshot.roomId, {
-                studyGoal: auth.studyGoal,
-                completed: auth.studyGoalCompleted,
-              });
-            }
-          }
-        },
-        onEvent: (event) => {
-          const selfUserId = useAuthStore.getState().userId;
-          useGameStore.getState().applyIncomingRoomEvent(event, selfUserId);
-          if (event.type === 'SEAT_LOCKED') {
-            if (event.userId === selfUserId) {
-              useGameStore.getState().confirmSeat(
-                event.tableId!,
-                event.seatId!,
-                event.player ? { x: event.player.x, y: event.player.y } : undefined,
-                event.player?.facingDir,
-              );
-              useTableStore.getState().setTableState({
-                tableId: event.tableId!,
-                hostUserId: event.hostUserId ?? null,
-                sitStartTimeEpoch: event.player?.sitStartTimeEpoch || Date.now(),
-              });
-            } else {
-              useTableStore.getState().syncFromRoomSeatEvent(event);
-              const current = useGameStore.getState();
-              if (
-                current.characterState === 'WALKING_TO_SEAT' &&
-                (current.currentSeatId === event.seatId || current.targetSeatId === event.seatId)
-              ) {
-                current.abortSeatWalk('Ghế vừa có người ngồi!');
-              }
-            }
-          } else if (event.type === 'SEAT_RELEASED' || event.type === 'TABLE_HOST_CHANGED' || event.type === 'PLAYER_UPDATED') {
-            useTableStore.getState().syncFromRoomSeatEvent(event);
-            if (event.type === 'SEAT_RELEASED' && event.userId === selfUserId) {
-              void refreshPersonalStudyStats();
-            } else if (
-              event.type === 'PLAYER_UPDATED' &&
-              event.userId === selfUserId &&
-              event.player &&
-              typeof event.player.studyGoal === 'string'
-            ) {
-              useAuthStore.getState().setStudyGoalState({
-                studyGoal: event.player.studyGoal,
-                studyGoalCompleted: Boolean(event.player.studyGoalCompleted),
-              });
-            }
-          }
-        },
-        onError: (err) => {
-          useGameStore.getState().handleStompError(err);
-          if (err.code === 'SEAT_OCCUPIED' || err.code === 'ALREADY_SEATED') {
-            const current = useGameStore.getState();
-            if (current.characterState === 'WALKING_TO_SEAT' || current.isPendingSeatConfirmation) {
-              current.abortSeatWalk(err.message || 'Ghế đã có người ngồi!');
-            }
-          } else if (
-            err.code === 'TABLE_PERMISSION_DENIED' ||
-            err.code === 'NOT_SEATED_AT_TABLE' ||
-            err.code === 'TARGET_NOT_SEATED_AT_TABLE' ||
-            err.code === 'TABLE_CHAT_RATE_LIMIT_EXCEEDED' ||
-            err.code === 'TABLE_RATE_LIMIT_EXCEEDED' ||
-            err.code === 'INVALID_TABLE_ACTION'
-          ) {
-            useTableStore.getState().setPermissionToast(err.message || 'Không thể thực hiện thao tác bàn học');
-          }
-        },
-      });
+        session = createRoomStompSession(buildRoomSessionCallbacks(() => sessionRef.current));
       } catch (err) {
         useGameStore.getState().setConnectionStatus('ERROR', {
           code: 'WS_CONFIG_MISSING',

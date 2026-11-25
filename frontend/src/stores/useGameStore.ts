@@ -17,7 +17,7 @@ export const useGameStore = create<GameState>((set, get) => {
     const wasSeated = get().characterState === 'SEATED';
     set((s) => ({
       characterState: 'SEATED', currentTableId: tableId, currentSeatId: seatId,
-      targetTableId: null, targetSeatId: null, isPendingSeatConfirmation: false, isPendingSeatLeave: false,
+      targetTableId: null, targetSeatId: null, targetInviteCode: null, isPendingSeatConfirmation: false, isPendingSeatLeave: false,
       position: seatPosition ?? s.position, facingDir: facingDir ?? s.facingDir, pathQueue: [], isMoving: false,
       isLeaveConfirmOpen: false, occupiedSeats: { ...s.occupiedSeats, [seatId]: s.occupiedSeats[seatId] ?? '' },
     }));
@@ -36,62 +36,53 @@ export const useGameStore = create<GameState>((set, get) => {
   clearPath: () =>
     set((s) => (s.characterState === 'SEATED' ? s : {
       pathQueue: [], isMoving: false, characterState: 'FREE_ROAM',
-      currentTableId: null, currentSeatId: null, targetTableId: null, targetSeatId: null, isPendingSeatConfirmation: false,
+      currentTableId: null, currentSeatId: null, targetTableId: null, targetSeatId: null, targetInviteCode: null, isPendingSeatConfirmation: false,
     })),
   setCharacterState: (characterState) => set({ characterState }),
-  startWalkingToSeat: (tableId, seatId, pathQueue) =>
+  startWalkingToSeat: (tableId, seatId, pathQueue, inviteCode) =>
     set((s) => ({
       characterState: 'WALKING_TO_SEAT', currentTableId: tableId, currentSeatId: seatId,
-      targetTableId: tableId, targetSeatId: seatId, isPendingSeatConfirmation: false,
-      pathQueue: pathQueue ?? s.pathQueue, isMoving: (pathQueue ?? s.pathQueue).length > 0, isLeaveConfirmOpen: false,
+      targetTableId: tableId, targetSeatId: seatId, targetInviteCode: inviteCode !== undefined ? inviteCode : s.targetInviteCode,
+      isPendingSeatConfirmation: false, pathQueue: pathQueue ?? s.pathQueue,
+      isMoving: (pathQueue ?? s.pathQueue).length > 0, isLeaveConfirmOpen: false,
     })),
-  requestSeatConfirmation: (tableId, seatId) =>
-    set({ isPendingSeatConfirmation: true, isMoving: false, pathQueue: [], currentTableId: tableId, currentSeatId: seatId, targetTableId: tableId, targetSeatId: seatId }),
+  requestSeatConfirmation: (tableId, seatId, inviteCode) =>
+    set((s) => ({
+      isPendingSeatConfirmation: true, isMoving: false, pathQueue: [],
+      currentTableId: tableId, currentSeatId: seatId, targetTableId: tableId, targetSeatId: seatId,
+      targetInviteCode: inviteCode !== undefined ? inviteCode : s.targetInviteCode,
+    })),
   confirmSeat: enterSeatedState,
   sitAtSeat: enterSeatedState,
   abortSeatWalk: (reason) =>
     set({
       characterState: 'FREE_ROAM', currentTableId: null, currentSeatId: null,
-      targetTableId: null, targetSeatId: null, isPendingSeatConfirmation: false, isPendingSeatLeave: false,
+      targetTableId: null, targetSeatId: null, targetInviteCode: null, isPendingSeatConfirmation: false, isPendingSeatLeave: false,
       pathQueue: [], isMoving: false, toastMessage: reason ?? 'Ghế vừa có người ngồi!',
     }),
+  setPendingTableInvite: (pendingTableInvite) => set({ pendingTableInvite }),
+  setToastMessage: (toastMessage) => set({ toastMessage }),
   openLeaveConfirm: () => set((s) => (s.characterState === 'SEATED' ? { isLeaveConfirmOpen: true } : s)),
   closeLeaveConfirm: () => set({ isLeaveConfirmOpen: false }),
   requestLeaveSeat: () => set((s) => (s.characterState === 'SEATED' ? { isPendingSeatLeave: true } : s)),
   leaveSeat: () =>
     set((s) => ({
       characterState: 'FREE_ROAM', currentTableId: null, currentSeatId: null,
-      targetTableId: null, targetSeatId: null, isPendingSeatConfirmation: false, isPendingSeatLeave: false,
+      targetTableId: null, targetSeatId: null, targetInviteCode: null, isPendingSeatConfirmation: false, isPendingSeatLeave: false,
       pathQueue: [], isMoving: false, isLeaveConfirmOpen: false,
       occupiedSeats: s.currentSeatId ? Object.fromEntries(Object.entries(s.occupiedSeats).filter(([k]) => k !== s.currentSeatId)) : s.occupiedSeats,
     })),
   openDrinkMenu: (npcName, npcId) =>
-    set({
-      isDrinkMenuOpen: true,
-      activeCafeNpcName: npcName ?? 'Quầy Study Café',
-      activeCafeNpcId: npcId ?? 'npc_barista',
-    }),
+    set({ isDrinkMenuOpen: true, activeCafeNpcName: npcName ?? 'Quầy Study Café', activeCafeNpcId: npcId ?? 'npc_barista' }),
   closeDrinkMenu: () => set({ isDrinkMenuOpen: false }),
   selectVirtualDrink: (drinkId) =>
     set((s) => {
       const drink = findVirtualDrink(drinkId);
-      if (!drink) {
-        return {
-          selectedDrinkId: null,
-          pendingDrinkOrder: null,
-          isDrinkMenuOpen: false,
-        };
-      }
+      if (!drink) return { selectedDrinkId: null, pendingDrinkOrder: null, isDrinkMenuOpen: false };
       const nextSeq = Math.max(s.npcBubbleOrder?.seq ?? 0, s.pendingDrinkOrder?.seq ?? 0) + 1;
       return {
-        selectedDrinkId: null,
-        pendingDrinkOrder: { drinkId: drink.id, seq: nextSeq },
-        isDrinkMenuOpen: false,
-        npcBubbleOrder: {
-          npcId: s.activeCafeNpcId ?? 'npc_barista',
-          text: `Đã nhận ${drink.name}, Phục vụ An đang mang ra cho bạn!`,
-          seq: nextSeq,
-        },
+        selectedDrinkId: null, pendingDrinkOrder: { drinkId: drink.id, seq: nextSeq }, isDrinkMenuOpen: false,
+        npcBubbleOrder: { npcId: s.activeCafeNpcId ?? 'npc_barista', text: `Đã nhận ${drink.name}, Phục vụ An đang mang ra cho bạn!`, seq: nextSeq },
       };
     }),
   completeDrinkDelivery: (drinkId, seq) => {

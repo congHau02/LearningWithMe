@@ -85,6 +85,8 @@ export function reduceWorkspaceEvent(
     hostUserId: event.hostUserId,
     coHostUserIds: event.coHostUserIds,
     isFreeCollab: event.isFreeCollab,
+    isTableLocked: event.isTableLocked !== undefined ? Boolean(event.isTableLocked) : s.isTableLocked,
+    inviteCode: event.isTableLocked === false ? null : (event.inviteCode !== undefined ? event.inviteCode : s.inviteCode),
     members: nextMembers,
     pendingPermissionRequests: nextRequests,
     permissionToast: toast,

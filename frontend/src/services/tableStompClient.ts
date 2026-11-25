@@ -12,7 +12,7 @@ export function sendTablePermissionRequest(tableId: string, reason?: string): bo
 
 export function sendTablePermissionRespond(
   tableId: string,
-  payload: { action: string; targetUserId?: string; isFreeCollab?: boolean },
+  payload: { action: string; targetUserId?: string; isFreeCollab?: boolean; isTableLocked?: boolean },
 ): boolean {
   const session = getActiveRoomStompSession();
   if (!session) return false;

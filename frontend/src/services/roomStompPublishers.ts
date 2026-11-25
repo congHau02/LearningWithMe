@@ -17,8 +17,11 @@ export abstract class RoomStompPublishers {
     this.publishJson(`/app/room/${roomId}/move`, move);
   }
 
-  sendSit(roomId: string, tableId: string, seatId: string): void {
-    this.publishJson(`/app/room/${roomId}/seat.sit`, { tableId, seatId });
+  sendSit(roomId: string, tableId: string, seatId: string, inviteCode?: string | null): void {
+    this.publishJson(
+      `/app/room/${roomId}/seat.sit`,
+      inviteCode ? { tableId, seatId, inviteCode } : { tableId, seatId },
+    );
   }
 
   sendLeave(roomId: string): void {
@@ -39,7 +42,7 @@ export abstract class RoomStompPublishers {
 
   sendPermissionRespond(
     tableId: string,
-    payload: { action: string; targetUserId?: string; isFreeCollab?: boolean },
+    payload: { action: string; targetUserId?: string; isFreeCollab?: boolean; isTableLocked?: boolean },
   ): void {
     this.publishJson(`/app/table/${tableId}/permission.respond`, payload);
   }

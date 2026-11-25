@@ -17,6 +17,7 @@ export interface ProjectedOverlayPoint {
 
 export type StudyCafeLabelKind =
   | 'table-plaque'
+  | 'table-lock'
   | 'zone-sign'
   | 'self-player'
   | 'remote-player'

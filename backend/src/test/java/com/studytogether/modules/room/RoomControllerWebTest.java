@@ -18,6 +18,7 @@ import com.studytogether.modules.auth.JwtAuthenticationFilter;
 import com.studytogether.modules.auth.JwtTokenService;
 import com.studytogether.modules.auth.ProblemDetailAuthenticationEntryPoint;
 import com.studytogether.modules.room.model.RoomChatMessage;
+import com.studytogether.modules.room.model.RoomJoinRequest;
 import com.studytogether.modules.room.model.RoomJoinResponse;
 import com.studytogether.modules.room.model.RoomPlayerDto;
 import com.studytogether.modules.room.model.RoomSnapshotResponse;
@@ -70,8 +71,9 @@ class RoomControllerWebTest {
         );
         String jwt = jwtTokenService.issueGuestToken(principal);
 
-        when(roomPresenceService.joinShard(any(AuthPrincipal.class)))
-                .thenReturn(new RoomJoinResponse("main-library-2", 50, 12));
+        when(roomPresenceService.joinShard(any(AuthPrincipal.class), any()))
+                .thenReturn(new RoomJoinResponse("main-library-2", 50, 12, false))
+                .thenReturn(new RoomJoinResponse("main-library", 50, 10, true));
         when(roomPresenceService.getRoomSnapshot("main-library"))
                 .thenReturn(new RoomSnapshotResponse(
                         "main-library",
@@ -90,7 +92,16 @@ class RoomControllerWebTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.roomId").value("main-library-2"))
                 .andExpect(jsonPath("$.capacityLimit").value(50))
-                .andExpect(jsonPath("$.activeLearnerCount").value(12));
+                .andExpect(jsonPath("$.activeLearnerCount").value(12))
+                .andExpect(jsonPath("$.preferredRoomFull").value(false));
+
+        mockMvc.perform(post("/api/v1/rooms/join")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"preferredRoomId\":\"main-library-2\",\"preferredTableId\":\"table_01\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roomId").value("main-library"))
+                .andExpect(jsonPath("$.preferredRoomFull").value(true));
 
         mockMvc.perform(get("/api/v1/rooms/main-library/state")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt))

@@ -8,6 +8,7 @@ import type {
   RoomTableSummary,
   StompErrorPayload,
 } from '../services/roomApi';
+import type { TableInviteTarget } from '../utils/tableInviteLink';
 
 export type CharacterState = 'FREE_ROAM' | 'WALKING_TO_SEAT' | 'SEATED';
 
@@ -33,6 +34,8 @@ export interface GameState {
   isPendingSeatLeave: boolean;
   targetSeatId: string | null;
   targetTableId: string | null;
+  targetInviteCode: string | null;
+  pendingTableInvite: TableInviteTarget | null;
   toastMessage: string | null;
   roomId: string;
   roomCapacityLimit: number;
@@ -66,11 +69,13 @@ export interface GameState {
   setPathQueue: (pathQueue: TileCoordinate[]) => void;
   clearPath: () => void;
   setCharacterState: (characterState: CharacterState) => void;
-  startWalkingToSeat: (tableId: string, seatId: string, pathQueue?: TileCoordinate[]) => void;
-  requestSeatConfirmation: (tableId: string, seatId: string) => void;
+  startWalkingToSeat: (tableId: string, seatId: string, pathQueue?: TileCoordinate[], inviteCode?: string | null) => void;
+  requestSeatConfirmation: (tableId: string, seatId: string, inviteCode?: string | null) => void;
   confirmSeat: (tableId: string, seatId: string, seatPosition?: GridPosition, facingDir?: FacingDirection) => void;
   sitAtSeat: (tableId: string, seatId: string, seatPosition?: GridPosition, facingDir?: FacingDirection) => void;
   abortSeatWalk: (reason?: string) => void;
+  setPendingTableInvite: (invite: TableInviteTarget | null) => void;
+  setToastMessage: (message: string | null) => void;
   openLeaveConfirm: () => void;
   closeLeaveConfirm: () => void;
   requestLeaveSeat: () => void;
@@ -97,6 +102,8 @@ export const INITIAL_GAME_STATE = {
   isPendingSeatLeave: false,
   targetSeatId: null as string | null,
   targetTableId: null as string | null,
+  targetInviteCode: null as string | null,
+  pendingTableInvite: null as TableInviteTarget | null,
   toastMessage: null as string | null,
   roomId: MAIN_LIBRARY_TOPOLOGY.roomId,
   roomCapacityLimit: 50,

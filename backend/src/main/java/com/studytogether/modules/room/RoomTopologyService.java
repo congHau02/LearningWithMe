@@ -107,6 +107,14 @@ public class RoomTopologyService {
         return afkTiles.contains(new TileCoordinate(tileX, tileY));
     }
 
+    public boolean isValidRoomId(String roomId) {
+        if (roomId == null) {
+            return false;
+        }
+        String trimmed = roomId.trim();
+        return MAIN_LIBRARY_ROOM_ID.equals(trimmed) || MAIN_LIBRARY_SHARD_PATTERN.matcher(trimmed).matches();
+    }
+
     private String validateAndNormalizeRoomId(String roomId) {
         if (roomId == null) {
             throw RoomExceptions.roomNotFound("null");
