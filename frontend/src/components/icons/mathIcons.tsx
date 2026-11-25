@@ -78,6 +78,15 @@ export function AxesOxyIcon(props: StudioIconProps) {
   );
 }
 
+export function NumberLineIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M3 12h18m-3-3 3 3-3 3" />
+      <path d="M7 9v6M12 8v8M17 9v6" />
+    </StudioIconWrapper>
+  );
+}
+
 export function PlainBoardIcon(props: StudioIconProps) {
   return (
     <StudioIconWrapper {...props}>

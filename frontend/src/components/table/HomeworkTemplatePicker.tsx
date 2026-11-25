@@ -1,5 +1,5 @@
 import { MATH_SLIDE_TEMPLATES, type MathTemplateId } from '../../utils/mathSlideTemplates';
-import { AxesOxyIcon, GridTemplateIcon, PlainBoardIcon } from '../icons';
+import { AxesOxyIcon, GridTemplateIcon, NumberLineIcon, PlainBoardIcon } from '../icons';
 
 interface HomeworkTemplatePickerProps {
   disabled: boolean;
@@ -9,6 +9,7 @@ interface HomeworkTemplatePickerProps {
 const TEMPLATE_ICON: Record<MathTemplateId, typeof GridTemplateIcon> = {
   GRID: GridTemplateIcon,
   OXY_AXES: AxesOxyIcon,
+  NUMBER_LINE: NumberLineIcon,
   PLAIN_DARK: PlainBoardIcon,
   PLAIN_LIGHT: PlainBoardIcon,
 };

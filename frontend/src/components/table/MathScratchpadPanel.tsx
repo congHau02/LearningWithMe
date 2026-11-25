@@ -1,5 +1,6 @@
 import { MAX_SCRATCHPAD_LENGTH, useMathScratchpad } from '../../hooks/useMathScratchpad';
-import { MATH_SYMBOL_SNIPPETS } from '../../utils/mathLatex';
+import { useCurriculumModeStore } from '../../stores/useCurriculumModeStore';
+import { getMathSymbolSnippets } from '../../utils/mathLatex';
 import { MathRichText } from '../common/MathRichText';
 import { PinToSlideIcon, ScratchpadIcon, SendToChatIcon } from '../icons';
 import { MathSymbolQuickBar } from './MathSymbolQuickBar';
@@ -10,6 +11,7 @@ interface MathScratchpadPanelProps {
 }
 
 export function MathScratchpadPanel({ tableId, canControl }: MathScratchpadPanelProps) {
+  const curriculumMode = useCurriculumModeStore((s) => s.curriculumMode);
   const {
     scratchpad,
     activeSlideId,
@@ -52,7 +54,7 @@ export function MathScratchpadPanel({ tableId, canControl }: MathScratchpadPanel
 
       {canControl ? (
         <MathSymbolQuickBar
-          snippets={MATH_SYMBOL_SNIPPETS}
+          snippets={getMathSymbolSnippets(curriculumMode)}
           onInsert={handleInsertSymbol}
           label="Chèn nhanh ký hiệu toán vào Sổ nháp"
           testIdPrefix="scratchpad-math-sym"

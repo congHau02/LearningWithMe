@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { formatApiError } from '../services/apiClient';
 import { uploadHomeworkImage } from '../services/tableApi';
+import { useCurriculumModeStore } from '../stores/useCurriculumModeStore';
 import { useTableStore } from '../stores/useTableStore';
 import { formatMathNumber } from '../utils/mathAlgebraSolver';
 import { analyzeFunctionFeatures, findCurveIntersections } from '../utils/mathCalculus';
@@ -39,6 +40,7 @@ const SLOT_META: readonly { id: FunctionSlotId; label: string; color: string }[]
 
 export function useFunctionGrapher(tableId: string, canControl: boolean, onSwitchToBoard: () => void) {
   const slideCount = useTableStore((s) => s.homeworkSlides.length);
+  const curriculumMode = useCurriculumModeStore((s) => s.curriculumMode);
   const [expressions, setExpressions] = useState<Record<FunctionSlotId, string>>(INITIAL_EXPRESSIONS);
   const [showDerivativeOfF, setShowDerivativeOfF] = useState(false);
   const [viewport, setViewport] = useState<GraphViewport>(DEFAULT_GRAPH_VIEWPORT);
@@ -170,7 +172,7 @@ export function useFunctionGrapher(tableId: string, canControl: boolean, onSwitc
       const webpFile = await exportGraphToWebpFile({
         viewport,
         curves,
-        showDerivativeOfF,
+        showDerivativeOfF: curriculumMode === 'THPT' && showDerivativeOfF,
         markers,
       });
       await uploadHomeworkImage(tableId, webpFile);
@@ -181,7 +183,7 @@ export function useFunctionGrapher(tableId: string, canControl: boolean, onSwitc
     } finally {
       setIsExporting(false);
     }
-  }, [canControl, curves, isExporting, markers, onSwitchToBoard, showDerivativeOfF, slideCount, tableId, viewport]);
+  }, [canControl, curriculumMode, curves, isExporting, markers, onSwitchToBoard, showDerivativeOfF, slideCount, tableId, viewport]);
 
   return {
     slots,

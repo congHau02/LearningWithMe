@@ -10,19 +10,20 @@ import {
   type SolverSubPanelProps,
 } from './SolverPrimitives';
 
-export function PolynomialSolverPanel({ canControl, onCopy, onInsert }: SolverSubPanelProps) {
+export function PolynomialSolverPanel({ canControl, curriculumMode = 'THCS', onCopy, onInsert }: SolverSubPanelProps) {
   const [degree, setDegree] = useState<2 | 3>(2);
   const [a, setA] = useState('1');
   const [b, setB] = useState('-5');
   const [c, setC] = useState('6');
   const [d, setD] = useState('-2');
+  const effectiveDegree: 2 | 3 = curriculumMode === 'THCS' ? 2 : degree;
 
   const result = useMemo<SolverOutput>(() => {
     const na = parseSolverNum(a);
     const nb = parseSolverNum(b);
     const nc = parseSolverNum(c);
-    if (degree === 2) {
-      const sol = solveQuadratic(na, nb, nc);
+    if (effectiveDegree === 2) {
+      const sol = solveQuadratic(a, b, c);
       return {
         summary: sol.summary,
         latex: `$$${na}x^2 ${nb >= 0 ? '+' : ''} ${nb}x ${nc >= 0 ? '+' : ''} ${nc} = 0 \\implies ${sol.latex}$$`,
@@ -34,33 +35,35 @@ export function PolynomialSolverPanel({ canControl, onCopy, onInsert }: SolverSu
       summary: sol.summary,
       latex: `$$${na}x^3 ${nb >= 0 ? '+' : ''} ${nb}x^2 ${nc >= 0 ? '+' : ''} ${nc}x ${nd >= 0 ? '+' : ''} ${nd} = 0 \\implies ${sol.latex}$$`,
     };
-  }, [a, b, c, d, degree]);
+  }, [a, b, c, d, effectiveDegree]);
 
   return (
     <div className="flex flex-col gap-2" data-testid="solver-polynomial-panel">
-      <div className="flex flex-wrap items-center gap-1.5">
-        {([2, 3] as const).map((deg) => (
-          <button
-            key={deg}
-            type="button"
-            data-testid={`solver-poly-deg-${deg}`}
-            aria-pressed={degree === deg}
-            onClick={() => setDegree(deg)}
-            className={`min-h-[44px] cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium sm:min-h-[34px] ${SOLVER_ACTION_FOCUS} ${
-              degree === deg ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {deg === 2 ? 'Bậc 2 (ax²+bx+c=0)' : 'Bậc 3 (ax³+bx²+cx+d=0)'}
-          </button>
-        ))}
-      </div>
+      {curriculumMode === 'THPT' ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {([2, 3] as const).map((deg) => (
+            <button
+              key={deg}
+              type="button"
+              data-testid={`solver-poly-deg-${deg}`}
+              aria-pressed={effectiveDegree === deg}
+              onClick={() => setDegree(deg)}
+              className={`min-h-[44px] cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium sm:min-h-[34px] ${SOLVER_ACTION_FOCUS} ${
+                effectiveDegree === deg ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {deg === 2 ? 'Bậc 2 (ax²+bx+c=0)' : 'Bậc 3 (ax³+bx²+cx+d=0)'}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
-      <div className={`grid gap-2 ${degree === 2 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
+      <div className={`grid gap-2 ${effectiveDegree === 2 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
         {[
           { label: 'a', val: a, set: setA },
           { label: 'b', val: b, set: setB },
           { label: 'c', val: c, set: setC },
-          ...(degree === 3 ? [{ label: 'd', val: d, set: setD }] : []),
+          ...(effectiveDegree === 3 ? [{ label: 'd', val: d, set: setD }] : []),
         ].map(({ label, val, set }) => (
           <label key={label} className="flex flex-col gap-1 font-mono text-[11px] text-muted-foreground">
             <span>Hệ số {label}</span>
@@ -79,8 +82,9 @@ export function PolynomialSolverPanel({ canControl, onCopy, onInsert }: SolverSu
 
 interface LinearRow { coeffs: [string, string, string]; rhs: string; }
 
-export function LinearSystemSolverPanel({ canControl, onCopy, onInsert }: SolverSubPanelProps) {
+export function LinearSystemSolverPanel({ canControl, curriculumMode = 'THCS', onCopy, onInsert }: SolverSubPanelProps) {
   const [size, setSize] = useState<2 | 3>(2);
+  const effectiveSize: 2 | 3 = curriculumMode === 'THCS' ? 2 : size;
   const [rows, setRows] = useState<LinearRow[]>([
     { coeffs: ['2', '1', '0'], rhs: '5' },
     { coeffs: ['1', '-1', '0'], rhs: '1' },
@@ -94,35 +98,37 @@ export function LinearSystemSolverPanel({ canControl, onCopy, onInsert }: Solver
     setRows((prev) => prev.map((row, ri) => (ri === r ? { ...row, rhs: val } : row)));
 
   const result = useMemo<SolverOutput>(() => {
-    const active = rows.slice(0, size);
-    const sol = solveLinearSystem(active.map((r) => r.coeffs.slice(0, size).map(parseSolverNum)), active.map((r) => parseSolverNum(r.rhs)));
-    return { summary: sol.summary, latex: `$$\\text{Hệ } ${size}\\times${size} \\implies ${sol.latex}$$` };
-  }, [rows, size]);
+    const active = rows.slice(0, effectiveSize);
+    const sol = solveLinearSystem(active.map((r) => r.coeffs.slice(0, effectiveSize)), active.map((r) => r.rhs));
+    return { summary: sol.summary, latex: `$$\\text{Hệ } ${effectiveSize}\\times${effectiveSize} \\implies ${sol.latex}$$` };
+  }, [rows, effectiveSize]);
 
-  const varLabels = size === 2 ? ['x', 'y'] : ['x', 'y', 'z'];
+  const varLabels = effectiveSize === 2 ? ['x', 'y'] : ['x', 'y', 'z'];
 
   return (
     <div className="flex flex-col gap-2" data-testid="solver-linear-panel">
-      <div className="flex items-center gap-1.5">
-        {([2, 3] as const).map((n) => (
-          <button
-            key={n}
-            type="button"
-            data-testid={`solver-linear-size-${n}`}
-            aria-pressed={size === n}
-            onClick={() => setSize(n)}
-            className={`min-h-[44px] cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium sm:min-h-[34px] ${SOLVER_ACTION_FOCUS} ${
-              size === n ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Hệ {n}×{n}
-          </button>
-        ))}
-      </div>
+      {curriculumMode === 'THPT' ? (
+        <div className="flex items-center gap-1.5">
+          {([2, 3] as const).map((n) => (
+            <button
+              key={n}
+              type="button"
+              data-testid={`solver-linear-size-${n}`}
+              aria-pressed={effectiveSize === n}
+              onClick={() => setSize(n)}
+              className={`min-h-[44px] cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium sm:min-h-[34px] ${SOLVER_ACTION_FOCUS} ${
+                effectiveSize === n ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Hệ {n}×{n}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
-        {rows.slice(0, size).map((row, r) => (
-          <div key={r} className={`grid gap-1.5 ${size === 2 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+        {rows.slice(0, effectiveSize).map((row, r) => (
+          <div key={r} className={`grid gap-1.5 ${effectiveSize === 2 ? 'grid-cols-3' : 'grid-cols-4'}`}>
             {varLabels.map((v, c) => (
               <input key={`${r}-${v}`} data-testid={`solver-lin-r${r}-c${c}`} aria-label={`Phương trình ${r + 1} hệ số ${v}`} type="text" inputMode="decimal" value={row.coeffs[c]} onChange={(e) => updateCoeff(r, c, e.target.value)} onKeyDown={stopSolverEsc} placeholder={v} className={SOLVER_INPUT_CLASS} />
             ))}

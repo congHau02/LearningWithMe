@@ -1,4 +1,21 @@
+import {
+  bigRatToNumber,
+  divBigRat,
+  formatBigRatLatex,
+  formatRatWithApprox,
+  parseBigRat,
+} from './mathExact';
+import { formatQuadraticExactReal, solveLinearSystemExact } from './mathExactAlgebra';
+
 const EPS = 1e-9;
+
+function toFiniteNumber(raw: number | string): number {
+  if (typeof raw === 'number') return raw;
+  const rat = parseBigRat(raw);
+  if (rat) return bigRatToNumber(rat);
+  const n = Number(raw.trim());
+  return Number.isFinite(n) ? n : 0;
+}
 
 export function formatMathNumber(value: number, digits = 6): string {
   if (!Number.isFinite(value)) return 'NaN';
@@ -13,7 +30,10 @@ export type QuadraticSolution =
   | { kind: 'LINEAR'; root: number; summary: string; latex: string }
   | { kind: 'INFINITE' | 'NONE'; summary: string; latex: string };
 
-export function solveQuadratic(a: number, b: number, c: number): QuadraticSolution {
+export function solveQuadratic(rawA: number | string, rawB: number | string, rawC: number | string): QuadraticSolution {
+  const a = toFiniteNumber(rawA);
+  const b = toFiniteNumber(rawB);
+  const c = toFiniteNumber(rawC);
   if (Math.abs(a) < EPS) {
     if (Math.abs(b) < EPS) {
       return Math.abs(c) < EPS
@@ -21,36 +41,36 @@ export function solveQuadratic(a: number, b: number, c: number): QuadraticSoluti
         : { kind: 'NONE', summary: 'Vô nghiệm', latex: '\\text{Vô nghiệm}' };
     }
     const root = -c / b;
+    const rb = parseBigRat(rawB);
+    const rc = parseBigRat(rawC);
+    const rat = rb && rc ? divBigRat({ num: -rc.num, den: rc.den }, rb) : null;
+    if (rat && rat.den > 1n) {
+      return {
+        kind: 'LINEAR',
+        root,
+        summary: `x = ${formatRatWithApprox(rat, formatMathNumber)}`,
+        latex: `x = ${formatBigRatLatex(rat)}`,
+      };
+    }
     const f = formatMathNumber(root);
     return { kind: 'LINEAR', root, summary: `x = ${f}`, latex: `x = ${f}` };
   }
 
   const d = b * b - 4 * a * c;
   if (d > EPS) {
+    const exact = formatQuadraticExactReal(rawA, rawB, rawC, formatMathNumber);
     const sqrtD = Math.sqrt(d);
-    const x1 = (-b - sqrtD) / (2 * a);
-    const x2 = (-b + sqrtD) / (2 * a);
-    const [r1, r2] = [x1, x2].sort((u, v) => u - v);
-    const f1 = formatMathNumber(r1);
-    const f2 = formatMathNumber(r2);
-    return {
-      kind: 'REAL',
-      roots: [r1, r2],
-      discriminant: d,
-      summary: `Δ = ${formatMathNumber(d)}; x₁ = ${f1}, x₂ = ${f2}`,
-      latex: `\\Delta = ${formatMathNumber(d)},\\; x_1 = ${f1},\\; x_2 = ${f2}`,
-    };
+    const roots = [(-b - sqrtD) / (2 * a), (-b + sqrtD) / (2 * a)].sort((u, v) => u - v);
+    if (exact) return { kind: 'REAL', roots, discriminant: d, ...exact };
+    const [f1, f2] = roots.map((r) => formatMathNumber(r));
+    return { kind: 'REAL', roots, discriminant: d, summary: `Δ = ${formatMathNumber(d)}; x₁ = ${f1}, x₂ = ${f2}`, latex: `\\Delta = ${formatMathNumber(d)},\\; x_1 = ${f1},\\; x_2 = ${f2}` };
   }
   if (Math.abs(d) <= EPS) {
+    const exact = formatQuadraticExactReal(rawA, rawB, rawC, formatMathNumber);
     const r = -b / (2 * a);
+    if (exact) return { kind: 'REAL', roots: [r], discriminant: 0, ...exact };
     const f = formatMathNumber(r);
-    return {
-      kind: 'REAL',
-      roots: [r],
-      discriminant: 0,
-      summary: `Δ = 0; nghiệm kép x = ${f}`,
-      latex: `\\Delta = 0,\\; x_1 = x_2 = ${f}`,
-    };
+    return { kind: 'REAL', roots: [r], discriminant: 0, summary: `Δ = 0; nghiệm kép x = ${f}`, latex: `\\Delta = 0,\\; x_1 = x_2 = ${f}` };
   }
 
   const real = -b / (2 * a);
@@ -141,13 +161,33 @@ export type LinearSystemSolution =
 
 const VAR_NAMES = ['x', 'y', 'z'] as const;
 
-export function solveLinearSystem(matrix: number[][], rhs: number[]): LinearSystemSolution {
+export function solveLinearSystem(matrix: (number | string)[][], rhs: (number | string)[]): LinearSystemSolution {
   const n = rhs.length;
   if (n < 2 || n > 3 || matrix.length !== n) {
     return { kind: 'NONE', summary: 'Hệ phương trình không hợp lệ.', latex: '\\text{Hệ không hợp lệ}' };
   }
 
-  const aug = matrix.map((row, i) => [...row.slice(0, n), rhs[i]]);
+  const exactRes = solveLinearSystemExact(matrix, rhs);
+  if (exactRes) {
+    if (exactRes.kind !== 'UNIQUE') {
+      return exactRes.kind === 'NONE'
+        ? { kind: 'NONE', summary: 'Hệ phương trình vô nghiệm.', latex: '\\text{Hệ vô nghiệm}' }
+        : { kind: 'INFINITE', summary: 'Hệ phương trình có vô số nghiệm.', latex: '\\text{Hệ vô số nghiệm}' };
+    }
+    const solution = exactRes.solution.map((r) => {
+      const v = bigRatToNumber(r);
+      return Math.abs(v) < EPS ? 0 : v;
+    });
+    const textParts = exactRes.solution.map((r, idx) => `${VAR_NAMES[idx]} = ${formatRatWithApprox(r, formatMathNumber)}`);
+    return {
+      kind: 'UNIQUE',
+      solution,
+      summary: textParts.join(', '),
+      latex: exactRes.solution.map((r, idx) => `${VAR_NAMES[idx]} = ${formatBigRatLatex(r)}`).join(',\\; '),
+    };
+  }
+
+  const aug = matrix.map((row, i) => [...row.slice(0, n).map(toFiniteNumber), toFiniteNumber(rhs[i])]);
   let pivotRow = 0;
 
   for (let col = 0; col < n && pivotRow < n; col += 1) {

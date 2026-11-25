@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatMathNumber } from '../../utils/mathAlgebraSolver';
 import { definiteIntegralSimpson, numericalDerivative } from '../../utils/mathCalculus';
+import { evaluateExactExpression } from '../../utils/mathExactEval';
 import { compileMathExpression, evaluateConstantExpression } from '../../utils/mathExpression';
 import {
   SOLVER_INPUT_CLASS,
@@ -10,14 +11,28 @@ import {
   type SolverSubPanelProps,
 } from './SolverPrimitives';
 
-export function SolverCalculusPanel({ canControl, onCopy, onInsert }: SolverSubPanelProps) {
-  const [exprInput, setExprInput] = useState('sin(pi/6) + ln(e^2) + sqrt(16)');
+export function SolverCalculusPanel({ canControl, curriculumMode = 'THCS', onCopy, onInsert }: SolverSubPanelProps) {
+  const [exprInput, setExprInput] = useState(() =>
+    curriculumMode === 'THCS' ? 'sqrt(12) + 1/2' : 'sin(pi/6) + ln(e^2) + sqrt(16)',
+  );
   const [calcFn, setCalcFn] = useState('x^2');
   const [x0Input, setX0Input] = useState('2');
   const [aInput, setAInput] = useState('0');
   const [bInput, setBInput] = useState('3');
 
   const exprResult = useMemo<SolverOutput>(() => {
+    const exact = evaluateExactExpression(exprInput);
+    if (exact) {
+      if (exact.isInteger) {
+        return { summary: `= ${exact.text}`, latex: `$${exprInput.trim()} = ${exact.latex}$` };
+      }
+      const approxPrefix = exact.text.includes('√') ? '≈ ' : '';
+      const dec = formatMathNumber(exact.numericValue);
+      return {
+        summary: `= ${exact.text} (${approxPrefix}${dec})`,
+        latex: `$${exprInput.trim()} = ${exact.latex}$`,
+      };
+    }
     const res = evaluateConstantExpression(exprInput);
     if (!res.ok) return { summary: res.error, latex: '', isError: true };
     const formatted = formatMathNumber(res.value);
@@ -56,7 +71,9 @@ export function SolverCalculusPanel({ canControl, onCopy, onInsert }: SolverSubP
     <div className="flex flex-col gap-2.5" data-testid="solver-calculus-panel">
       <div className="flex flex-col gap-1">
         <label htmlFor="solver-const-expr" className="text-[11px] font-medium text-muted-foreground">
-          Tính biểu thức khoa học (sin, cos, tan, exp, ln, log, sqrt, abs, pi, e)
+          {curriculumMode === 'THCS'
+            ? 'Tính biểu thức phân số & căn thức (VD: 1/3 + 1/6, sqrt(12) + 1/2)'
+            : 'Tính biểu thức khoa học (sin, cos, tan, exp, ln, log, sqrt, abs, pi, e)'}
         </label>
         <div className="flex flex-wrap items-center gap-1.5">
           <input
@@ -87,7 +104,8 @@ export function SolverCalculusPanel({ canControl, onCopy, onInsert }: SolverSubP
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-background/70 p-2.5 sm:grid-cols-2">
+      {curriculumMode === 'THPT' ? (
+        <div className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-background/70 p-2.5 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-[11px] text-muted-foreground sm:col-span-2">
           <span>Hàm số f(x) để tính đạo hàm & tích phân (Simpson)</span>
           <input
@@ -170,6 +188,7 @@ export function SolverCalculusPanel({ canControl, onCopy, onInsert }: SolverSubP
           />
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

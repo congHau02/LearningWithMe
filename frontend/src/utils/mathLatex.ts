@@ -9,11 +9,33 @@ export {
   splitDerivationSteps,
 } from './mathScratchpadUtils';
 
+export type CurriculumMode = 'THCS' | 'THPT';
+
 export interface MathSymbolSnippet {
   id: string;
   label: string;
   latex: string;
 }
+
+export const THCS_SYMBOL_SNIPPETS: readonly MathSymbolSnippet[] = [
+  { id: 'triangle', label: '△', latex: '\\triangle' },
+  { id: 'angle', label: '∠ABC', latex: '\\widehat{ABC}' },
+  { id: 'perp', label: '⊥', latex: '\\perp' },
+  { id: 'parallel', label: '∥', latex: '\\parallel' },
+  { id: 'sim', label: '∼', latex: '\\sim' },
+  { id: 'cong', label: '≅', latex: '\\cong' },
+  { id: 'deg', label: '°', latex: '^\\circ' },
+  { id: 'frac', label: 'a/b', latex: '\\frac{a}{b}' },
+  { id: 'sqrt', label: '√x', latex: '\\sqrt{x}' },
+  { id: 'cases', label: '{ hệ', latex: '\\begin{cases} a \\\\ b \\end{cases}' },
+  { id: 'pm', label: '±', latex: '\\pm' },
+  { id: 'le', label: '≤', latex: '\\le' },
+  { id: 'ge', label: '≥', latex: '\\ge' },
+  { id: 'neq', label: '≠', latex: '\\neq' },
+  { id: 'implies', label: '⇒', latex: '\\Rightarrow' },
+  { id: 'iff', label: '⇔', latex: '\\Leftrightarrow' },
+  { id: 'vdots', label: '⋮', latex: '\\vdots' },
+];
 
 export const MATH_SYMBOL_SNIPPETS: readonly MathSymbolSnippet[] = [
   { id: 'frac', label: 'a/b', latex: '\\frac{a}{b}' },
@@ -40,6 +62,16 @@ const CHAT_MATH_SNIPPET_IDS = new Set([
 export const CHAT_MATH_SNIPPETS: readonly MathSymbolSnippet[] = MATH_SYMBOL_SNIPPETS.filter((s) =>
   CHAT_MATH_SNIPPET_IDS.has(s.id),
 );
+
+export const THCS_CHAT_MATH_SNIPPETS: readonly MathSymbolSnippet[] = THCS_SYMBOL_SNIPPETS;
+
+export function getMathSymbolSnippets(mode: CurriculumMode): readonly MathSymbolSnippet[] {
+  return mode === 'THCS' ? THCS_SYMBOL_SNIPPETS : MATH_SYMBOL_SNIPPETS;
+}
+
+export function getChatMathSnippets(mode: CurriculumMode): readonly MathSymbolSnippet[] {
+  return mode === 'THCS' ? THCS_CHAT_MATH_SNIPPETS : CHAT_MATH_SNIPPETS;
+}
 
 export type MathSegment =
   | { type: 'text'; content: string }

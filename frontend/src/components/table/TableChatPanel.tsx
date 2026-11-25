@@ -2,8 +2,9 @@ import React, { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { sendTableChatMessage } from '../../services/tableStompClient';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useCurriculumModeStore } from '../../stores/useCurriculumModeStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { CHAT_MATH_SNIPPETS, applyMathSymbolToElement } from '../../utils/mathLatex';
+import { applyMathSymbolToElement, getChatMathSnippets } from '../../utils/mathLatex';
 import { ChatIcon } from '../icons';
 import { MathSymbolQuickBar } from './MathSymbolQuickBar';
 import { TableChatMessageList } from './TableChatMessageList';
@@ -26,6 +27,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend,
   const chatInputRef = useRef<HTMLInputElement | null>(null);
   const recentMessages = useTableStore((s) => s.recentMessages);
   const selfUserId = useAuthStore((s) => s.userId);
+  const curriculumMode = useCurriculumModeStore((s) => s.curriculumMode);
 
   const {
     register,
@@ -102,7 +104,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend,
 
       {!clearView ? (
         <MathSymbolQuickBar
-          snippets={CHAT_MATH_SNIPPETS}
+          snippets={getChatMathSnippets(curriculumMode)}
           onInsert={handleInsertMathSymbol}
           label="Chèn nhanh ký hiệu toán vào Chat bàn"
           testIdPrefix="table-chat-math-sym"

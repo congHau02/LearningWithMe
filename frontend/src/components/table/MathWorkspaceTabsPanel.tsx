@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { BoardIcon, GraphCurveIcon, ScratchpadIcon } from '../icons';
+import { CurriculumModeToggle } from './CurriculumModeToggle';
 import { HomeworkDeckPanel } from './HomeworkDeckPanel';
 import { MathGrapherSolverPanel } from './MathGrapherSolverPanel';
 import { MathScratchpadPanel } from './MathScratchpadPanel';
@@ -83,6 +84,7 @@ export function MathWorkspaceTabsPanel({ tableId, canControl, dragHandle }: Math
             );
           })}
         </div>
+        <CurriculumModeToggle />
       </div>
 
       <div

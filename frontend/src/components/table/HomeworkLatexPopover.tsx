@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
-import { MATH_SYMBOL_SNIPPETS, renderLatexToHtml } from '../../utils/mathLatex';
+import { useCurriculumModeStore } from '../../stores/useCurriculumModeStore';
+import { getMathSymbolSnippets, renderLatexToHtml } from '../../utils/mathLatex';
 import type { NormalizedPoint } from '../../utils/homeworkCanvasMath';
 
 interface HomeworkLatexPopoverProps {
@@ -19,6 +20,8 @@ export function HomeworkLatexPopover({
   onConfirm,
   onCancel,
 }: HomeworkLatexPopoverProps) {
+  const curriculumMode = useCurriculumModeStore((s) => s.curriculumMode);
+  const snippets = getMathSymbolSnippets(curriculumMode);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const previewHtml = useMemo(() => renderLatexToHtml(value), [value]);
 
@@ -49,7 +52,7 @@ export function HomeworkLatexPopover({
       className="absolute left-1/2 z-20 flex w-[min(22rem,calc(100%-0.5rem))] -translate-x-1/2 flex-col gap-2 rounded-xl border border-border bg-card p-2.5 shadow-xl"
     >
       <div className="flex flex-wrap gap-1" role="toolbar" aria-label="Ký hiệu toán học nhanh">
-        {MATH_SYMBOL_SNIPPETS.map((sym) => (
+        {snippets.map((sym) => (
           <button
             key={sym.id}
             type="button"

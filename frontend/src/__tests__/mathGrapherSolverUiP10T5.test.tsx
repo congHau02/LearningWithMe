@@ -4,6 +4,7 @@ import { MathWorkspaceTabsPanel } from '../components/table/MathWorkspaceTabsPan
 import { setActiveRoomStompSession, type RoomStompSession } from '../services/roomStompClient';
 import * as tableApi from '../services/tableApi';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useCurriculumModeStore } from '../stores/useCurriculumModeStore';
 import { useTableStore } from '../stores/useTableStore';
 
 function mockCanvas2d() {
@@ -40,6 +41,7 @@ describe('P10-T5 Function Grapher & Scientific Solver UI (#69)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCanvas2d();
+    useCurriculumModeStore.getState().setCurriculumMode('THPT');
     useTableStore.getState().leaveTable();
     useAuthStore.setState({
       userId: 'u-host',
@@ -65,9 +67,11 @@ describe('P10-T5 Function Grapher & Scientific Solver UI (#69)', () => {
   });
 
   afterEach(() => {
+    cleanup();
     vi.restoreAllMocks();
     setActiveRoomStompSession(null);
-    cleanup();
+    window.localStorage.clear();
+    useCurriculumModeStore.getState().resetCurriculumMode();
   });
 
   it('plots 3 functions, detects special points, and exports graph as 1280x720 webp slide switching to board tab', async () => {

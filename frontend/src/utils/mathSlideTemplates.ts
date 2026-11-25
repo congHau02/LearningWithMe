@@ -1,6 +1,6 @@
 import { BOTANICAL_PALETTE_HEX } from '../game/botanicalPalette';
 
-export type MathTemplateId = 'GRID' | 'OXY_AXES' | 'PLAIN_DARK' | 'PLAIN_LIGHT';
+export type MathTemplateId = 'GRID' | 'OXY_AXES' | 'NUMBER_LINE' | 'PLAIN_DARK' | 'PLAIN_LIGHT';
 
 export interface MathTemplateDefinition {
   id: MathTemplateId;
@@ -15,6 +15,7 @@ export const MATH_TEMPLATE_HEIGHT = 720;
 export const MATH_SLIDE_TEMPLATES: readonly MathTemplateDefinition[] = [
   { id: 'GRID', label: 'Giấy kẻ ô vuông', shortLabel: 'Ô vuông', fileName: 'math-grid.webp' },
   { id: 'OXY_AXES', label: 'Hệ trục tọa độ Oxy', shortLabel: 'Hệ trục Oxy', fileName: 'math-oxy.webp' },
+  { id: 'NUMBER_LINE', label: 'Trục số (Số học & Bất phương trình)', shortLabel: 'Trục số', fileName: 'math-number-line.webp' },
   { id: 'PLAIN_DARK', label: 'Bảng trơn tối', shortLabel: 'Bảng tối', fileName: 'math-board-dark.webp' },
   { id: 'PLAIN_LIGHT', label: 'Bảng trơn sáng', shortLabel: 'Bảng sáng', fileName: 'math-board-light.webp' },
 ];
@@ -134,20 +135,79 @@ function drawOxyCoordinatePlane(ctx: CanvasRenderingContext2D, width: number, he
   ctx.restore();
 }
 
+function drawNumberLine(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+  const cx = Math.round(width / 2);
+  const cy = Math.round(height / 2);
+  const unit = 68;
+  const startX = 64;
+  const endX = width - 64;
+
+  ctx.save();
+  ctx.fillStyle = DEEP_PINE;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = MINOR_GRID;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = -8; i <= 8; i += 1) {
+    const tx = cx + i * unit;
+    ctx.moveTo(tx + 0.5, cy - 110);
+    ctx.lineTo(tx + 0.5, cy + 110);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = AXIS_STROKE;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(startX, cy);
+  ctx.lineTo(endX, cy);
+  ctx.stroke();
+
+  ctx.fillStyle = AXIS_STROKE;
+  ctx.beginPath();
+  ctx.moveTo(endX + 12, cy);
+  ctx.lineTo(endX - 6, cy - 9);
+  ctx.lineTo(endX - 6, cy + 9);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.font = '600 17px "JetBrains Mono", ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let i = -8; i <= 8; i += 1) {
+    const tx = cx + i * unit;
+    ctx.strokeStyle = i === 0 ? EMERALD_ORIGIN : AXIS_STROKE;
+    ctx.lineWidth = i === 0 ? 3 : 2;
+    ctx.beginPath();
+    ctx.moveTo(tx, cy - (i === 0 ? 11 : 7));
+    ctx.lineTo(tx, cy + (i === 0 ? 11 : 7));
+    ctx.stroke();
+    ctx.fillStyle = i === 0 ? EMERALD_ORIGIN : AXIS_LABEL;
+    ctx.fillText(String(i), tx, cy + 16);
+  }
+
+  ctx.fillStyle = EMERALD_ORIGIN;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = AXIS_LABEL;
+  ctx.font = '600 20px "JetBrains Mono", ui-monospace, monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('x', endX + 6, cy - 16);
+  ctx.restore();
+}
+
 export function renderMathTemplateToCanvas(
   ctx: CanvasRenderingContext2D,
   templateId: MathTemplateId,
   width = MATH_TEMPLATE_WIDTH,
   height = MATH_TEMPLATE_HEIGHT,
 ): void {
-  if (templateId === 'GRID') {
-    drawSquareGrid(ctx, width, height);
-    return;
-  }
-  if (templateId === 'OXY_AXES') {
-    drawOxyCoordinatePlane(ctx, width, height);
-    return;
-  }
+  if (templateId === 'GRID') return drawSquareGrid(ctx, width, height);
+  if (templateId === 'OXY_AXES') return drawOxyCoordinatePlane(ctx, width, height);
+  if (templateId === 'NUMBER_LINE') return drawNumberLine(ctx, width, height);
   ctx.save();
   ctx.fillStyle = templateId === 'PLAIN_LIGHT' ? LIGHT_PAPER : DEEP_PINE;
   ctx.fillRect(0, 0, width, height);
@@ -163,24 +223,15 @@ export async function generateMathTemplateFile(templateId: MathTemplateId): Prom
   canvas.width = MATH_TEMPLATE_WIDTH;
   canvas.height = MATH_TEMPLATE_HEIGHT;
   const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error('Trình duyệt không hỗ trợ tạo trang nháp toán 2D.');
-  }
+  if (!ctx) throw new Error('Trình duyệt không hỗ trợ tạo trang nháp toán 2D.');
   renderMathTemplateToCanvas(ctx, templateId, MATH_TEMPLATE_WIDTH, MATH_TEMPLATE_HEIGHT);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
-      (result) => {
-        if (!result) {
-          reject(new Error('Không thể xuất trang nháp toán sang định dạng WEBP.'));
-          return;
-        }
-        resolve(result);
-      },
+      (result) => (result ? resolve(result) : reject(new Error('Không thể xuất trang nháp toán sang định dạng WEBP.'))),
       'image/webp',
       0.9,
     );
   });
-
   return new File([blob], def.fileName, { type: 'image/webp' });
 }

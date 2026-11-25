@@ -1,4 +1,6 @@
 import type { KeyboardEvent } from 'react';
+import { bigRatToNumber, parseBigRat } from '../../utils/mathExact';
+import type { CurriculumMode } from '../../utils/mathLatex';
 import { CopyIcon, ScratchpadIcon } from '../icons';
 
 export interface SolverOutput {
@@ -9,6 +11,7 @@ export interface SolverOutput {
 
 export interface SolverSubPanelProps {
   canControl: boolean;
+  curriculumMode?: CurriculumMode;
   onCopy: (latex: string) => void;
   onInsert: (out: SolverOutput) => void;
 }
@@ -27,6 +30,8 @@ export const stopSolverEsc = (e: KeyboardEvent<HTMLInputElement>) => {
 };
 
 export function parseSolverNum(raw: string): number {
+  const rat = parseBigRat(raw);
+  if (rat) return bigRatToNumber(rat);
   const n = Number(raw.trim());
   return Number.isFinite(n) ? n : 0;
 }

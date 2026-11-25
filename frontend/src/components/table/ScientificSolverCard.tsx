@@ -1,26 +1,30 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
+import { useCurriculumModeStore } from '../../stores/useCurriculumModeStore';
 import { CalculatorIcon } from '../icons';
 import { SolverCalculusPanel } from './SolverCalculusPanel';
 import { LinearSystemSolverPanel, PolynomialSolverPanel } from './SolverEquationPanels';
+import { SolverNumberTheoryPanel } from './SolverNumberTheoryPanel';
 import type { SolverOutput } from './SolverPrimitives';
 
-type SolverMode = 'calculus' | 'polynomial' | 'linear';
+type SolverMode = 'calculus' | 'number-theory' | 'polynomial' | 'linear';
 
 export interface ScientificSolverCardProps {
   canControl: boolean;
   onInsertToScratchpad: (latexLine: string) => void;
 }
 
-const SOLVER_TABS: readonly { id: SolverMode; label: string }[] = [
-  { id: 'calculus', label: 'Giải tích' },
-  { id: 'polynomial', label: 'Phương trình' },
-  { id: 'linear', label: 'Hệ PT' },
-];
-
 export function ScientificSolverCard({ canControl, onInsertToScratchpad }: ScientificSolverCardProps) {
+  const curriculumMode = useCurriculumModeStore((s) => s.curriculumMode);
   const [mode, setMode] = useState<SolverMode>('calculus');
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const solverTabs: readonly { id: SolverMode; label: string }[] = [
+    { id: 'calculus', label: curriculumMode === 'THCS' ? 'Biểu thức & Căn' : 'Giải tích' },
+    { id: 'number-theory', label: 'Số học' },
+    { id: 'polynomial', label: 'Phương trình' },
+    { id: 'linear', label: 'Hệ PT' },
+  ];
 
   const showNotice = (msg: string) => {
     setNotice(msg);
@@ -29,13 +33,13 @@ export function ScientificSolverCard({ canControl, onInsertToScratchpad }: Scien
 
   const handleTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>, idx: number) => {
     let nextIdx: number | null = null;
-    if (e.key === 'ArrowRight') nextIdx = (idx + 1) % SOLVER_TABS.length;
-    else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + SOLVER_TABS.length) % SOLVER_TABS.length;
+    if (e.key === 'ArrowRight') nextIdx = (idx + 1) % solverTabs.length;
+    else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + solverTabs.length) % solverTabs.length;
     else if (e.key === 'Home') nextIdx = 0;
-    else if (e.key === 'End') nextIdx = SOLVER_TABS.length - 1;
+    else if (e.key === 'End') nextIdx = solverTabs.length - 1;
     if (nextIdx === null) return;
     e.preventDefault();
-    setMode(SOLVER_TABS[nextIdx].id);
+    setMode(solverTabs[nextIdx].id);
     tabRefs.current[nextIdx]?.focus();
   };
 
@@ -63,10 +67,12 @@ export function ScientificSolverCard({ canControl, onInsertToScratchpad }: Scien
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <CalculatorIcon className="h-4 w-4 text-primary" aria-hidden="true" />
-            <h3 className="text-sm font-semibold text-foreground">Máy tính Giải tích & Đại số</h3>
+            <h3 className="text-sm font-semibold text-foreground">
+              {curriculumMode === 'THCS' ? 'Máy tính Toán THCS & Số học' : 'Máy tính Giải tích & Đại số'}
+            </h3>
           </div>
-          <div className="flex items-center gap-1" role="tablist" aria-label="Chế độ máy tính">
-            {SOLVER_TABS.map(({ id, label }, idx) => {
+          <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label="Chế độ máy tính">
+            {solverTabs.map(({ id, label }, idx) => {
               const isActive = mode === id;
               return (
                 <button
@@ -101,15 +107,17 @@ export function ScientificSolverCard({ canControl, onInsertToScratchpad }: Scien
           hidden={mode !== 'calculus'}
           className={mode === 'calculus' ? 'block' : 'hidden'}
         >
-          <SolverCalculusPanel canControl={canControl} onCopy={handleCopy} onInsert={handleInsert} />
+          <SolverCalculusPanel canControl={canControl} curriculumMode={curriculumMode} onCopy={handleCopy} onInsert={handleInsert} />
         </div>
 
         {mode !== 'calculus' ? (
           <div id={`solver-tabpanel-${mode}`} role="tabpanel" aria-labelledby={`solver-tab-${mode}`}>
-            {mode === 'polynomial' ? (
-              <PolynomialSolverPanel canControl={canControl} onCopy={handleCopy} onInsert={handleInsert} />
+            {mode === 'number-theory' ? (
+              <SolverNumberTheoryPanel canControl={canControl} onCopy={handleCopy} onInsert={handleInsert} />
+            ) : mode === 'polynomial' ? (
+              <PolynomialSolverPanel canControl={canControl} curriculumMode={curriculumMode} onCopy={handleCopy} onInsert={handleInsert} />
             ) : (
-              <LinearSystemSolverPanel canControl={canControl} onCopy={handleCopy} onInsert={handleInsert} />
+              <LinearSystemSolverPanel canControl={canControl} curriculumMode={curriculumMode} onCopy={handleCopy} onInsert={handleInsert} />
             )}
           </div>
         ) : null}

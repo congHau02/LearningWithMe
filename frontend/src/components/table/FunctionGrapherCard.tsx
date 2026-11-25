@@ -1,8 +1,10 @@
 import { useEffect, useRef, type PointerEvent, type WheelEvent } from 'react';
 import { useFunctionGrapher } from '../../hooks/useFunctionGrapher';
+import { useCurriculumModeStore } from '../../stores/useCurriculumModeStore';
 import { formatMathNumber } from '../../utils/mathAlgebraSolver';
 import { canvasToMath, renderFunctionGraphToCanvas } from '../../utils/mathGraphRenderer';
 import { GraphCurveIcon, PinToSlideIcon, ResetViewIcon, ZoomInIcon, ZoomOutIcon } from '../icons';
+import { GrapherThcsPresetBar } from './GrapherThcsPresetBar';
 
 interface FunctionGrapherCardProps {
   tableId: string;
@@ -14,6 +16,7 @@ const CANVAS_W = 640;
 const CANVAS_H = 360;
 
 export function FunctionGrapherCard({ tableId, canControl, onSwitchToBoard }: FunctionGrapherCardProps) {
+  const curriculumMode = useCurriculumModeStore((s) => s.curriculumMode);
   const {
     slots, curves, markers, viewport, crosshair, setCrosshair,
     showDerivativeOfF, setShowDerivativeOfF, setFunctionExpression,
@@ -21,6 +24,7 @@ export function FunctionGrapherCard({ tableId, canControl, onSwitchToBoard }: Fu
     isExporting, isDeckFull, exportStatus, exportToHomeworkSlide,
   } = useFunctionGrapher(tableId, canControl, onSwitchToBoard);
 
+  const effectiveDerivative = curriculumMode === 'THPT' && showDerivativeOfF;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -29,9 +33,9 @@ export function FunctionGrapherCard({ tableId, canControl, onSwitchToBoard }: Fu
     if (!ctx || typeof ctx.fillRect !== 'function') return;
     renderFunctionGraphToCanvas(ctx, {
       width: CANVAS_W, height: CANVAS_H, viewport, curves,
-      showDerivativeOfF, markers, crosshair, showLegend: false,
+      showDerivativeOfF: effectiveDerivative, markers, crosshair, showLegend: false,
     });
-  }, [crosshair, curves, markers, showDerivativeOfF, viewport]);
+  }, [crosshair, curves, effectiveDerivative, markers, viewport]);
 
   const toCanvasCoords = (e: { clientX: number; clientY: number }) => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -77,19 +81,21 @@ export function FunctionGrapherCard({ tableId, canControl, onSwitchToBoard }: Fu
           <h3 className="text-sm font-semibold text-foreground">Đồ thị hàm số Oxy</h3>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            data-testid="grapher-derivative-toggle"
-            aria-pressed={showDerivativeOfF}
-            onClick={() => setShowDerivativeOfF((v) => !v)}
-            className={`inline-flex min-h-[44px] cursor-pointer items-center rounded-md border px-2.5 py-1 font-mono text-xs transition-botanical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[34px] ${
-              showDerivativeOfF
-                ? 'border-primary bg-primary/15 font-semibold text-primary'
-                : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
-            }`}
-          >
-            f&apos;(x)
-          </button>
+          {curriculumMode === 'THPT' ? (
+            <button
+              type="button"
+              data-testid="grapher-derivative-toggle"
+              aria-pressed={showDerivativeOfF}
+              onClick={() => setShowDerivativeOfF((v) => !v)}
+              className={`inline-flex min-h-[44px] cursor-pointer items-center rounded-md border px-2.5 py-1 font-mono text-xs transition-botanical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[34px] ${
+                showDerivativeOfF
+                  ? 'border-primary bg-primary/15 font-semibold text-primary'
+                  : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
+              }`}
+            >
+              f&apos;(x)
+            </button>
+          ) : null}
           <button type="button" data-testid="grapher-zoom-in-btn" aria-label="Phóng to đồ thị" onClick={() => zoomViewport(0.75)} className="inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-md border border-border bg-background text-foreground transition-botanical hover:border-primary/50 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[34px] sm:min-w-[34px]">
             <ZoomInIcon className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -101,6 +107,8 @@ export function FunctionGrapherCard({ tableId, canControl, onSwitchToBoard }: Fu
           </button>
         </div>
       </div>
+
+      <GrapherThcsPresetBar onSelectPreset={(fExpr) => setFunctionExpression('f', fExpr)} />
 
       <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
         {slots.map((slot) => (
@@ -117,7 +125,7 @@ export function FunctionGrapherCard({ tableId, canControl, onSwitchToBoard }: Fu
                 value={slot.expression}
                 onChange={(e) => setFunctionExpression(slot.id, e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); e.currentTarget.blur(); } }}
-                placeholder={slot.id === 'h' ? 'sin(x), exp(x)...' : 'x^2 - 4'}
+                placeholder={curriculumMode === 'THCS' ? '2x + 1, 0.5*x^2' : slot.id === 'h' ? 'sin(x), exp(x)...' : 'x^2 - 4'}
                 className="min-w-0 flex-1 bg-transparent font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
             </div>

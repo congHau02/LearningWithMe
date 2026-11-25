@@ -40,6 +40,7 @@ describe('P10-T3: Math Slide Templates, Geometric/LaTeX Strokes & Undo Reducer',
     expect(MATH_SLIDE_TEMPLATES.map((t) => t.id)).toEqual([
       'GRID',
       'OXY_AXES',
+      'NUMBER_LINE',
       'PLAIN_DARK',
       'PLAIN_LIGHT',
     ]);
