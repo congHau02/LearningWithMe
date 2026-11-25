@@ -1,4 +1,4 @@
-import type { PermissionAction, TableMemberDto } from '../../services/tableApi';
+import type { PermissionAction, QuickCheckSignalState, TableMemberDto } from '../../services/tableApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
 import { useVoiceStore } from '../../stores/useVoiceStore';
@@ -10,6 +10,7 @@ export interface TableMembersPanelProps {
   members: TableMemberDto[];
   selfUserId: string | null;
   isSelfHost: boolean;
+  quickCheckSignals?: Record<string, QuickCheckSignalState>;
   onAction: (action: PermissionAction, targetUserId: string) => void;
 }
 
@@ -17,6 +18,7 @@ export function TableMembersPanel({
   members,
   selfUserId,
   isSelfHost,
+  quickCheckSignals = {},
   onAction,
 }: TableMembersPanelProps) {
   const inVoice = useVoiceStore((s) => s.inVoice);
@@ -92,6 +94,7 @@ export function TableMembersPanel({
                 isSelfMuted={isSelfMuted}
                 isSelfSpeaking={isSelfSpeaking}
                 peerVoice={voicePeers[member.userId]}
+                quickCheck={quickCheckSignals[member.userId] ?? null}
                 onAction={onAction}
               />
             );

@@ -1,6 +1,7 @@
-import type { PermissionAction, PermissionRequestNotification, TableMemberDto } from '../../services/tableApi';
+import type { PermissionAction, PermissionRequestNotification, QuickCheckAction, QuickCheckSignalState, TableMemberDto } from '../../services/tableApi';
 import { HomeworkDeckPanel } from './HomeworkDeckPanel';
 import { HostPermissionToast } from './HostPermissionToast';
+import { QuickCheckBar } from './QuickCheckBar';
 import { SosBannerControl } from './SosBannerControl';
 import { TableChatPanel } from './TableChatPanel';
 import { TableMembersPanel } from './TableMembersPanel';
@@ -14,10 +15,12 @@ export interface TableWorkspaceBodyProps {
   selfUserId: string | null;
   sosBanner: string | null;
   members: TableMemberDto[];
+  quickCheckSignals?: Record<string, QuickCheckSignalState>;
   permissionToast: string | null;
   pendingPermissionRequests: PermissionRequestNotification[];
   onRespondPermissionRequest: (requesterUserId: string, action: 'GRANT' | 'DENY') => void;
   onPermissionAction: (action: PermissionAction, targetUserId?: string) => void;
+  onQuickCheck?: (action: QuickCheckAction) => void;
 }
 
 /** Inner scrollable workspace layout switching between Clear View and full study panels. */
@@ -29,13 +32,24 @@ export function TableWorkspaceBody({
   selfUserId,
   sosBanner,
   members,
+  quickCheckSignals = {},
   permissionToast,
   pendingPermissionRequests,
   onRespondPermissionRequest,
   onPermissionAction,
+  onQuickCheck,
 }: TableWorkspaceBodyProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 sm:p-4">
+      {onQuickCheck ? (
+        <QuickCheckBar
+          signals={quickCheckSignals}
+          selfUserId={selfUserId}
+          isHost={isHost}
+          onQuickCheck={onQuickCheck}
+        />
+      ) : null}
+
       {permissionToast ? (
         <div
           role="status"
@@ -86,6 +100,7 @@ export function TableWorkspaceBody({
                 members={members}
                 selfUserId={selfUserId}
                 isSelfHost={isHost}
+                quickCheckSignals={quickCheckSignals}
                 onAction={(action, targetUserId) => onPermissionAction(action, targetUserId)}
               />
               <TableChatPanel tableId={activeTableId} />

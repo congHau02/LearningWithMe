@@ -184,3 +184,11 @@ export function HandPanIcon(props: StudioIconProps) {
   );
 }
 
+export function HandRaisedIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M18 12.5V6a2 2 0 0 0-4 0v5M14 11V4a2 2 0 0 0-4 0v7M10 11V5a2 2 0 0 0-4 0v9l-1.6-1.6a1.9 1.9 0 0 0-2.7 2.7l4.5 4.5A4.5 4.5 0 0 0 9.4 21H14a6 6 0 0 0 6-6v-2.5a2 2 0 0 0-2-2z" />
+    </StudioIconWrapper>
+  );
+}
+

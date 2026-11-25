@@ -1,6 +1,8 @@
 import { formatStudyDuration } from '../../hooks/useStudyTimer';
 import { useViewportIsMobile } from '../../hooks/useViewportIsMobile';
+import type { QuickCheckSignalState } from '../../services/tableApi';
 import { BoardIcon, CopyIcon, DoorIcon, LockIcon, MinimizeIcon, TimerIcon } from '../icons';
+import { QuickCheckHeaderPill } from './QuickCheckBar';
 import { TableCollabMenu } from './TableCollabMenu';
 import { VoiceMicToggleButton } from './VoiceMicToggleButton';
 
@@ -12,6 +14,7 @@ interface TableWorkspaceHeaderProps {
   isHost: boolean;
   canControl: boolean;
   isClearView?: boolean;
+  quickCheckSignals?: Record<string, QuickCheckSignalState>;
   onToggleClearView?: () => void;
   onToggleFreeCollab: () => void;
   onToggleTableLock?: () => void;
@@ -36,6 +39,7 @@ export function TableWorkspaceHeader({
   isHost,
   canControl,
   isClearView = false,
+  quickCheckSignals = {},
   onToggleClearView,
   onToggleFreeCollab,
   onToggleTableLock,
@@ -132,6 +136,7 @@ export function TableWorkspaceHeader({
         </span>
 
         {!isMobile ? micControl : null}
+        {!isMobile ? <QuickCheckHeaderPill signals={quickCheckSignals} /> : null}
       </div>
 
       <div className={`flex shrink-0 items-center gap-2 text-xs ${isMobile ? '' : 'flex-wrap'}`}>

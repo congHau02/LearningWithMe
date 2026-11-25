@@ -3,8 +3,10 @@ package com.studytogether.modules.room;
 import com.studytogether.modules.room.model.RedisTableState;
 import com.studytogether.modules.room.model.RoomEvent;
 import com.studytogether.modules.room.model.RoomPlayerState;
+import com.studytogether.modules.table.model.QuickCheckSignalState;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -67,7 +69,13 @@ final class RoomSeatSuccessionHelper {
             List<String> nextCoHosts = currentTable.coHostUserIds().stream()
                     .filter(id -> !id.equals(electedHost) && !id.equals(leavingUserId))
                     .toList();
-            return currentTable.withPermissions(newHostUserId, nextCoHosts, currentTable.isFreeCollab());
+            RedisTableState nextTable = currentTable.withPermissions(newHostUserId, nextCoHosts, currentTable.isFreeCollab());
+            if (nextTable.quickCheckSignals().containsKey(leavingUserId)) {
+                Map<String, QuickCheckSignalState> nextSignals = new HashMap<>(nextTable.quickCheckSignals());
+                nextSignals.remove(leavingUserId);
+                nextTable = nextTable.withQuickCheckSignals(nextSignals);
+            }
+            return nextTable;
         });
 
         if (Boolean.TRUE.equals(isEmptiedRef.get())) {

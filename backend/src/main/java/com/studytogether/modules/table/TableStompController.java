@@ -6,6 +6,7 @@ import com.studytogether.modules.table.model.BoardDrawRequest;
 import com.studytogether.modules.table.model.HomeworkSlideActionRequest;
 import com.studytogether.modules.table.model.PermissionRequestPayload;
 import com.studytogether.modules.table.model.PermissionRespondRequest;
+import com.studytogether.modules.table.model.QuickCheckRequest;
 import com.studytogether.modules.table.model.ScratchpadUpdateRequest;
 import com.studytogether.modules.table.model.SosToggleRequest;
 import com.studytogether.modules.table.model.TableChatSendRequest;
@@ -33,6 +34,7 @@ public class TableStompController {
     private final TableBoardService boardService;
     private final TableVoiceService voiceService;
     private final TableScratchpadService scratchpadService;
+    private final TableQuickCheckService quickCheckService;
     private final StompErrorDispatcher errorDispatcher;
 
     public TableStompController(
@@ -40,7 +42,7 @@ public class TableStompController {
             TableSosService sosService, TableChatService tableChatService,
             TableHomeworkService homeworkService, TableBoardService boardService,
             TableVoiceService voiceService, TableScratchpadService scratchpadService,
-            StompErrorDispatcher errorDispatcher
+            TableQuickCheckService quickCheckService, StompErrorDispatcher errorDispatcher
     ) {
         this.workspaceService = workspaceService;
         this.videoService = videoService;
@@ -50,6 +52,7 @@ public class TableStompController {
         this.boardService = boardService;
         this.voiceService = voiceService;
         this.scratchpadService = scratchpadService;
+        this.quickCheckService = quickCheckService;
         this.errorDispatcher = errorDispatcher;
     }
 
@@ -102,6 +105,12 @@ public class TableStompController {
     public void updateScratchpad(@DestinationVariable String tableId,
             @Valid @Payload(required = false) ScratchpadUpdateRequest request, Principal user) {
         scratchpadService.updateScratchpad(StompErrorDispatcher.requirePrincipal(user), tableId, request);
+    }
+
+    @MessageMapping("/table/{tableId}/quick-check")
+    public void handleQuickCheck(@DestinationVariable String tableId,
+            @Valid @Payload QuickCheckRequest request, Principal user) {
+        quickCheckService.handleQuickCheck(StompErrorDispatcher.requirePrincipal(user), tableId, request);
     }
 
     @MessageExceptionHandler(MethodArgumentNotValidException.class)

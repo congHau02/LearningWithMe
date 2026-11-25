@@ -2,6 +2,7 @@ package com.studytogether.modules.table.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.Map;
 
 public record TableWorkspaceSnapshot(
         String roomId,
@@ -17,7 +18,8 @@ public record TableWorkspaceSnapshot(
         String activeSlideId,
         TableScratchpadState scratchpadState,
         @JsonProperty("isTableLocked") boolean isTableLocked,
-        String inviteCode
+        String inviteCode,
+        Map<String, QuickCheckSignalState> quickCheckSignals
 ) {
     public TableWorkspaceSnapshot {
         coHostUserIds = coHostUserIds == null ? List.of() : List.copyOf(coHostUserIds);
@@ -26,6 +28,19 @@ public record TableWorkspaceSnapshot(
         recentMessages = recentMessages == null ? List.of() : List.copyOf(recentMessages);
         homeworkSlides = homeworkSlides == null ? List.of() : List.copyOf(homeworkSlides);
         scratchpadState = scratchpadState == null ? TableScratchpadState.empty() : scratchpadState;
+        quickCheckSignals = quickCheckSignals == null ? Map.of() : Map.copyOf(quickCheckSignals);
+    }
+
+    public TableWorkspaceSnapshot(
+            String roomId, String tableId, String hostUserId, List<String> coHostUserIds,
+            boolean isFreeCollab, String sosBanner, TableVideoState videoState,
+            List<TableMemberDto> members, List<TableChatMessage> recentMessages,
+            List<HomeworkSlide> homeworkSlides, String activeSlideId, TableScratchpadState scratchpadState,
+            boolean isTableLocked, String inviteCode
+    ) {
+        this(roomId, tableId, hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState,
+                members, recentMessages, homeworkSlides, activeSlideId, scratchpadState, isTableLocked, inviteCode,
+                Map.of());
     }
 
     public TableWorkspaceSnapshot(
@@ -35,6 +50,6 @@ public record TableWorkspaceSnapshot(
             List<HomeworkSlide> homeworkSlides, String activeSlideId, TableScratchpadState scratchpadState
     ) {
         this(roomId, tableId, hostUserId, coHostUserIds, isFreeCollab, sosBanner, videoState,
-                members, recentMessages, homeworkSlides, activeSlideId, scratchpadState, false, null);
+                members, recentMessages, homeworkSlides, activeSlideId, scratchpadState, false, null, Map.of());
     }
 }

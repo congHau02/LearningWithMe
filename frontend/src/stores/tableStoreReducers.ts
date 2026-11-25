@@ -1,7 +1,7 @@
 import type { TableWorkspaceEvent } from '../services/tableApi';
-import { reduceRoomSeatEvent, roleOf, type LaserPointerState, type TableStoreData } from './tableSeatReducer';
+import { remapQuickCheckSignals, reduceRoomSeatEvent, roleOf, type LaserPointerState, type TableStoreData } from './tableSeatReducer';
 
-export { reduceRoomSeatEvent, roleOf, type LaserPointerState, type TableStoreData };
+export { remapQuickCheckSignals, reduceRoomSeatEvent, roleOf, type LaserPointerState, type TableStoreData };
 
 const ROLE_TOAST: Record<string, string> = {
   GRANT: 'Trưởng bàn đã cấp quyền Co-Host cho bạn',
@@ -33,6 +33,9 @@ export function reduceWorkspaceEvent(
   if (event.type === 'VIDEO_SYNCED' && event.videoState) return { videoState: event.videoState };
   if (event.type === 'UPDATE_SCRATCHPAD' && event.scratchpadState) {
     return { scratchpadState: event.scratchpadState };
+  }
+  if (event.type === 'QUICK_CHECK_UPDATED') {
+    return { quickCheckSignals: event.quickCheckSignals ?? {} };
   }
   if (event.type === 'SOS_UPDATED') return { sosBanner: event.sosBanner ?? null };
   if (event.type === 'TABLE_CHAT' && event.chatMessage) {

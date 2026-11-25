@@ -117,6 +117,12 @@ for _, key in ipairs(KEYS) do
                     end
                 end
 
+                if type(state.quickCheckSignals) == "table" and state.quickCheckSignals[guestId] ~= nil then
+                    state.quickCheckSignals[registeredUserId] = state.quickCheckSignals[guestId]
+                    state.quickCheckSignals[guestId] = nil
+                    changed = true
+                end
+
                 if changed then
                     local encoded = cjson.encode(state)
                     encoded = string.gsub(encoded, '"coHostUserIds":{}', '"coHostUserIds":[]')

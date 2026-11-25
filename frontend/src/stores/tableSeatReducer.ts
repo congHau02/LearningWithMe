@@ -3,6 +3,7 @@ import type {
   HomeworkSlide,
   LaserPointerPayload,
   PermissionRequestNotification,
+  QuickCheckSignalState,
   TableChatMessage,
   TableMemberDto,
   TableScratchpadState,
@@ -30,9 +31,22 @@ export interface TableStoreData {
   homeworkSlides: HomeworkSlide[];
   activeSlideId: string | null;
   scratchpadState: TableScratchpadState;
+  quickCheckSignals: Record<string, QuickCheckSignalState>;
   laserPointers: Record<string, LaserPointerState>;
   isWorkspaceMinimized: boolean;
   unreadChatCount: number;
+}
+
+export function remapQuickCheckSignals(
+  signals: Record<string, QuickCheckSignalState>,
+  oldUserId: string,
+  newUserId: string,
+): Record<string, QuickCheckSignalState> {
+  if (!oldUserId || !newUserId || oldUserId === newUserId || !(oldUserId in signals)) return signals;
+  const next = { ...signals };
+  next[newUserId] = next[oldUserId];
+  delete next[oldUserId];
+  return next;
 }
 
 export const roleOf = (uid: string, hostId: string | null, coHosts: string[]) =>
@@ -75,7 +89,12 @@ export function reduceRoomSeatEvent(s: TableStoreData, event: RoomEvent): Partia
       })
       .map((m) => ({ ...m, tableRole: roleOf(m.userId, nextHost, nextCoHosts) }));
 
-    return { hostUserId: nextHost, coHostUserIds: nextCoHosts, members: nextMembers };
+    return {
+      hostUserId: nextHost,
+      coHostUserIds: nextCoHosts,
+      members: nextMembers,
+      quickCheckSignals: prevId ? remapQuickCheckSignals(s.quickCheckSignals, prevId, p.userId) : s.quickCheckSignals,
+    };
   }
   if (!s.tableId || event.tableId !== s.tableId) return s;
   if (event.type === 'TABLE_LOCK_UPDATED') {
@@ -85,6 +104,7 @@ export function reduceRoomSeatEvent(s: TableStoreData, event: RoomEvent): Partia
   const nextHost = event.hostUserId !== undefined ? event.hostUserId : s.hostUserId;
   let nextCoHosts = s.coHostUserIds.filter((id) => id !== nextHost);
   let nextMembers = s.members;
+  let nextQuickCheckSignals = s.quickCheckSignals;
   if (event.type === 'SEAT_LOCKED' && event.player) {
     const p = event.player;
     if (!nextMembers.some((m) => m.userId === p.userId)) {
@@ -108,10 +128,15 @@ export function reduceRoomSeatEvent(s: TableStoreData, event: RoomEvent): Partia
   } else if (event.type === 'SEAT_RELEASED') {
     nextCoHosts = nextCoHosts.filter((id) => id !== event.userId);
     nextMembers = nextMembers.filter((m) => m.userId !== event.userId);
+    if (event.userId && event.userId in nextQuickCheckSignals) {
+      nextQuickCheckSignals = { ...nextQuickCheckSignals };
+      delete nextQuickCheckSignals[event.userId];
+    }
   }
   return {
     hostUserId: nextHost,
     coHostUserIds: nextCoHosts,
     members: nextMembers.map((m) => ({ ...m, tableRole: roleOf(m.userId, nextHost, nextCoHosts) })),
+    quickCheckSignals: nextQuickCheckSignals,
   };
 }

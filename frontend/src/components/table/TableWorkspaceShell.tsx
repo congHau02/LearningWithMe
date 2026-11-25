@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useClearView } from '../../hooks/useClearView';
 import { useStudyTimer } from '../../hooks/useStudyTimer';
 import { useTableVoiceChat } from '../../hooks/useTableVoiceChat';
-import { sendTablePermissionRequest, sendTablePermissionRespond } from '../../services/tableStompClient';
+import { sendTablePermissionRequest, sendTablePermissionRespond, sendTableQuickCheck } from '../../services/tableStompClient';
 import type { PermissionAction } from '../../services/tableApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useGameStore } from '../../stores/useGameStore';
@@ -30,6 +30,7 @@ export function TableWorkspaceShell() {
   const sosBanner = useTableStore((s) => s.sosBanner);
   const sitStartTimeEpoch = useTableStore((s) => s.sitStartTimeEpoch);
   const members = useTableStore((s) => s.members);
+  const quickCheckSignals = useTableStore((s) => s.quickCheckSignals);
   const pendingPermissionRequests = useTableStore((s) => s.pendingPermissionRequests);
   const permissionToast = useTableStore((s) => s.permissionToast);
   const setPermissionToast = useTableStore((s) => s.setPermissionToast);
@@ -123,6 +124,7 @@ export function TableWorkspaceShell() {
           isHost={isHost}
           canControl={canControl}
           isClearView={isClearView}
+          quickCheckSignals={quickCheckSignals}
           onToggleClearView={toggleClearView}
           onToggleFreeCollab={() => handlePermissionAction('TOGGLE_FREE_COLLAB', undefined, !isFreeCollab)}
           onToggleTableLock={() => handlePermissionAction('TOGGLE_TABLE_LOCK', undefined, undefined, !isTableLocked)}
@@ -141,10 +143,12 @@ export function TableWorkspaceShell() {
           selfUserId={selfUserId}
           sosBanner={sosBanner}
           members={members}
+          quickCheckSignals={quickCheckSignals}
           permissionToast={permissionToast}
           pendingPermissionRequests={pendingPermissionRequests}
           onRespondPermissionRequest={handleToastRespond}
           onPermissionAction={handlePermissionAction}
+          onQuickCheck={(action) => sendTableQuickCheck(activeTableId, action)}
         />
       </section>
 

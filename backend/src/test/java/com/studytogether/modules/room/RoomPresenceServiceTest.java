@@ -588,7 +588,7 @@ public class RoomPresenceServiceTest {
             return ephemeralImages.remove(imageId) != null;
         }
 
-        void clearAll() {
+        public void clearAll() {
             playersByRoom.clear();
             seatsByRoom.clear();
             reservationsByRoom.clear();
