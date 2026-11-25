@@ -8,6 +8,7 @@ import { TopBar } from './components/hud/TopBar';
 import { useAppBootstrap } from './hooks/useAppBootstrap';
 import { useAppHudEffects } from './hooks/useAppHudEffects';
 import { useRoomSync } from './hooks/useRoomSync';
+import { initiateSafeLeaveSeat } from './hooks/useStudyPackExport';
 import { useTableWorkspaceSync } from './hooks/useTableWorkspaceSync';
 import { useAuthStore } from './stores/useAuthStore';
 import { useGameStore } from './stores/useGameStore';
@@ -94,8 +95,6 @@ export function App() {
     closeUpgradeModal: () => setIsUpgradeModalOpen(false),
   });
 
-  const handleLeaveSeat = () => requestLeaveSeat();
-
   return (
     <div className="flex h-app-screen flex-col overflow-hidden bg-background text-foreground">
       <div
@@ -121,7 +120,7 @@ export function App() {
         isTableHost={isTableHost}
         canEditStudyGoal={Boolean(token)}
         onUpdateStudyGoal={token ? handleUpdateStudyGoal : undefined}
-        onLeaveSeat={handleLeaveSeat}
+        onLeaveSeat={initiateSafeLeaveSeat}
         onOpenUpgrade={token && authProvider === 'GUEST' ? () => setIsUpgradeModalOpen(true) : undefined}
         onOpenStudySessions={token ? () => setIsStudySessionsOpen(true) : undefined}
         onOpenLeaderboard={token ? () => setIsLeaderboardOpen(true) : undefined}
@@ -184,7 +183,7 @@ export function App() {
         isStudySessionsOpen={isStudySessionsOpen}
         isLeaderboardOpen={isLeaderboardOpen}
         isCustomizerOpen={isCustomizerOpen}
-        onConfirmLeave={handleLeaveSeat}
+        onConfirmLeave={requestLeaveSeat}
         onCancelLeave={closeLeaveConfirm}
         onCloseUpgrade={() => setIsUpgradeModalOpen(false)}
         onOpenUpgrade={() => setIsUpgradeModalOpen(true)}

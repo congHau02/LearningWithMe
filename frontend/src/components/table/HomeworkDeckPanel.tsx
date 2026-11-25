@@ -11,6 +11,7 @@ import { CLEAR_VIEW_BOARD_TOOLS, HomeworkBoardToolbar } from './HomeworkBoardToo
 import { HomeworkCropRotateModal } from './HomeworkCropRotateModal';
 import { HomeworkSlideTabs } from './HomeworkSlideTabs';
 import { HomeworkTemplatePicker } from './HomeworkTemplatePicker';
+import { StudyPackExportButtons } from './StudyPackExportButtons';
 
 interface HomeworkDeckPanelProps {
   tableId: string;
@@ -142,6 +143,8 @@ export function HomeworkDeckPanel({
         onSelectSlide={(imageId) => sendHomeworkSlideAction(tableId, { action: 'SELECT', imageId })}
         onDeleteSlide={(imageId) => sendHomeworkSlideAction(tableId, { action: 'DELETE', imageId })}
       />
+
+      <StudyPackExportButtons tableId={tableId} />
 
       {activeSlide ? (
         <div className="flex flex-col gap-2">

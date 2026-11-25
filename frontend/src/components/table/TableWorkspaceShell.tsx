@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useClearView } from '../../hooks/useClearView';
+import { initiateSafeLeaveSeat } from '../../hooks/useStudyPackExport';
 import { useStudyTimer } from '../../hooks/useStudyTimer';
 import { useTableVoiceChat } from '../../hooks/useTableVoiceChat';
 import { sendTablePermissionRequest, sendTablePermissionRespond, sendTableQuickCheck } from '../../services/tableStompClient';
@@ -17,7 +18,6 @@ export function TableWorkspaceShell() {
   const characterState = useGameStore((s) => s.characterState);
   const currentTableId = useGameStore((s) => s.currentTableId);
   const roomId = useGameStore((s) => s.roomId);
-  const requestLeaveSeat = useGameStore((s) => s.requestLeaveSeat);
 
   const selfUserId = useAuthStore((s) => s.userId);
 
@@ -132,7 +132,7 @@ export function TableWorkspaceShell() {
           onRequestControl={handleRequestControl}
           onToggleMute={() => void toggleMute()}
           onMinimize={() => setWorkspaceMinimized(true)}
-          onRequestLeaveSeat={requestLeaveSeat}
+          onRequestLeaveSeat={initiateSafeLeaveSeat}
         />
 
         <TableWorkspaceBody
@@ -158,7 +158,7 @@ export function TableWorkspaceShell() {
           elapsedSeconds={elapsedSeconds}
           onToggleMute={() => void toggleMute()}
           onExpand={() => setWorkspaceMinimized(false)}
-          onRequestLeaveSeat={requestLeaveSeat}
+          onRequestLeaveSeat={initiateSafeLeaveSeat}
         />
       ) : null}
     </>

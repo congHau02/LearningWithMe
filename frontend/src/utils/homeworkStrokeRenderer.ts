@@ -11,6 +11,7 @@ import {
   drawGeoMarkStroke,
   drawTriangleStroke,
 } from './homeworkGeoRenderer';
+import { drawLatexStrokeOnCanvas } from './homeworkLatexCanvasRenderer';
 
 const REFERENCE_CANVAS_WIDTH = 800;
 
@@ -73,6 +74,10 @@ function drawCircleStroke(
   ctx.stroke();
 }
 
+export interface RenderBoardStrokesOptions {
+  includeLatex?: boolean;
+}
+
 /** Render all committed strokes (and an optional in-progress draft stroke) onto an HTML5 2D canvas. */
 export function renderBoardStrokes(
   ctx: CanvasRenderingContext2D,
@@ -81,13 +86,21 @@ export function renderBoardStrokes(
   height: number,
   draftStroke?: BoardStroke | null,
   snapPoint?: NormalizedPoint | null,
+  options?: RenderBoardStrokesOptions,
 ): void {
   ctx.clearRect(0, 0, width, height);
   const scale = width > 0 ? width / REFERENCE_CANVAS_WIDTH : 1;
   const list = draftStroke ? [...strokes, draftStroke] : strokes;
+  const includeLatex = Boolean(options?.includeLatex);
 
   for (const stroke of list) {
-    if (!stroke.points.length || stroke.tool === 'LATEX') continue;
+    if (!stroke.points.length) continue;
+    if (stroke.tool === 'LATEX') {
+      if (includeLatex) {
+        drawLatexStrokeOnCanvas(ctx, stroke, width, height, scale);
+      }
+      continue;
+    }
     ctx.save();
     ctx.strokeStyle = stroke.color;
     ctx.fillStyle = stroke.color;
