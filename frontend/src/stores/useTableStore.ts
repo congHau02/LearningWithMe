@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { HomeworkSlide, PermissionRequestNotification, TableChatMessage, TableMemberDto, TableScratchpadState, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
 import type { RoomEvent } from '../services/roomApi';
 import type { BoardTool } from '../utils/homeworkCanvasMath';
+import type { GeoMarkSubtype } from '../utils/homeworkGeometryMath';
 import { reduceRoomSeatEvent, reduceWorkspaceEvent, type LaserPointerState } from './tableStoreReducers';
 
 export interface VideoSyncState { videoId: string | null; isPlaying: boolean; currentTime: number; lastUpdatedEpoch: number; }
@@ -28,6 +29,9 @@ export interface TableWorkspaceState {
   boardTool: BoardTool | null;
   boardColor: string;
   boardLineWidth: number;
+  boardGeoMarkType: GeoMarkSubtype;
+  boardSnapEnabled: boolean;
+  boardVertexLetter: string | null;
   setTableState: (payload: { tableId: string; hostUserId: string | null; coHostUserIds?: string[]; isFreeCollab?: boolean; sosBanner?: string | null; sitStartTimeEpoch?: number | null; videoState?: Partial<VideoSyncState>; }) => void;
   applyWorkspaceSnapshot: (snapshot: TableWorkspaceSnapshot, selfUserId: string | null) => void;
   applyWorkspaceEvent: (event: TableWorkspaceEvent, selfUserId: string | null) => void;
@@ -45,6 +49,9 @@ export interface TableWorkspaceState {
   setBoardTool: (tool: BoardTool | null) => void;
   setBoardColor: (color: string) => void;
   setBoardLineWidth: (lineWidth: number) => void;
+  setBoardGeoMarkType: (geoMarkType: GeoMarkSubtype) => void;
+  setBoardSnapEnabled: (enabled: boolean) => void;
+  setBoardVertexLetter: (letter: string | null) => void;
   leaveTable: () => void;
 }
 
@@ -62,6 +69,9 @@ const INITIAL_TABLE_STATE = {
   boardTool: null as BoardTool | null,
   boardColor: '#ef4444',
   boardLineWidth: 3,
+  boardGeoMarkType: 'RIGHT_ANGLE' as GeoMarkSubtype,
+  boardSnapEnabled: false,
+  boardVertexLetter: null as string | null,
 };
 
 export const useTableStore = create<TableWorkspaceState>((set) => ({
@@ -126,5 +136,8 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
   setBoardTool: (boardTool) => set({ boardTool }),
   setBoardColor: (boardColor) => set({ boardColor }),
   setBoardLineWidth: (boardLineWidth) => set({ boardLineWidth }),
+  setBoardGeoMarkType: (boardGeoMarkType) => set({ boardGeoMarkType }),
+  setBoardSnapEnabled: (boardSnapEnabled) => set({ boardSnapEnabled }),
+  setBoardVertexLetter: (boardVertexLetter) => set({ boardVertexLetter }),
   leaveTable: () => set({ ...INITIAL_TABLE_STATE }),
 }));

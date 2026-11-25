@@ -1,4 +1,4 @@
-import { RedoIcon, TrashIcon, UndoIcon } from '../icons';
+import { RedoIcon, SnapAngleIcon, TrashIcon, UndoIcon } from '../icons';
 
 const COLOR_SWATCHES = ['#ef4444', '#38bdf8', '#22c55e', '#facc15', '#f8fafc'];
 const SIZE_OPTIONS = [3, 6, 12, 18];
@@ -9,8 +9,10 @@ export interface HomeworkBoardStyleActionsProps {
   clearView: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  snapEnabled?: boolean;
   onColorChange: (color: string) => void;
   onLineWidthChange: (size: number) => void;
+  onSnapToggle?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
   onClearSlide: () => void;
@@ -22,8 +24,10 @@ export function HomeworkBoardStyleActions({
   clearView,
   canUndo,
   canRedo,
+  snapEnabled = false,
   onColorChange,
   onLineWidthChange,
+  onSnapToggle,
   onUndo,
   onRedo,
   onClearSlide,
@@ -87,6 +91,23 @@ export function HomeworkBoardStyleActions({
               </option>
             ))}
           </select>
+
+          <button
+            type="button"
+            data-testid="board-snap-toggle"
+            aria-label="Khóa góc 15° & bắt đầu mút (Shift)"
+            title="Khóa góc 15° & bắt đầu mút (Shift)"
+            aria-pressed={snapEnabled}
+            onClick={() => onSnapToggle?.()}
+            className={`inline-flex min-h-[44px] sm:min-h-[34px] items-center gap-1 rounded-md border px-2 py-1 text-xs transition-botanical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              snapEnabled
+                ? 'border-primary bg-primary font-semibold text-primary-foreground shadow-sm'
+                : 'border-border bg-background/70 font-medium text-muted-foreground hover:bg-accent hover:text-foreground'
+            }`}
+          >
+            <SnapAngleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>Bắt điểm</span>
+          </button>
         </>
       )}
 

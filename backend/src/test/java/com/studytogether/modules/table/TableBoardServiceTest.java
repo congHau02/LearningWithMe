@@ -210,4 +210,100 @@ class TableBoardServiceTest {
                 .orElseThrow().homeworkSlides().get(0).strokes();
         assertThat(afterRedo).extracting(BoardStroke::id).containsExactly("s-cohost-1", "s-host-1");
     }
+
+    @Test
+    void validatesAndSynchronizesEuclideanGeometryStrokesAndRejectsMalformedOrUnauthorizedRequests() {
+        List<NormalizedPoint> twoPts = List.of(new NormalizedPoint(0.2, 0.3), new NormalizedPoint(0.6, 0.7));
+        List<NormalizedPoint> threePts = List.of(
+                new NormalizedPoint(0.3, 0.2),
+                new NormalizedPoint(0.15, 0.7),
+                new NormalizedPoint(0.65, 0.7)
+        );
+
+        TableWorkspaceEvent dashedEvent = boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE,
+                        new BoardStroke("geo-dashed", BoardStrokeTool.DASHED_LINE, "#38bdf8", 3.0, twoPts, null, null, 0L),
+                        null, null));
+        assertThat(dashedEvent.stroke().tool()).isEqualTo(BoardStrokeTool.DASHED_LINE);
+
+        TableWorkspaceEvent circleCenterEvent = boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE,
+                        new BoardStroke("geo-circle", BoardStrokeTool.CIRCLE_CENTER, "#ef4444", 3.0, twoPts, null, null, 0L),
+                        null, null));
+        assertThat(circleCenterEvent.stroke().tool()).isEqualTo(BoardStrokeTool.CIRCLE_CENTER);
+
+        TableWorkspaceEvent triangleEvent = boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE,
+                        new BoardStroke("geo-tri", BoardStrokeTool.TRIANGLE, "#22c55e", 3.0, threePts, null, null, 0L),
+                        null, null));
+        assertThat(triangleEvent.stroke().tool()).isEqualTo(BoardStrokeTool.TRIANGLE);
+        assertThat(triangleEvent.stroke().points()).hasSize(3);
+
+        for (String subtype : List.of("right_angle", "ANGLE_ARC_1", "ANGLE_ARC_2")) {
+            TableWorkspaceEvent markEvent = boardService.handleDraw(
+                    host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE,
+                            new BoardStroke("geo-mark-" + subtype, BoardStrokeTool.GEO_MARK, "#facc15", 3.0, threePts, subtype, null, 0L),
+                            null, null));
+            assertThat(markEvent.stroke().text()).isEqualTo(subtype.toUpperCase());
+        }
+        for (String tick : List.of("TICK_1", "TICK_2")) {
+            TableWorkspaceEvent tickEvent = boardService.handleDraw(
+                    host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE,
+                            new BoardStroke("geo-tick-" + tick, BoardStrokeTool.GEO_MARK, "#f8fafc", 3.0, twoPts, tick, null, 0L),
+                            null, null));
+            assertThat(tickEvent.stroke().text()).isEqualTo(tick);
+        }
+
+        // Invalid point counts & invalid GEO_MARK subtype
+        BoardStroke badTriangle = new BoardStroke(
+                "bad-tri", BoardStrokeTool.TRIANGLE, "#22c55e", 3.0, twoPts, null, null, 0L);
+        assertThatThrownBy(() -> boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, badTriangle, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getType())
+                .isEqualTo(TableExceptions.INVALID_TABLE_ACTION_TYPE);
+
+        BoardStroke badTick = new BoardStroke(
+                "bad-tick", BoardStrokeTool.GEO_MARK, "#f8fafc", 3.0, threePts, "TICK_1", null, 0L);
+        assertThatThrownBy(() -> boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, badTick, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getType())
+                .isEqualTo(TableExceptions.INVALID_TABLE_ACTION_TYPE);
+
+        BoardStroke badSubtype = new BoardStroke(
+                "bad-sub", BoardStrokeTool.GEO_MARK, "#f8fafc", 3.0, twoPts, "UNKNOWN_MARK", null, 0L);
+        assertThatThrownBy(() -> boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE, badSubtype, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getType())
+                .isEqualTo(TableExceptions.INVALID_TABLE_ACTION_TYPE);
+
+        // Unauthorized MEMBER cannot commit Euclidean strokes
+        AuthPrincipal member = new AuthPrincipal("u-member", AuthRole.GUEST, "Member", "avatar_03", null);
+        stateStore.savePlayer("main-library", new RoomPlayerState(
+                member.userId(), member.nickname(), member.avatarId(), "GUEST", "SEATED",
+                6, 5, "DOWN", "table_01", "seat_03", "ws-3", true, nowMs.get(), false, nowMs.get()
+        ));
+        assertThatThrownBy(() -> boardService.handleDraw(
+                member, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ADD_STROKE,
+                        new BoardStroke("unauth-tri", BoardStrokeTool.TRIANGLE, "#22c55e", 3.0, threePts, null, null, 0L),
+                        null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getType())
+                .isEqualTo(TableExceptions.TABLE_PERMISSION_DENIED_TYPE);
+
+        // Undo & Erase work on Euclidean strokes
+        TableWorkspaceEvent undoTick = boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.UNDO_STROKE, null, null, null));
+        assertThat(undoTick.erasedStrokeId()).isEqualTo("geo-tick-TICK_2");
+
+        TableWorkspaceEvent eraseTri = boardService.handleDraw(
+                host, "table_01", new BoardDrawRequest("img-1", BoardDrawAction.ERASE_STROKE, null, "geo-tri", null));
+        assertThat(eraseTri.erasedStrokeId()).isEqualTo("geo-tri");
+        assertThat(stateStore.getTableState("main-library", "table_01").orElseThrow()
+                .homeworkSlides().get(0).strokes())
+                .extracting(BoardStroke::id)
+                .doesNotContain("geo-tri", "geo-tick-TICK_2");
+    }
 }

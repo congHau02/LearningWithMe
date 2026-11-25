@@ -1,4 +1,5 @@
 export { renderBoardStrokes } from './homeworkStrokeRenderer';
+import { ALLOWED_GEO_MARKS, isVertexLabelText, type GeoMarkSubtype } from './homeworkGeometryMath';
 
 export type BoardStrokeTool =
   | 'PEN'
@@ -8,9 +9,13 @@ export type BoardStrokeTool =
   | 'LINE'
   | 'ARROW'
   | 'RECT'
-  | 'CIRCLE';
+  | 'CIRCLE'
+  | 'DASHED_LINE'
+  | 'CIRCLE_CENTER'
+  | 'TRIANGLE'
+  | 'GEO_MARK';
 
-export type BoardTool = BoardStrokeTool | 'ERASER' | 'LASER';
+export type BoardTool = BoardStrokeTool | 'VERTEX_LABEL' | 'ERASER' | 'LASER';
 
 export type BoardDrawAction = 'ADD_STROKE' | 'ERASE_STROKE' | 'UNDO_STROKE' | 'CLEAR_SLIDE' | 'LASER_MOVE';
 
@@ -45,8 +50,17 @@ export interface BoardStrokeValidationError {
   message: string;
 }
 
-export function isGeometricTool(tool: BoardTool): tool is 'LINE' | 'ARROW' | 'RECT' | 'CIRCLE' {
-  return tool === 'LINE' || tool === 'ARROW' || tool === 'RECT' || tool === 'CIRCLE';
+export function isGeometricTool(
+  tool: BoardTool,
+): tool is 'LINE' | 'ARROW' | 'RECT' | 'CIRCLE' | 'DASHED_LINE' | 'CIRCLE_CENTER' {
+  return (
+    tool === 'LINE' ||
+    tool === 'ARROW' ||
+    tool === 'RECT' ||
+    tool === 'CIRCLE' ||
+    tool === 'DASHED_LINE' ||
+    tool === 'CIRCLE_CENTER'
+  );
 }
 
 export function validateBoardStroke(stroke: BoardStroke): BoardStrokeValidationError | null {
@@ -58,6 +72,20 @@ export function validateBoardStroke(stroke: BoardStroke): BoardStrokeValidationE
   }
   if (isGeometricTool(stroke.tool) && stroke.points.length !== 2) {
     return { code: 'INVALID_TABLE_ACTION', message: 'Nét hình học phải có đúng 2 điểm đầu và cuối.' };
+  }
+  if (stroke.tool === 'TRIANGLE' && stroke.points.length !== 3) {
+    return { code: 'INVALID_TABLE_ACTION', message: 'Hình tam giác phải có đúng 3 đỉnh.' };
+  }
+  if (stroke.tool === 'GEO_MARK') {
+    const subtype = (stroke.text?.trim().toUpperCase() ?? '') as GeoMarkSubtype;
+    if (!ALLOWED_GEO_MARKS.has(subtype)) {
+      return { code: 'INVALID_TABLE_ACTION', message: 'Ký hiệu hình học không hợp lệ.' };
+    }
+    const isTick = subtype === 'TICK_1' || subtype === 'TICK_2';
+    const len = stroke.points.length;
+    if ((isTick && len !== 2) || (!isTick && len !== 2 && len !== 3)) {
+      return { code: 'INVALID_TABLE_ACTION', message: 'Số điểm của ký hiệu hình học không hợp lệ.' };
+    }
   }
   if (stroke.tool === 'TEXT' || stroke.tool === 'LATEX') {
     const trimmed = stroke.text?.trim() ?? '';
@@ -139,20 +167,57 @@ function isCircleHit(a: NormalizedPoint, b: NormalizedPoint, target: NormalizedP
   return Math.abs(normDist - 1) * minRadius <= r;
 }
 
-function isStrokeHit(stroke: BoardStroke, target: NormalizedPoint, hitRadiusNorm: number): boolean {
+function isCircleCenterHit(
+  center: NormalizedPoint,
+  rim: NormalizedPoint,
+  target: NormalizedPoint,
+  r: number,
+  aspectRatio: number,
+): boolean {
+  const distToCenter = Math.hypot((target.x - center.x) * aspectRatio, target.y - center.y);
+  if (distToCenter <= r) return true;
+  const radius = Math.hypot((rim.x - center.x) * aspectRatio, rim.y - center.y);
+  if (radius < 0.005) return false;
+  return Math.abs(distToCenter - radius) <= r;
+}
+
+function isStrokeHit(
+  stroke: BoardStroke,
+  target: NormalizedPoint,
+  hitRadiusNorm: number,
+  aspectRatio: number,
+): boolean {
   if (!stroke.points.length) return false;
   if (stroke.tool === 'TEXT' || stroke.tool === 'LATEX') {
     const anchor = stroke.points[0];
-    const approxWidthNorm = Math.min(0.45, Math.max(0.08, (stroke.text?.length ?? 1) * 0.014));
-    const withinX = target.x >= anchor.x - hitRadiusNorm && target.x <= anchor.x + approxWidthNorm + hitRadiusNorm;
-    const withinY = Math.abs(target.y - anchor.y) <= hitRadiusNorm * 1.6;
-    return withinX && withinY;
+    const trimmed = stroke.text?.trim() ?? '';
+    const isCenteredVertex = stroke.tool === 'TEXT' && isVertexLabelText(trimmed);
+    const approxWidthNorm = Math.min(0.45, Math.max(isCenteredVertex ? 0.035 : 0.08, trimmed.length * 0.014));
+    const withinX = isCenteredVertex
+      ? Math.abs(target.x - anchor.x) <= approxWidthNorm / 2 + hitRadiusNorm
+      : target.x >= anchor.x - hitRadiusNorm && target.x <= anchor.x + approxWidthNorm + hitRadiusNorm;
+    return withinX && Math.abs(target.y - anchor.y) <= hitRadiusNorm * 1.6;
   }
   if (stroke.points.length >= 2 && stroke.tool === 'RECT') {
     return isRectHit(stroke.points[0], stroke.points[1], target, hitRadiusNorm);
   }
   if (stroke.points.length >= 2 && stroke.tool === 'CIRCLE') {
     return isCircleHit(stroke.points[0], stroke.points[1], target, hitRadiusNorm);
+  }
+  if (stroke.points.length >= 2 && stroke.tool === 'CIRCLE_CENTER') {
+    return isCircleCenterHit(stroke.points[0], stroke.points[1], target, hitRadiusNorm, aspectRatio);
+  }
+  if (stroke.points.length === 3 && stroke.tool === 'TRIANGLE') {
+    const [p0, p1, p2] = stroke.points;
+    return (
+      distancePointToSegment(target, p0, p1) <= hitRadiusNorm ||
+      distancePointToSegment(target, p1, p2) <= hitRadiusNorm ||
+      distancePointToSegment(target, p2, p0) <= hitRadiusNorm
+    );
+  }
+  if (stroke.tool === 'GEO_MARK') {
+    const anchor = stroke.points[0];
+    return Math.hypot((target.x - anchor.x) * aspectRatio, target.y - anchor.y) <= Math.max(hitRadiusNorm, 0.055);
   }
   if (stroke.points.length === 1) {
     const p = stroke.points[0];
@@ -171,9 +236,10 @@ export function findHitStrokeId(
   strokes: BoardStroke[],
   targetPoint: NormalizedPoint,
   hitRadiusNorm = 0.025,
+  aspectRatio = 1,
 ): string | null {
   for (let i = strokes.length - 1; i >= 0; i -= 1) {
-    if (isStrokeHit(strokes[i], targetPoint, hitRadiusNorm)) {
+    if (isStrokeHit(strokes[i], targetPoint, hitRadiusNorm, aspectRatio)) {
       return strokes[i].id;
     }
   }

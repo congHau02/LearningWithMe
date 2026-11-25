@@ -29,9 +29,15 @@ export function HomeworkDeckPanel({
   const tool = useTableStore((s) => s.boardTool);
   const color = useTableStore((s) => s.boardColor);
   const lineWidth = useTableStore((s) => s.boardLineWidth);
+  const geoMarkType = useTableStore((s) => s.boardGeoMarkType);
+  const snapEnabled = useTableStore((s) => s.boardSnapEnabled);
+  const vertexLetter = useTableStore((s) => s.boardVertexLetter);
   const setTool = useTableStore((s) => s.setBoardTool);
   const setColor = useTableStore((s) => s.setBoardColor);
   const setLineWidth = useTableStore((s) => s.setBoardLineWidth);
+  const setGeoMarkType = useTableStore((s) => s.setBoardGeoMarkType);
+  const setSnapEnabled = useTableStore((s) => s.setBoardSnapEnabled);
+  const setVertexLetter = useTableStore((s) => s.setBoardVertexLetter);
   const selfUserId = useAuthStore((s) => s.userId);
 
   const shouldClearHiddenTool = clearView && tool !== null && !CLEAR_VIEW_BOARD_TOOLS.has(tool);
@@ -137,7 +143,9 @@ export function HomeworkDeckPanel({
           {canControl ? (
             <HomeworkBoardToolbar
               tool={effectiveTool} color={color} lineWidth={lineWidth} clearView={clearView} canUndo={canUndo} canRedo={canRedo}
+              strokes={activeSlide.strokes ?? []} geoMarkType={geoMarkType} snapEnabled={snapEnabled} vertexLetter={vertexLetter}
               onToolChange={setTool} onColorChange={setColor} onLineWidthChange={setLineWidth}
+              onGeoMarkTypeChange={setGeoMarkType} onSnapToggle={() => setSnapEnabled(!snapEnabled)} onVertexLetterChange={setVertexLetter}
               onUndo={handleUndo} onRedo={handleRedo}
               onClearSlide={() => {
                 clearRedoForSlide(activeSlide.imageId);
@@ -149,7 +157,9 @@ export function HomeworkDeckPanel({
             tableId={tableId} slideId={activeSlide.imageId} imageUrl={activeSlide.url} fileName={activeSlide.fileName}
             strokes={activeSlide.strokes ?? []} canControl={canControl} selfUserId={selfUserId}
             tool={effectiveTool} color={color} lineWidth={lineWidth}
+            geoMarkType={geoMarkType} snapEnabled={snapEnabled} vertexLetter={vertexLetter}
             onStrokeError={setErrorMsg} onNewStrokeCommitted={() => clearRedoForSlide(activeSlide.imageId)}
+            onVertexCommitted={() => setVertexLetter(null)}
           />
         </div>
       ) : (

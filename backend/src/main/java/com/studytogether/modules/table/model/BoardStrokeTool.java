@@ -8,5 +8,9 @@ public enum BoardStrokeTool {
     LINE,
     ARROW,
     RECT,
-    CIRCLE
+    CIRCLE,
+    DASHED_LINE,
+    CIRCLE_CENTER,
+    TRIANGLE,
+    GEO_MARK
 }

@@ -2,7 +2,15 @@ import {
   denormalizeCanvasPoint,
   isGeometricTool,
   type BoardStroke,
+  type NormalizedPoint,
 } from './homeworkCanvasMath';
+import { isVertexLabelText } from './homeworkGeometryMath';
+import {
+  drawCircleCenterStroke,
+  drawDashedLineStroke,
+  drawGeoMarkStroke,
+  drawTriangleStroke,
+} from './homeworkGeoRenderer';
 
 const REFERENCE_CANVAS_WIDTH = 800;
 
@@ -72,6 +80,7 @@ export function renderBoardStrokes(
   width: number,
   height: number,
   draftStroke?: BoardStroke | null,
+  snapPoint?: NormalizedPoint | null,
 ): void {
   ctx.clearRect(0, 0, width, height);
   const scale = width > 0 ? width / REFERENCE_CANVAS_WIDTH : 1;
@@ -88,8 +97,10 @@ export function renderBoardStrokes(
     if (stroke.tool === 'TEXT') {
       const anchor = denormalizeCanvasPoint(stroke.points[0], width, height);
       const fontSize = Math.max(12, Math.round(stroke.lineWidth * scale));
-      ctx.font = `600 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
+      const isVertex = isVertexLabelText(stroke.text);
+      ctx.font = `${isVertex ? '700' : '600'} ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
       ctx.textBaseline = 'middle';
+      ctx.textAlign = isVertex ? 'center' : 'start';
       if (stroke.text) ctx.fillText(stroke.text, anchor.px, anchor.py);
       ctx.restore();
       continue;
@@ -98,6 +109,18 @@ export function renderBoardStrokes(
     ctx.globalAlpha = stroke.tool === 'HIGHLIGHTER' ? 0.35 : 1;
     const baseWidth = stroke.tool === 'HIGHLIGHTER' ? Math.max(stroke.lineWidth, 12) : stroke.lineWidth;
     ctx.lineWidth = Math.max(1.5, baseWidth * scale);
+
+    if (stroke.tool === 'TRIANGLE') {
+      drawTriangleStroke(ctx, stroke.points.map((pt) => denormalizeCanvasPoint(pt, width, height)));
+      ctx.restore();
+      continue;
+    }
+
+    if (stroke.tool === 'GEO_MARK') {
+      drawGeoMarkStroke(ctx, stroke, width, height, scale);
+      ctx.restore();
+      continue;
+    }
 
     if (isGeometricTool(stroke.tool)) {
       if (stroke.points.length >= 2) {
@@ -108,10 +131,14 @@ export function renderBoardStrokes(
           ctx.moveTo(start.px, start.py);
           ctx.lineTo(end.px, end.py);
           ctx.stroke();
+        } else if (stroke.tool === 'DASHED_LINE') {
+          drawDashedLineStroke(ctx, start, end);
         } else if (stroke.tool === 'ARROW') {
           drawArrowStroke(ctx, start, end, scale);
         } else if (stroke.tool === 'RECT') {
           drawRectStroke(ctx, start, end);
+        } else if (stroke.tool === 'CIRCLE_CENTER') {
+          drawCircleCenterStroke(ctx, start, end);
         } else {
           drawCircleStroke(ctx, start, end);
         }
@@ -136,6 +163,17 @@ export function renderBoardStrokes(
       const pt = denormalizeCanvasPoint(stroke.points[i], width, height);
       ctx.lineTo(pt.px, pt.py);
     }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (snapPoint) {
+    const sp = denormalizeCanvasPoint(snapPoint, width, height);
+    ctx.save();
+    ctx.strokeStyle = '#34D399';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sp.px, sp.py, Math.max(5, 6 * scale), 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }

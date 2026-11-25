@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useEphemeralImageUrl } from '../../hooks/useEphemeralImageUrl';
 import { useHomeworkCanvas } from '../../hooks/useHomeworkCanvas';
 import type { BoardStroke, BoardTool } from '../../utils/homeworkCanvasMath';
+import type { GeoMarkSubtype } from '../../utils/homeworkGeometryMath';
 import { HomeworkLaserOverlay } from './HomeworkLaserOverlay';
 import { HomeworkLatexOverlay } from './HomeworkLatexOverlay';
 import { HomeworkLatexPopover } from './HomeworkLatexPopover';
@@ -17,8 +18,12 @@ interface HomeworkAnnotationCanvasProps {
   tool: BoardTool | null;
   color: string;
   lineWidth: number;
+  geoMarkType?: GeoMarkSubtype;
+  snapEnabled?: boolean;
+  vertexLetter?: string | null;
   onStrokeError?: (message: string | null) => void;
   onNewStrokeCommitted?: () => void;
+  onVertexCommitted?: () => void;
 }
 
 export function HomeworkAnnotationCanvas({
@@ -32,8 +37,12 @@ export function HomeworkAnnotationCanvas({
   tool,
   color,
   lineWidth,
+  geoMarkType = 'RIGHT_ANGLE',
+  snapEnabled = false,
+  vertexLetter = null,
   onStrokeError,
   onNewStrokeCommitted,
+  onVertexCommitted,
 }: HomeworkAnnotationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { objectUrl, error: imageError } = useEphemeralImageUrl(imageUrl);
@@ -58,9 +67,13 @@ export function HomeworkAnnotationCanvas({
     tool,
     color,
     lineWidth,
+    geoMarkType,
+    snapEnabled,
+    vertexLetter,
     canvasRef,
     onStrokeError,
     onNewStrokeCommitted,
+    onVertexCommitted,
   });
 
   const isToolActive = canControl && tool !== null;
