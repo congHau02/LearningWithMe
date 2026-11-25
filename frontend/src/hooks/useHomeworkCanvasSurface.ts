@@ -27,8 +27,10 @@ export function useHomeworkCanvasSurface(
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const nextW = Math.max(1, Math.round(rect.width));
-    const nextH = Math.max(1, Math.round(rect.height));
+    const cssW = canvas.clientWidth > 0 ? canvas.clientWidth : rect.width;
+    const cssH = canvas.clientHeight > 0 ? canvas.clientHeight : rect.height;
+    const nextW = Math.max(1, Math.round(cssW));
+    const nextH = Math.max(1, Math.round(cssH));
     if (canvas.width !== nextW || canvas.height !== nextH) {
       canvas.width = nextW;
       canvas.height = nextH;

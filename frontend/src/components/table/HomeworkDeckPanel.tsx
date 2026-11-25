@@ -8,6 +8,7 @@ import type { BoardTool } from '../../utils/homeworkCanvasMath';
 import { CameraIcon, UploadIcon } from '../icons';
 import { HomeworkAnnotationCanvas } from './HomeworkAnnotationCanvas';
 import { CLEAR_VIEW_BOARD_TOOLS, HomeworkBoardToolbar } from './HomeworkBoardToolbar';
+import { HomeworkCropRotateModal } from './HomeworkCropRotateModal';
 import { HomeworkSlideTabs } from './HomeworkSlideTabs';
 import { HomeworkTemplatePicker } from './HomeworkTemplatePicker';
 
@@ -58,6 +59,10 @@ export function HomeworkDeckPanel({
     isUploading,
     errorMsg,
     setErrorMsg,
+    pendingUploadFile,
+    confirmPendingUpload,
+    uploadFullPendingFile,
+    cancelPendingUpload,
     handleFileChange,
     handlePasteEvent,
     handleCreateTemplate,
@@ -171,6 +176,15 @@ export function HomeworkDeckPanel({
             : 'Chưa có trang bài tập nào được chia sẻ tại bàn này.'}
         </div>
       )}
+
+      {pendingUploadFile && canControl ? (
+        <HomeworkCropRotateModal
+          file={pendingUploadFile}
+          onCancel={cancelPendingUpload}
+          onUseFull={(rotationDeg) => void uploadFullPendingFile(rotationDeg)}
+          onConfirm={(rotationDeg, crop) => void confirmPendingUpload(rotationDeg, crop)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   type BoardTool,
   type NormalizedPoint,
 } from '../utils/homeworkCanvasMath';
+import { clientPointToNormalizedSlide, DEFAULT_BOARD_VIEWPORT, type BoardViewportState } from '../utils/homeworkViewportMath';
 import {
   findSnapEndpoint,
   getNextVertexLabel,
@@ -21,10 +22,7 @@ import {
 import { useHomeworkCanvasSurface } from './useHomeworkCanvasSurface';
 import { useLaserThrottle } from './useLaserThrottle';
 
-export interface PendingTextPlacement {
-  point: NormalizedPoint;
-  value: string;
-}
+export interface PendingTextPlacement { point: NormalizedPoint; value: string; }
 
 interface UseHomeworkCanvasOptions {
   tableId: string;
@@ -38,6 +36,8 @@ interface UseHomeworkCanvasOptions {
   geoMarkType?: GeoMarkSubtype;
   snapEnabled?: boolean;
   vertexLetter?: string | null;
+  viewport?: BoardViewportState;
+  stageRef?: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   onStrokeError?: (message: string | null) => void;
   onNewStrokeCommitted?: () => void;
@@ -61,6 +61,8 @@ export function useHomeworkCanvas({
   geoMarkType = 'RIGHT_ANGLE',
   snapEnabled = false,
   vertexLetter = null,
+  viewport = DEFAULT_BOARD_VIEWPORT,
+  stageRef,
   canvasRef,
   onStrokeError,
   onNewStrokeCommitted,
@@ -101,7 +103,13 @@ export function useHomeworkCanvas({
 
   const getPointFromEvent = (e: PointerEvent<HTMLCanvasElement>): NormalizedPoint | null => {
     const canvas = canvasRef.current;
-    return canvas ? normalizeCanvasPoint(e.clientX, e.clientY, canvas.getBoundingClientRect()) : null;
+    if (!canvas) return null;
+    if (viewport.zoom === 1 && viewport.panX === 0 && viewport.panY === 0) {
+      return normalizeCanvasPoint(e.clientX, e.clientY, canvas.getBoundingClientRect());
+    }
+    const stageRect = stageRef?.current?.getBoundingClientRect();
+    const baseRect = stageRect && stageRect.width > 0 && stageRect.height > 0 ? stageRect : canvas.getBoundingClientRect();
+    return clientPointToNormalizedSlide(e.clientX, e.clientY, baseRect, viewport);
   };
 
   const handlePointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -186,12 +194,16 @@ export function useHomeworkCanvas({
     redraw();
   };
 
-  const finishStroke = () => {
-    const draft = draftStrokeRef.current;
+  const clearDraftState = useCallback(() => {
     draftStrokeRef.current = null;
     dragOriginRef.current = null;
     snapIndicatorRef.current = null;
     redraw();
+  }, [redraw]);
+
+  const finishStroke = () => {
+    const draft = draftStrokeRef.current;
+    clearDraftState();
     if (!draft) return;
     if (draft.tool === 'TRIANGLE') {
       const [v0, v1, v2] = draft.points;
@@ -208,6 +220,10 @@ export function useHomeworkCanvas({
     if (draft.points.length > 0) commitStroke(draft);
   };
 
+  const cancelActiveStroke = useCallback(() => {
+    if (draftStrokeRef.current || dragOriginRef.current || snapIndicatorRef.current) clearDraftState();
+  }, [clearDraftState]);
+
   const commitPending = (pending: PendingTextPlacement | null, clear: () => void, annotationTool: 'TEXT' | 'LATEX', minW: number) => {
     if (!pending) return;
     const trimmed = pending.value.trim();
@@ -221,7 +237,7 @@ export function useHomeworkCanvas({
 
   return {
     pendingText, setPendingText, pendingLatex, setPendingLatex,
-    syncCanvasSize, handlePointerDown, handlePointerMove, finishStroke,
+    syncCanvasSize, handlePointerDown, handlePointerMove, finishStroke, cancelActiveStroke,
     commitPendingText: () => commitPending(pendingText, () => setPendingText(null), 'TEXT', 14),
     commitPendingLatex: () => commitPending(pendingLatex, () => setPendingLatex(null), 'LATEX', 16),
   };

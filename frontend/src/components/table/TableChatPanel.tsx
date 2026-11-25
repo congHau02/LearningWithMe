@@ -1,11 +1,11 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { sendTableChatMessage } from '../../services/tableStompClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCurriculumModeStore } from '../../stores/useCurriculumModeStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { applyMathSymbolToElement, getChatMathSnippets } from '../../utils/mathLatex';
-import { ChatIcon } from '../icons';
+import { ChatIcon, LatexSigmaIcon } from '../icons';
 import { MathSymbolQuickBar } from './MathSymbolQuickBar';
 import { TableChatMessageList } from './TableChatMessageList';
 import {
@@ -25,6 +25,7 @@ const TABLE_QUICK_EMOJIS = ['👍', '💡', '🔥', '👏', '❓', '☕'] as con
 
 export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend, fillHeight = false, clearView = false }) => {
   const chatInputRef = useRef<HTMLInputElement | null>(null);
+  const [clearViewMathOpen, setClearViewMathOpen] = useState(false);
   const recentMessages = useTableStore((s) => s.recentMessages);
   const selfUserId = useAuthStore((s) => s.userId);
   const curriculumMode = useCurriculumModeStore((s) => s.curriculumMode);
@@ -72,14 +73,34 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend,
         fillHeight ? 'h-full min-h-0 flex-1' : 'min-h-[27rem] sm:h-[25rem] sm:min-h-[24rem]'
       }`}
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-border bg-background/85 px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-background/85 px-3 py-2">
         <div className="flex items-center gap-2">
           <ChatIcon className="h-4 w-4 text-primary" aria-hidden="true" />
           <h3 className="text-xs font-semibold text-foreground">Table Chat</h3>
         </div>
-        <span className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-          {recentMessages.length}/50
-        </span>
+        <div className="flex items-center gap-1.5">
+          {clearView ? (
+            <button
+              type="button"
+              data-testid="table-chat-math-toggle-btn"
+              aria-expanded={clearViewMathOpen}
+              aria-label="Mở thanh ký hiệu toán"
+              title="Ký hiệu toán"
+              onClick={() => setClearViewMathOpen((prev) => !prev)}
+              className={`inline-flex min-h-[44px] items-center gap-1 rounded-md border px-2 text-xs font-semibold transition-botanical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[30px] ${
+                clearViewMathOpen
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <LatexSigmaIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Toán</span>
+            </button>
+          ) : null}
+          <span className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+            {recentMessages.length}/50
+          </span>
+        </div>
       </div>
 
       <TableChatMessageList
@@ -88,13 +109,13 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend,
         fillHeight={fillHeight}
       />
 
-      <div className="flex shrink-0 items-center justify-between gap-1 border-t border-border bg-background/60 px-2 py-1">
+      <div className="flex shrink-0 items-center justify-between gap-1 overflow-x-auto border-t border-border bg-background/60 px-2 py-1">
         {TABLE_QUICK_EMOJIS.map((emoji) => (
           <button
             key={emoji}
             type="button"
             onClick={() => dispatchMessage(emoji)}
-            className="inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded text-sm transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary sm:min-h-[30px] sm:min-w-[30px]"
+            className="inline-flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded text-sm transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary sm:min-h-[30px] sm:min-w-[30px]"
             aria-label={`Table reaction ${emoji}`}
           >
             {emoji}
@@ -102,7 +123,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend,
         ))}
       </div>
 
-      {!clearView ? (
+      {!clearView || clearViewMathOpen ? (
         <MathSymbolQuickBar
           snippets={getChatMathSnippets(curriculumMode)}
           onInsert={handleInsertMathSymbol}

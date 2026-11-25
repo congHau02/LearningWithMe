@@ -193,8 +193,10 @@ describe('P9-T6 Mobile Direct Camera Capture for Homework Slide Upload', () => {
     const photo = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'IMG_20261117.jpg', {
       type: 'image/jpeg',
     });
+    fireEvent.change(cameraInput, { target: { files: [photo] } });
+    expect(screen.getByTestId('homework-crop-rotate-modal')).toBeInTheDocument();
     await act(async () => {
-      fireEvent.change(cameraInput, { target: { files: [photo] } });
+      fireEvent.click(screen.getByTestId('crop-use-full-btn'));
     });
 
     await waitFor(() => {

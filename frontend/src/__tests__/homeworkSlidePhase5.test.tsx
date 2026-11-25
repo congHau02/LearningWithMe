@@ -184,30 +184,34 @@ describe('P5-T1 Homework Slide Upload, Ctrl+V Paste, WebP Compression & Multi-Sl
     expect(imgFetchCall).toBeDefined();
     expect(new Headers(imgFetchCall![1]?.headers).get('Authorization')).toBe('Bearer jwt-host');
 
-    // File input upload
+    // File input upload -> opens Rotate & Crop modal, confirm via 1-tap full image
     const fileInput = screen.getByTestId('homework-file-input') as HTMLInputElement;
     const pngFile = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'hw.png', { type: 'image/png' });
+    fireEvent.change(fileInput, { target: { files: [pngFile] } });
+    expect(screen.getByTestId('homework-crop-rotate-modal')).toBeInTheDocument();
     await act(async () => {
-      fireEvent.change(fileInput, { target: { files: [pngFile] } });
+      fireEvent.click(screen.getByTestId('crop-use-full-btn'));
     });
 
     await waitFor(() =>
       expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('/homework-image'))).toHaveLength(1),
     );
 
-    // Ctrl+V paste upload
+    // Ctrl+V paste upload -> opens Rotate & Crop modal, confirm upload
     const pastedFile = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'clip.png', { type: 'image/png' });
+    fireEvent.paste(screen.getByTestId('homework-deck-panel'), {
+      clipboardData: {
+        items: [
+          {
+            type: 'image/png',
+            getAsFile: () => pastedFile,
+          },
+        ],
+      },
+    });
+    expect(screen.getByTestId('homework-crop-rotate-modal')).toBeInTheDocument();
     await act(async () => {
-      fireEvent.paste(screen.getByTestId('homework-deck-panel'), {
-        clipboardData: {
-          items: [
-            {
-              type: 'image/png',
-              getAsFile: () => pastedFile,
-            },
-          ],
-        },
-      });
+      fireEvent.click(screen.getByTestId('crop-use-full-btn'));
     });
     await waitFor(() =>
       expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('/homework-image'))).toHaveLength(2),

@@ -102,19 +102,25 @@ describe('P10-T10: Clear View homework board', () => {
     expect(screen.getByTestId('homework-slide-tab-img-1')).toBeInTheDocument();
   });
 
-  it('shows only icon-only Pen, Eraser, Laser, Clear slide (>=44x44 with aria-label & title) in Clear View and keeps full toolbar in full view', () => {
+  it('shows icon-only PEN, LINE, DASHED_LINE, ERASER, LASER, Undo, 3 swatches, and 2-step Clear slide in Clear View while keeping full toolbar in full view', () => {
     seedTableWithSlides(true);
     const { rerender } = render(<HomeworkDeckPanel tableId="table-1" canControl={true} clearView={true} />);
 
     const penBtn = screen.getByTestId('board-tool-PEN');
+    const lineBtn = screen.getByTestId('board-tool-LINE');
+    const dashedBtn = screen.getByTestId('board-tool-DASHED_LINE');
     const eraserBtn = screen.getByTestId('board-tool-ERASER');
     const laserBtn = screen.getByTestId('board-tool-LASER');
+    const undoBtn = screen.getByTestId('board-undo-btn');
     const clearBtn = screen.getByTestId('board-clear-slide-btn');
 
     for (const [btn, expectedName] of [
       [penBtn, 'Bút'],
+      [lineBtn, 'Đoạn thẳng'],
+      [dashedBtn, 'Nét đứt'],
       [eraserBtn, 'Tẩy'],
       [laserBtn, 'Laser'],
+      [undoBtn, 'Hoàn tác nét vẽ của bạn (Ctrl+Z)'],
       [clearBtn, 'Xóa trang'],
     ] as const) {
       expect(btn).toHaveAttribute('aria-label', expectedName);
@@ -126,17 +132,24 @@ describe('P10-T10: Clear View homework board', () => {
       expect(btn.className).not.toContain('sm:min-w-[34px]');
     }
 
+    // 3 high-contrast ink swatches exposed in Clear View
+    expect(screen.getByTestId('board-color-#ef4444')).toBeInTheDocument();
+    expect(screen.getByTestId('board-color-#38bdf8')).toBeInTheDocument();
+    expect(screen.getByTestId('board-color-#22c55e')).toBeInTheDocument();
+    expect(screen.queryByTestId('board-color-#facc15')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('board-color-#f8fafc')).not.toBeInTheDocument();
+
     // Hidden tools & controls in Clear View
-    for (const hiddenTool of ['HIGHLIGHTER', 'LINE', 'ARROW', 'RECT', 'CIRCLE', 'TEXT', 'LATEX']) {
+    for (const hiddenTool of ['HIGHLIGHTER', 'ARROW', 'RECT', 'CIRCLE', 'CIRCLE_CENTER', 'TRIANGLE', 'GEO_MARK', 'VERTEX_LABEL', 'TEXT', 'LATEX']) {
       expect(screen.queryByTestId(`board-tool-${hiddenTool}`)).not.toBeInTheDocument();
     }
-    expect(screen.queryByTestId('board-undo-btn')).not.toBeInTheDocument();
     expect(screen.queryByTestId('board-redo-btn')).not.toBeInTheDocument();
     expect(screen.queryByTestId('board-size-select')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('board-color-#ef4444')).not.toBeInTheDocument();
 
-    // Clear slide still emits CLEAR_SLIDE
+    // Clear slide requires explicit 2-step confirmation before emitting CLEAR_SLIDE
     fireEvent.click(clearBtn);
+    expect(sendBoardDraw).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('board-clear-confirm-btn'));
     expect(sendBoardDraw).toHaveBeenCalledWith('table-1', { slideId: 'img-1', action: 'CLEAR_SLIDE' });
 
     // Full view restores all tools, undo/redo, colors, and size select
@@ -146,7 +159,7 @@ describe('P10-T10: Clear View homework board', () => {
     expect(screen.getByTestId('board-undo-btn')).toBeInTheDocument();
     expect(screen.getByTestId('board-redo-btn')).toBeInTheDocument();
     expect(screen.getByTestId('board-size-select')).toBeInTheDocument();
-    expect(screen.getByTestId('board-color-#ef4444')).toBeInTheDocument();
+    expect(screen.getByTestId('board-color-#facc15')).toBeInTheDocument();
     expect(screen.getByTestId('board-clear-slide-btn').textContent).toContain('Xóa trang');
   });
 

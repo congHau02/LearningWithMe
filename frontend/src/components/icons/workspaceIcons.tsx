@@ -158,3 +158,29 @@ export function TextIcon(props: StudioIconProps) {
   );
 }
 
+export function RotateCwIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+      <path d="M21 3v5h-5" />
+    </StudioIconWrapper>
+  );
+}
+
+export function CropIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M6 2v14a2 2 0 0 0 2 2h14" />
+      <path d="M18 22V8a2 2 0 0 0-2-2H2" />
+    </StudioIconWrapper>
+  );
+}
+
+export function HandPanIcon(props: StudioIconProps) {
+  return (
+    <StudioIconWrapper {...props}>
+      <path d="M18 11V6a2 2 0 0 0-4 0v4M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8l-1.3-1.3a2 2 0 0 0-2.8 2.8l4.6 4.6a4 4 0 0 0 2.8 1.2H14a6 6 0 0 0 6-6v-4a2 2 0 0 0-4 0" />
+    </StudioIconWrapper>
+  );
+}
+

@@ -230,8 +230,10 @@ describe('HomeworkAnnotationCanvas & Board Toolbar (P5-T2)', () => {
       strokeId: addPayload.stroke.id,
     });
 
-    // Click CLEAR_SLIDE -> emits CLEAR_SLIDE
+    // Click CLEAR_SLIDE -> requires 2nd confirmation click before emitting CLEAR_SLIDE
     fireEvent.click(screen.getByTestId('board-clear-slide-btn'));
+    expect(sendBoardDraw).not.toHaveBeenCalledWith('table-1', { slideId: 'img-1', action: 'CLEAR_SLIDE' });
+    fireEvent.click(screen.getByTestId('board-clear-confirm-btn'));
     expect(sendBoardDraw).toHaveBeenCalledWith('table-1', {
       slideId: 'img-1',
       action: 'CLEAR_SLIDE',

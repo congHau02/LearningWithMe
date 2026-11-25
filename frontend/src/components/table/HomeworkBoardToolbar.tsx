@@ -38,7 +38,13 @@ const TOOL_OPTIONS: Array<{ id: BoardTool; label: string; icon: typeof PenIcon }
   { id: 'LASER', label: 'Laser', icon: LaserIcon },
 ];
 
-export const CLEAR_VIEW_BOARD_TOOLS: ReadonlySet<BoardTool> = new Set(['PEN', 'ERASER', 'LASER']);
+export const CLEAR_VIEW_BOARD_TOOLS: ReadonlySet<BoardTool> = new Set([
+  'PEN',
+  'LINE',
+  'DASHED_LINE',
+  'ERASER',
+  'LASER',
+]);
 
 export interface HomeworkBoardToolbarProps {
   tool: BoardTool | null;
