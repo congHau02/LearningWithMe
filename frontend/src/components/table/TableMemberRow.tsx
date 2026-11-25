@@ -3,6 +3,7 @@ import type { VoicePeerState } from '../../stores/useVoiceStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
 import { CheckIcon, CrownIcon, ZapIcon } from '../icons';
 import { SpeakingEqualizer } from './SpeakingEqualizer';
+import { TableMemberRoleActions } from './TableMemberRoleActions';
 import { VOICE_CONNECTION_BADGES } from './voiceControlMeta';
 
 const ROLE_BADGES = {
@@ -122,36 +123,7 @@ export function TableMemberRow({
         </span>
 
         {isSelfHost && !isSelf ? (
-          <>
-            {member.tableRole === 'MEMBER' ? (
-              <button
-                type="button"
-                data-testid={`grant-cohost-btn-${member.userId}`}
-                onClick={() => onAction('GRANT', member.userId)}
-                className="rounded border border-primary/40 bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/25"
-              >
-                Cấp Co-Host
-              </button>
-            ) : null}
-            {member.tableRole === 'CO_HOST' ? (
-              <button
-                type="button"
-                data-testid={`revoke-cohost-btn-${member.userId}`}
-                onClick={() => onAction('REVOKE', member.userId)}
-                className="rounded border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-[10px] font-medium text-rose-300 hover:bg-rose-500/25"
-              >
-                Thu hồi Co-Host
-              </button>
-            ) : null}
-            <button
-              type="button"
-              data-testid={`transfer-host-btn-${member.userId}`}
-              onClick={() => onAction('TRANSFER_HOST', member.userId)}
-              className="rounded border border-primary/50 bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/30"
-            >
-              Chuyển Trưởng bàn
-            </button>
-          </>
+          <TableMemberRoleActions member={member} onAction={onAction} />
         ) : null}
       </div>
     </li>

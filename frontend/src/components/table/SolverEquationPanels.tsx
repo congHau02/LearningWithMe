@@ -1,64 +1,16 @@
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { solveCubic, solveLinearSystem, solveQuadratic } from '../../utils/mathAlgebraSolver';
-import { CopyIcon, ScratchpadIcon } from '../icons';
+import {
+  parseSolverNum,
+  SOLVER_ACTION_FOCUS,
+  SOLVER_INPUT_CLASS,
+  SolverOutputActions,
+  stopSolverEsc,
+  type SolverOutput,
+  type SolverSubPanelProps,
+} from './SolverPrimitives';
 
-export interface SolverOutput {
-  summary: string;
-  latex: string;
-  isError?: boolean;
-}
-
-export const SOLVER_INPUT_CLASS =
-  'w-full rounded-md border border-border bg-background px-2.5 py-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary';
-
-export const stopSolverEsc = (e: KeyboardEvent<HTMLInputElement>) => {
-  if (e.key === 'Escape') { e.stopPropagation(); e.currentTarget.blur(); }
-};
-
-const ACTION_FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-botanical';
-
-function parseNum(raw: string): number {
-  const n = Number(raw.trim());
-  return Number.isFinite(n) ? n : 0;
-}
-
-export function SolverOutputActions({
-  output, canControl, copyTestId, insertTestId, onCopy, onInsert,
-}: {
-  output: SolverOutput; canControl: boolean; copyTestId: string; insertTestId: string;
-  onCopy: (latex: string) => void; onInsert: (out: SolverOutput) => void;
-}) {
-  const disabled = Boolean(output.isError || !output.latex);
-  return (
-    <div className="flex items-center gap-1.5">
-      <button
-        type="button"
-        data-testid={copyTestId}
-        aria-label="Sao chép kết quả"
-        disabled={disabled}
-        onClick={() => onCopy(output.latex)}
-        className={`inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-md border border-border bg-background px-2 text-muted-foreground hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-[34px] sm:min-w-[34px] ${ACTION_FOCUS}`}
-      >
-        <CopyIcon className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-testid={insertTestId}
-        disabled={disabled || !canControl}
-        title={canControl ? 'Chèn kết quả vào Sổ nháp bước giải' : 'Chỉ Host / Co-Host được chèn vào Sổ nháp'}
-        onClick={() => onInsert(output)}
-        className={`inline-flex min-h-[44px] cursor-pointer items-center gap-1 rounded-md border border-primary/50 bg-primary/15 px-2.5 text-[11px] font-semibold text-primary hover:bg-primary/25 disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-[34px] ${ACTION_FOCUS}`}
-      >
-        <ScratchpadIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        <span>Chèn vào Sổ nháp</span>
-      </button>
-    </div>
-  );
-}
-
-interface SubPanelProps { canControl: boolean; onCopy: (latex: string) => void; onInsert: (out: SolverOutput) => void; }
-
-export function PolynomialSolverPanel({ canControl, onCopy, onInsert }: SubPanelProps) {
+export function PolynomialSolverPanel({ canControl, onCopy, onInsert }: SolverSubPanelProps) {
   const [degree, setDegree] = useState<2 | 3>(2);
   const [a, setA] = useState('1');
   const [b, setB] = useState('-5');
@@ -66,9 +18,9 @@ export function PolynomialSolverPanel({ canControl, onCopy, onInsert }: SubPanel
   const [d, setD] = useState('-2');
 
   const result = useMemo<SolverOutput>(() => {
-    const na = parseNum(a);
-    const nb = parseNum(b);
-    const nc = parseNum(c);
+    const na = parseSolverNum(a);
+    const nb = parseSolverNum(b);
+    const nc = parseSolverNum(c);
     if (degree === 2) {
       const sol = solveQuadratic(na, nb, nc);
       return {
@@ -76,7 +28,7 @@ export function PolynomialSolverPanel({ canControl, onCopy, onInsert }: SubPanel
         latex: `$$${na}x^2 ${nb >= 0 ? '+' : ''} ${nb}x ${nc >= 0 ? '+' : ''} ${nc} = 0 \\implies ${sol.latex}$$`,
       };
     }
-    const nd = parseNum(d);
+    const nd = parseSolverNum(d);
     const sol = solveCubic(na, nb, nc, nd);
     return {
       summary: sol.summary,
@@ -94,7 +46,7 @@ export function PolynomialSolverPanel({ canControl, onCopy, onInsert }: SubPanel
             data-testid={`solver-poly-deg-${deg}`}
             aria-pressed={degree === deg}
             onClick={() => setDegree(deg)}
-            className={`min-h-[44px] cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium sm:min-h-[34px] ${ACTION_FOCUS} ${
+            className={`min-h-[44px] cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium sm:min-h-[34px] ${SOLVER_ACTION_FOCUS} ${
               degree === deg ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -127,7 +79,7 @@ export function PolynomialSolverPanel({ canControl, onCopy, onInsert }: SubPanel
 
 interface LinearRow { coeffs: [string, string, string]; rhs: string; }
 
-export function LinearSystemSolverPanel({ canControl, onCopy, onInsert }: SubPanelProps) {
+export function LinearSystemSolverPanel({ canControl, onCopy, onInsert }: SolverSubPanelProps) {
   const [size, setSize] = useState<2 | 3>(2);
   const [rows, setRows] = useState<LinearRow[]>([
     { coeffs: ['2', '1', '0'], rhs: '5' },
@@ -143,7 +95,7 @@ export function LinearSystemSolverPanel({ canControl, onCopy, onInsert }: SubPan
 
   const result = useMemo<SolverOutput>(() => {
     const active = rows.slice(0, size);
-    const sol = solveLinearSystem(active.map((r) => r.coeffs.slice(0, size).map(parseNum)), active.map((r) => parseNum(r.rhs)));
+    const sol = solveLinearSystem(active.map((r) => r.coeffs.slice(0, size).map(parseSolverNum)), active.map((r) => parseSolverNum(r.rhs)));
     return { summary: sol.summary, latex: `$$\\text{Hệ } ${size}\\times${size} \\implies ${sol.latex}$$` };
   }, [rows, size]);
 
@@ -159,7 +111,7 @@ export function LinearSystemSolverPanel({ canControl, onCopy, onInsert }: SubPan
             data-testid={`solver-linear-size-${n}`}
             aria-pressed={size === n}
             onClick={() => setSize(n)}
-            className={`min-h-[44px] cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium sm:min-h-[34px] ${ACTION_FOCUS} ${
+            className={`min-h-[44px] cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium sm:min-h-[34px] ${SOLVER_ACTION_FOCUS} ${
               size === n ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'
             }`}
           >
