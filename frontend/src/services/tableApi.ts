@@ -4,13 +4,6 @@ import type { BoardDrawAction, BoardStroke } from '../utils/homeworkCanvasMath';
 
 export type TableRole = 'TABLE_HOST' | 'CO_HOST' | 'MEMBER';
 export type HomeworkSlideAction = 'SELECT' | 'DELETE';
-export type QuickCheckSignal = 'UNDERSTOOD' | 'SLOW_DOWN' | 'RAISE_HAND';
-export type QuickCheckAction = QuickCheckSignal | 'CLEAR' | 'RESET_ALL';
-
-export interface QuickCheckSignalState {
-  signal: QuickCheckSignal;
-  updatedAtEpoch: number;
-}
 export type VoiceSignalType =
   | 'VOICE_JOIN'
   | 'VOICE_LEAVE'
@@ -101,7 +94,6 @@ export interface TableWorkspaceSnapshot {
   homeworkSlides?: HomeworkSlide[];
   activeSlideId?: string | null;
   scratchpadState?: TableScratchpadState | null;
-  quickCheckSignals?: Record<string, QuickCheckSignalState>;
 }
 
 export interface LaserPointerPayload {
@@ -125,8 +117,7 @@ export interface TableWorkspaceEvent {
     | 'BOARD_DRAW'
     | 'LASER_MOVE'
     | 'VOICE_SIGNAL'
-    | 'UPDATE_SCRATCHPAD'
-    | 'QUICK_CHECK_UPDATED';
+    | 'UPDATE_SCRATCHPAD';
   roomId?: string | null;
   tableId: string;
   actorUserId: string;
@@ -150,7 +141,6 @@ export interface TableWorkspaceEvent {
   laserPointer?: LaserPointerPayload | null;
   voiceSignal?: VoiceSignalPayload | null;
   scratchpadState?: TableScratchpadState | null;
-  quickCheckSignals?: Record<string, QuickCheckSignalState>;
   timestampEpoch: number;
 }
 

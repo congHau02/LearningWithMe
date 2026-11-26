@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import type { HomeworkSlide, PermissionRequestNotification, QuickCheckSignalState, TableChatMessage, TableMemberDto, TableScratchpadState, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
+import type { HomeworkSlide, PermissionRequestNotification, TableChatMessage, TableMemberDto, TableScratchpadState, TableWorkspaceEvent, TableWorkspaceSnapshot } from '../services/tableApi';
 import type { RoomEvent } from '../services/roomApi';
 import type { BoardTool } from '../utils/homeworkCanvasMath';
 import type { GeoMarkSubtype } from '../utils/homeworkGeometryMath';
-import { reduceRoomSeatEvent, reduceWorkspaceEvent, remapQuickCheckSignals, type LaserPointerState } from './tableStoreReducers';
+import { reduceRoomSeatEvent, reduceWorkspaceEvent, type LaserPointerState } from './tableStoreReducers';
 
 export interface VideoSyncState { videoId: string | null; isPlaying: boolean; currentTime: number; lastUpdatedEpoch: number; }
 export type { LaserPointerState };
@@ -25,7 +25,6 @@ export interface TableWorkspaceState {
   homeworkSlides: HomeworkSlide[];
   activeSlideId: string | null;
   scratchpadState: TableScratchpadState;
-  quickCheckSignals: Record<string, QuickCheckSignalState>;
   laserPointers: Record<string, LaserPointerState>;
   isWorkspaceMinimized: boolean;
   unreadChatCount: number;
@@ -67,7 +66,6 @@ const INITIAL_TABLE_STATE = {
   members: [] as TableMemberDto[], pendingPermissionRequests: [] as PermissionRequestNotification[],
   permissionToast: null as string | null, videoState: DEFAULT_VIDEO_STATE, recentMessages: [] as TableChatMessage[],
   homeworkSlides: [] as HomeworkSlide[], activeSlideId: null as string | null, scratchpadState: EMPTY_SCRATCHPAD_STATE,
-  quickCheckSignals: {} as Record<string, QuickCheckSignalState>,
   laserPointers: {} as Record<string, LaserPointerState>, isWorkspaceMinimized: false, unreadChatCount: 0,
   boardTool: null as BoardTool | null, boardColor: '#ef4444', boardLineWidth: 3,
   boardGeoMarkType: 'RIGHT_ANGLE' as GeoMarkSubtype, boardSnapEnabled: false, boardVertexLetter: null as string | null,
@@ -95,7 +93,6 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
         recentMessages: (snapshot.recentMessages ?? []).slice(-50),
         homeworkSlides: snapshot.homeworkSlides ?? [], activeSlideId: snapshot.activeSlideId ?? null,
         scratchpadState: snapshot.scratchpadState ?? EMPTY_SCRATCHPAD_STATE,
-        quickCheckSignals: snapshot.quickCheckSignals ?? {},
       };
     }),
   applyWorkspaceEvent: (event, selfUserId) => set((s) => reduceWorkspaceEvent(s, event, selfUserId)),
@@ -131,7 +128,6 @@ export const useTableStore = create<TableWorkspaceState>((set) => ({
       return {
         hostUserId: nextHost, coHostUserIds: nextCoHosts,
         members: s.members.map((m) => (m.userId === oldUserId ? { ...m, userId: newUserId } : m)),
-        quickCheckSignals: remapQuickCheckSignals(s.quickCheckSignals, oldUserId, newUserId),
       };
     }),
   setWorkspaceMinimized: (minimized) =>

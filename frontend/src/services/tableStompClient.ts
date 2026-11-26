@@ -1,5 +1,5 @@
 import { getActiveRoomStompSession } from './roomStompClient';
-import type { HomeworkSlideAction, QuickCheckAction, VoiceSignalRequest } from './tableApi';
+import type { HomeworkSlideAction, VoiceSignalRequest } from './tableApi';
 import { useTableStore } from '../stores/useTableStore';
 import { validateBoardStroke, type BoardDrawAction, type BoardStroke, type NormalizedPoint } from '../utils/homeworkCanvasMath';
 
@@ -85,12 +85,5 @@ export function sendTableScratchpadUpdate(tableId: string, content: string): boo
   const session = getActiveRoomStompSession();
   if (!session || typeof session.sendScratchpadUpdate !== 'function') return false;
   session.sendScratchpadUpdate(tableId, content);
-  return true;
-}
-
-export function sendTableQuickCheck(tableId: string, action: QuickCheckAction): boolean {
-  const session = getActiveRoomStompSession();
-  if (!session || typeof session.sendQuickCheck !== 'function') return false;
-  session.sendQuickCheck(tableId, action);
   return true;
 }

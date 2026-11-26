@@ -128,10 +128,6 @@ _Avoid_: Cursor, Highlighter
 Biển báo trạng thái gắn trên một Table kèm chủ đề môn học nhằm thông báo cho những người đang ở trạng thái Free Roam trong Room biết bàn này cần người vào giảng giúp.
 _Avoid_: Help Ticket, Alert, Question Flag
 
-**Quick Check (Phản hồi nhanh tại bàn)**:
-Tín hiệu trạng thái học tập ngắn gọn một chạm của người đang `SEATED` (đã hiểu bài, cần giảng chậm lại, hoặc giơ tay xin nói) hiển thị tức thời cho cả Table mà không làm trôi luồng thảo luận.
-_Avoid_: Poll, Quiz, Raise Hand Queue, Chat Reaction
-
 **Study Pack (Vở bài giảng xuất file)**:
 Bản tổng hợp tài liệu buổi học được kết xuất trực tiếp về thiết bị của người học (gộp các Homework Slide kèm toàn bộ Stroke và các bước giải trong Math Scratchpad) trước khi dữ liệu tạm của Table tự hủy khi bàn trống.
 _Avoid_: Cloud Notebook, Saved Session, Lesson Archive, Board Backup

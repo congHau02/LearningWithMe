@@ -1,8 +1,7 @@
-import type { PermissionAction, QuickCheckSignalState, TableMemberDto } from '../../services/tableApi';
+import type { PermissionAction, TableMemberDto } from '../../services/tableApi';
 import type { VoicePeerState } from '../../stores/useVoiceStore';
 import { StarterAvatarPortrait } from '../auth/starterAvatars';
 import { CheckIcon, CrownIcon, ZapIcon } from '../icons';
-import { QUICK_CHECK_META_MAP } from './quickCheckMeta';
 import { SpeakingEqualizer } from './SpeakingEqualizer';
 import { TableMemberRoleActions } from './TableMemberRoleActions';
 import { VOICE_CONNECTION_BADGES } from './voiceControlMeta';
@@ -23,7 +22,6 @@ export interface TableMemberRowProps {
   isSelfMuted: boolean;
   isSelfSpeaking: boolean;
   peerVoice?: VoicePeerState;
-  quickCheck?: QuickCheckSignalState | null;
   onAction: (action: PermissionAction, targetUserId: string) => void;
 }
 
@@ -37,11 +35,9 @@ export function TableMemberRow({
   isSelfMuted,
   isSelfSpeaking,
   peerVoice,
-  quickCheck,
   onAction,
 }: TableMemberRowProps) {
   const badge = ROLE_BADGES[member.tableRole];
-  const quickCheckMeta = quickCheck?.signal ? QUICK_CHECK_META_MAP[quickCheck.signal] : null;
   const memberMuted = isSelf ? isSelfMuted : (peerVoice?.muted ?? true);
   const memberSpeaking = isSelf
     ? inVoice && isSelfSpeaking && !isSelfMuted
@@ -104,18 +100,6 @@ export function TableMemberRow({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <span
-          data-testid={`member-quick-check-${member.userId}`}
-          data-signal={quickCheck?.signal ?? 'NONE'}
-          aria-hidden={quickCheckMeta ? undefined : true}
-          className={`inline-flex min-h-[22px] min-w-[6.75rem] items-center justify-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
-            quickCheckMeta
-              ? quickCheckMeta.badgeClass
-              : 'select-none border-transparent bg-transparent text-transparent'
-          }`}
-        >
-          {quickCheckMeta ? quickCheckMeta.shortLabel : 'Chờ phản hồi'}
-        </span>
         <span
           data-testid={`voice-mute-badge-${member.userId}`}
           className={`min-w-[4.25rem] rounded border px-1.5 py-0.5 text-center text-[10px] font-semibold ${

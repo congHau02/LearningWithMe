@@ -58,7 +58,6 @@ elseif not hostSeated then
     parsedTable.hostUserId = userId
     parsedTable.isTableLocked = false
     parsedTable.inviteCode = cjson.null
-    parsedTable.quickCheckSignals = cjson.null
     local encoded = cjson.encode(parsedTable)
     encoded = string.gsub(encoded, '"coHostUserIds":{}', '"coHostUserIds":[]')
     encoded = string.gsub(encoded, '"homeworkSlides":{}', '"homeworkSlides":[]')

@@ -1,7 +1,7 @@
 import type { BoardDrawAction, BoardStroke, NormalizedPoint } from '../utils/homeworkCanvasMath';
 import type { PlayerMoveRequest } from './roomApi';
 import type { StompTransport } from './roomStompTransport';
-import type { HomeworkSlideAction, QuickCheckAction, VoiceSignalRequest } from './tableApi';
+import type { HomeworkSlideAction, VoiceSignalRequest } from './tableApi';
 
 /**
  * Outbound STOMP frame publishers shared by room and table sessions.
@@ -79,9 +79,5 @@ export abstract class RoomStompPublishers {
 
   sendScratchpadUpdate(tableId: string, content: string): void {
     this.publishJson(`/app/table/${tableId}/scratchpad.update`, { content });
-  }
-
-  sendQuickCheck(tableId: string, action: QuickCheckAction): void {
-    this.publishJson(`/app/table/${tableId}/quick-check`, { action });
   }
 }

@@ -2,7 +2,6 @@ package com.studytogether.modules.table.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import java.util.Map;
 
 public record TableWorkspaceEvent(
         String type,
@@ -29,13 +28,11 @@ public record TableWorkspaceEvent(
         TableScratchpadState scratchpadState,
         long timestampEpoch,
         @JsonProperty("isTableLocked") boolean isTableLocked,
-        String inviteCode,
-        Map<String, QuickCheckSignalState> quickCheckSignals
+        String inviteCode
 ) {
     public TableWorkspaceEvent {
         coHostUserIds = coHostUserIds == null ? List.of() : List.copyOf(coHostUserIds);
         homeworkSlides = homeworkSlides == null ? List.of() : List.copyOf(homeworkSlides);
-        quickCheckSignals = quickCheckSignals == null ? Map.of() : Map.copyOf(quickCheckSignals);
     }
 
     public TableWorkspaceEvent(
@@ -48,14 +45,13 @@ public record TableWorkspaceEvent(
     ) {
         this(type, roomId, tableId, actorUserId, targetUserId, requesterNickname, action, hostUserId, coHostUserIds,
                 isFreeCollab, videoState, sosBanner, chatMessage, homeworkSlides, activeSlideId, slideId, drawAction,
-                stroke, erasedStrokeId, laserPointer, voiceSignal, scratchpadState, timestampEpoch, false, null,
-                Map.of());
+                stroke, erasedStrokeId, laserPointer, voiceSignal, scratchpadState, timestampEpoch, false, null);
     }
 
     public TableWorkspaceEvent withRoomId(String nextRoomId) {
         return new TableWorkspaceEvent(type, nextRoomId, tableId, actorUserId, targetUserId, requesterNickname,
                 action, hostUserId, coHostUserIds, isFreeCollab, videoState, sosBanner, chatMessage,
                 homeworkSlides, activeSlideId, slideId, drawAction, stroke, erasedStrokeId, laserPointer, voiceSignal,
-                scratchpadState, timestampEpoch, isTableLocked, inviteCode, quickCheckSignals);
+                scratchpadState, timestampEpoch, isTableLocked, inviteCode);
     }
 }

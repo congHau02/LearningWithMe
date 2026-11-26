@@ -71,8 +71,7 @@ public class TableWorkspaceService {
                 tableState.activeSlideId(),
                 tableState.scratchpadState(),
                 tableState.isTableLocked(),
-                tableState.inviteCode(),
-                tableState.quickCheckSignals()
+                tableState.inviteCode()
         );
     }
 
