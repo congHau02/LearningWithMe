@@ -225,7 +225,7 @@ export function buildDynamicStudyCafeMapLabels(options: {
       const b = computeTileBounds(table.obstacleTiles);
       items.push({
         id: `lock-${table.tableId}`, testId: `map-label-lock-${table.tableId}`, kind: 'table-lock',
-        text: '🔒 Đã khóa', worldX: b.minX * ts + 64, worldY: b.minY * ts + 1,
+        text: 'Đã khóa', worldX: b.minX * ts + 64, worldY: b.minY * ts + 1,
         originY: 'center', alpha: 1, scale: 1,
       });
     }

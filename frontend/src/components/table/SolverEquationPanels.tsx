@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { solveCubic, solveLinearSystem, solveQuadratic } from '../../utils/mathAlgebraSolver';
+import { parseMathInput } from '../../utils/mathExact';
 import {
-  parseSolverNum,
+  formatCoeffTermLatex,
+  INVALID_COEFF_ERROR,
   SOLVER_ACTION_FOCUS,
   SOLVER_INPUT_CLASS,
   SolverOutputActions,
@@ -19,21 +21,22 @@ export function PolynomialSolverPanel({ canControl, curriculumMode = 'THCS', onC
   const effectiveDegree: 2 | 3 = curriculumMode === 'THCS' ? 2 : degree;
 
   const result = useMemo<SolverOutput>(() => {
-    const na = parseSolverNum(a);
-    const nb = parseSolverNum(b);
-    const nc = parseSolverNum(c);
+    const na = parseMathInput(a);
+    const nb = parseMathInput(b);
+    const nc = parseMathInput(c);
+    const nd = effectiveDegree === 3 ? parseMathInput(d) : 0;
+    if (na === null || nb === null || nc === null || nd === null) return INVALID_COEFF_ERROR;
     if (effectiveDegree === 2) {
       const sol = solveQuadratic(a, b, c);
       return {
         summary: sol.summary,
-        latex: `$$${na}x^2 ${nb >= 0 ? '+' : ''} ${nb}x ${nc >= 0 ? '+' : ''} ${nc} = 0 \\implies ${sol.latex}$$`,
+        latex: `$$${formatCoeffTermLatex(a, true)}x^2 ${formatCoeffTermLatex(b)}x ${formatCoeffTermLatex(c)} = 0 \\implies ${sol.latex}$$`,
       };
     }
-    const nd = parseSolverNum(d);
     const sol = solveCubic(na, nb, nc, nd);
     return {
       summary: sol.summary,
-      latex: `$$${na}x^3 ${nb >= 0 ? '+' : ''} ${nb}x^2 ${nc >= 0 ? '+' : ''} ${nc}x ${nd >= 0 ? '+' : ''} ${nd} = 0 \\implies ${sol.latex}$$`,
+      latex: `$$${formatCoeffTermLatex(a, true)}x^3 ${formatCoeffTermLatex(b)}x^2 ${formatCoeffTermLatex(c)}x ${formatCoeffTermLatex(d)} = 0 \\implies ${sol.latex}$$`,
     };
   }, [a, b, c, d, effectiveDegree]);
 
@@ -99,6 +102,10 @@ export function LinearSystemSolverPanel({ canControl, curriculumMode = 'THCS', o
 
   const result = useMemo<SolverOutput>(() => {
     const active = rows.slice(0, effectiveSize);
+    const hasInvalid = active.some(
+      (r) => parseMathInput(r.rhs) === null || r.coeffs.slice(0, effectiveSize).some((v) => parseMathInput(v) === null),
+    );
+    if (hasInvalid) return INVALID_COEFF_ERROR;
     const sol = solveLinearSystem(active.map((r) => r.coeffs.slice(0, effectiveSize)), active.map((r) => r.rhs));
     return { summary: sol.summary, latex: `$$\\text{Hệ } ${effectiveSize}\\times${effectiveSize} \\implies ${sol.latex}$$` };
   }, [rows, effectiveSize]);

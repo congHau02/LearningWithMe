@@ -94,6 +94,7 @@ describe('P12-T6 Slice 4: Live Comprehension Quick Check UI & Zero-CLS', () => {
     expect(memberBadge).toHaveAttribute('data-signal', 'NONE');
 
     const headerSummary = screen.getByTestId('header-quick-check-summary');
+    expect(headerSummary).toHaveAttribute('role', 'status');
     expect(headerSummary.className).toContain('min-w-[');
 
     act(() => {

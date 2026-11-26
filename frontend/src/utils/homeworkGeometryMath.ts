@@ -1,4 +1,4 @@
-import type { BoardStroke, BoardTool, NormalizedPoint } from './homeworkCanvasMath';
+import { isGeometricTool, type BoardStroke, type BoardTool, type NormalizedPoint } from './homeworkCanvasMath';
 
 export type GeoMarkSubtype = 'RIGHT_ANGLE' | 'ANGLE_ARC_1' | 'ANGLE_ARC_2' | 'TICK_1' | 'TICK_2';
 
@@ -7,10 +7,8 @@ export const ALLOWED_GEO_MARKS = new Set<GeoMarkSubtype>([
 ]);
 
 export const GEO_MARK_OPTIONS: Array<{ id: GeoMarkSubtype; label: string; shortLabel: string }> = [
-  { id: 'RIGHT_ANGLE', label: 'Ký hiệu góc vuông (⊥)', shortLabel: '⊥ Vuông' },
-  { id: 'ANGLE_ARC_1', label: 'Ký hiệu 1 cung góc', shortLabel: '∠ 1 cung' },
-  { id: 'ANGLE_ARC_2', label: 'Ký hiệu 2 cung góc', shortLabel: '∠ 2 cung' },
-  { id: 'TICK_1', label: 'Ký hiệu 1 gạch đoạn bằng', shortLabel: '| 1 gạch' },
+  { id: 'RIGHT_ANGLE', label: 'Ký hiệu góc vuông (⊥)', shortLabel: '⊥ Vuông' }, { id: 'ANGLE_ARC_1', label: 'Ký hiệu 1 cung góc', shortLabel: '∠ 1 cung' },
+  { id: 'ANGLE_ARC_2', label: 'Ký hiệu 2 cung góc', shortLabel: '∠ 2 cung' }, { id: 'TICK_1', label: 'Ký hiệu 1 gạch đoạn bằng', shortLabel: '| 1 gạch' },
   { id: 'TICK_2', label: 'Ký hiệu 2 gạch đoạn bằng', shortLabel: '‖ 2 gạch' },
 ];
 
@@ -24,10 +22,7 @@ export function isVertexLabelText(text: string | null | undefined): boolean {
 }
 
 export function isDragGeometryTool(tool: BoardTool | null): boolean {
-  return (
-    tool === 'LINE' || tool === 'ARROW' || tool === 'RECT' || tool === 'CIRCLE' ||
-    tool === 'DASHED_LINE' || tool === 'CIRCLE_CENTER' || tool === 'TRIANGLE'
-  );
+  return tool !== null && (isGeometricTool(tool) || tool === 'TRIANGLE');
 }
 
 export function isSnapEndpointTool(tool: BoardTool | null): boolean {
@@ -171,49 +166,52 @@ function collectSegments(strokes: BoardStroke[]): Segment2D[] {
   return segs;
 }
 
+function projectOnSeg(pt: NormalizedPoint, seg: Segment2D, aspect: number, snapMid = false) {
+  const dx = (seg.b.x - seg.a.x) * aspect;
+  const dy = seg.b.y - seg.a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-6) return null;
+  let t = ((pt.x - seg.a.x) * aspect * dx + (pt.y - seg.a.y) * dy) / lenSq;
+  if (snapMid) {
+    t = Math.max(0.08, Math.min(0.92, t));
+    if (t >= 0.42 && t <= 0.58) t = 0.5;
+  }
+  const proj = { x: seg.a.x + (t * dx) / aspect, y: seg.a.y + t * dy };
+  return { t, proj, dist: Math.hypot((pt.x - proj.x) * aspect, pt.y - proj.y) };
+}
+
 export function resolveGeoMarkPoints(
-  subtype: GeoMarkSubtype,
-  tapPoint: NormalizedPoint,
-  strokes: BoardStroke[],
-  aspectRatio = 1,
+  subtype: GeoMarkSubtype, tapPoint: NormalizedPoint, strokes: BoardStroke[], aspectRatio = 1,
 ): NormalizedPoint[] {
   const aspect = safeAspect(aspectRatio);
   const segments = collectSegments(strokes);
-
   if (subtype === 'TICK_1' || subtype === 'TICK_2') {
-    let bestSeg: Segment2D | null = null;
-    let bestPt = tapPoint;
-    let bestDist = 0.045;
+    let bestSeg: Segment2D | null = null, bestPt = tapPoint, bestDist = 0.045;
     for (const seg of segments) {
-      const dx = (seg.b.x - seg.a.x) * aspect;
-      const dy = seg.b.y - seg.a.y;
-      const lenSq = dx * dx + dy * dy;
-      if (lenSq < 1e-6) continue;
-      let t = ((tapPoint.x - seg.a.x) * aspect * dx + (tapPoint.y - seg.a.y) * dy) / lenSq;
-      t = Math.max(0.08, Math.min(0.92, t));
-      if (t >= 0.42 && t <= 0.58) t = 0.5;
-      const proj = { x: seg.a.x + (t * dx) / aspect, y: seg.a.y + t * dy };
-      const dist = Math.hypot((tapPoint.x - proj.x) * aspect, tapPoint.y - proj.y);
-      if (dist <= bestDist) {
-        bestDist = dist;
-        bestSeg = seg;
-        bestPt = proj;
-      }
+      const hit = projectOnSeg(tapPoint, seg, aspect, true);
+      if (hit && hit.dist <= bestDist) { bestDist = hit.dist; bestSeg = seg; bestPt = hit.proj; }
     }
-    if (bestSeg) return [bestPt, bestSeg.b];
-    return [tapPoint, { x: clamp01(tapPoint.x + 0.04), y: tapPoint.y }];
+    return bestSeg ? [bestPt, bestSeg.b] : [tapPoint, { x: clamp01(tapPoint.x + 0.04), y: tapPoint.y }];
   }
-
   const snapVertex = findSnapEndpoint(tapPoint, strokes, { thresholdNorm: 0.045, aspectRatio: aspect });
   if (snapVertex) {
+    const tx = (tapPoint.x - snapVertex.x) * aspect, ty = tapPoint.y - snapVertex.y;
     const arms: NormalizedPoint[] = [];
     for (const seg of segments) {
-      if (Math.hypot((seg.a.x - snapVertex.x) * aspect, seg.a.y - snapVertex.y) <= 0.01) arms.push(seg.b);
-      else if (Math.hypot((seg.b.x - snapVertex.x) * aspect, seg.b.y - snapVertex.y) <= 0.01) arms.push(seg.a);
+      const dA = Math.hypot((seg.a.x - snapVertex.x) * aspect, seg.a.y - snapVertex.y);
+      const dB = Math.hypot((seg.b.x - snapVertex.x) * aspect, seg.b.y - snapVertex.y);
+      if (dA <= 0.01) { arms.push(seg.b); continue; }
+      if (dB <= 0.01) { arms.push(seg.a); continue; }
+      const hit = projectOnSeg(snapVertex, seg, aspect);
+      if (hit && hit.t > 0.02 && hit.t < 0.98 && hit.dist <= 0.02) {
+        const dotA = (seg.a.x - snapVertex.x) * aspect * tx + (seg.a.y - snapVertex.y) * ty;
+        const dotB = (seg.b.x - snapVertex.x) * aspect * tx + (seg.b.y - snapVertex.y) * ty;
+        arms.push(Math.abs(dotA - dotB) > 1e-6 ? (dotA > dotB ? seg.a : seg.b) : (dA >= dB ? seg.a : seg.b));
+      }
     }
     if (arms.length >= 2) return [snapVertex, arms[0], arms[1]];
   }
-  return [tapPoint, { x: clamp01(tapPoint.x + 0.03), y: clamp01(tapPoint.y - 0.03) }];
+  return [tapPoint, { x: clamp01(tapPoint.x + 0.03 / aspect), y: clamp01(tapPoint.y - 0.03) }];
 }
 
 export function resolveDragStrokePoints(

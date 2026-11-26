@@ -61,7 +61,7 @@ public class RoomStompController {
     @MessageMapping("/room/{roomId}/seat.sit")
     public void sitSeat(
             @DestinationVariable String roomId,
-            @Payload SeatSitRequest request,
+            @Payload @Valid SeatSitRequest request,
             Principal user,
             @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER) String wsSessionId
     ) {
@@ -101,10 +101,14 @@ public class RoomStompController {
             Principal user,
             @Header(name = SimpMessageHeaderAccessor.SESSION_ID_HEADER, required = false) String sessionId
     ) {
-        String detail = ex.getBindingResult() != null && ex.getBindingResult().getFieldError() != null
-                ? ex.getBindingResult().getFieldError().getDefaultMessage()
+        var bindingResult = ex.getBindingResult();
+        String detail = bindingResult != null && bindingResult.getFieldError() != null
+                ? bindingResult.getFieldError().getDefaultMessage()
                 : "Invalid STOMP payload";
-        BusinessException businessEx = RoomExceptions.invalidStudyGoal(detail);
+        Object target = bindingResult != null ? bindingResult.getTarget() : null;
+        BusinessException businessEx = target instanceof StudyGoalUpdateRequest
+                ? RoomExceptions.invalidStudyGoal(detail)
+                : RoomExceptions.invalidMove(detail);
         errorDispatcher.sendBusinessError(user, sessionId, RoomExceptions.resolveStompErrorCode(businessEx), businessEx);
     }
 

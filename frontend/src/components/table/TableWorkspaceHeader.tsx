@@ -129,7 +129,7 @@ export function TableWorkspaceHeader({
             data-testid="table-locked-badge"
             aria-label="Bàn học đang khóa riêng tư"
             title="Bàn học đang khóa riêng tư"
-            className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-amber-500/45 bg-amber-950/60 px-2 py-1 text-xs font-semibold text-amber-200"
+            className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-primary/50 bg-primary/15 px-2 py-1 text-xs font-semibold text-primary"
           >
             <LockIcon className="h-3.5 w-3.5" aria-hidden="true" />
             <span className={isMobile ? 'sr-only' : undefined}>Khóa</span>

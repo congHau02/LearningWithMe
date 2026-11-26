@@ -4,17 +4,14 @@ import {
   formatBigRatLatex,
   formatRatWithApprox,
   parseBigRat,
+  parseMathInput,
 } from './mathExact';
 import { formatQuadraticExactReal, solveLinearSystemExact } from './mathExactAlgebra';
 
 const EPS = 1e-9;
 
 function toFiniteNumber(raw: number | string): number {
-  if (typeof raw === 'number') return raw;
-  const rat = parseBigRat(raw);
-  if (rat) return bigRatToNumber(rat);
-  const n = Number(raw.trim());
-  return Number.isFinite(n) ? n : 0;
+  return parseMathInput(raw) ?? 0;
 }
 
 export function formatMathNumber(value: number, digits = 6): string {

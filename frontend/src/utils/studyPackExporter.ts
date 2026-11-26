@@ -6,23 +6,15 @@ import {
   triggerBlobDownload,
   type PdfPageImage,
 } from './studyPackPdfBuilder';
-import {
-  renderScratchpadPagesToCanvases,
-  SCRATCHPAD_PAGE_HEIGHT,
-  SCRATCHPAD_PAGE_WIDTH,
-} from './studyPackScratchpadCanvas';
+import { renderScratchpadPagesToCanvases, SCRATCHPAD_PAGE_HEIGHT, SCRATCHPAD_PAGE_WIDTH } from './studyPackScratchpadCanvas';
+import { hasStudyPackContent } from './studyPackPresence';
+
+export { hasStudyPackContent };
 
 const DEFAULT_SLIDE_W = 1280;
 const DEFAULT_SLIDE_H = 720;
 const PDF_SLIDE_PAGE_W = 1684;
 const PDF_SLIDE_PAGE_H = 1190;
-
-export function hasStudyPackContent(
-  slides: HomeworkSlide[],
-  scratchpadContent: string | null | undefined,
-): boolean {
-  return slides.length > 0 || Boolean(scratchpadContent && scratchpadContent.trim().length > 0);
-}
 
 function sanitizeFileSegment(raw: string): string {
   const cleaned = raw.trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');

@@ -98,7 +98,7 @@ export function HomeworkGeometryBar({
                 isSelected
                   ? 'border-primary bg-primary font-bold text-primary-foreground'
                   : isUsed
-                    ? 'border-border/60 bg-background/40 text-muted-foreground/60 hover:bg-accent hover:text-foreground'
+                    ? 'border-border/80 bg-background/60 text-muted-foreground hover:bg-accent hover:text-foreground'
                     : 'border-border bg-background/80 font-semibold text-foreground hover:border-primary/60 hover:bg-accent'
               }`}
             >

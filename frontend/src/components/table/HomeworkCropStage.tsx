@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from 'react';
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import {
   clampNormalizedCropRect,
   type ImageRotationDeg,
@@ -6,6 +6,7 @@ import {
 } from '../../utils/homeworkImageCompression';
 
 type DragMode = 'draw' | 'move' | 'nw' | 'ne' | 'sw' | 'se';
+type CornerKey = 'nw' | 'ne' | 'sw' | 'se';
 
 interface HomeworkCropStageProps {
   previewUrl: string | null;
@@ -15,12 +16,32 @@ interface HomeworkCropStageProps {
   onCropChange: (next: NormalizedCropRect) => void;
 }
 
-const CORNER_HANDLES: ReadonlyArray<{ corner: 'nw' | 'ne' | 'sw' | 'se'; posClass: string }> = [
-  { corner: 'nw', posClass: 'left-0 top-0' },
-  { corner: 'ne', posClass: 'left-full top-0' },
-  { corner: 'sw', posClass: 'left-0 top-full' },
-  { corner: 'se', posClass: 'left-full top-full' },
+const CORNER_HANDLES: ReadonlyArray<{ corner: CornerKey; label: string; posClass: string }> = [
+  { corner: 'nw', label: 'góc trên trái', posClass: 'left-0 top-0' },
+  { corner: 'ne', label: 'góc trên phải', posClass: 'left-full top-0' },
+  { corner: 'sw', label: 'góc dưới trái', posClass: 'left-0 top-full' },
+  { corner: 'se', label: 'góc dưới phải', posClass: 'left-full top-full' },
 ];
+
+function resizeCornerRect(
+  start: NormalizedCropRect,
+  corner: string,
+  targetX: number,
+  targetY: number,
+  right: number,
+  bottom: number,
+): NormalizedCropRect {
+  const nextLeft = corner.includes('w') ? Math.min(Math.max(0, targetX), right - 0.08) : start.x;
+  const nextTop = corner.includes('n') ? Math.min(Math.max(0, targetY), bottom - 0.08) : start.y;
+  const nextRight = corner.includes('e') ? Math.max(Math.min(1, targetX), start.x + 0.08) : right;
+  const nextBottom = corner.includes('s') ? Math.max(Math.min(1, targetY), start.y + 0.08) : bottom;
+  return clampNormalizedCropRect({
+    x: nextLeft,
+    y: nextTop,
+    width: nextRight - nextLeft,
+    height: nextBottom - nextTop,
+  });
+}
 
 export function HomeworkCropStage({
   previewUrl,
@@ -75,18 +96,19 @@ export function HomeworkCropStage({
     }
     const right = start.x + start.width;
     const bottom = start.y + start.height;
-    const nextLeft = drag.mode.includes('w') ? Math.min(point.x, right - 0.08) : start.x;
-    const nextTop = drag.mode.includes('n') ? Math.min(point.y, bottom - 0.08) : start.y;
-    const nextRight = drag.mode.includes('e') ? Math.max(point.x, start.x + 0.08) : right;
-    const nextBottom = drag.mode.includes('s') ? Math.max(point.y, start.y + 0.08) : bottom;
-    onCropChange(
-      clampNormalizedCropRect({
-        x: nextLeft,
-        y: nextTop,
-        width: nextRight - nextLeft,
-        height: nextBottom - nextTop,
-      }),
-    );
+    onCropChange(resizeCornerRect(start, drag.mode, point.x, point.y, right, bottom));
+  };
+
+  const nudgeCorner = (corner: CornerKey, e: KeyboardEvent<HTMLButtonElement>) => {
+    const step = 0.04;
+    const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+    const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+    if (dx === 0 && dy === 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const targetX = corner.includes('w') ? crop.x + dx : crop.x + crop.width + dx;
+    const targetY = corner.includes('n') ? crop.y + dy : crop.y + crop.height + dy;
+    onCropChange(resizeCornerRect(crop, corner, targetX, targetY, crop.x + crop.width, crop.y + crop.height));
   };
 
   const isQuarterTurn = rotationDeg === 90 || rotationDeg === 270;
@@ -147,15 +169,16 @@ export function HomeworkCropStage({
           }}
           className="absolute cursor-move border-2 border-primary"
         >
-          {CORNER_HANDLES.map(({ corner, posClass }) => (
+          {CORNER_HANDLES.map(({ corner, label, posClass }) => (
             <button
               key={corner}
               type="button"
-              aria-label={`Kéo góc ${corner}`}
+              aria-label={`Điều chỉnh vùng cắt ${label}`}
               onPointerDown={(e) => startDrag(corner, e)}
-              className={`absolute flex min-h-[44px] min-w-[44px] -translate-x-1/2 -translate-y-1/2 items-center justify-center focus-visible:outline-none ${posClass}`}
+              onKeyDown={(e) => nudgeCorner(corner, e)}
+              className={`group absolute flex min-h-[44px] min-w-[44px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${posClass}`}
             >
-              <span className="h-4 w-4 rounded-full border border-primary-foreground bg-primary shadow" />
+              <span className="h-4 w-4 rounded-full border border-primary-foreground bg-primary shadow group-focus-visible:ring-2 group-focus-visible:ring-ring" />
             </button>
           ))}
         </div>

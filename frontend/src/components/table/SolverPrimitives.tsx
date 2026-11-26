@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react';
-import { bigRatToNumber, parseBigRat } from '../../utils/mathExact';
+import { formatBigRatLatex, parseBigRat, parseMathInput } from '../../utils/mathExact';
 import type { CurriculumMode } from '../../utils/mathLatex';
 import { CopyIcon, ScratchpadIcon } from '../icons';
 
@@ -29,11 +29,22 @@ export const stopSolverEsc = (e: KeyboardEvent<HTMLInputElement>) => {
   }
 };
 
-export function parseSolverNum(raw: string): number {
+export const INVALID_COEFF_ERROR: SolverOutput = {
+  summary: 'Nhập hệ số hợp lệ (số hoặc phân số p/q).',
+  latex: '',
+  isError: true,
+};
+
+/** Format rational/numeric coefficient safely for equation LHS LaTeX display. */
+export function formatCoeffTermLatex(raw: string, isLeading = false): string {
   const rat = parseBigRat(raw);
-  if (rat) return bigRatToNumber(rat);
-  const n = Number(raw.trim());
-  return Number.isFinite(n) ? n : 0;
+  const fallback = parseMathInput(raw) ?? 0;
+  const isNeg = rat ? rat.num < 0n : fallback < 0;
+  const magLatex = rat
+    ? formatBigRatLatex({ num: rat.num < 0n ? -rat.num : rat.num, den: rat.den })
+    : String(Math.abs(fallback));
+  if (isLeading) return isNeg ? `-${magLatex}` : magLatex;
+  return `${isNeg ? '-' : '+'} ${magLatex}`;
 }
 
 export function SolverOutputActions({

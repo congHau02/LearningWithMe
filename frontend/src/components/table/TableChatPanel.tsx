@@ -76,7 +76,7 @@ export const TableChatPanel: React.FC<TableChatPanelProps> = ({ tableId, onSend,
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-background/85 px-3 py-2">
         <div className="flex items-center gap-2">
           <ChatIcon className="h-4 w-4 text-primary" aria-hidden="true" />
-          <h3 className="text-xs font-semibold text-foreground">Table Chat</h3>
+          <h3 className="text-xs font-semibold text-foreground">Trò chuyện bàn</h3>
         </div>
         <div className="flex items-center gap-1.5">
           {clearView ? (

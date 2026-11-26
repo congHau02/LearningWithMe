@@ -115,7 +115,7 @@ export function HomeworkAnnotationCanvas({
               <div
                 data-testid="homework-image-error"
                 role="alert"
-                className="flex h-48 w-72 items-center justify-center rounded border border-rose-500/40 bg-rose-500/10 px-3 text-center text-xs text-rose-200"
+                className="flex h-48 w-72 items-center justify-center rounded border border-destructive/50 bg-destructive/15 px-3 text-center text-xs text-destructive-foreground"
               >
                 {imageError}
               </div>
@@ -145,8 +145,8 @@ export function HomeworkAnnotationCanvas({
               onPointerCancel={finishStroke}
               className={`absolute inset-0 h-full w-full rounded ${isToolActive ? 'touch-none ' : ''}${cursorClass}`}
             />
-            <HomeworkLatexOverlay strokes={strokes} />
-            <HomeworkLaserOverlay slideId={slideId} />
+            <HomeworkLatexOverlay strokes={strokes} stageWidth={viewportControls.stageSize.width} />
+            <HomeworkLaserOverlay slideId={slideId} zoom={viewportControls.viewport.zoom} />
           </div>
 
           {pendingText && canControl ? (

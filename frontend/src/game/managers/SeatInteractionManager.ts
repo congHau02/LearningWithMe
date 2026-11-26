@@ -1,4 +1,5 @@
 import { useGameStore } from '../../stores/useGameStore';
+import { hasInviteCodeForTable } from '../../utils/tableInviteLink';
 import { GridPathfinder } from '../pathfinding/GridPathfinder';
 import {
   MAIN_LIBRARY_TOPOLOGY,
@@ -75,7 +76,7 @@ export class SeatInteractionManager {
     }
 
     const tableSummary = store.roomTables.find((t) => t.tableId === seat.tableId);
-    if (tableSummary?.isTableLocked && (!store.targetInviteCode || store.targetTableId !== seat.tableId)) {
+    if (tableSummary?.isTableLocked && !hasInviteCodeForTable(store, seat.tableId)) {
       store.setToastMessage('Bàn học đang khóa riêng tư cho nhóm học');
       return { handled: false, seat: null, path: [] };
     }

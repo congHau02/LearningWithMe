@@ -48,7 +48,7 @@ export function HomeworkClearSlideButton({
             setConfirmingClear(false);
             onClearSlide();
           }}
-          className={`inline-flex items-center justify-center gap-1 rounded-md border border-rose-400 bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white transition-botanical hover:bg-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          className={`inline-flex items-center justify-center gap-1 rounded-md border border-destructive bg-destructive px-2.5 py-1 text-xs font-semibold text-destructive-foreground transition-botanical hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             clearView ? 'min-h-[44px]' : 'min-h-[44px] sm:min-h-[34px]'
           }`}
         >
@@ -78,7 +78,7 @@ export function HomeworkClearSlideButton({
       aria-label={clearView ? 'Xóa trang' : undefined}
       title={clearView ? 'Xóa trang' : undefined}
       onClick={() => setConfirmingClear(true)}
-      className={`inline-flex items-center justify-center rounded-md border border-rose-500/40 bg-rose-500/15 text-xs font-medium text-rose-200 transition-botanical hover:bg-rose-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={`inline-flex items-center justify-center rounded-md border border-destructive/50 bg-destructive/15 text-xs font-medium text-destructive-foreground transition-botanical hover:bg-destructive/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         clearView
           ? 'min-h-[44px] min-w-[44px]'
           : 'min-h-[44px] gap-1 px-2.5 py-1 sm:min-h-[34px]'

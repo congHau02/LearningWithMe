@@ -19,8 +19,9 @@ public class RoomTopologyService {
     private static final String DEFAULT_MAP_CLASSPATH = "maps/main-library.json";
     private static final List<String> REQUIRED_LAYERS =
             List.of("Floor", "Walls", "Furniture", "AFK", "Seats");
+    // shortcut: numeric shards bounded to 2..99 (up to ~4,950 concurrent learners at 50/shard) to block arbitrary shard spam
     private static final Pattern MAIN_LIBRARY_SHARD_PATTERN =
-            Pattern.compile("^main-library-[A-Za-z0-9]+$");
+            Pattern.compile("^main-library-([2-9]|[1-9][0-9])$");
 
     private final RoomTopology canonicalTopology;
     private final Set<TileCoordinate> blockedTiles;

@@ -6,9 +6,10 @@ const LASER_IDLE_TTL_MS = 1500;
 
 interface HomeworkLaserOverlayProps {
   slideId: string;
+  zoom?: number;
 }
 
-export function HomeworkLaserOverlay({ slideId }: HomeworkLaserOverlayProps) {
+export function HomeworkLaserOverlay({ slideId, zoom = 1 }: HomeworkLaserOverlayProps) {
   const laserPointers = useTableStore((s) => s.laserPointers);
   const pruneExpiredLaserPointers = useTableStore((s) => s.pruneExpiredLaserPointers);
   const [nowEpoch, setNowEpoch] = useState(() => Date.now());
@@ -32,12 +33,17 @@ export function HomeworkLaserOverlay({ slideId }: HomeworkLaserOverlayProps) {
     <>
       {activePointers.map((ptr) => {
         const isFading = nowEpoch - ptr.lastSeenEpoch >= LASER_FADE_START_MS;
+        const invScale = zoom > 1 ? 1 / zoom : 1;
         return (
           <div
             key={ptr.userId}
             data-testid={`laser-pointer-${ptr.userId}`}
-            style={{ left: `${ptr.x * 100}%`, top: `${ptr.y * 100}%` }}
-            className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2 transition-[left,top] duration-75"
+            style={{
+              left: `${ptr.x * 100}%`,
+              top: `${ptr.y * 100}%`,
+              transform: `translate(-50%, -50%) scale(${invScale})`,
+            }}
+            className="pointer-events-none absolute z-20 transition-[left,top] duration-75"
           >
             <div className={`flex flex-col items-center transition-opacity duration-500 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
               <div className="h-3.5 w-3.5 rounded-full bg-rose-500 ring-4 ring-rose-400/50 shadow-[0_0_12px_rgba(244,63,94,0.95)]" />

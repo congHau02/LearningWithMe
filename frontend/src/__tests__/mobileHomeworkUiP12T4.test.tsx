@@ -290,10 +290,12 @@ describe('P12-T4 UI: Rotate & Crop, Local Zoom/Pan & Hardened Clear View', () =>
 
     render(<TableWorkspaceShell />);
 
-    // Clear View active at 375px: Undo, 3 swatches, LINE, DASHED_LINE visible; chat math strip collapsed until toggled
+    // Clear View active at 375px: Undo, 3 swatches, LINE, DASHED_LINE & snap toggle visible; chat math strip collapsed until toggled
     expect(screen.getByTestId('board-undo-btn')).toBeEnabled();
     expect(screen.getByTestId('board-tool-LINE')).toBeInTheDocument();
     expect(screen.getByTestId('board-tool-DASHED_LINE')).toBeInTheDocument();
+    expect(screen.getByTestId('board-snap-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('board-color-#ef4444')).toHaveAttribute('aria-label', 'Màu Đỏ');
     expect(screen.queryByTestId('table-chat-math-sym-bar')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('table-chat-math-toggle-btn'));

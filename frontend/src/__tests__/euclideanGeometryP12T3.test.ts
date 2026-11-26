@@ -298,6 +298,21 @@ describe('P12-T3: Euclidean Geometry Strokes, Snapping, Vertex Labels & Renderin
     expect(tickPoints).toHaveLength(2);
     expect(tickPoints[0].y).toBeCloseTo(0.7, 3);
 
+    // T-junction / altitude foot on segment interior (altitude from (0.4, 0.2) down to base BC at y=0.7)
+    const altStrokes: BoardStroke[] = [
+      ...strokes,
+      { id: 'alt-1', tool: 'DASHED_LINE', color: '#38bdf8', lineWidth: 2, points: [{ x: 0.4, y: 0.2 }, { x: 0.4, y: 0.7 }] },
+    ];
+    const footRa = resolveGeoMarkPoints('RIGHT_ANGLE', { x: 0.402, y: 0.698 }, altStrokes, 16 / 9);
+    expect(footRa).toHaveLength(3);
+    expect(footRa[0]).toEqual({ x: 0.4, y: 0.7 });
+    expect(footRa.slice(1)).toContainEqual({ x: 0.4, y: 0.2 });
+    // Tapping slightly right of altitude picks the right arm (0.7, 0.7), slightly left picks (0.2, 0.7)
+    expect(footRa.slice(1)).toContainEqual({ x: 0.7, y: 0.7 });
+    const footLeftRa = resolveGeoMarkPoints('RIGHT_ANGLE', { x: 0.398, y: 0.698 }, altStrokes, 16 / 9);
+    expect(footLeftRa[0]).toEqual({ x: 0.4, y: 0.7 });
+    expect(footLeftRa.slice(1)).toContainEqual({ x: 0.2, y: 0.7 });
+
     // Hit-test DASHED_LINE, TRIANGLE edge (not interior), CIRCLE_CENTER rim & center dot
     expect(findHitStrokeId(strokes, { x: 0.25, y: 0.1 }, 0.025)).toBe('dl-1');
     expect(findHitStrokeId(strokes, { x: 0.45, y: 0.7 }, 0.025)).toBe('tri-1');

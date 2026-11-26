@@ -2,11 +2,7 @@ import { useState } from 'react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useGameStore } from '../stores/useGameStore';
 import { useTableStore } from '../stores/useTableStore';
-import {
-  exportActiveSlideAsPng,
-  exportStudyPackAsPdf,
-  hasStudyPackContent,
-} from '../utils/studyPackExporter';
+import { hasStudyPackContent } from '../utils/studyPackPresence';
 
 /** Open the safeguard modal if the Table has slides/scratchpad, otherwise leave immediately. */
 export function initiateSafeLeaveSeat(): void {
@@ -36,6 +32,7 @@ export function useStudyPackExport(tableId: string) {
     if (!activeSlide || exportingKind !== null) return false;
     setExportingKind('png');
     try {
+      const { exportActiveSlideAsPng } = await import('../utils/studyPackExporter');
       const fileName = await exportActiveSlideAsPng({
         tableId,
         slide: activeSlide,
@@ -56,6 +53,7 @@ export function useStudyPackExport(tableId: string) {
     if (!hasContent || exportingKind !== null) return false;
     setExportingKind('pdf');
     try {
+      const { exportStudyPackAsPdf } = await import('../utils/studyPackExporter');
       const fileName = await exportStudyPackAsPdf({
         tableId,
         slides,

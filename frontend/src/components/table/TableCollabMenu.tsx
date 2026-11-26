@@ -64,7 +64,7 @@ export function TableCollabMenu({
             title={isTableLocked ? 'Bàn đang khóa riêng tư — bấm để mở khóa' : 'Khóa bàn học riêng tư (chỉ vào qua link mời)'}
             className={`${DESKTOP_ACTION_BTN} ${
               isTableLocked
-                ? 'border-amber-500/50 bg-amber-950/70 text-amber-200 hover:bg-amber-900/70'
+                ? 'border-primary/55 bg-primary/20 text-primary hover:bg-primary/30'
                 : 'border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
             }`}
           >

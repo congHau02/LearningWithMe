@@ -155,6 +155,17 @@ describe('P12-T2 Slice 1: Secondary Math (THCS) Exact Engine, Number Theory, Sym
       expect(gl3.gcd).toBe(6);
       expect(gl3.lcm).toBe(180);
     }
+
+    // Precision preservation above Number.MAX_SAFE_INTEGER (2^53 - 1)
+    const glLarge = computeGcdLcm([999999937, 999999929]);
+    expect(glLarge.ok).toBe(true);
+    if (glLarge.ok) {
+      expect(glLarge.gcd).toBe(1);
+      expect(glLarge.lcm).toBeNull();
+      expect(glLarge.lcmExact).toBe('999999866000004473');
+      expect(glLarge.text).toContain('999999866000004473');
+      expect(glLarge.latex).toContain('999999866000004473');
+    }
   });
 
   it('exposes THCS symbol quick-bars with valid KaTeX rendering', () => {

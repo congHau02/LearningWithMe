@@ -216,6 +216,20 @@ describe('P12-T2 Slice 2: THCS Curriculum Mode, Symbol Bars, Number Line Upload 
       'table_01',
       expect.stringContaining('\\text{ƯCLN}(24, 36) = 12,\\; \\text{BCNN}(24, 36) = 72'),
     );
+
+    // Polynomial solver formats exact fractional LHS and flags invalid coefficients
+    fireEvent.click(screen.getByTestId('solver-mode-polynomial'));
+    fireEvent.change(screen.getByLabelText('Hệ số a'), { target: { value: '1/3' } });
+    fireEvent.change(screen.getByLabelText('Hệ số b'), { target: { value: '-1' } });
+    fireEvent.change(screen.getByLabelText('Hệ số c'), { target: { value: '2/3' } });
+    fireEvent.click(screen.getByTestId('solver-poly-use-btn'));
+    expect(sendScratchpadUpdate).toHaveBeenLastCalledWith(
+      'table_01',
+      expect.stringContaining('\\frac{1}{3}x^2'),
+    );
+
+    fireEvent.change(screen.getByLabelText('Hệ số a'), { target: { value: 'abc' } });
+    expect(screen.getByTestId('solver-poly-use-btn')).toBeDisabled();
   });
 
   it('enforces Botanical Night Studio tokens and zero legacy palette classes in THCS UI', () => {

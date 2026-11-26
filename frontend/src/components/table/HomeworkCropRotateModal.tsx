@@ -3,6 +3,7 @@ import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { ImageRotationDeg, NormalizedCropRect } from '../../utils/homeworkImageCompression';
 import { CropIcon, RotateCcwIcon, RotateCwIcon, XIcon } from '../icons';
+import { DoubleBezelCard } from '../ui/DoubleBezelCard';
 import { HomeworkCropStage } from './HomeworkCropStage';
 
 interface HomeworkCropRotateModalProps {
@@ -50,12 +51,13 @@ export function HomeworkCropRotateModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="crop-rotate-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-3 backdrop-blur-md"
     >
-      <div
-        ref={dialogRef}
-        className="flex max-h-[92dvh] w-full max-w-xl flex-col gap-3 overflow-y-auto rounded-2xl border border-border bg-card p-4 text-foreground shadow-2xl"
-      >
+      <div ref={dialogRef} className="w-full max-w-xl">
+        <DoubleBezelCard
+          className="flex max-h-[92dvh] flex-col overflow-y-auto"
+          innerClassName="flex flex-col gap-3 p-4"
+        >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <CropIcon className="h-4 w-4 text-primary" aria-hidden="true" />
@@ -134,6 +136,7 @@ export function HomeworkCropRotateModal({
             Cắt &amp; Tải lên
           </button>
         </div>
+        </DoubleBezelCard>
       </div>
     </div>
   );

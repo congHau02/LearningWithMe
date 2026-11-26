@@ -1,5 +1,14 @@
 import { GridPathfinder } from '../game/pathfinding/GridPathfinder';
-import { MAIN_LIBRARY_TOPOLOGY, getTableById, type TileCoordinate } from '../game/topology/roomTopology';
+import {
+  MAIN_LIBRARY_TOPOLOGY,
+  findSeatAtTile,
+  getSeatById,
+  getTableById,
+  isTileWalkable,
+  type RoomTopology,
+  type TableMetadata,
+  type TileCoordinate,
+} from '../game/topology/roomTopology';
 import type { RoomSnapshotResponse } from '../services/roomApi';
 
 export interface TableInviteTarget {
@@ -83,11 +92,87 @@ export function clearPendingTableInvite(stripUrlParams = false): void {
   }
 }
 
+export function resolveSeatInviteCode(params: {
+  roomId: string;
+  tableId: string;
+  explicitCode?: string | null;
+  targetTableId: string | null;
+  targetInviteCode: string | null;
+  invitedTableAccess: TableInviteTarget | null;
+}): string | null {
+  if (params.explicitCode !== undefined) return params.explicitCode;
+  if (params.targetTableId === params.tableId && params.targetInviteCode) return params.targetInviteCode;
+  if (params.invitedTableAccess?.roomId === params.roomId && params.invitedTableAccess.tableId === params.tableId) {
+    return params.invitedTableAccess.inviteCode;
+  }
+  return null;
+}
+
+export function hasInviteCodeForTable(
+  state: {
+    roomId: string;
+    targetTableId: string | null;
+    targetInviteCode: string | null;
+    invitedTableAccess: TableInviteTarget | null;
+  },
+  tableId: string,
+): boolean {
+  return Boolean(
+    resolveSeatInviteCode({
+      roomId: state.roomId,
+      tableId,
+      targetTableId: state.targetTableId,
+      targetInviteCode: state.targetInviteCode,
+      invitedTableAccess: state.invitedTableAccess,
+    }),
+  );
+}
+
 export type InviteWalkResolution =
   | { kind: 'WALK'; tableId: string; seatId: string; path: TileCoordinate[]; inviteCode: string | null }
+  | { kind: 'WALK_BESIDE'; tableId: string; path: TileCoordinate[]; message: string }
   | { kind: 'SIT_NOW'; tableId: string; seatId: string; inviteCode: string | null }
   | { kind: 'NOOP' }
   | { kind: 'TOAST'; message: string };
+
+function findWalkBesidePath(
+  topology: RoomTopology,
+  table: TableMetadata,
+  start: TileCoordinate,
+  occupiedSeats: Readonly<Record<string, string>>,
+): { path: TileCoordinate[]; alreadyBeside: boolean } {
+  const occupiedTileKeys = new Set<string>();
+  for (const seatId of Object.keys(occupiedSeats)) {
+    const seat = getSeatById(topology, seatId);
+    if (seat) occupiedTileKeys.add(`${seat.tileX},${seat.tileY}`);
+  }
+  const candidates = new Map<string, TileCoordinate>();
+  const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+  for (const anchor of [...table.obstacleTiles, ...table.seats]) {
+    for (const [dx, dy] of dirs) {
+      const tileX = anchor.tileX + dx;
+      const tileY = anchor.tileY + dy;
+      const key = `${tileX},${tileY}`;
+      if (isTileWalkable(topology, tileX, tileY) && !findSeatAtTile(topology, tileX, tileY) && !occupiedTileKeys.has(key)) {
+        candidates.set(key, { tileX, tileY });
+      }
+    }
+  }
+  if (candidates.has(`${start.tileX},${start.tileY}`)) {
+    return { path: [], alreadyBeside: true };
+  }
+  const sorted = Array.from(candidates.values()).sort(
+    (a, b) =>
+      Math.abs(a.tileX - start.tileX) + Math.abs(a.tileY - start.tileY) -
+      (Math.abs(b.tileX - start.tileX) + Math.abs(b.tileY - start.tileY)),
+  );
+  const pathfinder = new GridPathfinder(topology);
+  for (const target of sorted) {
+    const path = pathfinder.findPath(start, target);
+    if (path.length > 0) return { path, alreadyBeside: false };
+  }
+  return { path: [], alreadyBeside: false };
+}
 
 export function resolveInviteAutoWalk(params: {
   snapshot: RoomSnapshotResponse;
@@ -117,9 +202,25 @@ export function resolveInviteAutoWalk(params: {
   }
   const openSeat = table.seats.find((s) => !snapshot.seats[s.seatId]);
   if (!openSeat) {
+    const { path: besidePath, alreadyBeside } = findWalkBesidePath(
+      MAIN_LIBRARY_TOPOLOGY,
+      table,
+      { tileX: currentPosition.x, tileY: currentPosition.y },
+      snapshot.seats,
+    );
+    if (besidePath.length > 0) {
+      return {
+        kind: 'WALK_BESIDE',
+        tableId: table.tableId,
+        path: besidePath,
+        message: `Bàn học ${table.label} đã kín hết ghế (${table.capacity}/${table.capacity}). Đang đứng cạnh bàn trong chế độ đi tự do.`,
+      };
+    }
     return {
       kind: 'TOAST',
-      message: `Bàn học ${table.label} đã kín hết ghế (${table.capacity}/${table.capacity}). Bạn có thể chọn bàn khác.`,
+      message: alreadyBeside
+        ? `Bàn học ${table.label} đã kín hết ghế (${table.capacity}/${table.capacity}). Bạn đang đứng cạnh bàn.`
+        : `Bàn học ${table.label} đã kín hết ghế (${table.capacity}/${table.capacity}). Bạn có thể chọn bàn khác.`,
     };
   }
   if (currentPosition.x === openSeat.tileX && currentPosition.y === openSeat.tileY) {

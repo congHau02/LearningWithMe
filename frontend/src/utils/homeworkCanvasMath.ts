@@ -1,6 +1,8 @@
 export { renderBoardStrokes } from './homeworkStrokeRenderer';
 import { ALLOWED_GEO_MARKS, isVertexLabelText, type GeoMarkSubtype } from './homeworkGeometryMath';
 
+export const REFERENCE_BOARD_WIDTH = 800;
+
 export type BoardStrokeTool =
   | 'PEN'
   | 'HIGHLIGHTER'

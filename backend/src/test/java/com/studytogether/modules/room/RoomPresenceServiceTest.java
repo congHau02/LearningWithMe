@@ -90,12 +90,19 @@ public class RoomPresenceServiceTest {
     }
 
     @Test
-    void joinShardWithPreferredRoomReservesTargetShardOrReturnsFallbackFlagWhenFull() {
+    void joinShardWithPreferredRoomReservesActiveTargetShardIgnoresGhostShardsAndFallsBackWhenFull() {
+        // Inactive ghost shard must not be allocated on arbitrary preferredRoomId
+        AuthPrincipal ghostRequester = guest("u-ghost", "GhostRequester");
+        RoomJoinResponse ghostFallback = service.joinShard(ghostRequester, new RoomJoinRequest("main-library-77", "table_01"));
+        assertThat(ghostFallback.roomId()).isEqualTo("main-library");
+        assertThat(stateStore.isShardKnownOrActive("main-library-77")).isFalse();
+
+        // Active shard main-library-2 accepts invited learners while under capacity
+        stateStore.savePlayer("main-library-2", playerState("s-1", "S1", "FREE_ROAM", 12, 13, null, null, "ws-s1", true));
         AuthPrincipal invited = guest("u-invited", "Invited");
         RoomJoinResponse direct = service.joinShard(invited, new RoomJoinRequest("main-library-2", "table_01"));
-        assertThat(direct).isEqualTo(new RoomJoinResponse("main-library-2", 3, 1, false));
+        assertThat(direct).isEqualTo(new RoomJoinResponse("main-library-2", 3, 2, false));
 
-        stateStore.savePlayer("main-library-2", playerState("s-1", "S1", "FREE_ROAM", 12, 13, null, null, "ws-s1", true));
         stateStore.savePlayer("main-library-2", playerState("s-2", "S2", "FREE_ROAM", 12, 13, null, null, "ws-s2", true));
         stateStore.savePlayer("main-library-2", playerState("s-3", "S3", "FREE_ROAM", 12, 13, null, null, "ws-s3", true));
 

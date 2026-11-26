@@ -3,12 +3,8 @@ import { findVirtualDrink } from '../game/cafe/studyCafeConfig';
 import { clampCameraZoom } from '../game/scenes/classroomCameraController';
 import { applyRoomEvent, reduceSnapshotState } from '../services/roomEventReducer';
 import { playStudySfx } from '../services/studySfxEngine';
-import {
-  INITIAL_GAME_STATE,
-  type CharacterState,
-  type GameState,
-  type GridPosition,
-} from './gameStoreTypes';
+import { resolveSeatInviteCode } from '../utils/tableInviteLink';
+import { INITIAL_GAME_STATE, type CharacterState, type GameState, type GridPosition } from './gameStoreTypes';
 
 export type { CharacterState, GameState, GridPosition };
 
@@ -23,6 +19,9 @@ export const useGameStore = create<GameState>((set, get) => {
     }));
     if (!wasSeated) playStudySfx('seatSit');
   };
+
+  const pickInvite = (s: GameState, tableId: string, explicitCode?: string | null) =>
+    resolveSeatInviteCode({ roomId: s.roomId, tableId, explicitCode, targetTableId: s.targetTableId, targetInviteCode: s.targetInviteCode, invitedTableAccess: s.invitedTableAccess });
 
   return {
   ...INITIAL_GAME_STATE,
@@ -40,17 +39,20 @@ export const useGameStore = create<GameState>((set, get) => {
     })),
   setCharacterState: (characterState) => set({ characterState }),
   startWalkingToSeat: (tableId, seatId, pathQueue, inviteCode) =>
-    set((s) => ({
-      characterState: 'WALKING_TO_SEAT', currentTableId: tableId, currentSeatId: seatId,
-      targetTableId: tableId, targetSeatId: seatId, targetInviteCode: inviteCode !== undefined ? inviteCode : s.targetInviteCode,
-      isPendingSeatConfirmation: false, pathQueue: pathQueue ?? s.pathQueue,
-      isMoving: (pathQueue ?? s.pathQueue).length > 0, isLeaveConfirmOpen: false,
-    })),
+    set((s) => {
+      const nextQueue = pathQueue ?? s.pathQueue;
+      return {
+        characterState: 'WALKING_TO_SEAT', currentTableId: tableId, currentSeatId: seatId,
+        targetTableId: tableId, targetSeatId: seatId, targetInviteCode: pickInvite(s, tableId, inviteCode),
+        invitedTableAccess: inviteCode ? { roomId: s.roomId, tableId, inviteCode } : s.invitedTableAccess,
+        isPendingSeatConfirmation: false, pathQueue: nextQueue, isMoving: nextQueue.length > 0, isLeaveConfirmOpen: false,
+      };
+    }),
   requestSeatConfirmation: (tableId, seatId, inviteCode) =>
     set((s) => ({
       isPendingSeatConfirmation: true, isMoving: false, pathQueue: [],
       currentTableId: tableId, currentSeatId: seatId, targetTableId: tableId, targetSeatId: seatId,
-      targetInviteCode: inviteCode !== undefined ? inviteCode : s.targetInviteCode,
+      targetInviteCode: pickInvite(s, tableId, inviteCode),
     })),
   confirmSeat: enterSeatedState,
   sitAtSeat: enterSeatedState,
@@ -61,6 +63,12 @@ export const useGameStore = create<GameState>((set, get) => {
       pathQueue: [], isMoving: false, toastMessage: reason ?? 'Ghế vừa có người ngồi!',
     }),
   setPendingTableInvite: (pendingTableInvite) => set({ pendingTableInvite }),
+  setInvitedTableAccess: (invitedTableAccess) => set({ invitedTableAccess }),
+  startFreeRoamWalk: (pathQueue, toastMessage) =>
+    set((s) => (s.characterState === 'SEATED' ? s : {
+      characterState: 'FREE_ROAM', currentTableId: null, currentSeatId: null, targetTableId: null, targetSeatId: null,
+      targetInviteCode: null, isPendingSeatConfirmation: false, pathQueue, isMoving: pathQueue.length > 0, toastMessage: toastMessage ?? s.toastMessage,
+    })),
   setToastMessage: (toastMessage) => set({ toastMessage }),
   openLeaveConfirm: () => set((s) => (s.characterState === 'SEATED' ? { isLeaveConfirmOpen: true } : s)),
   closeLeaveConfirm: () => set({ isLeaveConfirmOpen: false }),
@@ -98,16 +106,14 @@ export const useGameStore = create<GameState>((set, get) => {
     set((s) => reduceSnapshotState(snapshot, selfUserId, s.characterState)),
   applyIncomingRoomEvent: (event, selfUserId) =>
     set((s) => {
-      const { nextPlayers, nextSeats, nextTables, nextRecentMessages, nextSeq } = applyRoomEvent({
-        currentPlayers: s.remotePlayers,
-        currentSeats: s.occupiedSeats,
-        currentTables: s.roomTables,
-        currentRecentMessages: s.recentMessages,
-        currentSeq: s.roomEventSeq,
-        selfUserId,
-        event,
+      const nextRoomState = applyRoomEvent({
+        currentPlayers: s.remotePlayers, currentSeats: s.occupiedSeats, currentTables: s.roomTables,
+        currentRecentMessages: s.recentMessages, currentSeq: s.roomEventSeq, selfUserId, event,
       });
-      return { remotePlayers: nextPlayers, occupiedSeats: nextSeats, roomTables: nextTables, recentMessages: nextRecentMessages, roomEventSeq: nextSeq };
+      return {
+        remotePlayers: nextRoomState.nextPlayers, occupiedSeats: nextRoomState.nextSeats,
+        roomTables: nextRoomState.nextTables, recentMessages: nextRoomState.nextRecentMessages, roomEventSeq: nextRoomState.nextSeq,
+      };
     }),
   pruneRemotePlayer: (userId) =>
     set((s) => {
@@ -119,17 +125,11 @@ export const useGameStore = create<GameState>((set, get) => {
   handleStompError: (error) =>
     set((s) => ({ lastError: error, connectionStatus: error.code === 'SESSION_REPLACED' ? 'REPLACED' : s.connectionStatus })),
   setCameraView: (zoom, followEnabled, manual = false) =>
-    set((s) => ({
-      cameraZoom: clampCameraZoom(zoom),
-      cameraFollowEnabled: followEnabled !== undefined ? followEnabled : s.cameraFollowEnabled,
-      cameraManualOverride: manual ? true : s.cameraManualOverride,
-    })),
+    set((s) => ({ cameraZoom: clampCameraZoom(zoom), cameraFollowEnabled: followEnabled ?? s.cameraFollowEnabled, cameraManualOverride: manual || s.cameraManualOverride })),
   adjustCameraZoom: (delta) =>
     set((s) => {
-      const step = delta === 0 ? 0 : Math.sign(delta) * Math.max(1, Math.round(Math.abs(delta)));
-      const nextZoom = clampCameraZoom(s.cameraZoom + step);
-      const autoFollow = nextZoom > 1 && s.cameraZoom <= 1 ? true : s.cameraFollowEnabled;
-      return { cameraZoom: nextZoom, cameraFollowEnabled: autoFollow, cameraManualOverride: true };
+      const nextZoom = clampCameraZoom(s.cameraZoom + (delta === 0 ? 0 : Math.sign(delta) * Math.max(1, Math.round(Math.abs(delta)))));
+      return { cameraZoom: nextZoom, cameraFollowEnabled: nextZoom > 1 && s.cameraZoom <= 1 ? true : s.cameraFollowEnabled, cameraManualOverride: true };
     }),
   toggleCameraFollow: () =>
     set((s) => ({ cameraFollowEnabled: !s.cameraFollowEnabled, cameraManualOverride: true })),

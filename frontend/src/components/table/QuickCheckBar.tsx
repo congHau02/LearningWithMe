@@ -24,15 +24,15 @@ function QuickCheckCountsTriad({
 }) {
   return (
     <>
-      <span className={`inline-flex items-center justify-center text-emerald-300 ${itemClassName}`}>
+      <span className={`inline-flex items-center justify-center text-ring ${itemClassName}`}>
         <CheckIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
         <span>{counts.UNDERSTOOD}</span>
       </span>
-      <span className={`inline-flex items-center justify-center text-amber-200 ${itemClassName}`}>
+      <span className={`inline-flex items-center justify-center text-primary ${itemClassName}`}>
         <ClockIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
         <span>{counts.SLOW_DOWN}</span>
       </span>
-      <span className={`inline-flex items-center justify-center text-primary ${itemClassName}`}>
+      <span className={`inline-flex items-center justify-center text-foreground ${itemClassName}`}>
         <HandRaisedIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
         <span>{counts.RAISE_HAND}</span>
       </span>
@@ -46,6 +46,7 @@ export function QuickCheckHeaderPill({ signals }: { signals: Record<string, Quic
   return (
     <span
       data-testid="header-quick-check-summary"
+      role="status"
       aria-label={`Phản hồi nhanh tại bàn: ${counts.UNDERSTOOD} đã hiểu, ${counts.SLOW_DOWN} chậm lại, ${counts.RAISE_HAND} giơ tay`}
       className={`inline-flex min-h-[36px] min-w-[7.75rem] shrink-0 items-center justify-between gap-2 rounded-xl border px-2.5 py-1 font-mono text-xs font-semibold tabular-nums ${
         counts.total > 0

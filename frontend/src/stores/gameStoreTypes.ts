@@ -36,6 +36,7 @@ export interface GameState {
   targetTableId: string | null;
   targetInviteCode: string | null;
   pendingTableInvite: TableInviteTarget | null;
+  invitedTableAccess: TableInviteTarget | null;
   toastMessage: string | null;
   roomId: string;
   roomCapacityLimit: number;
@@ -75,6 +76,8 @@ export interface GameState {
   sitAtSeat: (tableId: string, seatId: string, seatPosition?: GridPosition, facingDir?: FacingDirection) => void;
   abortSeatWalk: (reason?: string) => void;
   setPendingTableInvite: (invite: TableInviteTarget | null) => void;
+  setInvitedTableAccess: (invite: TableInviteTarget | null) => void;
+  startFreeRoamWalk: (pathQueue: TileCoordinate[], toastMessage?: string | null) => void;
   setToastMessage: (message: string | null) => void;
   openLeaveConfirm: () => void;
   closeLeaveConfirm: () => void;
@@ -104,6 +107,7 @@ export const INITIAL_GAME_STATE = {
   targetTableId: null as string | null,
   targetInviteCode: null as string | null,
   pendingTableInvite: null as TableInviteTarget | null,
+  invitedTableAccess: null as TableInviteTarget | null,
   toastMessage: null as string | null,
   roomId: MAIN_LIBRARY_TOPOLOGY.roomId,
   roomCapacityLimit: 50,

@@ -78,6 +78,20 @@ export function bigRatToNumber(r: BigRational): number {
   return Number(r.num) / Number(r.den);
 }
 
+/** Parse integer, decimal, or fraction input (e.g. '1/3'); returns null for invalid/empty text. */
+export function parseMathInput(raw: number | string): number | null {
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const rat = parseBigRat(trimmed);
+  if (rat) {
+    const val = bigRatToNumber(rat);
+    return Number.isFinite(val) ? val : null;
+  }
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function formatBigRatText(r: BigRational): string {
   return r.den === 1n ? String(r.num) : `${r.num}/${r.den}`;
 }

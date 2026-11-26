@@ -242,5 +242,84 @@ describe('P12-T5 Slice 3: Table Invite Link Parsing, Targeted Join & Auto-Walk t
 
     expect(useGameStore.getState().characterState).toBe('FREE_ROAM');
     expect(screen.getByTestId('seat-toast-message')).toHaveTextContent(/kín|đủ người|đã đầy/i);
+    // Walking beside full table in FREE_ROAM per US 22 without landing on occupied seats
+    const besidePath = useGameStore.getState().pathQueue;
+    expect(besidePath.length).toBeGreaterThan(0);
+    const besideEnd = besidePath[besidePath.length - 1];
+    expect(table01.seats.some((s) => s.tileX === besideEnd.tileX && s.tileY === besideEnd.tileY)).toBe(false);
+  });
+
+  it('clears stale invitedTableAccess when server rejects a seat attempt with TABLE_LOCKED', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ status: 'UP' }), { status: 200 }),
+    );
+    let capturedOpts: RoomStompSessionOptions | undefined;
+    vi.spyOn(roomStompModule, 'createRoomStompSession').mockImplementation((opts) => {
+      capturedOpts = opts;
+      return {
+        start: vi.fn().mockResolvedValue(undefined),
+        updateToken: vi.fn().mockResolvedValue(undefined),
+        stop: vi.fn().mockResolvedValue(undefined),
+        sendSit: vi.fn(),
+        sendMove: vi.fn(),
+        sendLeave: vi.fn(),
+        sendStudyGoalUpdate: vi.fn(),
+      } as unknown as roomStompModule.RoomStompSession;
+    });
+
+    useAuthStore.setState({ userId: 'u-stale', nickname: 'StaleGuest', token: 'jwt-stale' });
+    useGameStore.setState({
+      roomId: 'main-library',
+      invitedTableAccess: { roomId: 'main-library', tableId: 'table_01', inviteCode: 'OLDCODE' },
+    });
+    useGameStore.getState().startWalkingToSeat('table_01', 'T1_S2', [{ tileX: 6, tileY: 4 }], 'OLDCODE');
+
+    render(<App />);
+    await waitFor(() => expect(capturedOpts?.onError).toBeDefined());
+
+    act(() => {
+      capturedOpts?.onError?.({ code: 'TABLE_LOCKED', message: 'Invalid invite', details: {}, timestampEpoch: Date.now() });
+    });
+
+    expect(useGameStore.getState().invitedTableAccess).toBeNull();
+    expect(useGameStore.getState().targetInviteCode).toBeNull();
+    expect(useGameStore.getState().characterState).toBe('FREE_ROAM');
+  });
+
+  it('retains invited Table lock token after abortSeatWalk or WASD clearPath so learner can pick another open seat', () => {
+    useAuthStore.setState({ userId: 'guest-invited', nickname: 'Minh' });
+    const table02 = MAIN_LIBRARY_TOPOLOGY.tables.find((t) => t.tableId === 'table_02')!;
+    const seatA = table02.seats[0];
+    const seatB = table02.seats[1];
+
+    useGameStore.setState({
+      roomId: 'main-library-2',
+      roomTables: [
+        {
+          tableId: 'table_02',
+          label: table02.label,
+          capacity: table02.capacity,
+          hostUserId: 'u-host',
+          coHostUserIds: [],
+          isFreeCollab: false,
+          isTableLocked: true,
+          sosBanner: null,
+          occupiedSeats: 0,
+        },
+      ],
+    });
+
+    useGameStore.getState().startWalkingToSeat('table_02', seatA.seatId, [{ tileX: seatA.tileX, tileY: seatA.tileY }], 'TUTOR888');
+    // Simulate another learner snatching seatA or user tapping WASD
+    useGameStore.getState().abortSeatWalk('Ghế vừa có người ngồi!');
+    expect(useGameStore.getState().invitedTableAccess).toEqual({
+      roomId: 'main-library-2',
+      tableId: 'table_02',
+      inviteCode: 'TUTOR888',
+    });
+
+    useGameStore.getState().clearPath();
+    useGameStore.getState().requestSeatConfirmation('table_02', seatB.seatId);
+    expect(useGameStore.getState().targetInviteCode).toBe('TUTOR888');
   });
 });

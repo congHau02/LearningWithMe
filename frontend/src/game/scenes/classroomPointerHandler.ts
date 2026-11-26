@@ -1,4 +1,5 @@
 import { useGameStore } from '../../stores/useGameStore';
+import { hasInviteCodeForTable } from '../../utils/tableInviteLink';
 import type { AmbientNpcManager } from '../cafe/AmbientNpcManager';
 import { isServiceCounterTile } from '../cafe/studyCafeConfig';
 import type { InputController } from '../controllers/InputController';
@@ -23,9 +24,10 @@ export function resolveClassroomHoverState(options: {
   const isLocked = seat?.tableId
     ? Boolean(gameState.roomTables.find((t) => t.tableId === seat.tableId)?.isTableLocked)
     : false;
+  const canHoverLocked = Boolean(seat?.tableId && hasInviteCodeForTable(gameState, seat.tableId));
 
   return {
-    hoveredSeatId: seat && !isOccupied && !isLocked ? seat.seatId : null,
+    hoveredSeatId: seat && !isOccupied && (!isLocked || canHoverLocked) ? seat.seatId : null,
     hoveredNpcId,
     isHoveringCafeInteractive: Boolean(hoveredNpcId) || isHoveringCounter,
   };

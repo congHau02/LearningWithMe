@@ -119,7 +119,7 @@ export function TableCollabPopover({
                   aria-checked={isTableLocked} onClick={runAndClose(onToggleTableLock)}
                   className={`${MENU_ACTION_BASE} ${
                     isTableLocked
-                      ? 'border-amber-500/50 bg-amber-950/70 text-amber-200 hover:bg-amber-900/70'
+                      ? 'border-primary/55 bg-primary/20 text-primary hover:bg-primary/30'
                       : 'border-border bg-secondary/90 text-foreground hover:bg-secondary'
                   }`}
                 >
@@ -127,7 +127,7 @@ export function TableCollabPopover({
                   <span>{isTableLocked ? 'Mở khóa bàn học' : 'Khóa bàn riêng tư'}</span>
                 </button>
               ) : isTableLocked ? (
-                <span data-testid="table-locked-popover-note" className="flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-amber-500/45 bg-amber-950/60 px-3 py-1.5 font-semibold text-amber-200">
+                <span data-testid="table-locked-popover-note" className="flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-primary/50 bg-primary/15 px-3 py-1.5 font-semibold text-primary">
                   <LockIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   <span>Bàn đang khóa riêng tư</span>
                 </span>

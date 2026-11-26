@@ -10,7 +10,16 @@ export type PrimeFactorizationResult =
   | { ok: false; error: string };
 
 export type GcdLcmResult =
-  | { ok: true; values: number[]; gcd: number; lcm: number; text: string; latex: string }
+  | {
+      ok: true;
+      values: number[];
+      gcd: number;
+      lcm: number | null;
+      gcdExact: string;
+      lcmExact: string;
+      text: string;
+      latex: string;
+    }
   | { ok: false; error: string };
 
 const SUPERSCRIPTS: Record<string, string> = {
@@ -64,14 +73,18 @@ export function computeGcdLcm(values: number[]): GcdLcmResult {
     l = lcmBigInt(l, v);
   }
   const gcd = Number(g);
-  const lcm = Number(l);
+  const lcm = l <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(l) : null;
+  const gcdExact = g.toString();
+  const lcmExact = l.toString();
   const list = values.join(', ');
   return {
     ok: true,
     values,
     gcd,
     lcm,
-    text: `ƯCLN(${list}) = ${gcd}; BCNN(${list}) = ${lcm}`,
-    latex: `\\text{ƯCLN}(${list}) = ${gcd},\\; \\text{BCNN}(${list}) = ${lcm}`,
+    gcdExact,
+    lcmExact,
+    text: `ƯCLN(${list}) = ${gcdExact}; BCNN(${list}) = ${lcmExact}`,
+    latex: `\\text{ƯCLN}(${list}) = ${gcdExact},\\; \\text{BCNN}(${list}) = ${lcmExact}`,
   };
 }

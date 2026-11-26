@@ -1,4 +1,5 @@
 import {
+  REFERENCE_BOARD_WIDTH,
   denormalizeCanvasPoint,
   isGeometricTool,
   type BoardStroke,
@@ -12,8 +13,6 @@ import {
   drawTriangleStroke,
 } from './homeworkGeoRenderer';
 import { drawLatexStrokeOnCanvas } from './homeworkLatexCanvasRenderer';
-
-const REFERENCE_CANVAS_WIDTH = 800;
 
 function drawArrowStroke(
   ctx: CanvasRenderingContext2D,
@@ -89,7 +88,7 @@ export function renderBoardStrokes(
   options?: RenderBoardStrokesOptions,
 ): void {
   ctx.clearRect(0, 0, width, height);
-  const scale = width > 0 ? width / REFERENCE_CANVAS_WIDTH : 1;
+  const scale = width > 0 ? width / REFERENCE_BOARD_WIDTH : 1;
   const list = draftStroke ? [...strokes, draftStroke] : strokes;
   const includeLatex = Boolean(options?.includeLatex);
 

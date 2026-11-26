@@ -54,6 +54,12 @@ class RoomTopologyServiceTest {
 
         assertThatThrownBy(() -> service.getRoomTopology("main-library-"))
                 .isInstanceOf(RoomNotFoundException.class);
+        assertThatThrownBy(() -> service.getRoomTopology("main-library-evil"))
+                .isInstanceOf(RoomNotFoundException.class);
+        assertThatThrownBy(() -> service.getRoomTopology("main-library-1"))
+                .isInstanceOf(RoomNotFoundException.class);
+        assertThatThrownBy(() -> service.getRoomTopology("main-library-100"))
+                .isInstanceOf(RoomNotFoundException.class);
         assertThatThrownBy(() -> service.getRoomTopology("   "))
                 .isInstanceOf(RoomNotFoundException.class);
     }

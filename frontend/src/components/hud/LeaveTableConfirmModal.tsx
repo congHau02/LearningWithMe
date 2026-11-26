@@ -80,11 +80,7 @@ export function LeaveTableConfirmModal({
             {tableId ?? 'bàn học'}
             {seatId ? ` (${seatId})` : ''}
           </span>
-          . Nếu rời bàn bây giờ, nhân vật sẽ trở về trạng thái đi lại tự do (
-          <span className="rounded border border-border bg-secondary/80 px-1.5 py-0.5 font-mono text-xs text-foreground">
-            FREE_ROAM
-          </span>
-          ).
+          . Nếu rời bàn bây giờ, nhân vật sẽ đứng dậy và đi lại tự do trong phòng.
         </p>
 
         {hasStudyPack ? (
@@ -98,9 +94,9 @@ export function LeaveTableConfirmModal({
             {isFinalLearner ? (
               <p
                 data-testid="leave-seat-final-learner-warning"
-                className="flex items-start gap-2 rounded-lg border border-amber-500/45 bg-amber-950/60 px-2.5 py-2 font-medium text-amber-200"
+                className="flex items-start gap-2 rounded-lg border border-primary/50 bg-card/85 px-2.5 py-2 font-medium text-foreground"
               >
-                <AlertCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
+                <AlertCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                 <span>
                   Bạn là người cuối cùng tại bàn — khi rời đi, toàn bộ trang bài tập và sổ nháp tạm thời sẽ bị xóa vĩnh viễn!
                 </span>
@@ -110,7 +106,7 @@ export function LeaveTableConfirmModal({
         ) : null}
 
         {exportError ? (
-          <p role="alert" className="mt-2.5 rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-200">
+          <p role="alert" className="mt-2.5 rounded-lg border border-destructive/50 bg-destructive/20 px-3 py-2 text-xs text-destructive-foreground">
             {exportError}
           </p>
         ) : null}

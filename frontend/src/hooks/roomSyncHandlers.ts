@@ -73,6 +73,9 @@ export function buildRoomSessionCallbacks(
         const invite = game.pendingTableInvite;
         game.setPendingTableInvite(null);
         clearPendingTableInvite(true);
+        if (invite.inviteCode && invite.roomId === snapshot.roomId) {
+          game.setInvitedTableAccess(invite);
+        }
         const plan = resolveInviteAutoWalk({
           snapshot,
           invite,
@@ -81,6 +84,7 @@ export function buildRoomSessionCallbacks(
           currentPosition: game.position,
         });
         if (plan.kind === 'WALK') game.startWalkingToSeat(plan.tableId, plan.seatId, plan.path, plan.inviteCode);
+        else if (plan.kind === 'WALK_BESIDE') game.startFreeRoamWalk(plan.path, plan.message);
         else if (plan.kind === 'SIT_NOW') game.requestSeatConfirmation(plan.tableId, plan.seatId, plan.inviteCode);
         else if (plan.kind === 'TOAST') game.setToastMessage(plan.message);
       }
@@ -135,8 +139,14 @@ export function buildRoomSessionCallbacks(
     },
     onError: (err) => {
       useGameStore.getState().handleStompError(err);
-      if (err.code === 'SEAT_OCCUPIED' || err.code === 'ALREADY_SEATED' || err.code === 'TABLE_LOCKED') {
+      if (
+        err.code === 'SEAT_OCCUPIED' ||
+        err.code === 'ALREADY_SEATED' ||
+        err.code === 'TABLE_LOCKED' ||
+        err.code === 'INVALID_MOVE'
+      ) {
         const current = useGameStore.getState();
+        if (err.code === 'TABLE_LOCKED') current.setInvitedTableAccess(null);
         if (current.characterState === 'WALKING_TO_SEAT' || current.isPendingSeatConfirmation) {
           current.abortSeatWalk(
             err.code === 'TABLE_LOCKED'

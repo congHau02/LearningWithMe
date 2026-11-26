@@ -74,7 +74,9 @@ public class RoomPresenceService {
         String rawPreferred = request != null && request.preferredRoomId() != null
                 ? request.preferredRoomId().trim()
                 : null;
-        String preferredRoomId = (rawPreferred != null && topologyService.isValidRoomId(rawPreferred))
+        String preferredRoomId = (rawPreferred != null && topologyService.isValidRoomId(rawPreferred)
+                && (RoomTopologyService.MAIN_LIBRARY_ROOM_ID.equals(rawPreferred)
+                        || stateStore.isShardKnownOrActive(rawPreferred)))
                 ? rawPreferred
                 : null;
         boolean preferredRoomFull = false;

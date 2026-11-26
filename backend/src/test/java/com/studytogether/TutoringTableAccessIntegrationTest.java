@@ -33,6 +33,7 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.socket.WebSocketHttpHeaders;
@@ -44,8 +45,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class TutoringTableAccessIntegrationTest {
 
     @Container
@@ -92,7 +94,16 @@ class TutoringTableAccessIntegrationTest {
 
     @Test
     void targetedJoinAtomicTableLockInvitePrivacyAndGraceSuccessionOverRedisAndStomp() throws Exception {
-        // 1. Targeted shard join under capacity vs fallback when preferred shard is 50/50 full
+        // 1. Targeted shard join under capacity vs ghost shard prevention vs fallback when preferred shard is 50/50 full
+        RoomPlayerState shard2Host = new RoomPlayerState(
+                "host-shard2", "Host Shard2", "avatar_01", "GUEST", "FREE_ROAM",
+                12, 13, "DOWN", null, null, null, true, 1_700_000_000_000L
+        );
+        redisTemplate.opsForHash().put(
+                RedisRoomStateStore.playersKey("main-library-2"),
+                "host-shard2",
+                objectMapper.writeValueAsString(shard2Host)
+        );
         String directToken = createGuestToken("DirectStudent");
         ResponseEntity<JsonNode> directJoin = restTemplate.postForEntity(
                 "/api/v1/rooms/join",
@@ -103,6 +114,18 @@ class TutoringTableAccessIntegrationTest {
         assertThat(directJoin.getBody().path("roomId").asText()).isEqualTo("main-library-2");
         assertThat(directJoin.getBody().path("preferredRoomFull").asBoolean()).isFalse();
 
+        // Nonexistent or malformed preferredRoomId never creates a ghost Redis shard
+        String ghostToken = createGuestToken("GhostSeeker");
+        ResponseEntity<JsonNode> ghostJoin = restTemplate.postForEntity(
+                "/api/v1/rooms/join",
+                new HttpEntity<>(Map.of("preferredRoomId", "main-library-88", "preferredTableId", "table_01"), authHeaders(ghostToken)),
+                JsonNode.class
+        );
+        assertThat(ghostJoin.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(ghostJoin.getBody().path("roomId").asText()).isEqualTo("main-library");
+        assertThat(redisTemplate.opsForSet().isMember("rooms:shards", "main-library-88")).isFalse();
+        assertThat(redisTemplate.opsForHash().size(RedisRoomStateStore.playersKey("main-library-88"))).isZero();
+
         // Fill main-library-3 to 50/50 capacity and verify fallback flag
         for (int i = 1; i <= 50; i++) {
             String uid = "full-" + i;
@@ -112,6 +135,7 @@ class TutoringTableAccessIntegrationTest {
             );
             redisTemplate.opsForHash().put(RedisRoomStateStore.playersKey("main-library-3"), uid, objectMapper.writeValueAsString(p));
         }
+        redisTemplate.opsForSet().add("rooms:shards", "main-library-3");
         String fallbackToken = createGuestToken("OverflowUser");
         ResponseEntity<JsonNode> fallbackJoin = restTemplate.postForEntity(
                 "/api/v1/rooms/join",
@@ -182,6 +206,17 @@ class TutoringTableAccessIntegrationTest {
         JsonNode lockErr = strangerErrors.poll(5, TimeUnit.SECONDS);
         assertThat(lockErr).isNotNull();
         assertThat(lockErr.path("code").asText()).isEqualTo("TABLE_LOCKED");
+        assertThat(redisTemplate.opsForHash().get(RedisRoomStateStore.seatsKey("main-library"), "T1_S2")).isNull();
+
+        // 3b. Oversized inviteCode (>64 chars) is rejected by @Valid on SeatSitRequest before Lua execution
+        strangerSession.send("/app/room/main-library/seat.sit", Map.of(
+                "tableId", "table_01",
+                "seatId", "T1_S2",
+                "inviteCode", "X".repeat(65)
+        ));
+        JsonNode oversizedErr = strangerErrors.poll(5, TimeUnit.SECONDS);
+        assertThat(oversizedErr).isNotNull();
+        assertThat(oversizedErr.path("code").asText()).isEqualTo("INVALID_MOVE");
         assertThat(redisTemplate.opsForHash().get(RedisRoomStateStore.seatsKey("main-library"), "T1_S2")).isNull();
 
         // 4. Invited learner with valid inviteCode sits atomically without host approval
